@@ -110,7 +110,7 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 
 		final boolean crossStart = arg.get("ARROW_CROSS_START", 0) != null;
 		final boolean circleEnd = arg.get("ARROW_CIRCLE_END", 0) != null;
-		final LinkType linkType = new LinkType(circleEnd ? LinkDecor.ARROW_AND_CIRCLE : LinkDecor.ARROW,
+		final LinkType linkType = new LinkType(circleEnd ? LinkDecor.NONE : LinkDecor.ARROW,
 				crossStart ? LinkDecor.CIRCLE_CROSS : LinkDecor.NONE);
 
 		final Display label = Display.getWithNewlines(arg.get("LABEL", 0));
