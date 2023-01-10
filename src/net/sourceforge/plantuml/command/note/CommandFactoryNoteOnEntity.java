@@ -238,7 +238,7 @@ public final class CommandFactoryNoteOnEntity implements SingleMultiFactoryComma
 				.withRankdir(diagram.getSkinParam().getRankdir());
 		Colors colors = color().getColor(line0, diagram.getSkinParam().getIHtmlColorSet());
 
-		final String stereotypeString = line0.get("STEREO", 0);
+		String stereotypeString = line0.get("STEREO", 0);
 		Stereotype stereotype = null;
 		if (stereotypeString != null) {
 			stereotype = Stereotype.build(stereotypeString);
@@ -288,6 +288,15 @@ public final class CommandFactoryNoteOnEntity implements SingleMultiFactoryComma
 		} else {
 			throw new IllegalArgumentException();
 		}
+
+		String hidden = "<<hidden>>";
+
+		if (stereotypeString != null) {
+			if (stereotypeString.compareTo(hidden) == 0) {
+				link.setInvis(true);
+			}
+		}
+
 		diagram.addLink(link);
 		return CommandExecutionResult.ok();
 	}
