@@ -290,9 +290,9 @@ public final class CommandFactoryNoteOnEntity implements SingleMultiFactoryComma
 		}
 		// TODO(dxf)
 
-//		String hidden = "hidden";
+		String hidden = "hidden";
 //		if (stereotypeString.equals(hidden)) {
-//			link.setInvis(true);
+			link.setInvis(true);
 //		}
 
 		diagram.addLink(link);
