@@ -288,6 +288,13 @@ public final class CommandFactoryNoteOnEntity implements SingleMultiFactoryComma
 		} else {
 			throw new IllegalArgumentException();
 		}
+		// TODO(dxf)
+
+//		String hidden = "hidden";
+//		if (stereotypeString.equals(hidden)) {
+//			link.setInvis(true);
+//		}
+
 		diagram.addLink(link);
 		return CommandExecutionResult.ok();
 	}
