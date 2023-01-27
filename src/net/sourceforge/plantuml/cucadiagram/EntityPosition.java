@@ -52,12 +52,12 @@ import net.sourceforge.plantuml.ugraphic.color.HColors;
 
 public enum EntityPosition {
 
-	NORMAL, ENTRY_POINT, ENTRY_POINT_HIDDEN, EXIT_POINT, EXIT_POINT_HIDDEN, INPUT_PIN, OUTPUT_PIN, EXPANSION_INPUT, EXPANSION_OUTPUT, PORTIN, PORTOUT;
+	NORMAL, ENTRY_POINT, ENTRY_POINT_HIDDEN, ENTRY_POINT_POINT, EXIT_POINT, EXIT_POINT_HIDDEN, INPUT_PIN, OUTPUT_PIN, EXPANSION_INPUT, EXPANSION_OUTPUT, PORTIN, PORTOUT;
 
 	public static final double RADIUS = 6;
 
 	public static EnumSet<EntityPosition> getInputs() {
-		return EnumSet.of(ENTRY_POINT, ENTRY_POINT_HIDDEN, INPUT_PIN, EXPANSION_INPUT, PORTIN);
+		return EnumSet.of(ENTRY_POINT, ENTRY_POINT_HIDDEN, ENTRY_POINT_POINT, INPUT_PIN, EXPANSION_INPUT, PORTIN);
 	}
 
 	public static EnumSet<EntityPosition> getOutputs() {
@@ -178,6 +178,9 @@ public enum EntityPosition {
 
 		if ("<<entrypoint_hidden>>".equalsIgnoreCase(label))
 			return ENTRY_POINT_HIDDEN;
+
+		if ("<<entrypoint_point>>".equalsIgnoreCase(label))
+			return ENTRY_POINT_POINT;
 
 		if ("<<exitpoint_hidden>>".equalsIgnoreCase(label))
 			return EXIT_POINT_HIDDEN;

@@ -178,6 +178,12 @@ public class CommandCreateState extends SingleLineCommand2<StateDiagram> {
 		if ("<<join>>".equalsIgnoreCase(stereotype)) 
 			return LeafType.STATE_FORK_JOIN;
 		
+		if ("<<fork_hidden>>".equalsIgnoreCase(stereotype)) 
+			return LeafType.STATE_FORK_JOIN_HIDDEN;
+		
+		if ("<<join_hidden>>".equalsIgnoreCase(stereotype)) 
+			return LeafType.STATE_FORK_JOIN_HIDDEN;
+		
 		if ("<<start>>".equalsIgnoreCase(stereotype)) 
 			return LeafType.CIRCLE_START;
 		
