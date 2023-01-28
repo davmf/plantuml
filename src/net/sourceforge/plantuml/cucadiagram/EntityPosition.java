@@ -140,6 +140,9 @@ public enum EntityPosition {
 
 			return new XDimension2D(EntityPosition.RADIUS * 2, EntityPosition.RADIUS * 2 * 4);
 		}
+		else if (this == ENTRY_POINT_POINT) {
+			return new XDimension2D(0.1, 0.1);
+		}
 		return new XDimension2D(EntityPosition.RADIUS * 2, EntityPosition.RADIUS * 2);
 	}
 
