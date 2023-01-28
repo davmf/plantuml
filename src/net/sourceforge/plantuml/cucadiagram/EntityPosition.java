@@ -47,19 +47,21 @@ import net.sourceforge.plantuml.ugraphic.UGraphic;
 import net.sourceforge.plantuml.ugraphic.ULine;
 import net.sourceforge.plantuml.ugraphic.URectangle;
 import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.ugraphic.color.HColors;
 
 public enum EntityPosition {
 
-	NORMAL, ENTRY_POINT, EXIT_POINT, INPUT_PIN, OUTPUT_PIN, EXPANSION_INPUT, EXPANSION_OUTPUT, PORTIN, PORTOUT;
+	NORMAL, ENTRY_POINT, ENTRY_POINT_HIDDEN, ENTRY_POINT_POINT, EXIT_POINT, EXIT_POINT_HIDDEN, INPUT_PIN, OUTPUT_PIN, EXPANSION_INPUT, EXPANSION_OUTPUT, PORTIN, PORTOUT;
 
 	public static final double RADIUS = 6;
 
 	public static EnumSet<EntityPosition> getInputs() {
-		return EnumSet.of(ENTRY_POINT, INPUT_PIN, EXPANSION_INPUT, PORTIN);
+		return EnumSet.of(ENTRY_POINT, ENTRY_POINT_HIDDEN, ENTRY_POINT_POINT, INPUT_PIN, EXPANSION_INPUT, PORTIN);
 	}
 
 	public static EnumSet<EntityPosition> getOutputs() {
-		return EnumSet.of(EXIT_POINT, OUTPUT_PIN, EXPANSION_OUTPUT, PORTOUT);
+		return EnumSet.of(EXIT_POINT, EXIT_POINT_HIDDEN, OUTPUT_PIN, EXPANSION_OUTPUT, PORTOUT);
 	}
 
 	public static EnumSet<EntityPosition> getNormals() {
@@ -83,6 +85,21 @@ public enum EntityPosition {
 			throw new IllegalStateException();
 		} else if (this == ENTRY_POINT || this == EXIT_POINT) {
 			final Shadowable circle = new UEllipse(RADIUS * 2, RADIUS * 2);
+			ug.draw(circle);
+			if (this == EntityPosition.EXIT_POINT) {
+				final double xc = 0 + RADIUS + .5;
+				final double yc = 0 + RADIUS + .5;
+				final double radius = RADIUS - .5;
+				drawLine(ug, getPointOnCircle(xc, yc, Math.PI / 4, radius),
+						getPointOnCircle(xc, yc, Math.PI + Math.PI / 4, radius));
+				drawLine(ug, getPointOnCircle(xc, yc, -Math.PI / 4, radius),
+						getPointOnCircle(xc, yc, Math.PI - Math.PI / 4, radius));
+			}
+		} else if (this == ENTRY_POINT_HIDDEN || this == EXIT_POINT_HIDDEN) {
+			final Shadowable circle = new UEllipse(RADIUS * 2, RADIUS * 2);
+			HColor border = HColors.transparent();
+			HColor back = HColors.transparent();
+			ug = ug.apply(back.bg()).apply(border);
 			ug.draw(circle);
 			if (this == EntityPosition.EXIT_POINT) {
 				final double xc = 0 + RADIUS + .5;
@@ -123,6 +140,9 @@ public enum EntityPosition {
 
 			return new XDimension2D(EntityPosition.RADIUS * 2, EntityPosition.RADIUS * 2 * 4);
 		}
+		else if (this == ENTRY_POINT_POINT) {
+			return new XDimension2D(0.1, 0.1);
+		}
 		return new XDimension2D(EntityPosition.RADIUS * 2, EntityPosition.RADIUS * 2);
 	}
 
@@ -158,6 +178,15 @@ public enum EntityPosition {
 
 		if ("<<exitpoint>>".equalsIgnoreCase(label))
 			return EXIT_POINT;
+
+		if ("<<entrypoint_hidden>>".equalsIgnoreCase(label))
+			return ENTRY_POINT_HIDDEN;
+
+		if ("<<entrypoint_point>>".equalsIgnoreCase(label))
+			return ENTRY_POINT_POINT;
+
+		if ("<<exitpoint_hidden>>".equalsIgnoreCase(label))
+			return EXIT_POINT_HIDDEN;
 
 		if ("<<inputpin>>".equalsIgnoreCase(label))
 			return INPUT_PIN;

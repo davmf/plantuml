@@ -38,6 +38,7 @@ package net.sourceforge.plantuml.svek.image;
 import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.baraye.ILeaf;
+import net.sourceforge.plantuml.cucadiagram.LeafType;
 import net.sourceforge.plantuml.cucadiagram.Rankdir;
 import net.sourceforge.plantuml.graphic.StringBounder;
 import net.sourceforge.plantuml.style.PName;
@@ -78,7 +79,13 @@ public class EntityImageSynchroBar extends AbstractEntityImage {
 
 		final Style style = getStyleSignature().withTOBECHANGED(getEntity().getStereotype())
 				.getMergedStyle(getSkinParam().getCurrentStyleBuilder());
-		final HColor color = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+
+		HColor color = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+
+		if (getEntity().getLeafType() == LeafType.STATE_FORK_JOIN_HIDDEN) {
+			color = HColors.transparent();
+		}
+
 		final double shadowing = style.value(PName.Shadowing).asDouble();
 
 		rect.setDeltaShadow(shadowing);

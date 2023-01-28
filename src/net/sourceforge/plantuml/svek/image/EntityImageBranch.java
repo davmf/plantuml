@@ -42,6 +42,7 @@ import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.awt.geom.XDimension2D;
 import net.sourceforge.plantuml.baraye.ILeaf;
 import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.graphic.color.ColorType;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
@@ -79,8 +80,16 @@ public class EntityImageBranch extends AbstractEntityImage {
 		diams.addPoint(SIZE, 0);
 
 		final Style style = getDefaultStyleDefinition().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
-		final HColor border = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
-		final HColor back = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+		HColor border = getEntity().getColors().getColor(ColorType.LINE);
+
+		if (border == null)
+			border = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
+
+		HColor back = getEntity().getColors().getColor(ColorType.BACK);
+
+		if (back == null)
+			back = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+
 		final UStroke stroke = style.getStroke();
 		final double shadowing = style.value(PName.Shadowing).asDouble();
 

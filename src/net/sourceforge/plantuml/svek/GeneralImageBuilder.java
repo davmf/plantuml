@@ -225,7 +225,7 @@ public final class GeneralImageBuilder {
 		if (leaf.getLeafType() == LeafType.JSON)
 			return new EntityImageJson(leaf, skinParam, portionShower);
 
-		if (leaf.getLeafType() == LeafType.SYNCHRO_BAR || leaf.getLeafType() == LeafType.STATE_FORK_JOIN)
+		if (leaf.getLeafType() == LeafType.SYNCHRO_BAR || leaf.getLeafType() == LeafType.STATE_FORK_JOIN || leaf.getLeafType() == LeafType.STATE_FORK_JOIN_HIDDEN)
 			return new EntityImageSynchroBar(leaf, skinParam, umlDiagramType.getStyleName());
 
 		if (leaf.getLeafType() == LeafType.ARC_CIRCLE)
