@@ -40,6 +40,8 @@ import java.util.EnumSet;
 
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
@@ -95,7 +97,7 @@ public enum EntityPosition {
                         getPointOnCircle(xc, yc, Math.PI - Math.PI / 4, radius));
             }
         } else if (this == ENTRY_POINT_HIDDEN || this == EXIT_POINT_HIDDEN) {
-            final Shadowable circle = new UEllipse(RADIUS * 2, RADIUS * 2);
+            final Shadowable circle = UEllipse.build(RADIUS * 2, RADIUS * 2);
             HColor border = HColors.transparent();
             HColor back = HColors.transparent();
             ug = ug.apply(back.bg()).apply(border);
