@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -35,23 +35,23 @@
  */
 package net.sourceforge.plantuml.svek;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.creole.CreoleMode;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Link;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.UDrawable;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.Link;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.creole.CreoleMode;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.svek.extremity.Extremity;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
 import net.sourceforge.plantuml.utils.Direction;
 
 public class Kal implements UDrawable {
@@ -61,11 +61,26 @@ public class Kal implements UDrawable {
 	private XDimension2D dim;
 	private UTranslate translate;
 	private final SvekLine svekLine;
-	private final EntityImp entity;
+	private final Entity entity;
 	private final Link link;
 
-	public Kal(SvekLine svekLine, String text, FontConfiguration font, ISkinParam skinParam, EntityImp entity,
-			Link link, StringBounder stringBounder) {
+	public UTranslate getTranslateForDecoration() {
+		switch (position) {
+		case RIGHT:
+			return UTranslate.dx(dim.getWidth());
+		case LEFT:
+			return UTranslate.dx(-dim.getWidth());
+		case DOWN:
+			return UTranslate.dy(dim.getHeight());
+		case UP:
+			return UTranslate.dy(-dim.getHeight());
+		default:
+			throw new IllegalStateException();
+		}
+	}
+
+	public Kal(SvekLine svekLine, String text, FontConfiguration font, ISkinParam skinParam, Entity entity, Link link,
+			StringBounder stringBounder) {
 		this.svekLine = svekLine;
 		this.entity = entity;
 		this.link = link;
@@ -83,11 +98,11 @@ public class Kal implements UDrawable {
 
 		} else if (link.getEntity1() == entity) {
 			this.position = Direction.DOWN;
-			entity.ensureMargins(new Margins(0, 0, dim.getHeight(), 0));
+			entity.ensureMargins(new Margins(0, 0, 0, dim.getHeight()));
 
 		} else if (link.getEntity2() == entity) {
 			this.position = Direction.UP;
-			entity.ensureMargins(new Margins(0, 0, 0, dim.getHeight()));
+			entity.ensureMargins(new Margins(0, 0, dim.getHeight(), 0));
 
 		} else {
 			throw new IllegalStateException();
@@ -103,9 +118,9 @@ public class Kal implements UDrawable {
 
 	@Override
 	public void drawU(UGraphic ug) {
-		final URectangle rect = new URectangle(dim);
+		final URectangle rect = URectangle.build(dim);
 		ug = ug.apply(getTranslate());
-		ug.apply(HColors.WHITE.bg()).apply(HColors.BLACK).apply(new UStroke(0.5)).draw(rect);
+		ug.apply(HColors.WHITE.bg()).apply(HColors.BLACK).apply(UStroke.withThickness(0.5)).draw(rect);
 		textBlock.drawU(ug.apply(new UTranslate(2, 1)));
 	}
 
@@ -144,11 +159,11 @@ public class Kal implements UDrawable {
 
 	public void setTranslate(UTranslate translate, UDrawable decoration) {
 		this.translate = translate;
-		if (decoration instanceof Extremity) {
-			final Extremity extremity = (Extremity) decoration;
-			final UTranslate deltaForKal = extremity.getDeltaForKal();
-			// this.translate = this.translate.compose(deltaForKal);
-		}
+//		if (decoration instanceof Extremity) {
+//			final Extremity extremity = (Extremity) decoration;
+//			final UTranslate deltaForKal = extremity.getDeltaForKal();
+//			// this.translate = this.translate.compose(deltaForKal);
+//		}
 	}
 
 	public double overlapx(Kal other) {

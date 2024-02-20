@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,14 +37,15 @@ package net.sourceforge.plantuml.project.command;
 
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
 import net.sourceforge.plantuml.project.GanttDiagram;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandFootbox extends SingleLineCommand2<GanttDiagram> {
+	// ::remove folder when __HAXE__
 
 	public CommandFootbox() {
 		super(getRegexConcat());
@@ -54,7 +55,8 @@ public class CommandFootbox extends SingleLineCommand2<GanttDiagram> {
 		return RegexConcat.build(CommandFootbox.class.getName(), RegexLeaf.start(), //
 				new RegexLeaf("TYPE", "(hide|show)?"), //
 				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("footbox"), RegexLeaf.end()); //
+				new RegexLeaf("footbox"), //
+				RegexLeaf.end());
 	}
 
 	@Override

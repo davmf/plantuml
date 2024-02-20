@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -40,9 +40,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.LineBreakStrategy;
-import net.sourceforge.plantuml.Pragma;
 import net.sourceforge.plantuml.activitydiagram3.Instruction;
 import net.sourceforge.plantuml.activitydiagram3.InstructionList;
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
@@ -59,32 +56,36 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.UGraphicIntercep
 import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.VCompactFactory;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GConnection;
 import net.sourceforge.plantuml.activitydiagram3.gtile.Gtile;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
-import net.sourceforge.plantuml.graphic.UGraphicDelegator;
-import net.sourceforge.plantuml.graphic.color.ColorType;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UChange;
+import net.sourceforge.plantuml.klimt.UShape;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.compress.CompressionMode;
+import net.sourceforge.plantuml.klimt.compress.SlotFinder;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.LimitFinder;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.drawing.UGraphicDelegator;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.skin.Pragma;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.style.Styleable;
 import net.sourceforge.plantuml.svek.UGraphicForSnake;
-import net.sourceforge.plantuml.ugraphic.LimitFinder;
-import net.sourceforge.plantuml.ugraphic.MinMax;
-import net.sourceforge.plantuml.ugraphic.UChange;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UShape;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.comp.CompressionMode;
-import net.sourceforge.plantuml.ugraphic.comp.SlotFinder;
 import net.sourceforge.plantuml.utils.MathUtils;
 
 public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable {
@@ -127,9 +128,9 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 	}
 
 	protected Style getStyle() {
-		if (style == null) {
+		if (style == null)
 			this.style = getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
-		}
+
 		return style;
 	}
 
@@ -192,6 +193,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 					final ConnectionCross connectionCross = new ConnectionCross(connection);
 					connectionCross.drawU(getUg());
 				}
+				// ::comment when __CORE__
 			} else if (shape instanceof Gtile) {
 				final Gtile tile = (Gtile) shape;
 				tile.drawU(this);
@@ -201,6 +203,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 				connection.drawTranslatable(getUg());
 				// connection.drawU(this);
 				// throw new UnsupportedOperationException();
+				// ::done
 			}
 		}
 
@@ -220,10 +223,12 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 	}
 
 	public final void drawU(UGraphic ug) {
+		// ::comment when __CORE__
 		if (Gtile.USE_GTILE) {
 			drawGtile(ug);
 			return;
 		}
+		// ::done
 
 		TextBlock full = root.createFtile(getFtileFactory(ug.getStringBounder()));
 
@@ -238,6 +243,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 		}
 	}
 
+	// ::comment when __CORE__
 	private void drawGtile(UGraphic ug) {
 		TextBlock full = root.createGtile(skinParam, ug.getStringBounder());
 
@@ -251,6 +257,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 		}
 
 	}
+	// ::done
 
 	private TextBlock getTitle(Swimlane swimlane) {
 		final HorizontalAlignment horizontalAlignment = HorizontalAlignment.LEFT;
@@ -305,7 +312,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 						.apply(UTranslate.dx(xpos - divider1.getX2()));
 				final double width = swimlane.getActualWidth() + divider1.getX2() + divider2.getX1();
 				final double height = dimensionFull.getHeight() + titleHeightTranslate.getDy();
-				background.draw(new URectangle(width, height).ignoreForCompressionOnX().ignoreForCompressionOnY());
+				background.draw(URectangle.build(width, height).ignoreForCompressionOnX().ignoreForCompressionOnY());
 			}
 
 			full.drawU(new UGraphicInterceptorOneSwimlane(ug, swimlane, swimlanes()).apply(swimlane.getTranslate())
@@ -330,7 +337,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 		if (color != null) {
 			final double titleHeight = getTitlesHeight(ug.getStringBounder());
 			double fullWidth = swimlanesSpecial().get(swimlanesSpecial().size() - 1).getTranslate().getDx() - 2 * 5 - 1;
-			final URectangle back = new URectangle(fullWidth, titleHeight).ignoreForCompressionOnX()
+			final URectangle back = URectangle.build(fullWidth, titleHeight).ignoreForCompressionOnX()
 					.ignoreForCompressionOnY();
 			ug.apply(UTranslate.dx(5)).apply(color.bg()).apply(color).draw(back);
 		}
@@ -447,6 +454,10 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 			cachedMinMax = TextBlockUtils.getMinMax(this, stringBounder, false);
 
 		return cachedMinMax;
+	}
+
+	public StyleBuilder getCurrentStyleBuilder() {
+		return skinParam.getCurrentStyleBuilder();
 	}
 
 }

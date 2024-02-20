@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,29 +35,30 @@
  */
 package net.sourceforge.plantuml.objectdiagram.command;
 
-import net.sourceforge.plantuml.FontParam;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.baraye.IEntity;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
 import net.sourceforge.plantuml.command.Trim;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Ident;
-import net.sourceforge.plantuml.cucadiagram.LeafType;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
-import net.sourceforge.plantuml.graphic.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.CreoleMode;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.objectdiagram.AbstractClassOrObjectDiagram;
+import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.utils.BlocLines;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public class CommandCreateEntityObjectMultilines extends CommandMultilines2<AbstractClassOrObjectDiagram> {
 
@@ -70,9 +71,7 @@ public class CommandCreateEntityObjectMultilines extends CommandMultilines2<Abst
 				new RegexLeaf("TYPE", "object"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf("NAME", "(?:[%g]([^%g]+)[%g][%s]+as[%s]+)?([%pLN_.]+)"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREO", "(\\<\\<.+\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO"), //
 				UrlBuilder.OPTIONAL, //
 				RegexLeaf.spaceZeroOrMore(), //
 				ColorParser.exp1(), //
@@ -91,7 +90,7 @@ public class CommandCreateEntityObjectMultilines extends CommandMultilines2<Abst
 			throws NoSuchColorException {
 		lines = lines.trim().removeEmptyLines();
 		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
-		final IEntity entity = executeArg0(diagram, line0);
+		final Entity entity = executeArg0(diagram, line0);
 		if (entity == null)
 			return CommandExecutionResult.error("No such entity");
 
@@ -106,22 +105,25 @@ public class CommandCreateEntityObjectMultilines extends CommandMultilines2<Abst
 		return CommandExecutionResult.ok();
 	}
 
-	private IEntity executeArg0(AbstractClassOrObjectDiagram diagram, RegexResult line0) throws NoSuchColorException {
+	private Entity executeArg0(AbstractClassOrObjectDiagram diagram, RegexResult line0) throws NoSuchColorException {
 		final String name = line0.get("NAME", 1);
-		final Ident ident = diagram.buildLeafIdent(name);
-		final Code code = diagram.V1972() ? ident : diagram.buildCode(name);
-		final String display = line0.get("NAME", 0);
-		final String stereotype = line0.get("STEREO", 0);
-		final boolean leafExist = diagram.V1972() ? diagram.leafExistSmart(ident) : diagram.leafExist(code);
-		if (leafExist)
-			return diagram.getOrCreateLeaf(diagram.buildLeafIdent(name), code, LeafType.OBJECT, null);
+		final Quark<Entity> quark = diagram.quarkInContext(true, diagram.cleanId(name));
 
-		final IEntity entity = diagram.createLeaf(ident, code, Display.getWithNewlines(display), LeafType.OBJECT, null);
-		if (stereotype != null) {
+		final String displayString = line0.get("NAME", 0);
+		final String stereotype = line0.get("STEREO", 0);
+
+		Display display = Display.getWithNewlines(displayString);
+		if (Display.isNull(display))
+			display = Display.getWithNewlines(name).withCreoleMode(CreoleMode.SIMPLE_LINE);
+		Entity entity = quark.getData();
+		if (entity == null)
+			entity = diagram.reallyCreateLeaf(quark, display, LeafType.OBJECT, null);
+
+		if (stereotype != null)
 			entity.setStereotype(Stereotype.build(stereotype, diagram.getSkinParam().getCircledCharacterRadius(),
 					diagram.getSkinParam().getFont(null, false, FontParam.CIRCLED_CHARACTER),
 					diagram.getSkinParam().getIHtmlColorSet()));
-		}
+
 		final String s = line0.get("COLOR", 0);
 		entity.setSpecificColorTOBEREMOVED(ColorType.BACK,
 				s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s));

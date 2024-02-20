@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -47,13 +47,35 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import net.sourceforge.plantuml.OptionFlags;
-import net.sourceforge.plantuml.SignatureUtils;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SImageIO;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.SignatureUtils;
 
 public class LicenseInfo {
+
+	public static synchronized LicenseInfo retrieveQuick() {
+		// ::revert when __CORE__
+		if (cache == null)
+			cache = retrieveDistributor();
+
+		if (cache == null)
+			cache = retrieveNamedSlow();
+		return cache;
+		// return new LicenseInfo();
+		// ::done
+	}
+
+	public boolean isValid() {
+		// ::revert when __CORE__
+		return owner != null && System.currentTimeMillis() <= this.expirationDate;
+		// return false;
+		// ::done
+	}
+
+	// ::comment when __CORE__
+	private static LicenseInfo cache;
 
 	private final static Preferences prefs = Preferences.userNodeForPackage(LicenseInfo.class);
 	public final static LicenseInfo NONE = new LicenseInfo(LicenseType.NONE, 0, 0, null, null, null);
@@ -80,45 +102,33 @@ public class LicenseInfo {
 		prefs.put("license", key);
 	}
 
-	private static LicenseInfo cache;
-
-	public static synchronized LicenseInfo retrieveQuick() {
-		if (cache == null) {
-			cache = retrieveDistributor();
-		}
-		if (cache == null) {
-			cache = retrieveNamedSlow();
-		}
-		return cache;
-	}
-
 	public static boolean retrieveNamedOrDistributorQuickIsValid() {
 		return retrieveQuick().isValid();
 	}
 
 	public static synchronized LicenseInfo retrieveNamedSlow() {
 		cache = LicenseInfo.NONE;
-		if (OptionFlags.ALLOW_INCLUDE == false) {
-			return cache;
-		}
+//		if (OptionFlags.ALLOW_INCLUDE == false)
+//			return cache;
+
 		final String key = prefs.get("license", "");
 		if (key.length() > 0) {
 			cache = setIfValid(retrieveNamed(key), cache);
-			if (cache.isValid()) {
+			if (cache.isValid())
 				return cache;
-			}
+
 		}
 		for (SFile f : fileCandidates()) {
 			try {
 				if (f.exists() && f.canRead()) {
 					final LicenseInfo result = retrieve(f);
-					if (result == null) {
+					if (result == null)
 						return null;
-					}
+
 					cache = setIfValid(result, cache);
-					if (cache.isValid()) {
+					if (cache.isValid())
 						return cache;
-					}
+
 				}
 			} catch (IOException e) {
 				Log.info("Error " + e);
@@ -147,13 +157,13 @@ public class LicenseInfo {
 		}
 		try {
 			final byte[] s1 = PLSSignature.retrieveDistributorImageSignature();
-			if (SignatureUtils.toHexString(s1).equals(SignatureUtils.toHexString(licenseInfo.sha)) == false) {
+			if (SignatureUtils.toHexString(s1).equals(SignatureUtils.toHexString(licenseInfo.sha)) == false)
 				return null;
-			}
+
 			final InputStream dis = PSystemVersion.class.getResourceAsStream("/distributor.png");
-			if (dis == null) {
+			if (dis == null)
 				return null;
-			}
+
 			try {
 				final BufferedImage result = SImageIO.read(dis);
 				return result;
@@ -168,9 +178,9 @@ public class LicenseInfo {
 
 	public static LicenseInfo retrieveDistributor() {
 		final InputStream dis = PSystemVersion.class.getResourceAsStream("/distributor.txt");
-		if (dis == null) {
+		if (dis == null)
 			return null;
-		}
+
 		try {
 			final BufferedReader br = new BufferedReader(new InputStreamReader(dis));
 			final String licenseString = br.readLine();
@@ -178,11 +188,10 @@ public class LicenseInfo {
 			final LicenseInfo result = PLSSignature.retrieveDistributor(licenseString);
 			final Throwable creationPoint = new Throwable();
 			creationPoint.fillInStackTrace();
-			for (StackTraceElement ste : creationPoint.getStackTrace()) {
-				if (ste.toString().contains(result.context)) {
+			for (StackTraceElement ste : creationPoint.getStackTrace())
+				if (ste.toString().contains(result.context))
 					return result;
-				}
-			}
+
 			return null;
 		} catch (Exception e) {
 			Logme.error(e);
@@ -198,34 +207,34 @@ public class LicenseInfo {
 			if (s == null)
 				continue;
 			SFile dir = new SFile(s);
-			if (dir.isFile()) {
+			if (dir.isFile())
 				dir = dir.getParentFile();
-			}
-			if (dir != null && dir.isDirectory()) {
+
+			if (dir != null && dir.isDirectory())
 				result.add(dir.file("license.txt"));
-			}
+
 		}
 		return result;
 	}
 
 	private static LicenseInfo setIfValid(LicenseInfo value, LicenseInfo def) {
-		if (value.isValid() || def.isNone()) {
+		if (value.isValid() || def.isNone())
 			return value;
-		}
+
 		return def;
 	}
 
 	private static LicenseInfo retrieve(SFile f) throws IOException {
 		final BufferedReader br = f.openBufferedReader();
-		if (br == null) {
+		if (br == null)
 			return null;
-		}
+
 		try {
 			final String s = br.readLine();
 			final LicenseInfo result = retrieveNamed(s);
-			if (result != null) {
+			if (result != null)
 				Log.info("Reading license from " + f.getAbsolutePath());
-			}
+
 			return result;
 		} finally {
 			br.close();
@@ -255,10 +264,6 @@ public class LicenseInfo {
 		return owner == null;
 	}
 
-	public boolean isValid() {
-		return owner != null && System.currentTimeMillis() <= this.expirationDate;
-	}
-
 	public boolean hasExpired() {
 		return owner != null && System.currentTimeMillis() > this.expirationDate;
 	}
@@ -270,5 +275,6 @@ public class LicenseInfo {
 	public final String getContext() {
 		return context;
 	}
+	// ::done
 
 }

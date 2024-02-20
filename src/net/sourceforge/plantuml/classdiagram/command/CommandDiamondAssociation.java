@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,17 +35,17 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Ident;
-import net.sourceforge.plantuml.cucadiagram.LeafType;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandDiamondAssociation extends SingleLineCommand2<ClassDiagram> {
@@ -65,13 +65,12 @@ public class CommandDiamondAssociation extends SingleLineCommand2<ClassDiagram> 
 	@Override
 	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg) {
 		final String idShort = arg.get("CODE", 0);
-		final Ident ident = diagram.buildLeafIdent(idShort);
-		final Code code = diagram.V1972() ? ident : diagram.buildCode(idShort);
-		final boolean leafExist = diagram.V1972() ? diagram.leafExistSmart(ident) : diagram.leafExist(code);
-		if (leafExist) {
-			return CommandExecutionResult.error("Already existing : " + code.getName());
-		}
-		diagram.createLeaf(ident, code, Display.NULL, LeafType.ASSOCIATION, null);
+		final Quark<Entity> quark = diagram.quarkInContext(true, diagram.cleanId(idShort));
+
+		if (quark.getData() != null)
+			return CommandExecutionResult.error("Already existing : " + quark.getName());
+
+		diagram.reallyCreateLeaf(quark, Display.getWithNewlines(""), LeafType.ASSOCIATION, null);
 
 		return CommandExecutionResult.ok();
 	}

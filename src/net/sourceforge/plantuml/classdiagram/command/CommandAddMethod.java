@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,18 +35,19 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
-import net.sourceforge.plantuml.baraye.IEntity;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Ident;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandAddMethod extends SingleLineCommand2<ClassDiagram> {
@@ -69,22 +70,15 @@ public class CommandAddMethod extends SingleLineCommand2<ClassDiagram> {
 	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg)
 			throws NoSuchColorException {
 		final String idShort = arg.get("NAME", 0);
-		final Ident ident = diagram.buildLeafIdent(idShort);
-		final Code code = diagram.V1972() ? ident : diagram.buildCode(idShort);
-		/* final */IEntity entity;
-		if (diagram.V1972()) {
-			entity = diagram.getLeafVerySmart(diagram.cleanIdent(ident));
-			if (entity == null) {
-				entity = diagram.getOrCreateLeaf(ident, code, null, null);
-			}
-		} else {
-			entity = diagram.getOrCreateLeaf(ident, code, null, null);
-		}
+		final Quark<Entity> quark = diagram.quarkInContext(true, diagram.cleanId(idShort));
+		Entity entity = quark.getData();
+		if (entity == null)
+			entity = diagram.reallyCreateLeaf(quark, Display.getWithNewlines(quark), LeafType.CLASS, null);
 
 		final String field = arg.get("DATA", 0);
-		if (field.length() > 0 && VisibilityModifier.isVisibilityCharacter(field)) {
+		if (field.length() > 0 && VisibilityModifier.isVisibilityCharacter(field))
 			diagram.setVisibilityModifierPresent(true);
-		}
+
 		entity.getBodier().addFieldOrMethod(field);
 		return CommandExecutionResult.ok();
 	}

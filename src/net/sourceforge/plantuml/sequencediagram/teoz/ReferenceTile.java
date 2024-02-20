@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,19 +35,22 @@
  */
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.real.Real;
 import net.sourceforge.plantuml.sequencediagram.Event;
+import net.sourceforge.plantuml.sequencediagram.Note;
+import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.Participant;
 import net.sourceforge.plantuml.sequencediagram.Reference;
 import net.sourceforge.plantuml.skin.Area;
 import net.sourceforge.plantuml.skin.Component;
 import net.sourceforge.plantuml.skin.ComponentType;
 import net.sourceforge.plantuml.skin.Context2D;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.style.ISkinParam;
 
 public class ReferenceTile extends AbstractTile implements Tile {
 
@@ -56,6 +59,9 @@ public class ReferenceTile extends AbstractTile implements Tile {
 	private Real first;
 	private Real last;
 	private final YGauge yGauge;
+
+	private Component noteLeft;
+	private Component noteRight;
 
 	public Event getEvent() {
 		return reference;
@@ -66,6 +72,18 @@ public class ReferenceTile extends AbstractTile implements Tile {
 		this.reference = reference;
 		this.tileArguments = tileArguments;
 		this.yGauge = YGauge.create(currentY.getMax(), getPreferredHeight());
+
+		for (Note noteOnMessage : reference.getNoteOnMessages()) {
+			final ISkinParam skinParam2 = noteOnMessage.getSkinParamBackcolored(tileArguments.getSkinParam());
+			final Component note = tileArguments.getSkin().createComponentNote(noteOnMessage.getUsedStyles(),
+					noteOnMessage.getNoteStyle().getNoteComponentType(), skinParam2, noteOnMessage.getDisplay(),
+					noteOnMessage.getColors());
+			if (noteOnMessage.getPosition() == NotePosition.RIGHT)
+				noteRight = note;
+			else
+				noteLeft = note;
+
+		}
 	}
 
 	@Override
@@ -73,26 +91,25 @@ public class ReferenceTile extends AbstractTile implements Tile {
 		return yGauge;
 	}
 
-
 	private void init(StringBounder stringBounder) {
-		if (first != null) {
+		if (first != null)
 			return;
-		}
+
 		for (Participant p : reference.getParticipant()) {
 			final LivingSpace livingSpace = tileArguments.getLivingSpace(p);
 			final Real pos = livingSpace.getPosC(stringBounder);
-			if (first == null || pos.getCurrentValue() < first.getCurrentValue()) {
+			if (first == null || pos.getCurrentValue() < first.getCurrentValue())
 				this.first = livingSpace.getPosB(stringBounder);
-			}
-			if (last == null || pos.getCurrentValue() > last.getCurrentValue()) {
+
+			if (last == null || pos.getCurrentValue() > last.getCurrentValue())
 				this.last = livingSpace.getPosD(stringBounder);
-			}
+
 		}
 		final Component comp = getComponent(stringBounder);
 		final XDimension2D dim = comp.getPreferredDimension(stringBounder);
-		if (reference.getParticipant().size() == 1) {
+		if (reference.getParticipant().size() == 1)
 			this.last = this.last.addAtLeast(0);
-		}
+
 		this.last.ensureBiggerThan(this.first.addFixed(dim.getWidth()));
 
 	}
@@ -114,8 +131,22 @@ public class ReferenceTile extends AbstractTile implements Tile {
 		final XDimension2D dim = comp.getPreferredDimension(stringBounder);
 		final Area area = Area.create(last.getCurrentValue() - first.getCurrentValue(), dim.getHeight());
 
-		ug = ug.apply(UTranslate.dx(first.getCurrentValue()));
-		comp.drawU(ug, area, (Context2D) ug);
+		comp.drawU(ug.apply(UTranslate.dx(first.getCurrentValue())), area, (Context2D) ug);
+
+		if (noteLeft != null) {
+			final double wn = noteLeft.getPreferredWidth(stringBounder);
+			final double hn = noteLeft.getPreferredHeight(stringBounder);
+			noteLeft.drawU(ug.apply(UTranslate.dx(first.getCurrentValue() - wn)), new Area(new XDimension2D(wn, hn)),
+					(Context2D) ug);
+		}
+
+		if (noteRight != null) {
+			final double wn = noteRight.getPreferredWidth(stringBounder);
+			final double hn = noteRight.getPreferredHeight(stringBounder);
+			noteRight.drawU(ug.apply(UTranslate.dx(last.getCurrentValue())), new Area(new XDimension2D(wn, hn)),
+					(Context2D) ug);
+		}
+
 	}
 
 	public double getPreferredHeight() {
@@ -129,11 +160,20 @@ public class ReferenceTile extends AbstractTile implements Tile {
 
 	public Real getMinX() {
 		init(getStringBounder());
+		if (noteLeft != null) {
+			final double wn = noteLeft.getPreferredWidth(getStringBounder());
+			return this.first.addFixed(-wn);
+		}
+
 		return this.first;
 	}
 
 	public Real getMaxX() {
 		init(getStringBounder());
+		if (noteRight != null) {
+			final double wn = noteRight.getPreferredWidth(getStringBounder());
+			return this.last.addFixed(wn);
+		}
 		return this.last;
 	}
 

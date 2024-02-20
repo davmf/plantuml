@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,10 +35,10 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.cond;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.LineBreakStrategy;
-import net.sourceforge.plantuml.Url;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.Branch;
+import net.sourceforge.plantuml.activitydiagram3.PositionedNote;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Ftile;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileEmpty;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileFactory;
@@ -51,24 +51,28 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.FtileIfDown;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileDiamond;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileDiamondInside;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileDiamondSquare;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.creole.CreoleMode;
-import net.sourceforge.plantuml.creole.Sheet;
-import net.sourceforge.plantuml.creole.SheetBlock1;
-import net.sourceforge.plantuml.creole.SheetBlock2;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.Rainbow;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
+import net.sourceforge.plantuml.decoration.Rainbow;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.CreoleMode;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.creole.Sheet;
+import net.sourceforge.plantuml.klimt.creole.SheetBlock1;
+import net.sourceforge.plantuml.klimt.creole.SheetBlock2;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.ConditionEndStyle;
 import net.sourceforge.plantuml.svek.ConditionStyle;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.url.Url;
 
 public class ConditionalBuilder {
 
@@ -91,6 +95,7 @@ public class ConditionalBuilder {
 	private final Ftile tile1;
 	private final Ftile tile2;
 	private final Url url;
+	private final Collection<PositionedNote> notes;
 
 	private StyleSignatureBasic getStyleSignatureDiamond() {
 		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
@@ -100,27 +105,23 @@ public class ConditionalBuilder {
 		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
 	}
 
-	public ConditionalBuilder(Swimlane swimlane, HColor borderColor, HColor backColor, Rainbow arrowColor,
-			FtileFactory ftileFactory, ConditionStyle conditionStyle, ConditionEndStyle conditionEndStyle,
-			Branch branch1, Branch branch2, ISkinParam skinParam, StringBounder stringBounder,
-			FontConfiguration fontArrow, FontConfiguration fontTest, Url url) {
+	public ConditionalBuilder(Swimlane swimlane, HColor backColor, FtileFactory ftileFactory,
+			ConditionStyle conditionStyle, ConditionEndStyle conditionEndStyle, Branch branch1, Branch branch2,
+			ISkinParam skinParam, StringBounder stringBounder, Url url, Style styleArrow, Style styleDiamond,
+			Collection<PositionedNote> notes) {
 
 		if (backColor == null)
 			throw new IllegalArgumentException();
-		if (borderColor == null)
-			throw new IllegalArgumentException();
-		if (arrowColor == null)
-			throw new IllegalArgumentException();
 
-		final Style styleArrow = getStyleSignatureArrow().getMergedStyle(skinParam.getCurrentStyleBuilder());
-		final Style styleDiamond = getStyleSignatureDiamond().getMergedStyle(skinParam.getCurrentStyleBuilder());
 		this.fontTest = styleDiamond.getFontConfiguration(skinParam.getIHtmlColorSet());
 		this.fontArrow = styleArrow.getFontConfiguration(skinParam.getIHtmlColorSet());
 		this.diamondLineBreak = styleDiamond.wrapWidth();
 		this.labelLineBreak = styleArrow.wrapWidth();
-		this.borderColor = borderColor;
 		this.backColor = backColor;
-		this.arrowColor = arrowColor;
+		this.notes = notes;
+
+		this.borderColor = styleDiamond.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
+		this.arrowColor = Rainbow.build(styleArrow, skinParam.getIHtmlColorSet());
 
 		this.ftileFactory = ftileFactory;
 		this.swimlane = swimlane;
@@ -137,13 +138,12 @@ public class ConditionalBuilder {
 
 	}
 
-	static public Ftile create(Swimlane swimlane, HColor borderColor, HColor backColor, Rainbow arrowColor,
-			FtileFactory ftileFactory, ConditionStyle conditionStyle, ConditionEndStyle conditionEndStyle,
-			Branch branch1, Branch branch2, ISkinParam skinParam, StringBounder stringBounder,
-			FontConfiguration fcArrow, FontConfiguration fcTest, Url url) {
-		final ConditionalBuilder builder = new ConditionalBuilder(swimlane, borderColor, backColor, arrowColor,
-				ftileFactory, conditionStyle, conditionEndStyle, branch1, branch2, skinParam, stringBounder, fcArrow,
-				fcTest, url);
+	static public Ftile create(Swimlane swimlane, HColor backColor, FtileFactory ftileFactory,
+			ConditionStyle conditionStyle, ConditionEndStyle conditionEndStyle, Branch branch1, Branch branch2,
+			ISkinParam skinParam, StringBounder stringBounder, Url url, Style styleArrow, Style styleDiamond,
+			Collection<PositionedNote> notes) {
+		final ConditionalBuilder builder = new ConditionalBuilder(swimlane, backColor, ftileFactory, conditionStyle,
+				conditionEndStyle, branch1, branch2, skinParam, stringBounder, url, styleArrow, styleDiamond, notes);
 		if (isEmptyOrOnlySingleStopOrSpot(branch2) && isEmptyOrOnlySingleStopOrSpot(branch1) == false)
 			return builder.createDown(builder.branch1, builder.branch2);
 
@@ -174,18 +174,18 @@ public class ConditionalBuilder {
 		final Ftile diamond2 = getShape2(branch1, branch2, true);
 		if (branch2.isOnlySingleStopOrSpot())
 			return FtileIfDown.create(diamond1, diamond2, swimlane, FtileUtils.addHorizontalMargin(tile1, 10),
-					arrowColor, conditionEndStyle, ftileFactory, branch2.getFtile(), branch2.getOut());
+					arrowColor, conditionEndStyle, ftileFactory, branch2.getFtile(), branch2.getOut(), notes);
 
 		if (branch1.isOnlySingleStopOrSpot())
 			return FtileIfDown.create(diamond1, diamond2, swimlane, FtileUtils.addHorizontalMargin(tile2, 10),
-					arrowColor, conditionEndStyle, ftileFactory, branch1.getFtile(), branch1.getOut());
+					arrowColor, conditionEndStyle, ftileFactory, branch1.getFtile(), branch1.getOut(), notes);
 
 		if (branch1.isEmpty())
 			return FtileIfDown.create(diamond1, diamond2, swimlane, FtileUtils.addHorizontalMargin(tile2, 10),
-					arrowColor, conditionEndStyle, ftileFactory, null, null);
+					arrowColor, conditionEndStyle, ftileFactory, null, null, notes);
 
 		return FtileIfDown.create(diamond1, diamond2, swimlane, FtileUtils.addHorizontalMargin(tile1, 10), arrowColor,
-				conditionEndStyle, ftileFactory, null, branch2.getOut());
+				conditionEndStyle, ftileFactory, null, branch2.getOut(), notes);
 	}
 
 	private Ftile createNude() {
@@ -197,7 +197,7 @@ public class ConditionalBuilder {
 		final Ftile diamond1 = getDiamond1(true);
 		final Ftile diamond2 = getShape2(branch1, branch2, false);
 		final FtileIfWithDiamonds ftile = new FtileIfWithDiamonds(diamond1, tile1, tile2, diamond2, swimlane,
-				stringBounder);
+				stringBounder, notes);
 		final XDimension2D label1 = getLabelPositive(branch1).calculateDimension(stringBounder);
 		final XDimension2D label2 = getLabelPositive(branch2).calculateDimension(stringBounder);
 		final double diff1 = ftile.computeMarginNeedForBranchLabe1(stringBounder, label1);
@@ -217,7 +217,7 @@ public class ConditionalBuilder {
 		final Ftile tmp1 = FtileUtils.addHorizontalMargin(tile1, 10);
 		final Ftile tmp2 = FtileUtils.addHorizontalMargin(tile2, 10);
 		final FtileIfWithLinks ftile = new FtileIfWithLinks(diamond1, tmp1, tmp2, diamond2, swimlane, arrowColor,
-				conditionEndStyle, stringBounder);
+				conditionEndStyle, stringBounder, notes);
 		final XDimension2D label1 = getLabelPositive(branch1).calculateDimension(stringBounder);
 		final XDimension2D label2 = getLabelPositive(branch2).calculateDimension(stringBounder);
 		final double diff1 = ftile.computeMarginNeedForBranchLabe1(stringBounder, label1);

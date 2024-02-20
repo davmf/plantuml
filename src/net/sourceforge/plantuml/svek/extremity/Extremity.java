@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,9 +35,9 @@
  */
 package net.sourceforge.plantuml.svek.extremity;
 
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.graphic.UDrawable;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
 
 public abstract class Extremity implements UDrawable {
 
@@ -70,12 +70,26 @@ public abstract class Extremity implements UDrawable {
 
 	public abstract XPoint2D somePoint();
 
-	public XPoint2D isTooSmallSoGiveThePointCloserToThisOne(XPoint2D pt) {
-		return null;
-	}
+//	public XPoint2D isTooSmallSoGiveThePointCloserToThisOne(XPoint2D pt) {
+//		return null;
+//	}
 
 	public UTranslate getDeltaForKal() {
-		return new UTranslate();
+		return UTranslate.none();
 	}
+
+	// public abstract double getDecorationLength();
+
+	public double getDecorationLength() {
+		return 8;
+	}
+
+//	public double getDecorationLength() {
+//	// return 15;
+//	System.err.println("CLASS=" + getClass().getName());
+//	Thread.dumpStack();
+//	System.exit(0);
+//	throw new UnsupportedOperationException(getClass().getName());
+//}
 
 }

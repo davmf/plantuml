@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -34,7 +34,6 @@
  */
 package net.sourceforge.plantuml.version;
 
-import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,28 +47,22 @@ public class PSystemVersionFactory extends PSystemSingleLineFactory {
 	@Override
 	protected AbstractPSystem executeLine(UmlSource source, String line) {
 		try {
-			if (line.matches("(?i)^(authors?|about)\\s*$")) {
+			if (line.matches("(?i)^(authors?|about)\\s*$"))
 				return PSystemVersion.createShowAuthors2(source);
-			}
-			if (line.matches("(?i)^version\\s*$")) {
+
+			if (line.matches("(?i)^version\\s*$"))
 				return PSystemVersion.createShowVersion2(source);
-			}
-			if (line.matches("(?i)^stdlib\\s*$")) {
+
+			// ::comment when __CORE__
+			if (line.matches("(?i)^stdlib\\s*$"))
 				return PSystemVersion.createStdLib(source);
-			}
-//			if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE && line.matches("(?i)^path\\s*$")) {
-//				return PSystemVersion.createPath(source);
-//			}
-			if (line.matches("(?i)^testdot\\s*$")) {
+
+			if (line.matches("(?i)^testdot\\s*$"))
 				return PSystemVersion.createTestDot(source);
-			}
-//			if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE
-//					&& line.matches("(?i)^dumpstacktrace\\s*$")) {
-//				return PSystemVersion.createDumpStackTrace();
-//			}
-			if (line.matches("(?i)^keydistributor\\s*$")) {
+
+			if (line.matches("(?i)^keydistributor\\s*$"))
 				return PSystemVersion.createKeyDistributor(source);
-			}
+
 			if (line.matches("(?i)^keygen\\s*$")) {
 				line = line.trim();
 				return new PSystemKeygen(source, "");
@@ -86,7 +79,8 @@ public class PSystemVersionFactory extends PSystemSingleLineFactory {
 					return new PSystemKeycheck(source, m.group(1), m.group(2));
 				}
 			}
-		} catch (IOException e) {
+			// ::done
+		} catch (Exception e) {
 			Log.error("Error " + e);
 
 		}

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,54 +39,40 @@ import java.util.Date;
 
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SURL;
+import net.sourceforge.plantuml.utils.SignatureUtils;
 
 public class Version {
+	// ::remove folder when __HAXE__
 
-	private static final int MAJOR_SEPARATOR = 1000000;
-
-	public static int version() {
-		return 1202300;
-	}
-
-	public static int versionPatched() {
-		if (beta() != 0) {
-			return version() + 1;
-		}
-		return version();
-	}
+	// Warning, "version" should be the same in gradle.properties and Version.java
+	// Any idea anyone how to magically synchronize those :-) ?
+	private static final String version = "1.2024.4beta1";
 
 	public static String versionString() {
-		if (beta() != 0) {
-			return dotted(version() + 1) + "beta" + beta();
-		}
-		return dotted(version());
+		return version;
 	}
 
 	public static String fullDescription() {
 		return "PlantUML version " + Version.versionString() + " (" + Version.compileTimeString() + ")";
 	}
 
-	private static String dotted(int nb) {
-		final String minor = "" + nb % MAJOR_SEPARATOR;
-		final String major = "" + nb / MAJOR_SEPARATOR;
-		return major + "." + minor.substring(0, 4) + "." + Integer.parseInt(minor.substring(4));
-	}
-
 	public static String versionString(int size) {
 		final StringBuilder sb = new StringBuilder(versionString());
-		while (sb.length() < size) {
+		while (sb.length() < size)
 			sb.append(' ');
-		}
+
 		return sb.toString();
 	}
 
 	public static int beta() {
-		final int beta = 1;
-		return beta;
+		final int x = version.indexOf("beta");
+		if (x == -1)
+			return 0;
+		return Integer.parseInt(version.substring(x + "beta".length()));
 	}
 
 	public static String etag() {
-		return Integer.toString(version() % MAJOR_SEPARATOR - 201670, 36) + Integer.toString(beta(), 36);
+		return SignatureUtils.getMD5Hex(version);
 	}
 
 	public static String turningId() {
@@ -94,16 +80,17 @@ public class Version {
 	}
 
 	public static long compileTime() {
-		return 1673289094677L;
+		return 1708026005000L;
 	}
 
 	public static String compileTimeString() {
-		if (beta() != 0) {
+		if (version.contains("beta"))
 			return "Unknown compile time";
-		}
+
 		return new Date(Version.compileTime()).toString();
 	}
 
+	// ::comment when __CORE__
 	public static String getJarPath() {
 		try {
 			final ClassLoader loader = Version.class.getClassLoader();
@@ -122,5 +109,6 @@ public class Version {
 			return t.toString();
 		}
 	}
+	// ::done
 
 }

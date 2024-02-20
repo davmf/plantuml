@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,20 +39,18 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 
+import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.api.mda.option2.MDAEntity;
 import net.sourceforge.plantuml.api.mda.option2.MDAPackage;
-import net.sourceforge.plantuml.baraye.IGroup;
-import net.sourceforge.plantuml.baraye.ILeaf;
-import net.sourceforge.plantuml.cucadiagram.GroupRoot;
 
 public class MDAPackageImpl implements MDAPackage {
 
 	private final Collection<MDAEntity> entities = new ArrayList<>();
-	private final IGroup group;
+	private final Entity group;
 
-	public MDAPackageImpl(IGroup group) {
+	public MDAPackageImpl(Entity group) {
 		this.group = group;
-		for (ILeaf leaf : group.getLeafsDirect()) {
+		for (Entity leaf : group.leafs()) {
 			entities.add(new MDAEntityImpl(leaf));
 		}
 	}
@@ -62,10 +60,10 @@ public class MDAPackageImpl implements MDAPackage {
 	}
 
 	public String getName() {
-		if (group instanceof GroupRoot) {
+		if (group.isRoot()) {
 			return "";
 		}
-		return group.getCodeGetName();
+		return group.getName();
 	}
 
 }

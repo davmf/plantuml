@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,19 +39,19 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import net.sourceforge.plantuml.command.CommandExecutionResult;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexOr;
-import net.sourceforge.plantuml.command.regex.RegexResult;
+import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.project.Failable;
 import net.sourceforge.plantuml.project.GanttDiagram;
 import net.sourceforge.plantuml.project.time.Day;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOr;
+import net.sourceforge.plantuml.regex.RegexResult;
 
-public class SubjectDayAsDate implements Subject {
+public class SubjectDayAsDate implements Subject<GanttDiagram> {
 
-	public static final Subject ME = new SubjectDayAsDate();
+	public static final Subject<GanttDiagram> ME = new SubjectDayAsDate();
 
 	private SubjectDayAsDate() {
 	}
@@ -75,15 +75,25 @@ public class SubjectDayAsDate implements Subject {
 	}
 
 	private Day resultE(GanttDiagram system, RegexResult arg) {
-		final int day = Integer.parseInt(arg.get("ECOUNT", 0));
-		return system.getStartingDate().addDays(day);
+		final String type = arg.get("ETYPE", 0).toUpperCase();
+		final String operation = arg.get("EOPERATION", 0);
+		int day = Integer.parseInt(arg.get("ECOUNT", 0));
+		if ("-".equals(operation))
+			day = -day;
+		if ("D".equals(type))
+			return system.getStartingDate().addDays(day);
+		if ("T".equals(type))
+			return system.getToday().addDays(day);
+		if ("E".equals(type))
+			return system.getEndingDate().addDays(day);
+		throw new IllegalStateException();
 	}
 
-	public Collection<? extends SentenceSimple> getSentences() {
+	public Collection<? extends SentenceSimple<GanttDiagram>> getSentences() {
 		return Arrays.asList(new Close(), new Open(), new InColor());
 	}
 
-	class Close extends SentenceSimple {
+	class Close extends SentenceSimple<GanttDiagram> {
 
 		public Close() {
 			super(SubjectDayAsDate.this, Verbs.isOrAre, new ComplementClose());
@@ -96,7 +106,7 @@ public class SubjectDayAsDate implements Subject {
 		}
 	}
 
-	class Open extends SentenceSimple {
+	class Open extends SentenceSimple<GanttDiagram> {
 		public Open() {
 			super(SubjectDayAsDate.this, Verbs.isOrAre, new ComplementOpen());
 		}
@@ -108,7 +118,7 @@ public class SubjectDayAsDate implements Subject {
 		}
 	}
 
-	class InColor extends SentenceSimple {
+	class InColor extends SentenceSimple<GanttDiagram> {
 
 		public InColor() {
 			super(SubjectDayAsDate.this, Verbs.isOrAre, new ComplementInColors2());
@@ -128,17 +138,13 @@ public class SubjectDayAsDate implements Subject {
 	}
 
 	private IRegex toRegexB() {
-		return new RegexConcat( //
-				new RegexLeaf("BYEAR", "([\\d]{4})"), //
-				new RegexLeaf("\\D"), //
-				new RegexLeaf("BMONTH", "([\\d]{1,2})"), //
-				new RegexLeaf("\\D"), //
-				new RegexLeaf("BDAY", "([\\d]{1,2})"));
+		return TimeResolution.toRegexB_YYYY_MM_DD("BYEAR", "BMONTH", "BDAY");
 	}
 
 	private IRegex toRegexE() {
 		return new RegexConcat( //
-				new RegexLeaf("[dD]\\+"), //
+				new RegexLeaf("ETYPE", "([dDtTeE])"), //
+				new RegexLeaf("EOPERATION", "([-+])"), //
 				new RegexLeaf("ECOUNT", "([\\d]+)") //
 		);
 	}

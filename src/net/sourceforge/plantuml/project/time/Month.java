@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -67,16 +67,17 @@ public enum Month {
 			return StringUtils.capitalize(name());
 
 		final java.time.Month javaTimeMonth = getJavaTimeMonth();
-		final String v1 = javaTimeMonth.getDisplayName(TextStyle.FULL_STANDALONE, locale);
-		final String v2 = javaTimeMonth.getDisplayName(TextStyle.FULL, locale);
-		return StringUtils.capitalize(longest(v1, v2));
+		return javaTimeMonth.getDisplayName(TextStyle.FULL_STANDALONE, locale);
+//		final String v1 = javaTimeMonth.getDisplayName(TextStyle.FULL_STANDALONE, locale);
+//		final String v2 = javaTimeMonth.getDisplayName(TextStyle.FULL, locale);
+//		return StringUtils.capitalize(longest(v1, v2));
 	}
 
-	private String longest(String v1, String v2) {
-		if (v1.length() > v2.length())
-			return v1;
-		return v2;
-	}
+//	private String longest(String v1, String v2) {
+//		if (v1.length() > v2.length())
+//			return v1;
+//		return v2;
+//	}
 
 	static public String getRegexString() {
 		final StringBuilder sb = new StringBuilder();

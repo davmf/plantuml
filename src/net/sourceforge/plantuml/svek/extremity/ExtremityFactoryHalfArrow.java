@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,10 +35,10 @@
  */
 package net.sourceforge.plantuml.svek.extremity;
 
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.graphic.UDrawable;
+import net.sourceforge.plantuml.klimt.geom.Side;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.svek.AbstractExtremityFactory;
-import net.sourceforge.plantuml.svek.Side;
 
 public class ExtremityFactoryHalfArrow extends AbstractExtremityFactory implements ExtremityFactory {
 
@@ -48,7 +48,7 @@ public class ExtremityFactoryHalfArrow extends AbstractExtremityFactory implemen
 	}
 
 	@Override
-	public UDrawable createUDrawable(XPoint2D p0, XPoint2D p1, XPoint2D p2, Side side) {
+	public UDrawable createTBRDrawableLegacy(XPoint2D p0, XPoint2D p1, XPoint2D p2, Side side) {
 		final double ortho = atan2(p0, p2);
 		final XPoint2D center = new XPoint2D((p0.getX() + p2.getX()) / 2, (p0.getY() + p2.getY()) / 2);
 		return new ExtremityHalfArrow(p1, ortho, center);

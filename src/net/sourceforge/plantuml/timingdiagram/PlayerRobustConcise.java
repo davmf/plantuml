@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -41,17 +41,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.command.Position;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.UDrawable;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignature;
@@ -61,8 +62,7 @@ import net.sourceforge.plantuml.timingdiagram.graphic.IntricatedPoint;
 import net.sourceforge.plantuml.timingdiagram.graphic.PDrawing;
 import net.sourceforge.plantuml.timingdiagram.graphic.PlayerFrame;
 import net.sourceforge.plantuml.timingdiagram.graphic.Ribbon;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.utils.Position;
 
 public final class PlayerRobustConcise extends Player {
 
@@ -115,6 +115,7 @@ public final class PlayerRobustConcise extends Player {
 		throw new IllegalStateException();
 	}
 
+	@Override
 	public final TextBlock getPart1(final double fullAvailableWidth, final double specialVSpace) {
 		return new AbstractTextBlock() {
 
@@ -132,6 +133,7 @@ public final class PlayerRobustConcise extends Player {
 		};
 	}
 
+	@Override
 	public UDrawable getPart2() {
 		return new UDrawable() {
 			public void drawU(UGraphic ug) {
@@ -145,6 +147,7 @@ public final class PlayerRobustConcise extends Player {
 		return UTranslate.dy(getTitleHeight(stringBounder));
 	}
 
+	@Override
 	public final double getFullHeight(StringBounder stringBounder) {
 		return getTitleHeight(stringBounder) + getZoneHeight(stringBounder);
 	}
@@ -179,6 +182,7 @@ public final class PlayerRobustConcise extends Player {
 		return getTimeDrawing().getFullHeight(stringBounder);
 	}
 
+	@Override
 	public final void setState(TimeTick now, String comment, Colors color, String... states) {
 		for (int i = 0; i < states.length; i++)
 			states[i] = decodeState(states[i]);
@@ -200,6 +204,7 @@ public final class PlayerRobustConcise extends Player {
 		return label;
 	}
 
+	@Override
 	public final IntricatedPoint getTimeProjection(StringBounder stringBounder, TimeTick tick) {
 		if (tick == null)
 			return null;
@@ -211,6 +216,7 @@ public final class PlayerRobustConcise extends Player {
 		return point.translated(translation);
 	}
 
+	@Override
 	public final void addNote(TimeTick now, Display note, Position position) {
 
 		final StyleSignatureBasic signature = StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram,
@@ -220,6 +226,7 @@ public final class PlayerRobustConcise extends Player {
 		this.notes.add(new TimingNote(now, this, note, position, skinParam, style));
 	}
 
+	@Override
 	public final void defineState(String stateCode, String label) {
 		statesLabel.put(stateCode, label);
 	}

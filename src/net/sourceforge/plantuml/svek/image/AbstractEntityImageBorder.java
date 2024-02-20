@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -36,17 +36,19 @@
 
 package net.sourceforge.plantuml.svek.image;
 
-import net.sourceforge.plantuml.FontParam;
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.baraye.ILeaf;
-import net.sourceforge.plantuml.cucadiagram.EntityPosition;
-import net.sourceforge.plantuml.cucadiagram.Rankdir;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityPosition;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.FontParam;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.Rankdir;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.Cluster;
@@ -58,9 +60,14 @@ public abstract class AbstractEntityImageBorder extends AbstractEntityImage {
 	protected final Bibliotekon bibliotekon;
 	protected final Rankdir rankdir;
 
-	protected final TextBlock desc;
+	protected abstract StyleSignatureBasic getSignature();
 
-	AbstractEntityImageBorder(ILeaf leaf, ISkinParam skinParam, Cluster parent, Bibliotekon bibliotekon,
+	final protected Style getStyle() {
+		final Stereotype stereotype = getEntity().getStereotype();
+		return getSignature().withTOBECHANGED(stereotype).getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+	}
+
+	AbstractEntityImageBorder(Entity leaf, ISkinParam skinParam, Cluster parent, Bibliotekon bibliotekon,
 			FontParam fontParam) {
 		super(leaf, skinParam);
 
@@ -69,13 +76,14 @@ public abstract class AbstractEntityImageBorder extends AbstractEntityImage {
 		this.entityPosition = leaf.getEntityPosition();
 		this.rankdir = skinParam.getRankdir();
 
-		if (entityPosition == EntityPosition.NORMAL) {
+		if (entityPosition == EntityPosition.NORMAL)
 			throw new IllegalArgumentException();
-		}
+	}
 
-		final Stereotype stereotype = leaf.getStereotype();
-		final FontConfiguration fc = FontConfiguration.create(skinParam, fontParam, stereotype);
-		this.desc = leaf.getDisplay().create(fc, HorizontalAlignment.CENTER, skinParam);
+	protected final TextBlock getDesc() {
+		final Entity leaf = (Entity) getEntity();
+		final FontConfiguration fc = FontConfiguration.create(getSkinParam(), getStyle());
+		return leaf.getDisplay().create(fc, HorizontalAlignment.CENTER, getSkinParam());
 	}
 
 	public XDimension2D calculateDimension(StringBounder stringBounder) {

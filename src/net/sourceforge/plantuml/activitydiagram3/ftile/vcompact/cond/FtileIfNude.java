@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -44,10 +44,10 @@ import java.util.Set;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Ftile;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileGeometry;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Swimlane;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
 public class FtileIfNude extends FtileDimensionMemoize {
 
@@ -55,13 +55,17 @@ public class FtileIfNude extends FtileDimensionMemoize {
 	protected final Ftile tile2;
 	private final Swimlane in;
 
+	protected double xDeltaNote = 0;
+	protected double yDeltaNote = 0;
+	protected double suppWidthNode = 0;
+
 	FtileIfNude(Ftile tile1, Ftile tile2, Swimlane in) {
 		super(tile1.skinParam());
 		this.tile1 = tile1;
 		this.tile2 = tile2;
 		this.in = in;
 	}
-	
+
 	@Override
 	public Collection<Ftile> getMyChildren() {
 		return Arrays.asList(tile1, tile2);
@@ -74,9 +78,9 @@ public class FtileIfNude extends FtileDimensionMemoize {
 
 	public Set<Swimlane> getSwimlanes() {
 		final Set<Swimlane> result = new HashSet<>();
-		if (getSwimlaneIn() != null) {
+		if (getSwimlaneIn() != null)
 			result.add(getSwimlaneIn());
-		}
+
 		result.addAll(tile1.getSwimlanes());
 		result.addAll(tile2.getSwimlanes());
 		return Collections.unmodifiableSet(result);
@@ -90,50 +94,47 @@ public class FtileIfNude extends FtileDimensionMemoize {
 		return getSwimlaneIn();
 	}
 
-	protected UTranslate getTranslate1(StringBounder stringBounder) {
-//		final Dimension2D dimTotal = calculateDimensionInternal(stringBounder);
-//		final Dimension2D dim1 = tile1.calculateDimension(stringBounder);
-
-		final double x1 = 0;
-		final double y1 = 0;
+	protected UTranslate getTranslateBranch1(StringBounder stringBounder) {
+		final double x1 = xDeltaNote;
+		final double y1 = yDeltaNote;
 		return new UTranslate(x1, y1);
 	}
 
-	protected UTranslate getTranslate2(StringBounder stringBounder) {
+	protected UTranslate getTranslateBranch2(StringBounder stringBounder) {
 		final XDimension2D dimTotal = calculateDimensionInternal(stringBounder);
 		final XDimension2D dim2 = tile2.calculateDimension(stringBounder);
 
-		final double x2 = dimTotal.getWidth() - dim2.getWidth();
-		final double y2 = 0;
+		final double x2 = dimTotal.getWidth() - dim2.getWidth() - suppWidthNode;
+		final double y2 = yDeltaNote;
 		return new UTranslate(x2, y2);
 
 	}
 
 	@Override
 	public UTranslate getTranslateFor(Ftile child, StringBounder stringBounder) {
-		if (child == tile1) {
-			return getTranslate1(stringBounder);
-		}
-		if (child == tile2) {
-			return getTranslate2(stringBounder);
-		}
+		if (child == tile1)
+			return getTranslateBranch1(stringBounder);
+
+		if (child == tile2)
+			return getTranslateBranch2(stringBounder);
+
 		throw new UnsupportedOperationException();
 	}
 
 	public void drawU(UGraphic ug) {
 		final StringBounder stringBounder = ug.getStringBounder();
 
-		ug.apply(getTranslate1(stringBounder)).draw(tile1);
-		ug.apply(getTranslate2(stringBounder)).draw(tile2);
+		ug.apply(getTranslateBranch1(stringBounder)).draw(tile1);
+		ug.apply(getTranslateBranch2(stringBounder)).draw(tile2);
 	}
 
 	@Override
 	protected FtileGeometry calculateDimensionFtile(StringBounder stringBounder) {
 		final FtileGeometry dimTotal = calculateDimensionInternal(stringBounder);
 		if (tile1.calculateDimension(stringBounder).hasPointOut()
-				|| tile2.calculateDimension(stringBounder).hasPointOut()) {
+				|| tile2.calculateDimension(stringBounder).hasPointOut())
 			return dimTotal;
-		}
+
 		return dimTotal.withoutPointOut();
 	}
 
@@ -143,11 +144,13 @@ public class FtileIfNude extends FtileDimensionMemoize {
 		final FtileGeometry dim2 = tile2.calculateDimension(stringBounder);
 
 		final double innerMargin = widthInner(stringBounder);
-		final double width = dim1.getLeft() + innerMargin + (dim2.getWidth() - dim2.getLeft());
+		final double width = xDeltaNote + dim1.getLeft() + innerMargin + (dim2.getWidth() - dim2.getLeft())
+				+ suppWidthNode;
 
 		final XDimension2D dim12 = dim1.mergeLR(dim2);
 
-		return new FtileGeometry(width, dim12.getHeight(), dim1.getLeft() + innerMargin / 2, 0);
+		final double height = yDeltaNote + dim12.getHeight();
+		return new FtileGeometry(width, height, xDeltaNote + dim1.getLeft() + innerMargin / 2, yDeltaNote, height);
 	}
 
 	protected double widthInner(StringBounder stringBounder) {

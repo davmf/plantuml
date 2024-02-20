@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,34 +35,31 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.baraye.ILeaf;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.style.PName;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UShape;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
 
 public class EntityImageCircleEnd extends AbstractEntityImage {
 
-	private static final int SIZE = 20;
+	private static final int SIZE = 22;
+	private final CircleEnd circle;
 
 	public StyleSignatureBasic getDefaultStyleDefinitionCircle() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.circle, SName.end);
+		return StyleSignatureBasic.of(SName.root, SName.element, getSkinParam().getUmlDiagramType().getStyleName(),
+				SName.circle, SName.end);
 	}
 
-	public EntityImageCircleEnd(ILeaf entity, ISkinParam skinParam) {
+	public EntityImageCircleEnd(Entity entity, ISkinParam skinParam) {
 		super(entity, skinParam);
+		final Style style = getDefaultStyleDefinitionCircle().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		this.circle = new CircleEnd(skinParam, style, entity.getColors());
 	}
 
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
@@ -70,20 +67,7 @@ public class EntityImageCircleEnd extends AbstractEntityImage {
 	}
 
 	final public void drawU(UGraphic ug) {
-		final UEllipse circle = new UEllipse(SIZE, SIZE);
-
-		final Style style = getDefaultStyleDefinitionCircle().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
-		HColor color = getEntity().getColors().getColor(ColorType.BACK);
-		if (color == null)
-			color = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
-		final double shadowing = style.value(PName.Shadowing).asDouble();
-
-		circle.setDeltaShadow(shadowing);
-		ug.apply(HColors.none().bg()).apply(color).draw(circle);
-
-		final double delta = 4;
-		final UShape circleSmall = new UEllipse(SIZE - delta * 2, SIZE - delta * 2);
-		ug.apply(color.bg()).apply(HColors.none()).apply(new UTranslate(delta + 0.5, delta + 0.5)).draw(circleSmall);
+		circle.drawU(ug);
 	}
 
 	public ShapeType getShapeType() {

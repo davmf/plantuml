@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,41 +37,58 @@ package net.sourceforge.plantuml.activitydiagram3.command;
 
 import java.util.regex.Matcher;
 
-import net.sourceforge.plantuml.ColorParam;
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.UrlMode;
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.graphic.color.Colors;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.skin.ColorParam;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandActivity3 extends SingleLineCommand2<ActivityDiagram3> {
 
 	public static final String endingGroup() {
 		return "(" //
-				+ ";" //
+				+ ";[%s]*(\\<\\<\\w+\\>\\>(?:[%s]*\\<\\<\\w+\\>\\>)*)?" //
 				+ "|" //
 				+ Matcher.quoteReplacement("\\\\") // that is simply \ character
 				+ "|" //
-				+ "(?<![/|<>}\\]])[/<}]" // About /<}
+				+ "(?<![/|<}\\]])[/<}]" // About /<}
 				+ "|" //
 				+ "(?<![/|}\\]])\\]" // About ]
 				+ "|" //
 				+ "(?<!\\</?\\w{1,5})(?<!\\<img[^>]{1,999})(?<!\\<[&$]\\w{1,999})(?<!\\>)\\>" // About >
 				+ "|" //
 				+ "(?<!\\|.{1,999})\\|" // About |
+				+ ")";
+	}
+
+	private static final String endingGroupShort() {
+		return "(" //
+				+ ";[%s]*(\\<\\<\\w+\\>\\>(?:[%s]*\\<\\<\\w+\\>\\>)*)?" //
+				+ "|" //
+				+ Matcher.quoteReplacement("\\\\") // that is simply \ character
+				+ "|" //
+				+ "(?<![/|<}\\]])[/<}]" // About /<}
+				+ "|" //
+				+ "(?<![/|}\\]])\\]" // About ]
+				+ "|" //
+				+ "(?<!\\</?\\w{1,5})(?<!\\<img[^>]{1,999})(?<!\\<[&$]\\w{1,999})(?<!\\>)\\>" // About >
+				+ "|" //
+				+ "\\|" // About |
 				+ ")";
 	}
 
@@ -88,12 +105,10 @@ public class CommandActivity3 extends SingleLineCommand2<ActivityDiagram3> {
 		return RegexConcat.build(CommandActivity3.class.getName(), RegexLeaf.start(), //
 				UrlBuilder.OPTIONAL, //
 				color().getRegex(), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREO", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO"), //
 				new RegexLeaf(":"), //
-				new RegexLeaf("LABEL", "(.*)"), //
-				new RegexLeaf("STYLE", endingGroup()), //
+				new RegexLeaf("LABEL", "(.*?)"), //
+				new RegexLeaf("STYLE", endingGroupShort()), //
 				RegexLeaf.end());
 	}
 
@@ -114,13 +129,19 @@ public class CommandActivity3 extends SingleLineCommand2<ActivityDiagram3> {
 		}
 
 		Colors colors = color().getColor(arg, diagram.getSkinParam().getIHtmlColorSet());
-		final String stereo = arg.get("STEREO", 0);
+		String stereo = arg.get("STEREO", 0);
+		if (stereo == null)
+			stereo = arg.get("STYLE", 1);
+
 		Stereotype stereotype = null;
 		if (stereo != null) {
 			stereotype = Stereotype.build(stereo);
 			colors = colors.applyStereotype(stereotype, diagram.getSkinParam(), ColorParam.activityBackground);
 		}
-		final BoxStyle style = BoxStyle.fromChar(arg.get("STYLE", 0).charAt(0));
+		BoxStyle style = BoxStyle.fromString(arg.get("STEREO", 0));
+		if (style == BoxStyle.PLAIN)
+			style = BoxStyle.fromString(arg.get("STYLE", 0));
+
 		final Display display = Display.getWithNewlines2(arg.get("LABEL", 0));
 		return diagram.addActivity(display, style, url, colors, stereotype);
 	}

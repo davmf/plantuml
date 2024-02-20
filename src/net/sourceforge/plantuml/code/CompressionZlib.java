@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -43,12 +43,16 @@ import net.sourceforge.plantuml.code.deflate.Decompressor;
 
 public class CompressionZlib implements Compression {
 
+	// ::comment when __CORE__
 	private static boolean USE_ZOPFLI = false;
+	// ::done
 	private static final int COMPRESSION_LEVEL = 9;
 
 	public byte[] compress(byte[] in) {
+		// ::comment when __CORE__
 		if (USE_ZOPFLI)
 			return new CompressionZopfliZlib().compress(in);
+		// ::done
 
 		if (in.length == 0)
 			return null;

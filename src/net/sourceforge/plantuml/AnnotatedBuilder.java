@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,32 +35,36 @@
  */
 package net.sourceforge.plantuml;
 
+import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.abel.DisplayPositioned;
 import net.sourceforge.plantuml.activitydiagram3.ftile.EntityImageLegend;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XRectangle2D;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.DisplayPositioned;
 import net.sourceforge.plantuml.cucadiagram.DisplaySection;
-import net.sourceforge.plantuml.graphic.BigFrame;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.InnerStrategy;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.SymbolContext;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.Fashion;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.FontParam;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.BigFrame;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.DecorateEntityImage;
-import net.sourceforge.plantuml.svek.TextBlockBackcolored;
-import net.sourceforge.plantuml.ugraphic.MinMax;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
 
 public class AnnotatedBuilder {
+	// ::remove file when __HAXE__
 
 	private final Annotated annotated;
 	private final ISkinParam skinParam;
@@ -106,7 +110,7 @@ public class AnnotatedBuilder {
 		final TextBlock title = mainFrame.create(fontConfiguration, HorizontalAlignment.CENTER, getSkinParam());
 		final XDimension2D dimTitle = title.calculateDimension(stringBounder);
 
-		final SymbolContext symbolContext = style.getSymbolContext(skinParam.getIHtmlColorSet());
+		final Fashion symbolContext = style.getSymbolContext(skinParam.getIHtmlColorSet());
 		final ClockwiseTopRightBottomLeft margin = style.getMargin();
 		final ClockwiseTopRightBottomLeft padding = style.getPadding().incTop(dimTitle.getHeight() + 10);
 
@@ -123,15 +127,11 @@ public class AnnotatedBuilder {
 
 		final TextBlock frame = new BigFrame(title, width, height, symbolContext);
 
-		return new TextBlockBackcolored() {
+		return new AbstractTextBlock() {
 
 			public void drawU(UGraphic ug) {
 				frame.drawU(ug.apply(margin.getTranslate()));
 				original.drawU(ug.apply(margin.getTranslate().compose(padding.getTranslate().compose(delta))));
-			}
-
-			public MinMax getMinMax(StringBounder stringBounder) {
-				throw new UnsupportedOperationException();
 			}
 
 			public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
@@ -168,7 +168,7 @@ public class AnnotatedBuilder {
 		final Style style = StyleSignatureBasic.of(SName.root, SName.document, SName.title)
 				.getMergedStyle(skinParam.getCurrentStyleBuilder());
 		final TextBlock block = style.createTextBlockBordered(title.getDisplay(), skinParam.getIHtmlColorSet(),
-				skinParam, Style.ID_TITLE);
+				skinParam, Style.ID_TITLE, LineBreakStrategy.NONE);
 		return block;
 	}
 
@@ -180,7 +180,7 @@ public class AnnotatedBuilder {
 		final Style style = StyleSignatureBasic.of(SName.root, SName.document, SName.caption)
 				.getMergedStyle(skinParam.getCurrentStyleBuilder());
 		return style.createTextBlockBordered(caption.getDisplay(), skinParam.getIHtmlColorSet(), skinParam,
-				Style.ID_CAPTION);
+				Style.ID_CAPTION, LineBreakStrategy.NONE);
 
 	}
 

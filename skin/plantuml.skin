@@ -65,6 +65,14 @@ document {
   }
 }
 
+
+package {
+  title {
+    FontStyle bold
+  }
+}
+
+
 stereotype {
   FontStyle italic
 }
@@ -240,6 +248,12 @@ stateDiagram {
   header {
     FontSize 12
   }
+  circle {
+   start, stop, end {
+	    LineColor #2
+	    BackgroundColor #2
+    }
+  }
 }
 
 
@@ -318,17 +332,9 @@ activityDiagram {
 	    LineThickness 1
 	}
 	circle {
-	    start {
+	    start, stop, end {
 		    LineColor #2
 		    BackgroundColor #2
-	    }
-	    stop {
-		    LineColor #2
-		    BackgroundColor transparent
-	    }
-	    end {
-		    LineColor #2
-		    BackgroundColor transparent
 	    }
 	}
 	activityBar {
@@ -361,9 +367,21 @@ ganttDiagram {
 	  Margin 5
 	  Padding 5
 	}
+	verticalSeparator {
+	  LineThickness 2
+	  LineStyle 2-2
+	  LineColor black
+	}
 	timeline {
 	    BackgroundColor transparent
 	    LineColor #C0C0C0
+	    FontSize 10
+	    month {
+	      FontSize 12
+	    }
+	    year {
+	      FontSize 14
+	    }
 	}
 	closed {
         BackGroundColor #F1E5E5
@@ -489,11 +507,11 @@ root {
   HyperLinkColor blue
   FontColor white
   LineColor #e7e7e7
-  BackGroundColor #303030
+  BackGroundColor #313139
 }
 
 document {
-  BackGroundColor black
+  BackGroundColor #1B1B1B
   header {
     FontColor #7
   }
@@ -602,17 +620,9 @@ activityDiagram {
 	    LineColor white
 	}
 	circle {
-	    start {
+	    start, stop, end {
 		    LineColor #d
 		    BackgroundColor #d
-	    }
-	    stop {
-		    LineColor #d
-		    BackgroundColor transparent
-	    }
-	    end {
-		    LineColor #d
-		    BackgroundColor transparent
 	    }
 	}
 	activityBar {

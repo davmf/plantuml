@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -38,27 +38,27 @@ package net.sourceforge.plantuml.mindmap;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.SkinParamColors;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileBoxOld;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.creole.CreoleMode;
-import net.sourceforge.plantuml.cucadiagram.Rankdir;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
-import net.sourceforge.plantuml.graphic.UDrawable;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.CreoleMode;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.Rankdir;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.skin.SkinParamColors;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
 
 public class FingerImpl implements Finger, UDrawable {
 
@@ -127,7 +127,7 @@ public class FingerImpl implements Finger, UDrawable {
 			else
 				p2 = new XPoint2D(direction * (dimPhalanx.getWidth() + getX12()), stp.getY());
 
-			child.drawU(ug.apply(new UTranslate(p2)));
+			child.drawU(ug.apply(UTranslate.point(p2)));
 			final HColor linkColor = getLinkColor();
 			if (linkColor.isTransparent() == false)
 				drawLine(ug.apply(linkColor).apply(getUStroke()), p1, p2);
@@ -146,7 +146,7 @@ public class FingerImpl implements Finger, UDrawable {
 	}
 
 	private void drawLine(UGraphic ug, XPoint2D p1, XPoint2D p2) {
-		final UPath path = new UPath();
+		final UPath path = UPath.none();
 		path.moveTo(p1);
 		if (isTopToBottom()) {
 			final double delta1 = direction * 3;
@@ -233,8 +233,7 @@ public class FingerImpl implements Finger, UDrawable {
 		}
 
 		assert idea.getShape() == IdeaShape.NONE;
-		final TextBlock text = idea.getLabel().create0(
-				style.getFontConfiguration(skinParam.getIHtmlColorSet()),
+		final TextBlock text = idea.getLabel().create0(style.getFontConfiguration(skinParam.getIHtmlColorSet()),
 				style.getHorizontalAlignment(), skinParam, style.wrapWidth(), CreoleMode.FULL, null, null);
 		if (direction == 1)
 			return TextBlockUtils.withMargin(text, 3, 0, 1, 1);

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -36,6 +36,8 @@ package net.sourceforge.plantuml.tim.iterator;
 
 import java.util.List;
 
+import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.text.TLineType;
 import net.sourceforge.plantuml.tim.EaterElseIf;
 import net.sourceforge.plantuml.tim.EaterException;
 import net.sourceforge.plantuml.tim.EaterExceptionLocated;
@@ -44,9 +46,7 @@ import net.sourceforge.plantuml.tim.EaterIfdef;
 import net.sourceforge.plantuml.tim.EaterIfndef;
 import net.sourceforge.plantuml.tim.ExecutionContextIf;
 import net.sourceforge.plantuml.tim.TContext;
-import net.sourceforge.plantuml.tim.TLineType;
 import net.sourceforge.plantuml.tim.TMemory;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public class CodeIteratorIf extends AbstractCodeIterator {
 
@@ -107,14 +107,16 @@ public class CodeIteratorIf extends AbstractCodeIterator {
 		}
 	}
 
-	private void executeIf(TContext context, TMemory memory, StringLocated s) throws EaterException, EaterExceptionLocated {
+	private void executeIf(TContext context, TMemory memory, StringLocated s)
+			throws EaterException, EaterExceptionLocated {
 		final EaterIf condition = new EaterIf(s);
 		condition.analyze(context, memory);
 		final boolean isTrue = condition.isTrue();
 		memory.addIf(ExecutionContextIf.fromValue(isTrue));
 	}
 
-	private void executeElseIf(TContext context, TMemory memory, StringLocated s) throws EaterException, EaterExceptionLocated {
+	private void executeElseIf(TContext context, TMemory memory, StringLocated s)
+			throws EaterException, EaterExceptionLocated {
 		final ExecutionContextIf poll = (ExecutionContextIf) memory.peekIf();
 		if (poll == null) {
 			throw EaterException.located("No if related to this else");

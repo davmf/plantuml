@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -42,15 +42,15 @@ import java.util.List;
 
 import net.sourceforge.plantuml.BlockUml;
 import net.sourceforge.plantuml.SourceStringReader;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityFactory;
 import net.sourceforge.plantuml.api.mda.option2.MDADiagram;
 import net.sourceforge.plantuml.api.mda.option2.MDAPackage;
-import net.sourceforge.plantuml.baraye.EntityFactory;
-import net.sourceforge.plantuml.baraye.IGroup;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.core.Diagram;
 
 public class MDADiagramImpl implements MDADiagram {
-
+	// ::remove folder when __CORE__
 	public static MDADiagram create(String uml) {
 		List<BlockUml> blocks = new SourceStringReader(uml).getBlocks();
 		if (blocks.size() == 0) {
@@ -73,7 +73,7 @@ public class MDADiagramImpl implements MDADiagram {
 	private MDADiagramImpl(ClassDiagram classDiagram) {
 		final EntityFactory entityFactory = classDiagram.getEntityFactory();
 		packages.add(new MDAPackageImpl(entityFactory.getRootGroup()));
-		for (IGroup group : entityFactory.groups()) {
+		for (Entity group : entityFactory.groups()) {
 			packages.add(new MDAPackageImpl(group));
 		}
 	}

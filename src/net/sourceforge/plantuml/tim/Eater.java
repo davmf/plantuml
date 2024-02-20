@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -39,12 +39,13 @@ import java.util.List;
 
 import net.sourceforge.plantuml.json.Json;
 import net.sourceforge.plantuml.json.JsonValue;
+import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.text.TLineType;
 import net.sourceforge.plantuml.tim.expression.TValue;
 import net.sourceforge.plantuml.tim.expression.Token;
 import net.sourceforge.plantuml.tim.expression.TokenStack;
 import net.sourceforge.plantuml.tim.expression.TokenType;
 import net.sourceforge.plantuml.utils.LineLocation;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public abstract class Eater {
 
@@ -78,7 +79,8 @@ public abstract class Eater {
 	}
 
 	final public TValue eatExpression(TContext context, TMemory memory) throws EaterException, EaterExceptionLocated {
-		if (peekChar() == '{') {
+		final char ch = peekChar();
+		if (ch == '{' || ch == '[') {
 			final String data = eatAllToEnd();
 			// System.err.println("data=" + data);
 			final JsonValue json = Json.parse(data);

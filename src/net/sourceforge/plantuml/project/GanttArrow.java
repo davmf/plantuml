@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,8 +35,13 @@
  */
 package net.sourceforge.plantuml.project;
 
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.UDrawable;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.project.core.Task;
 import net.sourceforge.plantuml.project.core.TaskAttribute;
 import net.sourceforge.plantuml.project.core.TaskInstant;
@@ -47,11 +52,6 @@ import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColorSet;
 import net.sourceforge.plantuml.utils.Direction;
 
 public class GanttArrow implements UDrawable {
@@ -152,7 +152,7 @@ public class GanttArrow implements UDrawable {
 			throw new IllegalArgumentException();
 		}
 
-		ug = ug.apply(new UStroke(1.5)).apply(style.value(PName.LineColor).asColor(colorSet).bg());
+		ug = ug.apply(UStroke.withThickness(1.5)).apply(style.value(PName.LineColor).asColor(colorSet).bg());
 		final GArrows arrows = new GArrows();
 		ug.apply(new UTranslate(x2, y2)).draw(arrows.asTo(atEnd));
 

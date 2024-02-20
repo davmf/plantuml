@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,16 +35,16 @@
  */
 package net.sourceforge.plantuml.skin;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.SymbolContext;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.klimt.Fashion;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.UEllipse;
 
 public class ActorAwesome extends AbstractTextBlock implements TextBlock {
 
@@ -55,24 +55,24 @@ public class ActorAwesome extends AbstractTextBlock implements TextBlock {
 	private final double radius = 8;
 	private final double bodyHeight = 28;
 
-	private final SymbolContext symbolContext;
+	private final Fashion fashion;
 
-	public ActorAwesome(SymbolContext symbolContext) {
-		this.symbolContext = symbolContext.withStroke(new UStroke(1.5));
+	public ActorAwesome(Fashion fashion) {
+		this.fashion = fashion;
 	}
 
 	public void drawU(UGraphic ug) {
 
-		final UEllipse head = new UEllipse(headDiam, headDiam);
+		final UEllipse head = UEllipse.build(headDiam, headDiam);
 		final double centerX = getPreferredWidth() / 2;
 
-		final UPath path = new UPath();
+		final UPath path = UPath.none();
 		path.moveTo(0, collar);
 		path.cubicTo(collar, collar, bodyWidth / 2 - shoulder - collar, collar, bodyWidth / 2 - shoulder, 0);
 		path.cubicTo(bodyWidth / 2 - shoulder / 2, 0, bodyWidth / 2, shoulder / 2, bodyWidth / 2, shoulder);
 		path.lineTo(bodyWidth / 2, bodyHeight - radius);
-		path.cubicTo(bodyWidth / 2, bodyHeight - radius / 2, bodyWidth / 2 - radius / 2, bodyHeight, bodyWidth / 2
-				- radius, bodyHeight);
+		path.cubicTo(bodyWidth / 2, bodyHeight - radius / 2, bodyWidth / 2 - radius / 2, bodyHeight,
+				bodyWidth / 2 - radius, bodyHeight);
 		path.lineTo(-bodyWidth / 2 + radius, bodyHeight);
 		path.cubicTo(-bodyWidth / 2 + radius / 2, bodyHeight, -bodyWidth / 2, bodyHeight - radius / 2, -bodyWidth / 2,
 				bodyHeight - radius);
@@ -81,18 +81,18 @@ public class ActorAwesome extends AbstractTextBlock implements TextBlock {
 		path.cubicTo(-bodyWidth / 2 + shoulder + collar, collar, -collar, collar, 0, collar);
 		path.closePath();
 
-		if (symbolContext.getDeltaShadow() != 0) {
-			head.setDeltaShadow(symbolContext.getDeltaShadow());
-			path.setDeltaShadow(symbolContext.getDeltaShadow());
+		if (fashion.getDeltaShadow() != 0) {
+			head.setDeltaShadow(fashion.getDeltaShadow());
+			path.setDeltaShadow(fashion.getDeltaShadow());
 		}
-		ug = symbolContext.apply(ug);
+		ug = fashion.apply(ug);
 		ug.apply(new UTranslate(centerX - head.getWidth() / 2, thickness())).draw(head);
 		ug.apply(new UTranslate(centerX, head.getHeight() + thickness())).draw(path);
 
 	}
 
 	private double thickness() {
-		return symbolContext.getStroke().getThickness();
+		return fashion.getStroke().getThickness();
 	}
 
 	public double getPreferredWidth() {

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,9 +39,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import net.sourceforge.plantuml.awt.geom.XCubicCurve2D;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.posimo.DotPath;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 
 public class BrailleGrid {
 
@@ -151,8 +151,8 @@ public class BrailleGrid {
 		drawPointInternal(x, y, bez.getP1());
 		drawPointInternal(x, y, bez.getP2());
 		if (bez.getP1().distance(bez.getP2()) > quanta) {
-			final XCubicCurve2D part1 = new XCubicCurve2D();
-			final XCubicCurve2D part2 = new XCubicCurve2D();
+			final XCubicCurve2D part1 = XCubicCurve2D.none();
+			final XCubicCurve2D part2 = XCubicCurve2D.none();
 			bez.subdivide(part1, part2);
 			drawCubic(x, y, part1);
 			drawCubic(x, y, part2);

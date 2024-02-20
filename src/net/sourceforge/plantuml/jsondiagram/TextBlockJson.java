@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,38 +39,41 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.LineBreakStrategy;
-import net.sourceforge.plantuml.UmlDiagramType;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.creole.CreoleMode;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
 import net.sourceforge.plantuml.json.JsonArray;
 import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.json.JsonObject.Member;
 import net.sourceforge.plantuml.json.JsonValue;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.CreoleMode;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.ULine;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleSignature;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.svek.TextBlockBackcolored;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
 import net.sourceforge.plantuml.yaml.Highlighted;
 
 //See TextBlockMap
-public class TextBlockJson extends AbstractTextBlock implements TextBlockBackcolored {
+public class TextBlockJson extends AbstractTextBlock {
+	// ::remove folder when __HAXE__
+
+	private static final double MIN_WIDTH = 30;
+	private static final double MIN_HEIGHT = 15;
 
 	private final List<Line> lines = new ArrayList<>();
 
@@ -232,8 +235,9 @@ public class TextBlockJson extends AbstractTextBlock implements TextBlockBackcol
 	}
 
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
-		return new XDimension2D(getWidthColA(stringBounder) + getWidthColB(stringBounder),
-				getTotalHeight(stringBounder));
+		final double width = getWidthColA(stringBounder) + getWidthColB(stringBounder);
+		final double height = getTotalHeight(stringBounder);
+		return new XDimension2D(width, height);
 	}
 
 	public double getWidthColA(StringBounder stringBounder) {
@@ -270,12 +274,12 @@ public class TextBlockJson extends AbstractTextBlock implements TextBlockBackcol
 			y += heightOfRow;
 		}
 		if (y == 0)
-			y = 15;
+			y = MIN_HEIGHT;
 		if (trueWidth == 0)
-			trueWidth = 30;
+			trueWidth = MIN_WIDTH;
 
 		final double round = styleNode.value(PName.RoundCorner).asDouble();
-		final URectangle fullNodeRectangle = new URectangle(trueWidth, y).rounded(round);
+		final URectangle fullNodeRectangle = URectangle.build(trueWidth, y).rounded(round);
 		final HColor backColor = styleNode.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
 		ugNode.apply(backColor.bg()).apply(backColor).draw(fullNodeRectangle);
 
@@ -288,7 +292,7 @@ public class TextBlockJson extends AbstractTextBlock implements TextBlockBackcol
 			final UGraphic ugline = ugSeparator.apply(UTranslate.dy(y));
 			final double heightOfRow = line.getHeightOfRow(stringBounder);
 			if (line.highlighted != null) {
-				final URectangle back = new URectangle(trueWidth - 2, heightOfRow).rounded(4);
+				final URectangle back = URectangle.build(trueWidth - 2, heightOfRow).rounded(4);
 				final Style styleNodeHighlight = StyleSignatureBasic
 						.of(SName.root, SName.element, diagramType, SName.node, SName.highlight)
 						.withTOBECHANGED(line.highlighted.getStereotype()).getMergedStyle(styleBuilder);
@@ -320,7 +324,18 @@ public class TextBlockJson extends AbstractTextBlock implements TextBlockBackcol
 		for (Line line : lines)
 			height += line.getHeightOfRow(stringBounder);
 
+		if (height == 0)
+			return MIN_HEIGHT;
+		
 		return height;
+	}
+
+	public double[] getAllHeights(StringBounder stringBounder) {
+		final double result[] = new double[lines.size()];
+		for (int i = 0; i < lines.size(); i++)
+			result[i] = lines.get(i).getHeightOfRow(stringBounder);
+
+		return result;
 	}
 
 	private TextBlock getTextBlock(Style style, String key) {

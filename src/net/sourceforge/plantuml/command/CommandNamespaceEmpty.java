@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,25 +35,23 @@
  */
 package net.sourceforge.plantuml.command;
 
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.UrlMode;
-import net.sourceforge.plantuml.baraye.IEntity;
-import net.sourceforge.plantuml.baraye.IGroup;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.GroupType;
-import net.sourceforge.plantuml.cucadiagram.Ident;
-import net.sourceforge.plantuml.cucadiagram.NamespaceStrategy;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandNamespaceEmpty extends SingleLineCommand2<ClassDiagram> {
@@ -67,9 +65,7 @@ public class CommandNamespaceEmpty extends SingleLineCommand2<ClassDiagram> {
 				new RegexLeaf("namespace"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf("NAME", CommandNamespace.NAMESPACE_REGEX), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREOTYPE", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREOTYPE"), //
 				UrlBuilder.OPTIONAL, //
 				RegexLeaf.spaceZeroOrMore(), //
 				ColorParser.exp1(), //
@@ -84,15 +80,16 @@ public class CommandNamespaceEmpty extends SingleLineCommand2<ClassDiagram> {
 	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg)
 			throws NoSuchColorException {
 		final String idShort = arg.get("NAME", 0);
-		final Ident idNewLong = diagram.buildLeafIdent(idShort);
-		final Code code = diagram.V1972() ? idNewLong : diagram.buildCode(idShort);
-		final IGroup currentPackage = diagram.getCurrentGroup();
-		final Display display = Display.getWithNewlines(code);
-		final CommandExecutionResult status = diagram.gotoGroup(idNewLong, code, display, GroupType.PACKAGE,
-				currentPackage, NamespaceStrategy.MULTIPLE);
+
+		final Quark<Entity> quark = diagram.quarkInContext(false, diagram.cleanId(idShort));
+		if (quark.getData() != null)
+			return CommandExecutionResult.error("Already exists " + quark.getName());
+
+		final Display display = Display.getWithNewlines(quark.getQualifiedName());
+		final CommandExecutionResult status = diagram.gotoGroup(quark, display, GroupType.PACKAGE);
 		if (status.isOk() == false)
 			return status;
-		final IEntity p = diagram.getCurrentGroup();
+		final Entity p = diagram.getCurrentGroup();
 		final String stereotype = arg.get("STEREOTYPE", 0);
 		if (stereotype != null)
 			p.setStereotype(Stereotype.build(stereotype));

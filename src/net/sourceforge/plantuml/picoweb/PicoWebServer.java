@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -64,19 +64,20 @@ import net.sourceforge.plantuml.code.Transcoder;
 import net.sourceforge.plantuml.code.TranscoderUtil;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.eggs.QuoteUtils;
 import net.sourceforge.plantuml.error.PSystemError;
 import net.sourceforge.plantuml.error.PSystemErrorUtils;
-import net.sourceforge.plantuml.graphic.QuoteUtils;
 import net.sourceforge.plantuml.json.Json;
 import net.sourceforge.plantuml.json.JsonArray;
 import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SFile;
+import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.LineLocationImpl;
-import net.sourceforge.plantuml.utils.StringLocated;
 import net.sourceforge.plantuml.version.Version;
 
 public class PicoWebServer implements Runnable {
+	// ::remove folder when __CORE__
 
 	private final Socket connect;
 	private static boolean enableStop;
@@ -268,9 +269,9 @@ public class PicoWebServer implements Runnable {
 
 		if (ssr.getBlocks().size() == 0) {
 			system = PSystemErrorUtils.buildV2(null,
-					new ErrorUml(SYNTAX_ERROR, "No @startuml/@enduml found", 0, new LineLocationImpl("", null)), null,
+					new ErrorUml(SYNTAX_ERROR, "No valid @start/@end found, please check the version", 0, new LineLocationImpl("", null)), null,
 					Collections.<StringLocated>emptyList());
-			imageData = ssr.noStartumlFound(os, option.getFileFormatOption());
+			imageData = ssr.noValidStartFound(os, option.getFileFormatOption());
 		} else {
 			system = ssr.getBlocks().get(0).getDiagram();
 			imageData = system.exportDiagram(os, 0, option.getFileFormatOption());

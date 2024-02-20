@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -48,6 +48,10 @@ public class PlanUtils {
 			public int getLoadAt(Day instant) {
 				return Math.min(p1.getLoadAt(instant), p2.getLoadAt(instant));
 			}
+
+			public Day getLastDayIfAny() {
+				return lastOf(p1.getLastDayIfAny(), p2.getLastDayIfAny());
+			}
 		};
 	}
 
@@ -56,7 +60,21 @@ public class PlanUtils {
 			public int getLoadAt(Day instant) {
 				return p1.getLoadAt(instant) * p2.getLoadAt(instant) / 100;
 			}
+
+			public Day getLastDayIfAny() {
+				return lastOf(p1.getLastDayIfAny(), p2.getLastDayIfAny());
+			}
 		};
+	}
+
+	private static Day lastOf(Day day1, Day day2) {
+		if (day1 == null)
+			return day2;
+		if (day2 == null)
+			return day1;
+		if (day1.compareTo(day2) > 0)
+			return day1;
+		return day2;
 	}
 
 }

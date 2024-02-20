@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,12 +37,13 @@ package net.sourceforge.plantuml.timingdiagram.command;
 
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexOptional;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
 import net.sourceforge.plantuml.timingdiagram.PlayerAnalog;
 import net.sourceforge.plantuml.timingdiagram.TimingDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
@@ -62,9 +63,7 @@ public class CommandAnalog extends SingleLineCommand2<TimingDiagram> {
 				new RegexLeaf("analog"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf("FULL", "[%g]([^%g]+)[%g]"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREOTYPE", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceOneOrMore(), //
+				StereotypePattern.optional("STEREOTYPE"), //
 				new RegexOptional(//
 						new RegexConcat( //
 								new RegexLeaf("between"), //
@@ -78,9 +77,7 @@ public class CommandAnalog extends SingleLineCommand2<TimingDiagram> {
 				new RegexLeaf("as"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf("CODE", "([%pLN_.@]+)"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREOTYPE2", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREOTYPE2"), //
 				RegexLeaf.end());
 	}
 

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -41,7 +41,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 
-import net.sourceforge.plantuml.AFile;
+import net.sourceforge.plantuml.file.AFile;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.preproc.FileWithSuffix;
 import net.sourceforge.plantuml.preproc.ImportedFiles;
@@ -49,10 +49,11 @@ import net.sourceforge.plantuml.preproc.ReadLine;
 import net.sourceforge.plantuml.preproc.ReadLineReader;
 import net.sourceforge.plantuml.preproc2.PreprocessorUtils;
 import net.sourceforge.plantuml.security.SURL;
+import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.theme.ThemeUtils;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public class EaterTheme extends Eater {
+	// ::remove folder when __HAXE__
 
 	private String realName;
 	private String name;
@@ -74,8 +75,9 @@ public class EaterTheme extends Eater {
 
 		final int x = this.name.toLowerCase().indexOf(" from ");
 		if (x != -1) {
-			this.from = this.name.substring(x + " from ".length());
-			this.name = this.name.substring(0, x);
+			final String fromTmp = this.name.substring(x + " from ".length()).trim();
+			this.from = context.applyFunctionsAndVariables(memory, getLineLocation(), fromTmp);
+			this.name = this.name.substring(0, x).trim();
 			this.context = context;
 		}
 
@@ -85,11 +87,11 @@ public class EaterTheme extends Eater {
 
 	public final ReadLine getTheme() throws EaterException {
 		if (from == null) {
-			final ReadLine reader = ThemeUtils.getReaderTheme(realName);
-			if (reader != null)
-				return reader;
-
 			try {
+				final ReadLine reader = ThemeUtils.getReaderTheme(realName);
+				if (reader != null)
+					return reader;
+
 				final AFile localFile = importedFiles.getAFile(ThemeUtils.getFilename(realName));
 				if (localFile != null && localFile.isOk()) {
 					final BufferedReader br = localFile.getUnderlyingFile().openBufferedReader();
@@ -100,7 +102,13 @@ public class EaterTheme extends Eater {
 				Logme.error(e);
 			}
 			throw EaterException.located("Cannot load " + realName);
+		}
 
+		if (from.startsWith("<") && from.endsWith(">")) {
+			final ReadLine reader = ThemeUtils.getReaderTheme(realName, from);
+			if (reader == null)
+				throw EaterException.located("No such theme " + realName + " in " + from);
+			return reader;
 		} else if (from.startsWith("http://") || from.startsWith("https://")) {
 			final SURL url = SURL.create(ThemeUtils.getFullPath(from, realName));
 			if (url == null)

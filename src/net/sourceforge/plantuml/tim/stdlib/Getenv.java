@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.tim.EaterException;
 import net.sourceforge.plantuml.tim.EaterExceptionLocated;
@@ -60,28 +59,33 @@ public class Getenv extends SimpleReturnFunction {
 
 	public TValue executeReturnFunction(TContext context, TMemory memory, LineLocation location, List<TValue> values,
 			Map<String, TValue> named) throws EaterException, EaterExceptionLocated {
-		if (OptionFlags.ALLOW_INCLUDE == false) {
-			return TValue.fromString("");
-		}
-		final String name = values.get(0).toString();
-		final String value = getenv(name);
+		// ::comment when __CORE__
+		final String value = getenv(values.get(0).toString());
 		if (value == null)
 			return TValue.fromString("");
 
 		return TValue.fromString(value);
+		// ::done
+
+		// ::uncomment when __CORE__
+		// return TValue.fromString("");
+		// ::done
 	}
 
+	// ::comment when __CORE__
 	private String getenv(String name) {
 		// Check, if the script requests secret information.
 		// A plantuml server should have an own SecurityManager to
 		// avoid access to properties and environment variables, but we should
 		// also stop here in other deployments.
-		if (SecurityUtils.isSecurityEnv(name))
+		if (SecurityUtils.getSecurityProfile().canWeReadThisEnvironmentVariable(name) == false)
 			return null;
+		
 		final String env = System.getProperty(name);
 		if (env != null)
 			return env;
 
 		return System.getenv(name);
 	}
+	// ::done
 }

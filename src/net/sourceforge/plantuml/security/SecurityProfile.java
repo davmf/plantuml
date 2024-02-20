@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -55,6 +55,7 @@ package net.sourceforge.plantuml.security;
  * 
  */
 public enum SecurityProfile {
+	// ::remove folder when __HAXE__
 
 	/**
 	 * Running in SANDBOX mode is completely secure. No local file can be read
@@ -105,6 +106,7 @@ public enum SecurityProfile {
 	 * @return the value
 	 */
 	static SecurityProfile init() {
+		// ::comment when __CORE__
 		final String env = SecurityUtils.getenv("PLANTUML_SECURITY_PROFILE");
 		if ("SANDBOX".equalsIgnoreCase(env))
 			return SANDBOX;
@@ -113,9 +115,12 @@ public enum SecurityProfile {
 		else if ("INTERNET".equalsIgnoreCase(env))
 			return INTERNET;
 		else if ("UNSECURE".equalsIgnoreCase(env))
+			// ::done
 			return UNSECURE;
+		// ::comment when __CORE__
 
 		return LEGACY;
+		// ::done
 	}
 
 	/**
@@ -154,6 +159,23 @@ public enum SecurityProfile {
 			return 1000L * 60 * 5;
 		}
 		throw new AssertionError();
+	}
+
+	public boolean canWeReadThisEnvironmentVariable(String name) {
+		if (name == null)
+			return false;
+
+		final String lname = name.toLowerCase();
+		if (lname.startsWith("plantuml.security"))
+			return false;
+
+		if (lname.startsWith("plantuml"))
+			return true;
+
+		if (lname.equals("path.separator") || lname.equals("line.separator"))
+			return true;
+
+		return this == UNSECURE;
 	}
 
 }

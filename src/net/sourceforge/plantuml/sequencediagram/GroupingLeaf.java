@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,11 +39,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import net.sourceforge.plantuml.Url;
+import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.url.Url;
 
-final public class GroupingLeaf extends Grouping implements EventWithDeactivate {
+final public class GroupingLeaf extends Grouping implements EventWithDeactivate, EventWithNote {
 
 	private final GroupingStart start;
 	private final HColor backColorGeneral;
@@ -58,12 +58,12 @@ final public class GroupingLeaf extends Grouping implements EventWithDeactivate 
 
 	public Grouping getJustAfter() {
 		final int idx = start.getChildren().indexOf(this);
-		if (idx == -1) {
+		if (idx == -1)
 			throw new IllegalStateException();
-		}
-		if (idx + 1 >= start.getChildren().size()) {
+
+		if (idx + 1 >= start.getChildren().size())
 			return null;
-		}
+
 		return start.getChildren().get(idx + 1);
 	}
 
@@ -117,10 +117,11 @@ final public class GroupingLeaf extends Grouping implements EventWithDeactivate 
 
 	private List<Note> noteOnMessages = new ArrayList<>();
 
-	public final void setNote(Note note) {
-		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT) {
+	@Override
+	public final void addNote(Note note) {
+		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT)
 			throw new IllegalArgumentException();
-		}
+
 		this.noteOnMessages.add(note);
 	}
 

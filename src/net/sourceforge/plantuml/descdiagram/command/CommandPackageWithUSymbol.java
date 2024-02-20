@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -36,33 +36,31 @@
 package net.sourceforge.plantuml.descdiagram.command;
 
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.UrlMode;
-import net.sourceforge.plantuml.baraye.IEntity;
-import net.sourceforge.plantuml.baraye.IGroup;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.classdiagram.command.CommandCreateClassMultilines;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexOptional;
-import net.sourceforge.plantuml.command.regex.RegexOr;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.GroupType;
-import net.sourceforge.plantuml.cucadiagram.Ident;
-import net.sourceforge.plantuml.cucadiagram.NamespaceStrategy;
-import net.sourceforge.plantuml.cucadiagram.Stereotag;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.USymbols;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.graphic.color.Colors;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.decoration.symbol.USymbols;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexOr;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereotag;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntityDiagram> {
@@ -74,7 +72,7 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 	private static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandPackageWithUSymbol.class.getName(), RegexLeaf.start(), //
 				new RegexLeaf("SYMBOL",
-						"(package|rectangle|hexagon|node|artifact|folder|file|frame|cloud|database|storage|component|card|queue|stack)"), //
+						"(package|rectangle|hexagon|node|artifact|folder|file|frame|cloud|action|process|database|storage|component|card|queue|stack)"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexOr(//
 						new RegexConcat( //
@@ -118,9 +116,7 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 				), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("TAGS1", Stereotag.pattern() + "?"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREOTYPE", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREOTYPE"), //
 				new RegexLeaf("TAGS2", Stereotag.pattern() + "?"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //
@@ -137,30 +133,26 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 	@Override
 	protected CommandExecutionResult executeArg(AbstractEntityDiagram diagram, LineLocation location, RegexResult arg)
 			throws NoSuchColorException {
-		final String codeRaw = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("CODE", 0));
-		final String displayRaw = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("DISPLAY", 0));
+		final String codeArg = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("CODE", 0));
+		final Quark<Entity> ident = diagram.quarkInContext(false,
+				diagram.cleanId(codeArg.length() == 0 ? diagram.getUniqueSequence("##") : codeArg));
+
+		final String displayArg = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("DISPLAY", 0));
 		final String display;
-		final String idShort;
-		if (codeRaw.length() == 0) {
-			idShort = diagram.getUniqueSequence("##");
+
+		if (codeArg.length() == 0)
 			display = null;
-		} else {
-			idShort = codeRaw;
-			if (displayRaw == null)
-				display = idShort;
-			else
-				display = displayRaw;
+		else if (displayArg == null)
+			display = ident.getName();
+		else
+			display = displayArg;
 
-		}
-
-		final Ident ident = diagram.buildLeafIdent(idShort);
-		final Code code = diagram.V1972() ? ident : diagram.buildCode(idShort);
-		final IGroup currentPackage = diagram.getCurrentGroup();
-		final CommandExecutionResult status = diagram.gotoGroup(ident, code, Display.getWithNewlines(display),
-				GroupType.PACKAGE, currentPackage, NamespaceStrategy.SINGLE);
+		final CommandExecutionResult status = diagram.gotoGroup(ident, Display.getWithNewlines(display),
+				GroupType.PACKAGE);
 		if (status.isOk() == false)
 			return status;
-		final IEntity p = diagram.getCurrentGroup();
+
+		final Entity p = diagram.getCurrentGroup();
 		final String symbol = arg.get("SYMBOL", 0);
 
 		p.setUSymbol(USymbols.fromString(symbol, diagram.getSkinParam().actorStyle(),

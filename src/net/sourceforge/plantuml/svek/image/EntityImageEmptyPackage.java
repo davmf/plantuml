@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,38 +35,37 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
-import net.sourceforge.plantuml.AlignmentParam;
-import net.sourceforge.plantuml.FontParam;
-import net.sourceforge.plantuml.Guillemet;
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.Url;
+import net.sourceforge.plantuml.abel.DisplayPositioned;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.activitydiagram3.ftile.EntityImageLegend;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.baraye.ILeaf;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.DisplayPositioned;
-import net.sourceforge.plantuml.cucadiagram.EntityPortion;
 import net.sourceforge.plantuml.cucadiagram.PortionShower;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.FontParam;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.skin.AlignmentParam;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ClusterDecoration;
-import net.sourceforge.plantuml.svek.ClusterPosition;
 import net.sourceforge.plantuml.svek.ShapeType;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.text.Guillemet;
+import net.sourceforge.plantuml.url.Url;
 
 public class EntityImageEmptyPackage extends AbstractEntityImage {
 
@@ -89,7 +88,7 @@ public class EntityImageEmptyPackage extends AbstractEntityImage {
 				.withTOBECHANGED(stereotype).getMergedStyle(getSkinParam().getCurrentStyleBuilder());
 	}
 
-	public EntityImageEmptyPackage(ILeaf entity, ISkinParam skinParam, PortionShower portionShower, SName sname) {
+	public EntityImageEmptyPackage(Entity entity, ISkinParam skinParam, PortionShower portionShower, SName sname) {
 		super(entity, skinParam);
 		this.sname = sname;
 
@@ -115,7 +114,7 @@ public class EntityImageEmptyPackage extends AbstractEntityImage {
 
 		this.desc = entity.getDisplay().create(titleFontConfiguration, titleHorizontalAlignment, skinParam);
 
-		final DisplayPositioned legend = ((EntityImp) entity).getLegend();
+		final DisplayPositioned legend = ((Entity) entity).getLegend();
 		if (legend != null) {
 			final TextBlock legendBlock = EntityImageLegend.create(legend.getDisplay(), skinParam);
 			stereoBlock = legendBlock;
@@ -150,9 +149,9 @@ public class EntityImageEmptyPackage extends AbstractEntityImage {
 		final double widthTotal = dimTotal.getWidth();
 		final double heightTotal = dimTotal.getHeight();
 
-		final ClusterPosition clusterPosition = new ClusterPosition(0, 0, widthTotal, heightTotal);
+		final RectangleArea rectangleArea = new RectangleArea(0, 0, widthTotal, heightTotal);
 		final ClusterDecoration decoration = new ClusterDecoration(getSkinParam().packageStyle(), null, desc,
-				stereoBlock, clusterPosition, stroke);
+				stereoBlock, rectangleArea, stroke);
 
 		final HorizontalAlignment horizontalAlignment = getSkinParam()
 				.getHorizontalAlignment(AlignmentParam.packageTitleAlignment, null, false, null);

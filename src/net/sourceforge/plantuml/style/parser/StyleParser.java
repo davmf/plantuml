@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -77,6 +77,11 @@ public class StyleParser {
 			if (token.getType() == StyleTokenType.NEWLINE)
 				continue;
 			if (token.getType() == StyleTokenType.SEMICOLON)
+				continue;
+
+			if (token.getType() == StyleTokenType.STRING && token.getData().equalsIgnoreCase("<style>"))
+				continue;
+			if (token.getType() == StyleTokenType.STRING && token.getData().equalsIgnoreCase("</style>"))
 				continue;
 
 			if (ins.peek(0).getType() == StyleTokenType.COMMA) {
@@ -178,6 +183,9 @@ public class StyleParser {
 					result.append(' ');
 				result.append(current.getData());
 				ins.jump();
+			} else if (current.getType() == StyleTokenType.COMMA) {
+				result.append(current.getData());
+				ins.jump();
 			} else if (current.getType() == StyleTokenType.COLON) {
 				result.append(current.getData());
 				ins.jump();
@@ -255,8 +263,6 @@ public class StyleParser {
 				result.add(new StyleToken(StyleTokenType.STRING, s));
 			} else {
 				final String s = readString(ins);
-				if (s.startsWith("<"))
-					throw new StyleParsingException("Cannot understand <");
 				result.add(new StyleToken(StyleTokenType.STRING, s));
 			}
 		}

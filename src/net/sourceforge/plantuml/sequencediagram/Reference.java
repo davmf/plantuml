@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -40,16 +40,16 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.cucadiagram.Display;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.url.Url;
 
-public class Reference extends AbstractEvent implements Event {
+public class Reference extends AbstractEvent implements EventWithNote {
 
 	private final List<Participant> participants;
 	private final Url url;
@@ -132,4 +132,19 @@ public class Reference extends AbstractEvent implements Event {
 	public final HColor getBackColorElement() {
 		return backColorElement;
 	}
+
+	private List<Note> noteOnMessages = new ArrayList<>();
+
+	@Override
+	public final void addNote(Note note) {
+		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT)
+			throw new IllegalArgumentException();
+
+		this.noteOnMessages.add(note);
+	}
+
+	public final List<Note> getNoteOnMessages() {
+		return noteOnMessages;
+	}
+
 }

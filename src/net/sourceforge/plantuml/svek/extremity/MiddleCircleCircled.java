@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,13 +35,13 @@
  */
 package net.sourceforge.plantuml.svek.extremity;
 
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UEllipse;
 
 class MiddleCircleCircled extends Extremity {
 
@@ -49,10 +49,10 @@ class MiddleCircleCircled extends Extremity {
 	private final double angle;
 	private final MiddleCircleCircledMode mode;
 	private final double radius1 = 6;
-	private final UEllipse circle = new UEllipse(2 * radius1, 2 * radius1);
+	private final UEllipse circle = UEllipse.build(2 * radius1, 2 * radius1);
 
 	private final double radius2 = 10;
-	private final UEllipse bigcircle = new UEllipse(2 * radius2, 2 * radius2);
+	private final UEllipse bigcircle = UEllipse.build(2 * radius2, 2 * radius2);
 	private final HColor backColor;
 
 	public MiddleCircleCircled(double angle, MiddleCircleCircledMode mode, HColor backColor, HColor diagramBackColor) {
@@ -69,12 +69,12 @@ class MiddleCircleCircled extends Extremity {
 
 	public void drawU(UGraphic ug) {
 		if (mode == MiddleCircleCircledMode.BOTH) {
-			ug.apply(diagramBackColor).apply(diagramBackColor.bg())
-					.apply(new UTranslate(-radius2, -radius2)).draw(bigcircle);
+			ug.apply(diagramBackColor).apply(diagramBackColor.bg()).apply(new UTranslate(-radius2, -radius2))
+					.draw(bigcircle);
 		}
 
 		ug = ug.apply(backColor.bg());
-		ug = ug.apply(new UStroke(1.5));
+		ug = ug.apply(UStroke.withThickness(1.5));
 
 		final double d = 0;
 		if (mode == MiddleCircleCircledMode.MODE1 || mode == MiddleCircleCircledMode.BOTH) {

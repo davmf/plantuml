@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -59,8 +59,8 @@ public class Chr extends SimpleReturnFunction {
 	public TValue executeReturnFunction(TContext context, TMemory memory, LineLocation location, List<TValue> values,
 			Map<String, TValue> named) throws EaterException, EaterExceptionLocated {
 		try {
-			final char value = (char) values.get(0).toInt();
-			return TValue.fromString("" + value);
+			final String value = String.valueOf(Character.toChars(values.get(0).toInt()));
+			return TValue.fromString(value);
 		} catch (Throwable t) {
 			return TValue.fromString("\0");
 		}

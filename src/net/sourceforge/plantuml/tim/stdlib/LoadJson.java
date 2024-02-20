@@ -4,12 +4,12 @@
  *
  * (C) Copyright 2009-2021, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -86,7 +86,7 @@ import net.sourceforge.plantuml.utils.LineLocation;
  *     ' loads a remote JSON from an endpoint (and default, if not reachable)
  *     !$STATUS_NO_CONNECTION={"status": "No connection"}
  *     !$JSON_REMOTE_DEF=%load_json("https://localhost:7778/management/health", $STATUS_NO_CONNECTION)
- *     status -> $JSON_REMOTE_DEF.status
+ *     status -&gt; $JSON_REMOTE_DEF.status
  *     &#64; enduml
  * </pre>
  * 
@@ -165,9 +165,9 @@ public class LoadJson extends SimpleReturnFunction {
 		byte[] byteData = null;
 		if (path.startsWith("http://") || path.startsWith("https://")) {
 			final SURL url = SURL.create(path);
-			if (url == null)
-				throw EaterException.located("load JSON: Invalid URL " + path);
-			byteData = url.getBytes();
+			if (url != null)
+				byteData = url.getBytes();
+			// ::comment when __CORE__
 		} else {
 			try {
 				final SFile file = FileSystem.getInstance().getFile(path);
@@ -178,8 +178,8 @@ public class LoadJson extends SimpleReturnFunction {
 				}
 			} catch (IOException e) {
 				Logme.error(e);
-				throw EaterException.located("load JSON: Cannot read file " + path + ". " + e.getMessage());
 			}
+			// ::done
 		}
 
 		if (byteData == null || byteData.length == 0)

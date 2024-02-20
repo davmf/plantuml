@@ -4,12 +4,16 @@
 //    also supported is to build first, with java17, then switch the java version, and run the test with java8:
 // gradle clean build -x javaDoc -x test
 // gradle test
+println("Running build.gradle.kts")
+println(project.version)
+
 val javacRelease = (project.findProperty("javacRelease") ?: "8") as String
 
 plugins {
 	java
 	`maven-publish`
 	signing
+//	id("com.adarshr.test-logger") version "3.2.0"
 }
 
 group = "net.sourceforge.plantuml"
@@ -24,12 +28,23 @@ java {
 }
 
 dependencies {
-	compileOnly("org.apache.ant:ant:1.10.12")
-	testImplementation("org.assertj:assertj-core:3.23.1")
-	testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
+	compileOnly("org.apache.ant:ant:1.10.14")
+
+	testImplementation("io.github.glytching:junit-extensions:2.6.0")
+	testImplementation("org.assertj:assertj-core:3.25.3")
+	testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+	testImplementation("org.xmlunit:xmlunit-core:2.9.+")
+	if (JavaVersion.current().isJava8) {
+		testImplementation("org.mockito:mockito-core:4.+")
+		testImplementation("org.mockito:mockito-junit-jupiter:4.+")
+	} else {
+		testImplementation("org.mockito:mockito-core:5.+")
+		testImplementation("org.mockito:mockito-junit-jupiter:5.+")
+	}
 	testImplementation("org.scilab.forge:jlatexmath:1.0.7")
-	"pdfRuntimeOnly"("org.apache.xmlgraphics:fop:2.7")
-	"pdfRuntimeOnly"("org.apache.xmlgraphics:batik-all:1.15")
+
+	"pdfRuntimeOnly"("org.apache.xmlgraphics:fop:2.9")
+	"pdfRuntimeOnly"("org.apache.xmlgraphics:batik-all:1.17")
 }
 
 repositories {
@@ -89,6 +104,8 @@ publishing {
 	publications.create<MavenPublication>("maven") {
 		from(components["java"])
 		pom {
+			name.set("PlantUML")
+            description.set("PlantUML is a component that allows to quickly write diagrams from text.")
 			groupId = project.group as String
 			artifactId = project.name
 			version = project.version as String
@@ -142,6 +159,10 @@ tasks.withType<Javadoc>().configureEach {
 }
 
 tasks.test {
+	doFirst {
+		println("Java Home:" + System.getProperty("java.home"));
+		println("Java Version: " + System.getProperty("java.version"));
+	}
 	useJUnitPlatform()
 	testLogging.showStandardStreams = true
 }

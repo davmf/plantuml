@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,36 +35,38 @@
  */
 package net.sourceforge.plantuml.skin;
 
-import net.sourceforge.plantuml.graphic.SymbolContext;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.USymbol;
-import net.sourceforge.plantuml.graphic.USymbols;
+import net.sourceforge.plantuml.decoration.symbol.USymbol;
+import net.sourceforge.plantuml.decoration.symbol.USymbols;
+import net.sourceforge.plantuml.klimt.Fashion;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 
 public enum ActorStyle {
 
 	STICKMAN, STICKMAN_BUSINESS, AWESOME, HOLLOW;
 
 	public USymbol toUSymbol() {
-		if (this == STICKMAN) {
+		if (this == STICKMAN)
 			return USymbols.ACTOR_STICKMAN;
-		} else if (this == AWESOME) {
+		else if (this == AWESOME)
 			return USymbols.ACTOR_AWESOME;
-		} else if (this == HOLLOW) {
+		else if (this == HOLLOW)
 			return USymbols.ACTOR_HOLLOW;
-		}
+		else if (this == STICKMAN_BUSINESS)
+			return USymbols.ACTOR_STICKMAN_BUSINESS;
+
 		throw new IllegalStateException();
 	}
 
-	public TextBlock getTextBlock(SymbolContext symbolContext) {
-		if (this == STICKMAN) {
+	public TextBlock getTextBlock(Fashion symbolContext) {
+		if (this == STICKMAN)
 			return new ActorStickMan(symbolContext, false);
-		} else if (this == STICKMAN_BUSINESS) {
+		else if (this == STICKMAN_BUSINESS)
 			return new ActorStickMan(symbolContext, true);
-		} else if (this == AWESOME) {
+		else if (this == AWESOME)
 			return new ActorAwesome(symbolContext);
-		} else if (this == HOLLOW) {
+		else if (this == HOLLOW)
 			return new ActorHollow(symbolContext);
-		}
+
 		throw new IllegalStateException();
 	}
 

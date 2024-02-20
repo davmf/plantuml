@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,12 +35,13 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.cond;
 
-import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.activitydiagram3.ftile.AbstractFtile;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileGeometry;
-import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.style.ISkinParam;
 
 public abstract class FtileDimensionMemoize extends AbstractFtile {
+	// ::remove folder when __HAXE__
 
 	public FtileDimensionMemoize(ISkinParam skinParam) {
 		super(skinParam);
@@ -49,10 +50,14 @@ public abstract class FtileDimensionMemoize extends AbstractFtile {
 	private FtileGeometry calculateDimensionInternal;
 
 	protected final FtileGeometry calculateDimensionInternal(StringBounder stringBounder) {
-		if (calculateDimensionInternal == null) {
+		if (calculateDimensionInternal == null)
 			calculateDimensionInternal = calculateDimensionInternalSlow(stringBounder);
-		}
+
 		return calculateDimensionInternal;
+	}
+
+	protected final void clearCacheDimensionInternal() {
+		calculateDimensionInternal = null;
 	}
 
 	abstract protected FtileGeometry calculateDimensionInternalSlow(StringBounder stringBounder);

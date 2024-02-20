@@ -1,29 +1,68 @@
 #!/usr/bin/env bash
 set -ex
 
-POM_VERSION=$(gradle properties -q | grep "version:" | awk '{print $2}')
-RELEASE_DIR="build/github_release"
+find . -name "*.jar"
+find . -name "*.asc"
 
-mkdir "${RELEASE_DIR}"
+mkdir "github_release"
 
-ln -s "../libs/plantuml-${POM_VERSION}.jar"                  "${RELEASE_DIR}/plantuml.jar"
-ln -s "../libs/plantuml-${POM_VERSION}.jar"                  "${RELEASE_DIR}/plantuml-${POM_VERSION}.jar"
-ln -s "../libs/plantuml-${POM_VERSION}-javadoc.jar"          "${RELEASE_DIR}/plantuml-${POM_VERSION}-javadoc.jar"
-ln -s "../libs/plantuml-${POM_VERSION}-sources.jar"          "${RELEASE_DIR}/plantuml-${POM_VERSION}-sources.jar"
-ln -s "../libs/plantuml-pdf-${POM_VERSION}.jar"              "${RELEASE_DIR}/plantuml-pdf-${POM_VERSION}.jar"
+cp "build/libs/plantuml-${RELEASE_VERSION}.jar" "github_release/plantuml.jar"
+cp "build/libs/plantuml-${RELEASE_VERSION}.jar" "github_release/plantuml-${RELEASE_VERSION}.jar"
+cp "build/libs/plantuml-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-${RELEASE_VERSION}-javadoc.jar"
+cp "build/libs/plantuml-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-${RELEASE_VERSION}-sources.jar"
+cp "build/libs/plantuml-pdf-${RELEASE_VERSION}.jar" "github_release/plantuml-pdf-${RELEASE_VERSION}.jar"
+#cp "build/libs/plantuml-linux-amd64-${RELEASE_VERSION}" "github_release/plantuml-linux-amd64-${RELEASE_VERSION}"
+#cp "build/libs/plantuml-darwin-amd64-${RELEASE_VERSION}" "github_release/plantuml-darwin-amd64-${RELEASE_VERSION}"
+#cp "build/libs/plantuml-win-amd64-${RELEASE_VERSION}.exe" "github_release/plantuml-win-amd64-${RELEASE_VERSION}.exe"
+cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}.jar" "github_release/plantuml-asl-${RELEASE_VERSION}.jar"
+cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-asl-${RELEASE_VERSION}-javadoc.jar"
+cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-asl-${RELEASE_VERSION}-sources.jar"
+cp "plantuml-bsd/build/libs/plantuml-bsd-${RELEASE_VERSION}.jar" "github_release/plantuml-bsd-${RELEASE_VERSION}.jar"
+cp "plantuml-bsd/build/libs/plantuml-bsd-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-bsd-${RELEASE_VERSION}-javadoc.jar"
+cp "plantuml-bsd/build/libs/plantuml-bsd-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-bsd-${RELEASE_VERSION}-sources.jar"
+cp "plantuml-epl/build/libs/plantuml-epl-${RELEASE_VERSION}.jar" "github_release/plantuml-epl-${RELEASE_VERSION}.jar"
+cp "plantuml-epl/build/libs/plantuml-epl-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-epl-${RELEASE_VERSION}-javadoc.jar"
+cp "plantuml-epl/build/libs/plantuml-epl-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-epl-${RELEASE_VERSION}-sources.jar"
+cp "plantuml-lgpl/build/libs/plantuml-lgpl-${RELEASE_VERSION}.jar" "github_release/plantuml-lgpl-${RELEASE_VERSION}.jar"
+cp "plantuml-lgpl/build/libs/plantuml-lgpl-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-lgpl-${RELEASE_VERSION}-javadoc.jar"
+cp "plantuml-lgpl/build/libs/plantuml-lgpl-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-lgpl-${RELEASE_VERSION}-sources.jar"
+cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}.jar" "github_release/plantuml-mit-${RELEASE_VERSION}.jar"
+cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-mit-${RELEASE_VERSION}-javadoc.jar"
+cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-mit-${RELEASE_VERSION}-sources.jar"
+cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}.jar" "github_release/plantuml-gplv2-${RELEASE_VERSION}.jar"
+cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar"
+cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-gplv2-${RELEASE_VERSION}-sources.jar"
 
 if [[ -e "build/publications/maven/module.json.asc" ]]; then
   # signatures are optional so that forked repos can release snapshots without needing a gpg signing key
-  ln -s "../libs/plantuml-${POM_VERSION}.jar.asc"            "${RELEASE_DIR}/plantuml.jar.asc"
-  ln -s "../libs/plantuml-${POM_VERSION}.jar.asc"            "${RELEASE_DIR}/plantuml-${POM_VERSION}.jar.asc"
-  ln -s "../libs/plantuml-${POM_VERSION}-javadoc.jar.asc"    "${RELEASE_DIR}/plantuml-${POM_VERSION}-javadoc.jar.asc"
-  ln -s "../libs/plantuml-${POM_VERSION}-sources.jar.asc"    "${RELEASE_DIR}/plantuml-${POM_VERSION}-sources.jar.asc"
-  ln -s "../libs/plantuml-pdf-${POM_VERSION}.jar.asc"        "${RELEASE_DIR}/plantuml-pdf-${POM_VERSION}.jar.asc"
+  cp "build/libs/plantuml-${RELEASE_VERSION}.jar.asc" "github_release/plantuml.jar.asc"
+  cp "build/libs/plantuml-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-${RELEASE_VERSION}.jar.asc"
+  cp "build/libs/plantuml-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "build/libs/plantuml-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-${RELEASE_VERSION}-sources.jar.asc"
+  cp "build/libs/plantuml-pdf-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-pdf-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-asl-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-asl-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-asl-${RELEASE_VERSION}-sources.jar.asc"
+  cp "plantuml-bsd/build/libs/plantuml-bsd-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-bsd-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-bsd/build/libs/plantuml-bsd-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-bsd-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "plantuml-bsd/build/libs/plantuml-bsd-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-bsd-${RELEASE_VERSION}-sources.jar.asc"
+  cp "plantuml-epl/build/libs/plantuml-epl-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-epl-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-epl/build/libs/plantuml-epl-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-epl-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "plantuml-epl/build/libs/plantuml-epl-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-epl-${RELEASE_VERSION}-sources.jar.asc"
+  cp "plantuml-lgpl/build/libs/plantuml-lgpl-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-lgpl-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-lgpl/build/libs/plantuml-lgpl-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-lgpl-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "plantuml-lgpl/build/libs/plantuml-lgpl-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-lgpl-${RELEASE_VERSION}-sources.jar.asc"
+  cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-mit-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-mit-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "plantuml-mit/build/libs/plantuml-mit-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-mit-${RELEASE_VERSION}-sources.jar.asc"
+  cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}.jar.asc" "github_release/plantuml-gplv2-${RELEASE_VERSION}.jar.asc"
+  cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar.asc" "github_release/plantuml-gplv2-${RELEASE_VERSION}-javadoc.jar.asc"
+  cp "plantuml-gplv2/build/libs/plantuml-gplv2-${RELEASE_VERSION}-sources.jar.asc" "github_release/plantuml-gplv2-${RELEASE_VERSION}-sources.jar.asc"
 fi
 
 gh release create \
   --target "${GITHUB_SHA}" \
   --title "${TAG}" \
-  "${TAG}" ${RELEASE_DIR}/*
+  "${TAG}" github_release/*
 
 echo "::notice title=::Released at ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG} 🎉"

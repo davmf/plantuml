@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -44,14 +44,15 @@ import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.PlainDiagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.UmlSource;
-import net.sourceforge.plantuml.graphic.GraphicStrings;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.UDrawable;
-import net.sourceforge.plantuml.svek.TextBlockBackcolored;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
 
 public class PSystemListEmoji extends PlainDiagram {
+	// ::remove file when __CORE__
 
 	private final String text;
 
@@ -59,7 +60,7 @@ public class PSystemListEmoji extends PlainDiagram {
 	protected UDrawable getRootDrawable(FileFormatOption fileFormatOption) throws IOException {
 		return new UDrawable() {
 			public void drawU(UGraphic ug) {
-				final TextBlockBackcolored header = GraphicStrings
+				final TextBlock header = GraphicStrings
 						.createBlackOnWhite(Arrays.asList("<b><size:16>Emoji available on Unicode Block " + text,
 								"(Blocks available: 26, 27, 1F3, 1F4, 1F5, 1F6, 1F9)"));
 				header.drawU(ug);
@@ -91,7 +92,7 @@ public class PSystemListEmoji extends PlainDiagram {
 						sb.append("\"\"<U+003C>:" + shortcut + ":<U+003E> \"\"");
 					}
 
-					final TextBlockBackcolored tmp = GraphicStrings.createBlackOnWhite(Arrays.asList(sb.toString()));
+					final TextBlock tmp = GraphicStrings.createBlackOnWhite(Arrays.asList(sb.toString()));
 					tmp.drawU(ug);
 					ug = ug.apply(UTranslate.dy(tmp.calculateDimension(stringBounder).getHeight()));
 

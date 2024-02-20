@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -49,9 +49,9 @@ public class Commit {
 		this.name = name;
 		this.position = position;
 		this.comment = position.getCommentInLine();
-		if (position.matches("* ") == false && position.matches("*-") == false) {
+		if (position.matches("* ") == false && position.matches("*-") == false)
 			throw new IllegalArgumentException();
-		}
+
 	}
 
 	public String getComment() {
@@ -94,15 +94,15 @@ public class Commit {
 	}
 
 	private static void addAbove(List<CursorPosition> result, CursorPosition here) {
-		if (here.move(0, 1).matches("|")) {
+		if (here.move(0, 1).matches("|"))
 			result.add(here.move(0, 1));
-		}
-		if (here.move(1, 1).matches("\\")) {
+
+		if (here.move(1, 1).matches("\\"))
 			result.add(here.move(1, 1));
-		}
-		if (here.move(-1, 1).matches("/")) {
+
+		if (here.move(-1, 1).matches("/"))
 			result.add(here.move(-1, 1));
-		}
+
 	}
 
 	public List<Commit> getAncestors() {

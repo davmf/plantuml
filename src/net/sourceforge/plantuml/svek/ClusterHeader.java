@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,22 +39,22 @@ package net.sourceforge.plantuml.svek;
 
 import java.util.List;
 
-import net.sourceforge.plantuml.ISkinParam;
+import net.sourceforge.plantuml.abel.DisplayPositioned;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityPortion;
+import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.activitydiagram3.ftile.EntityImageLegend;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.DisplayPositioned;
-import net.sourceforge.plantuml.cucadiagram.EntityPortion;
-import net.sourceforge.plantuml.cucadiagram.GroupType;
 import net.sourceforge.plantuml.cucadiagram.PortionShower;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
-import net.sourceforge.plantuml.graphic.USymbol;
+import net.sourceforge.plantuml.decoration.symbol.USymbol;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
@@ -66,15 +66,14 @@ public final class ClusterHeader {
 	final private TextBlock title;
 	final private TextBlock stereo;
 
-	public ClusterHeader(EntityImp g, ISkinParam skinParam, PortionShower portionShower, StringBounder stringBounder) {
+	public ClusterHeader(Entity g, ISkinParam skinParam, PortionShower portionShower, StringBounder stringBounder) {
 
 		this.title = getTitleBlock(g, skinParam);
 		this.stereo = getStereoBlock(g, skinParam, portionShower);
 		final TextBlock stereoAndTitle = TextBlockUtils.mergeTB(stereo, title, HorizontalAlignment.CENTER);
 		final XDimension2D dimLabel = stereoAndTitle.calculateDimension(stringBounder);
 		if (dimLabel.getWidth() > 0) {
-			final XDimension2D dimAttribute = ((EntityImp) g).getStateHeader(skinParam)
-					.calculateDimension(stringBounder);
+			final XDimension2D dimAttribute = ((Entity) g).getStateHeader(skinParam).calculateDimension(stringBounder);
 			final double attributeHeight = dimAttribute.getHeight();
 			final double attributeWidth = dimAttribute.getWidth();
 			final double marginForFields = attributeHeight > 0 ? IEntityImage.MARGIN : 0;
@@ -105,7 +104,7 @@ public final class ClusterHeader {
 		return stereo;
 	}
 
-	private TextBlock getTitleBlock(EntityImp g, ISkinParam skinParam) {
+	private TextBlock getTitleBlock(Entity g, ISkinParam skinParam) {
 		final Display label = g.getDisplay();
 		if (label == null)
 			return TextBlockUtils.empty(0, 0);
@@ -119,6 +118,8 @@ public final class ClusterHeader {
 		else if (uSymbol != null)
 			signature = StyleSignatureBasic.of(SName.root, SName.element, sname, uSymbol.getSName(), SName.composite,
 					SName.title);
+		else if (g.getGroupType() == GroupType.PACKAGE)
+			signature = StyleSignatureBasic.of(SName.root, SName.element, sname, SName.package_, SName.title);
 		else
 			signature = StyleSignatureBasic.of(SName.root, SName.element, sname, SName.composite, SName.title);
 
@@ -134,7 +135,7 @@ public final class ClusterHeader {
 		return label.create(fontConfiguration, alignment, skinParam);
 	}
 
-	private TextBlock getStereoBlock(EntityImp g, ISkinParam skinParam, PortionShower portionShower) {
+	private TextBlock getStereoBlock(Entity g, ISkinParam skinParam, PortionShower portionShower) {
 		final TextBlock stereo = getStereoBlockWithoutLegend(g, portionShower, skinParam);
 		final DisplayPositioned legend = g.getLegend();
 		if (legend == null || legend.isNull())
@@ -145,7 +146,7 @@ public final class ClusterHeader {
 				legend.getVerticalAlignment());
 	}
 
-	private TextBlock getStereoBlockWithoutLegend(EntityImp g, PortionShower portionShower, ISkinParam skinParam) {
+	private TextBlock getStereoBlockWithoutLegend(Entity g, PortionShower portionShower, ISkinParam skinParam) {
 		final Stereotype stereotype = g.getStereotype();
 		// final DisplayPositionned legend = g.getLegend();
 		if (stereotype == null)
@@ -164,7 +165,7 @@ public final class ClusterHeader {
 			return TextBlockUtils.empty(0, 0);
 
 		final Style style = Cluster
-				.getDefaultStyleDefinition(skinParam.getUmlDiagramType().getStyleName(), g.getUSymbol())
+				.getDefaultStyleDefinition(skinParam.getUmlDiagramType().getStyleName(), g.getUSymbol(), g.getGroupType())
 				.forStereotypeItself(g.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
 
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(skinParam.getIHtmlColorSet());

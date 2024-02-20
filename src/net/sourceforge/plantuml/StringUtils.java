@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -43,15 +43,62 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.asciiart.Wcwidth;
-import net.sourceforge.plantuml.command.regex.Matcher2;
-import net.sourceforge.plantuml.command.regex.MyPattern;
-import net.sourceforge.plantuml.command.regex.Pattern2;
-import net.sourceforge.plantuml.cucadiagram.Display;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.regex.Matcher2;
+import net.sourceforge.plantuml.regex.MyPattern;
+import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.Log;
 
 // Do not move
 public class StringUtils {
+
+	public static String goUpperCase(String s) {
+		// ::revert when __HAXE__
+		return s.toUpperCase(Locale.ENGLISH);
+		// return s.toUpperCase();
+		// ::done
+	}
+
+	public static String goLowerCase(String s) {
+		// ::revert when __HAXE__
+		return s.toLowerCase(Locale.ENGLISH);
+		// return s.toLowerCase();
+		// ::done
+	}
+
+	public static String eventuallyRemoveStartingAndEndingDoubleQuote(String s, String format) {
+		if (s == null)
+			return null;
+
+		if (format.contains("\"") && s.length() > 1 && isDoubleQuote(s.charAt(0))
+				&& isDoubleQuote(s.charAt(s.length() - 1)))
+			return s.substring(1, s.length() - 1);
+
+		if (format.contains("(") && s.startsWith("(") && s.endsWith(")"))
+			return s.substring(1, s.length() - 1);
+
+		if (format.contains("[") && s.startsWith("[") && s.endsWith("]"))
+			return s.substring(1, s.length() - 1);
+
+		if (format.contains(":") && s.startsWith(":") && s.endsWith(":"))
+			return s.substring(1, s.length() - 1);
+
+		return s;
+	}
+
+	public static String eventuallyRemoveStartingAndEndingDoubleQuote(String s) {
+		if (s == null)
+			return s;
+
+		return eventuallyRemoveStartingAndEndingDoubleQuote(s, "\"([:");
+	}
+
+	private static boolean isDoubleQuote(char c) {
+		return c == '\"' || c == '\u201c' || c == '\u201d' || c == '\u00ab' || c == '\u00bb';
+	}
+
+	// ::comment when __HAXE__
 
 	public static final char USER_NEWLINE = '\uEE00';
 	public static final char USER_TAB = '\uEE01';
@@ -193,16 +240,8 @@ public class StringUtils {
 		return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
 	}
 
-	public static String goUpperCase(String s) {
-		return s.toUpperCase(Locale.ENGLISH);
-	}
-
 	public static char goUpperCase(char c) {
 		return goUpperCase("" + c).charAt(0);
-	}
-
-	public static String goLowerCase(String s) {
-		return s.toLowerCase(Locale.ENGLISH);
 	}
 
 	public static char goLowerCase(char c) {
@@ -287,37 +326,6 @@ public class StringUtils {
 	// return Code.of(eventuallyRemoveStartingAndEndingDoubleQuote(s.getCode()));
 	// }
 
-	public static String eventuallyRemoveStartingAndEndingDoubleQuote(String s, String format) {
-		if (s == null)
-			return null;
-
-		if (format.contains("\"") && s.length() > 1 && isDoubleQuote(s.charAt(0))
-				&& isDoubleQuote(s.charAt(s.length() - 1)))
-			return s.substring(1, s.length() - 1);
-
-		if (format.contains("(") && s.startsWith("(") && s.endsWith(")"))
-			return s.substring(1, s.length() - 1);
-
-		if (format.contains("[") && s.startsWith("[") && s.endsWith("]"))
-			return s.substring(1, s.length() - 1);
-
-		if (format.contains(":") && s.startsWith(":") && s.endsWith(":"))
-			return s.substring(1, s.length() - 1);
-
-		return s;
-	}
-
-	public static String eventuallyRemoveStartingAndEndingDoubleQuote(String s) {
-		if (s == null)
-			return s;
-
-		return eventuallyRemoveStartingAndEndingDoubleQuote(s, "\"([:");
-	}
-
-	private static boolean isDoubleQuote(char c) {
-		return c == '\"' || c == '\u201c' || c == '\u201d' || c == '\u00ab' || c == '\u00bb';
-	}
-
 	public static boolean isCJK(char c) {
 		final Character.UnicodeBlock block = Character.UnicodeBlock.of(c);
 		Log.println("block=" + block);
@@ -344,28 +352,14 @@ public class StringUtils {
 		return s;
 	}
 
-	private static int getWidth(Display stringsToDisplay) {
-		int result = 1;
-		for (CharSequence s : stringsToDisplay)
-			if (s != null && result < s.length())
-				result = s.length();
-
-		return result;
-	}
-
-	public static int getWcWidth(Display stringsToDisplay) {
-		int result = 1;
-		for (CharSequence s : stringsToDisplay) {
-			if (s == null)
-				continue;
-
-			final int length = Wcwidth.length(s);
-			if (result < length)
-				result = length;
-
-		}
-		return result;
-	}
+//	private static int getWidth(Display stringsToDisplay) {
+//		int result = 1;
+//		for (CharSequence s : stringsToDisplay)
+//			if (s != null && result < s.length())
+//				result = s.length();
+//
+//		return result;
+//	}
 
 	public static int getHeight(List<? extends CharSequence> stringsToDisplay) {
 		return stringsToDisplay.size();
@@ -487,9 +481,9 @@ public class StringUtils {
 		final Matcher matcher = pattern.matcher(s);
 		final StringBuffer result = new StringBuffer(); // Can't be switched to StringBuilder in order to support Java 8
 		while (matcher.find()) {
-			final String num = matcher.group(1);
-			final char c = (char) Integer.parseInt(num);
-			matcher.appendReplacement(result, "" + c);
+			final int codePoint = Integer.parseInt(matcher.group(1));
+			final String unicode = new String(Character.toChars(codePoint));
+			matcher.appendReplacement(result, unicode);
 		}
 		matcher.appendTail(result);
 		return result.toString();
@@ -503,6 +497,22 @@ public class StringUtils {
 	public static String trinNoTrace(CharSequence s) {
 		return s.toString().trim();
 	}
+
+	public static String manageEscapedTabs(String s) {
+		return s.replace("\\t", "\t");
+	}
+
+	public static long seed(String string) {
+		long h = 1125899906842597L; // prime
+		final int len = string.length();
+
+		for (int i = 0; i < len; i++)
+			h = 31 * h + string.charAt(i);
+
+		return h;
+	}
+
+	// ::done
 
 	public static String trin(String arg) {
 		if (arg.length() == 0)
@@ -541,26 +551,28 @@ public class StringUtils {
 		return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\0';
 	}
 
-	public static String manageEscapedTabs(String s) {
-		return s.replace("\\t", "\t");
-	}
-
-	public static long seed(String string) {
-		long h = 1125899906842597L; // prime
-		final int len = string.length();
-
-		for (int i = 0; i < len; i++)
-			h = 31 * h + string.charAt(i);
-
-		return h;
-	}
-
 	public static String sharp000000(int color) {
 		final int v = 0xFFFFFF & color;
 		String s = "000000" + Integer.toHexString(v).toUpperCase();
 		s = s.substring(s.length() - 6);
 		return "#" + s;
 	}
+
+	// ::comment when __CORE__ or __HAXE__
+	public static int getWcWidth(Display stringsToDisplay) {
+		int result = 1;
+		for (CharSequence s : stringsToDisplay) {
+			if (s == null)
+				continue;
+
+			final int length = Wcwidth.length(s);
+			if (result < length)
+				result = length;
+
+		}
+		return result;
+	}
+	// ::done
 
 	// http://docs.oracle.com/javase/tutorial/i18n/format/dateFormat.html
 }

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,24 +35,23 @@
  */
 package net.sourceforge.plantuml.skin;
 
-import net.sourceforge.plantuml.ColorParam;
+import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XRectangle2D;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.InnerStrategy;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.UDrawable;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.UEllipse;
+import net.sourceforge.plantuml.klimt.shape.UPolygon;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPolygon;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
 
 public enum VisibilityModifier {
 	PRIVATE_FIELD(StringUtils.PRIVATE_FIELD, ColorParam.iconPrivate, null),
@@ -106,7 +105,7 @@ public enum VisibilityModifier {
 
 			public void drawU(UGraphic ug) {
 				if (withInvisibleRectanble)
-					ug.apply(HColors.none()).draw(new URectangle(size * 2, size));
+					ug.apply(HColors.none()).draw(URectangle.build(size * 2, size));
 
 				drawInternal(ug, size, foregroundColor, backgoundColor, 0, 0);
 			}
@@ -165,11 +164,11 @@ public enum VisibilityModifier {
 	}
 
 	private void drawSquare(UGraphic ug, boolean filled, int size, double x, double y) {
-		ug.apply(new UTranslate(x + 2, y + 2)).draw(new URectangle(size - 4, size - 4));
+		ug.apply(new UTranslate(x + 2, y + 2)).draw(URectangle.build(size - 4, size - 4));
 	}
 
 	private void drawCircle(UGraphic ug, boolean filled, int size, double x, double y) {
-		ug.apply(new UTranslate(x + 2, y + 2)).draw(new UEllipse(size - 4, size - 4));
+		ug.apply(new UTranslate(x + 2, y + 2)).draw(UEllipse.build(size - 4, size - 4));
 	}
 
 	static private int ensureEven(int n) {

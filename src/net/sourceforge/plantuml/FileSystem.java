@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -42,6 +42,7 @@ import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.utils.Log;
 
 public class FileSystem {
+	// ::remove file when __HAXE__
 
 	private final static FileSystem singleton = new FileSystem();
 
@@ -65,14 +66,21 @@ public class FileSystem {
 	}
 
 	public SFile getCurrentDir() {
+		// ::comment when __CORE__
 		final String path = this.currentDir.get();
-		if (path != null) {
+		if (path != null)
 			return new SFile(path);
-		}
+		// ::done
+
 		return null;
 	}
 
 	public SFile getFile(String nameOrPath) throws IOException {
+		// ::uncomment when __CORE__
+		// return null;
+		// ::done
+
+		// ::comment when __CORE__
 		if (isAbsolute(nameOrPath)) {
 			final SFile result = new SFile(nameOrPath);
 			Log.info("Trying " + result.getAbsolutePath());
@@ -107,12 +115,15 @@ public class FileSystem {
 		}
 		assert filecurrent != null;
 		return filecurrent;
+		// ::done
 	}
 
+	// ::comment when __CORE__
 	private boolean isAbsolute(String nameOrPath) {
 		final SFile f = new SFile(nameOrPath);
 		return f.isAbsolute();
 	}
+	// ::done
 
 	public void reset() {
 		setCurrentDir(new SFile("."));

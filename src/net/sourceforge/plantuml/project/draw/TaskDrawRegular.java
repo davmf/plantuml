@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,18 +39,20 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.TreeSet;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.LineBreakStrategy;
-import net.sourceforge.plantuml.SpriteContainerEmpty;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.creole.CreoleMode;
-import net.sourceforge.plantuml.creole.Sheet;
-import net.sourceforge.plantuml.creole.SheetBlock1;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.CreoleMode;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.creole.Sheet;
+import net.sourceforge.plantuml.klimt.creole.SheetBlock1;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.sprite.SpriteContainerEmpty;
 import net.sourceforge.plantuml.project.GanttConstraint;
 import net.sourceforge.plantuml.project.LabelStrategy;
 import net.sourceforge.plantuml.project.ToTaskDraw;
@@ -63,15 +65,14 @@ import net.sourceforge.plantuml.project.timescale.TimeScale;
 import net.sourceforge.plantuml.real.Real;
 import net.sourceforge.plantuml.sequencediagram.graphic.Segment;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
+import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
+import net.sourceforge.plantuml.style.StyleSignature;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.image.Opale;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
 
 public class TaskDrawRegular extends AbstractTaskDraw {
 
@@ -80,13 +81,13 @@ public class TaskDrawRegular extends AbstractTaskDraw {
 	private final boolean oddEnd;
 	private final Collection<Day> paused;
 	private final Collection<GanttConstraint> constraints;
-	private final ISkinParam skinParam;
+	private final ISkinSimple skinSimple;
 
 	public TaskDrawRegular(TimeScale timeScale, Real y, String prettyDisplay, Day start, Day end, boolean oddStart,
-			boolean oddEnd, ISkinParam skinParam, Task task, ToTaskDraw toTaskDraw,
+			boolean oddEnd, ISkinSimple skinSimple, Task task, ToTaskDraw toTaskDraw,
 			Collection<GanttConstraint> constraints, StyleBuilder styleBuilder) {
-		super(timeScale, y, prettyDisplay, start, skinParam, task, toTaskDraw, styleBuilder);
-		this.skinParam = skinParam;
+		super(timeScale, y, prettyDisplay, start, task, toTaskDraw, styleBuilder);
+		this.skinSimple = skinSimple;
 		this.constraints = constraints;
 		this.end = end;
 		this.oddStart = oddStart;
@@ -101,7 +102,7 @@ public class TaskDrawRegular extends AbstractTaskDraw {
 	}
 
 	@Override
-	protected double getShapeHeight(StringBounder stringBounder) {
+	public double getShapeHeight(StringBounder stringBounder) {
 		final Style style = getStyle();
 		final ClockwiseTopRightBottomLeft padding = style.getPadding();
 		return padding.getTop() + getTitle().calculateDimension(stringBounder).getHeight() + padding.getBottom();
@@ -162,15 +163,15 @@ public class TaskDrawRegular extends AbstractTaskDraw {
 	}
 
 	@Override
-	StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.ganttDiagram, SName.task);
+	StyleSignature getStyleSignature() {
+		return StyleSignatureBasic.of(SName.root, SName.element, SName.ganttDiagram, SName.task)
+				.withTOBECHANGED(getTask().getStereotype());
 	}
 
 	public void drawU(UGraphic ug) {
 		final double startPos = timeScale.getStartingPosition(start);
 		drawNote(ug.apply((new UTranslate(startPos, getYNotePosition(ug.getStringBounder())))));
 
-		ug = applyColors(ug);
 		drawShape(ug);
 	}
 
@@ -203,7 +204,7 @@ public class TaskDrawRegular extends AbstractTaskDraw {
 		final FontConfiguration fc = style.getFontConfiguration(getColorSet());
 
 		final HorizontalAlignment horizontalAlignment = style.value(PName.HorizontalAlignment).asHorizontalAlignment();
-		final Sheet sheet = skinParam.sheet(fc, horizontalAlignment, CreoleMode.FULL).createSheet(note);
+		final Sheet sheet = skinSimple.sheet(fc, horizontalAlignment, CreoleMode.FULL).createSheet(note);
 		final double padding = style.value(PName.Padding).asDouble();
 		final SheetBlock1 sheet1 = new SheetBlock1(sheet, LineBreakStrategy.NONE, padding);
 
@@ -256,7 +257,8 @@ public class TaskDrawRegular extends AbstractTaskDraw {
 		return endPos;
 	}
 
-	private void drawShape(UGraphic ug) {
+	public void drawShape(UGraphic ug) {
+		ug = applyColors(ug);
 		final Style style = getStyleSignature().getMergedStyle(getStyleBuilder());
 		final ClockwiseTopRightBottomLeft margin = style.getMargin();
 

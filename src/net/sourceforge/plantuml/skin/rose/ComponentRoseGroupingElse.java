@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,24 +35,24 @@
  */
 package net.sourceforge.plantuml.skin.rose;
 
-import net.sourceforge.plantuml.ISkinSimple;
-import net.sourceforge.plantuml.LineBreakStrategy;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UShape;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.ULine;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.skin.AbstractTextualComponent;
 import net.sourceforge.plantuml.skin.Area;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
+import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UShape;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
 
 public class ComponentRoseGroupingElse extends AbstractTextualComponent {
 
@@ -82,9 +82,9 @@ public class ComponentRoseGroupingElse extends AbstractTextualComponent {
 		final double height = dimensionToUse.getHeight();
 		final UShape rect;
 		if (roundCorner == 0) {
-			rect = new URectangle(width, height);
+			rect = URectangle.build(width, height);
 		} else {
-			final UPath path = new UPath();
+			final UPath path = UPath.none();
 			path.moveTo(0, 0);
 			path.lineTo(width, 0);
 
@@ -105,7 +105,7 @@ public class ComponentRoseGroupingElse extends AbstractTextualComponent {
 		final XDimension2D dimensionToUse = area.getDimensionToUse();
 		ug = ArrowConfiguration.stroke(ug, 2, 2, 1).apply(groupBorder);
 		ug.apply(UTranslate.dy(1)).draw(ULine.hline(dimensionToUse.getWidth()));
-		ug = ug.apply(new UStroke());
+		ug = ug.apply(UStroke.simple());
 		if (teoz)
 			getTextBlock().drawU(ug.apply(new UTranslate(getMarginX1(), getMarginY() + 2)));
 		else

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -38,7 +38,6 @@ package net.sourceforge.plantuml.activitydiagram3;
 import java.util.Objects;
 import java.util.Set;
 
-import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Ftile;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileFactory;
@@ -48,14 +47,17 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.FtileWithNoteOpa
 import net.sourceforge.plantuml.activitydiagram3.gtile.Gtile;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GtileWhile;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.Rainbow;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.VerticalAlignment;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.decoration.Rainbow;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.StyleBuilder;
 
 public class InstructionWhile extends WithNote implements Instruction, InstructionCollection {
 
@@ -72,30 +74,32 @@ public class InstructionWhile extends WithNote implements Instruction, Instructi
 
 	private LinkRendering outColor = LinkRendering.none();
 	private final Swimlane swimlane;
-	private final ISkinParam skinParam;
 
 	private Instruction specialOut;
 
 	private BoxStyle boxStyle;
-	private Swimlane swimlaneOut;
+
 	private Display backward = Display.NULL;
+	private Stereotype stereotype;
+
 	private LinkRendering incoming1 = LinkRendering.none();
 	private LinkRendering incoming2 = LinkRendering.none();
 	private boolean backwardCalled;
+	private final StyleBuilder currentStyleBuilder;
 
 	public void overwriteYes(Display yes) {
 		this.yes = yes;
 	}
 
 	public InstructionWhile(Swimlane swimlane, Instruction parent, Display test, LinkRendering nextLinkRenderer,
-			Display yes, HColor color, ISkinParam skinParam) {
+			Display yes, HColor color, StyleBuilder currentStyleBuilder) {
 		this.parent = parent;
 		this.test = Objects.requireNonNull(test);
 		this.nextLinkRenderer = Objects.requireNonNull(nextLinkRenderer);
 		this.yes = Objects.requireNonNull(yes);
 		this.swimlane = swimlane;
+		this.currentStyleBuilder = currentStyleBuilder;
 		this.color = color;
-		this.skinParam = skinParam;
 	}
 
 	@Override
@@ -103,6 +107,7 @@ public class InstructionWhile extends WithNote implements Instruction, Instructi
 		return repeatList.add(ins);
 	}
 
+	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		final Gtile back = null;
@@ -110,15 +115,17 @@ public class InstructionWhile extends WithNote implements Instruction, Instructi
 		tmp = GtileWhile.createWhile(swimlane, tmp, test, yes, specialOut, back);
 		return tmp;
 	}
+	// ::done
 
 	@Override
 	public Ftile createFtile(FtileFactory factory) {
 		final Ftile back = Display.isNull(backward) ? null
-				: factory.activity(backward, swimlane, boxStyle, Colors.empty(), null);
+				: factory.activity(backward, swimlane, boxStyle, Colors.empty(), stereotype);
 		Ftile tmp = repeatList.createFtile(factory);
-		tmp = factory.createWhile(outColor, swimlane, tmp, test, yes, color, specialOut, back, incoming1, incoming2);
+		tmp = factory.createWhile(outColor, swimlane, tmp, test, yes, color, specialOut, back, incoming1, incoming2,
+				currentStyleBuilder);
 		if (getPositionedNotes().size() > 0)
-			tmp = FtileWithNoteOpale.create(tmp, getPositionedNotes(), skinParam, false, VerticalAlignment.CENTER);
+			tmp = FtileWithNoteOpale.create(tmp, getPositionedNotes(), false, VerticalAlignment.CENTER);
 
 		if (killed || specialOut != null)
 			return new FtileKilled(tmp);
@@ -189,14 +196,14 @@ public class InstructionWhile extends WithNote implements Instruction, Instructi
 		return repeatList.containsBreak();
 	}
 
-	public void setBackward(Display label, Swimlane swimlaneOut, BoxStyle boxStyle, LinkRendering incoming1,
-			LinkRendering incoming2) {
+	public void setBackward(Display label, BoxStyle boxStyle, LinkRendering incoming1, LinkRendering incoming2,
+			Stereotype stereotype) {
 		this.backward = label;
-		this.swimlaneOut = swimlaneOut;
 		this.boxStyle = boxStyle;
 		this.incoming1 = incoming1;
 		this.incoming2 = incoming2;
 		this.backwardCalled = true;
+		this.stereotype = stereotype;
 	}
 
 	public void incoming(LinkRendering incoming) {

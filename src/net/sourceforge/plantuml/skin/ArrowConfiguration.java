@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,9 +37,9 @@ package net.sourceforge.plantuml.skin;
 
 import java.util.Objects;
 
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 
 public class ArrowConfiguration {
 
@@ -240,11 +240,11 @@ public class ArrowConfiguration {
 		if (isDotted())
 			return ug.apply(new UStroke(2, 2, thickness));
 
-		return ug.apply(new UStroke(thickness));
+		return ug.apply(UStroke.withThickness(thickness));
 	}
 
 	public UGraphic applyThicknessOnly(UGraphic ug) {
-		return ug.apply(new UStroke(thickness));
+		return ug.apply(UStroke.withThickness(thickness));
 	}
 
 	public ArrowConfiguration withThickness(double thickness) {
@@ -267,13 +267,15 @@ public class ArrowConfiguration {
 	}
 
 	public final int getInclination1() {
-		if (dressing2.getHead() == ArrowHead.NONE)
+		if (dressing2.getHead() == ArrowHead.NONE || dressing2.getHead() == ArrowHead.CROSSX)
 			return inclination;
 		return 0;
 	}
 
 	public final int getInclination2() {
-		if (dressing1.getHead() == ArrowHead.NONE)
+		if (dressing1.getHead() == ArrowHead.NONE || dressing1.getHead() == ArrowHead.CROSSX)
+			return inclination;
+		if (dressing1.getHead() == ArrowHead.NORMAL || dressing1.getHead() == ArrowHead.NORMAL)
 			return inclination;
 		return 0;
 	}

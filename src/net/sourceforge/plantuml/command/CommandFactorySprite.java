@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -41,14 +41,14 @@ import java.util.List;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.WithSprite;
 import net.sourceforge.plantuml.command.note.SingleMultiFactoryCommand;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexOptional;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.sprite.Sprite;
-import net.sourceforge.plantuml.sprite.SpriteColorBuilder4096;
-import net.sourceforge.plantuml.sprite.SpriteGrayLevel;
+import net.sourceforge.plantuml.klimt.sprite.Sprite;
+import net.sourceforge.plantuml.klimt.sprite.SpriteColorBuilder4096;
+import net.sourceforge.plantuml.klimt.sprite.SpriteGrayLevel;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
 
@@ -91,7 +91,8 @@ public final class CommandFactorySprite implements SingleMultiFactoryCommand<Wit
 	}
 
 	public Command<WithSprite> createMultiLine(boolean withBracket) {
-		return new CommandMultilines2<WithSprite>(getRegexConcatMultiLine(), MultilinesStrategy.REMOVE_STARTING_QUOTE, Trim.BOTH) {
+		return new CommandMultilines2<WithSprite>(getRegexConcatMultiLine(), MultilinesStrategy.REMOVE_STARTING_QUOTE,
+				Trim.BOTH) {
 
 			@Override
 			public String getPatternEnd() {
@@ -104,9 +105,9 @@ public final class CommandFactorySprite implements SingleMultiFactoryCommand<Wit
 
 				lines = lines.subExtract(1, 1);
 				lines = lines.removeEmptyColumns();
-				if (lines.size() == 0) {
+				if (lines.size() == 0)
 					return CommandExecutionResult.error("No sprite defined.");
-				}
+
 				return executeInternal(system, line0, lines.getLinesAsStringForSprite());
 			}
 
@@ -122,17 +123,17 @@ public final class CommandFactorySprite implements SingleMultiFactoryCommand<Wit
 			final int height = Integer.parseInt(line0.get("DIM", 1));
 			if (line0.get("DIM", 4) == null) {
 				final int nbLevel = Integer.parseInt(line0.get("DIM", 2));
-				if (nbLevel != 4 && nbLevel != 8 && nbLevel != 16) {
+				if (nbLevel != 4 && nbLevel != 8 && nbLevel != 16)
 					return CommandExecutionResult.error("Only 4, 8 or 16 graylevel are allowed.");
-				}
+
 				final SpriteGrayLevel level = SpriteGrayLevel.get(nbLevel);
 				if (line0.get("DIM", 3) == null) {
 					sprite = level.buildSprite(width, height, strings);
 				} else {
 					sprite = level.buildSpriteZ(width, height, concat(strings));
-					if (sprite == null) {
+					if (sprite == null)
 						return CommandExecutionResult.error("Cannot decode sprite.");
-					}
+
 				}
 			} else {
 				sprite = SpriteColorBuilder4096.buildSprite(strings);
@@ -144,9 +145,9 @@ public final class CommandFactorySprite implements SingleMultiFactoryCommand<Wit
 
 	private String concat(final List<String> strings) {
 		final StringBuilder sb = new StringBuilder();
-		for (String s : strings) {
+		for (String s : strings)
 			sb.append(StringUtils.trin(s));
-		}
+
 		return sb.toString();
 	}
 

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,12 +39,13 @@ import net.sourceforge.plantuml.project.core.PrintScale;
 import net.sourceforge.plantuml.project.time.Day;
 
 public final class TimeScaleDaily implements TimeScale {
+	// ::remove folder when __HAXE__
 
 	private final TimeScaleWink basic;
 	private final double delta;
 
-	public TimeScaleDaily(Day startingDay, double scale, Day zeroDay) {
-		this.basic = new TimeScaleWink(scale, PrintScale.DAILY);
+	public TimeScaleDaily(double size, Day startingDay, double scale, Day zeroDay) {
+		this.basic = new TimeScaleWink(size, scale, PrintScale.DAILY);
 		if (zeroDay == null)
 			this.delta = basic.getStartingPosition(startingDay);
 		else

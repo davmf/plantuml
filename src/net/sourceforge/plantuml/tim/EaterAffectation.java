@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -34,8 +34,8 @@
  */
 package net.sourceforge.plantuml.tim;
 
+import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.tim.expression.TValue;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public class EaterAffectation extends Eater {
 
@@ -49,25 +49,26 @@ public class EaterAffectation extends Eater {
 		checkAndEatChar("!");
 		skipSpaces();
 		String varname = eatAndGetVarname();
-		TVariableScope scope = null;
+		TVariableScope scope = TVariableScope.lazzyParse(varname);
+		if (scope != null) {
+			skipSpaces();
+			if (peekChar() == '?' || peekChar() == '=') {
+				// The variable itself is "local" or "glocal", which is not a good idea by the way
+				scope = null;
+			} else
+				varname = eatAndGetVarname();
+		}
 		skipSpaces();
 		boolean conditional = false;
 		if (peekChar() == '?') {
 			checkAndEatChar('?');
 			conditional = true;
 		}
-		if (peekChar() != '=') {
-			scope = TVariableScope.valueOf(varname.toUpperCase());
-			varname = eatAndGetVarname();
-			skipSpaces();
-		}
 		checkAndEatChar('=');
-		if (conditional) {
-			final TValue already = memory.getVariable(varname);
-			if (already != null) {
+		if (conditional)
+			if (memory.getVariable(varname) != null)
 				return;
-			}
-		}
+
 		skipSpaces();
 		final TValue value = eatExpression(context, memory);
 		memory.putVariable(varname, value, scope);

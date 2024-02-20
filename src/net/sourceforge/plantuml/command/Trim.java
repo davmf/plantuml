@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,16 +37,18 @@ package net.sourceforge.plantuml.command;
 
 import java.util.regex.Pattern;
 
-import net.sourceforge.plantuml.utils.StringLocated;
+import net.sourceforge.plantuml.text.StringLocated;
 
 public enum Trim {
-	BOTH, LEFT_ONLY;
+	BOTH, LEFT_ONLY, NONE;
 
 	private String ltrim(final String tmp1) {
 		return LTRIM.matcher(tmp1).replaceAll("");
 	}
 
 	public String trim(StringLocated s) {
+		if (this == NONE)
+			return s.getString();
 		if (this == BOTH)
 			return s.getTrimmed().getString();
 		return ltrim(s.getString());

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,17 +35,27 @@
  */
 package net.sourceforge.plantuml.asciiart;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.graphic.StringBounderRaw;
-import net.sourceforge.plantuml.ugraphic.UFont;
+import net.sourceforge.plantuml.FileFormat;
+import net.sourceforge.plantuml.klimt.font.StringBounderRaw;
+import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
 public class TextStringBounder extends StringBounderRaw {
+
+	public TextStringBounder() {
+		super(FileFormat.gg.getFontRenderContext());
+	}
 
 	protected XDimension2D calculateDimensionInternal(UFont font, String text) {
 		final int length1 = text.codePointCount(0, text.length());
 		final int length2 = text.length();
 		final int length3 = Wcwidth.length(text);
 		return new XDimension2D(length2, 1);
+	}
+
+	@Override
+	public boolean matchesProperty(String propertyName) {
+		return false;
 	}
 
 }

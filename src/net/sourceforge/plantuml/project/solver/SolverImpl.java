@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -41,6 +41,7 @@ import net.sourceforge.plantuml.project.core.TaskAttribute;
 import net.sourceforge.plantuml.project.time.Day;
 
 public class SolverImpl extends AbstractSolver implements Solver {
+	// ::remove folder when __HAXE__
 
 	private final LoadPlanable loadPlanable;
 
@@ -53,12 +54,17 @@ public class SolverImpl extends AbstractSolver implements Solver {
 		Day current = (Day) values.get(TaskAttribute.START);
 		int fullLoad = ((Load) values.get(TaskAttribute.LOAD)).getFullLoad();
 		int cpt = 0;
+		final Day lastDayIfAny = loadPlanable.getLastDayIfAny();
 		while (fullLoad > 0) {
 			fullLoad -= loadPlanable.getLoadAt(current);
 			current = current.increment();
+			if (lastDayIfAny != null && current.compareTo(lastDayIfAny) > 0)
+				throw new ImpossibleSolvingException(
+						"Because all resources will be off at some point, we cannot compute any end date for "
+								+ loadPlanable);
 			cpt++;
 			if (cpt > 100000)
-				throw new IllegalStateException();
+				throw new ImpossibleSolvingException("There is an issue in planning your tasks!");
 
 		}
 		return current.decrement();
@@ -77,7 +83,7 @@ public class SolverImpl extends AbstractSolver implements Solver {
 
 			cpt++;
 			if (cpt > 100000)
-				throw new IllegalStateException();
+				throw new ImpossibleSolvingException("There is an issue in planning your tasks!");
 
 		}
 		return current.increment();

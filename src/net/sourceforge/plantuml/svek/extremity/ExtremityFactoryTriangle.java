@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,33 +35,36 @@
  */
 package net.sourceforge.plantuml.svek.extremity;
 
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.graphic.UDrawable;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.geom.Side;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.svek.AbstractExtremityFactory;
-import net.sourceforge.plantuml.svek.Side;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
 
 public class ExtremityFactoryTriangle extends AbstractExtremityFactory implements ExtremityFactory {
 
 	private final HColor backgroundColor;
 	private final int xWing;
 	private final int yAperture;
+	private final int decorationLength;
 
-	public ExtremityFactoryTriangle(HColor backgroundColor, int xWing, int yAperture) {
+	public ExtremityFactoryTriangle(HColor backgroundColor, int xWing, int yAperture, int decorationLength) {
 		this.backgroundColor = backgroundColor;
 		this.xWing = xWing;
 		this.yAperture = yAperture;
+		this.decorationLength = decorationLength;
 	}
 
 	@Override
 	public UDrawable createUDrawable(XPoint2D p0, double angle, Side side) {
-		return new ExtremityTriangle(p0, angle - Math.PI / 2, false, backgroundColor, xWing, yAperture);
+		return new ExtremityTriangle(p0, angle - Math.PI / 2, false, backgroundColor, xWing, yAperture,
+				decorationLength);
 	}
 
 	@Override
-	public UDrawable createUDrawable(XPoint2D p0, XPoint2D p1, XPoint2D p2, Side side) {
+	public UDrawable createTBRDrawableLegacy(XPoint2D p0, XPoint2D p1, XPoint2D p2, Side side) {
 		final double ortho = atan2(p0, p2);
-		return new ExtremityTriangle(p1, ortho, true, backgroundColor, xWing, yAperture);
+		return new ExtremityTriangle(p1, ortho, true, backgroundColor, xWing, yAperture, decorationLength);
 	}
 
 }

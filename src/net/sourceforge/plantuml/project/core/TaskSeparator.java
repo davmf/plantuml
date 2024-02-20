@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,13 +35,13 @@
  */
 package net.sourceforge.plantuml.project.core;
 
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.cucadiagram.Display;
+import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.project.Load;
 import net.sourceforge.plantuml.project.lang.CenterBorderColor;
 import net.sourceforge.plantuml.project.time.Day;
 import net.sourceforge.plantuml.project.time.DayOfWeek;
 import net.sourceforge.plantuml.style.StyleBuilder;
+import net.sourceforge.plantuml.url.Url;
 
 public class TaskSeparator extends AbstractTask implements Task {
 
@@ -52,22 +52,27 @@ public class TaskSeparator extends AbstractTask implements Task {
 		this.comment = comment;
 	}
 
+	@Override
 	public Day getStart() {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public Day getEnd() {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void setStart(Day start) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void setEnd(Day end) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void setColors(CenterBorderColor... colors) {
 		throw new UnsupportedOperationException();
 	}
@@ -76,10 +81,12 @@ public class TaskSeparator extends AbstractTask implements Task {
 		return comment;
 	}
 
+	@Override
 	public void addResource(Resource resource, int percentage) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public Load getLoad() {
 		throw new UnsupportedOperationException();
 	}
@@ -88,31 +95,43 @@ public class TaskSeparator extends AbstractTask implements Task {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void setDiamond(boolean diamond) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public boolean isDiamond() {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void setCompletion(int completion) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void setUrl(Url url) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void addPause(Day pause) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void addPause(DayOfWeek pause) {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public void setNote(Display note) {
+	}
+
+	@Override
+	public boolean isAssignedTo(Resource res) {
+		return false;
 	}
 
 }

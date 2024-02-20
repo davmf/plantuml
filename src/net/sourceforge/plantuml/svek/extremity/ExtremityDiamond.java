@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,11 +35,11 @@
  */
 package net.sourceforge.plantuml.svek.extremity;
 
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPolygon;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UPolygon;
 
 class ExtremityDiamond extends Extremity {
 
@@ -65,7 +65,7 @@ class ExtremityDiamond extends Extremity {
 		polygon.addPoint(-xWing, yAperture);
 		polygon.addPoint(0, 0);
 		polygon.rotate(angle + Math.PI / 2);
-		this.deltaForKal = new UTranslate(polygon.getPoint(2)).reverse();
+		this.deltaForKal = UTranslate.point(polygon.getPoint(2)).reverse();
 		polygon = polygon.translate(p1.getX(), p1.getY());
 	}
 
@@ -82,15 +82,20 @@ class ExtremityDiamond extends Extremity {
 
 		ug.draw(polygon);
 	}
-
+	
 	@Override
-	public XPoint2D isTooSmallSoGiveThePointCloserToThisOne(XPoint2D pt) {
-		XPoint2D result = null;
-		for (XPoint2D p : polygon.getPoints())
-			if (result == null || p.distance(pt) < result.distance(pt))
-				result = p;
-
-		return result;
+	public double getDecorationLength() {
+		return 12;
 	}
+
+//	@Override
+//	public XPoint2D isTooSmallSoGiveThePointCloserToThisOne(XPoint2D pt) {
+//		XPoint2D result = null;
+//		for (XPoint2D p : polygon.getPoints())
+//			if (result == null || p.distance(pt) < result.distance(pt))
+//				result = p;
+//
+//		return result;
+//	}
 
 }

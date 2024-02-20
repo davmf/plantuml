@@ -2,12 +2,12 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * This file is part of Smetana.
  * Smetana is a partial translation of Graphviz/Dot sources from C to Java.
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
  * This translation is distributed under the same Licence as the original C program.
  * 
@@ -37,13 +37,13 @@ import h.ST_Agedgeinfo_t;
 import h.ST_bezier;
 import h.ST_pointf;
 import h.ST_splines;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
 import net.sourceforge.plantuml.jsondiagram.Arrow;
 import net.sourceforge.plantuml.jsondiagram.Mirror;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 
 public class GitCurve {
 
@@ -57,25 +57,24 @@ public class GitCurve {
 	public GitCurve(ST_Agedgeinfo_t data, Mirror xMirror) {
 		this.xMirror = xMirror;
 		final ST_splines splines = data.spl;
-		if (splines.size != 1) {
+		if (splines.size != 1)
 			throw new IllegalStateException();
-		}
+
 		final ST_bezier beziers = splines.list.get__(0);
 		for (int i = 0; i < beziers.size; i++) {
 			final XPoint2D pt = getPoint(splines, i);
 			points.add(pt);
 		}
 
-		if (beziers.sp.x == 0 && beziers.sp.y == 0) {
+		if (beziers.sp.x == 0 && beziers.sp.y == 0)
 			sp = null;
-		} else {
+		else
 			sp = new XPoint2D(beziers.sp.x, beziers.sp.y);
-		}
-		if (beziers.ep.x == 0 && beziers.ep.y == 0) {
+
+		if (beziers.ep.x == 0 && beziers.ep.y == 0)
 			ep = null;
-		} else {
+		else
 			ep = new XPoint2D(beziers.ep.x, beziers.ep.y);
-		}
 
 	}
 
@@ -87,7 +86,7 @@ public class GitCurve {
 
 	public void drawCurve(HColor color, UGraphic ug) {
 		ug = ug.apply(new UStroke(2, 2, 1));
-		final UPath path = new UPath();
+		final UPath path = UPath.none();
 
 		path.moveTo(xMirror.invGit(points.get(0)));
 

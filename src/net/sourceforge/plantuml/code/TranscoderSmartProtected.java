@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -38,6 +38,7 @@ package net.sourceforge.plantuml.code;
 import java.io.IOException;
 
 public class TranscoderSmartProtected implements Transcoder {
+	// ::remove file when __CORE__
 
 	// Legacy encoder
 	private final Transcoder oldOne = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
@@ -48,6 +49,8 @@ public class TranscoderSmartProtected implements Transcoder {
 			new CompressionNone());
 	private final Transcoder zip = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
 			new CompressionZip());
+	private final Transcoder gzip = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+			new CompressionGZip());
 
 	public String decode(String code) throws NoPlantumlCompressionException {
 		// Work in progress
@@ -61,6 +64,9 @@ public class TranscoderSmartProtected implements Transcoder {
 
 		if (code.startsWith("~h"))
 			return hexOnly.decode(code.substring(2));
+
+		if (code.startsWith("~g"))
+			return gzip.decode(code.substring(2));
 
 		if (code.startsWith("~zip~"))
 			return zip.decode(code.substring(5));

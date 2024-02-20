@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -45,20 +45,23 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.cucadiagram.dot.Graphviz;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
-import net.sourceforge.plantuml.cucadiagram.dot.ProcessState;
+import net.sourceforge.plantuml.dot.Graphviz;
+import net.sourceforge.plantuml.dot.GraphvizUtils;
+import net.sourceforge.plantuml.dot.ProcessState;
+import net.sourceforge.plantuml.klimt.geom.MinFinder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.security.SFile;
-import net.sourceforge.plantuml.svek.MinFinder;
 import net.sourceforge.plantuml.svek.SvgResult;
 import net.sourceforge.plantuml.svek.YDelta;
 
 public class GraphvizSolverB {
+	// ::remove file when __CORE__
 
 	// static private void traceDotString(String dotString) throws IOException {
-	// final File f = SecurityUtils.File("dottmpfile" + UniqueSequence.getValue() + ".tmp");
+	// final File f = SecurityUtils.File("dottmpfile" + UniqueSequence.getValue() +
+	// ".tmp");
 	// PrintWriter pw = null;
 	// try {
 	// pw = SecurityUtils.PrintWriter(new FileWriter(f));
@@ -72,7 +75,8 @@ public class GraphvizSolverB {
 	// }
 	//
 	// static private void traceSvgString(String svg) throws IOException {
-	// final File f = SecurityUtils.File("svgtmpfile" + UniqueSequence.getValue() + ".svg");
+	// final File f = SecurityUtils.File("svgtmpfile" + UniqueSequence.getValue() +
+	// ".svg");
 	// PrintWriter pw = null;
 	// try {
 	// pw = SecurityUtils.PrintWriter(new FileWriter(f));
@@ -161,7 +165,7 @@ public class GraphvizSolverB {
 			final int p2 = s.indexOf(" d=\"", p1);
 			final int p3 = s.indexOf("\"", p2 + " d=\"".length());
 			final String points = s.substring(p2 + " d=\"".length(), p3);
-			final DotPath dotPath = new DotPath(new SvgResult(points, yDelta));
+			final DotPath dotPath = new SvgResult(points, yDelta).toDotPath();
 			p.setDotPath(dotPath);
 			minMax.manage(dotPath.getMinFinder());
 

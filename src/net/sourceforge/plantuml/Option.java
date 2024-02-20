@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -46,26 +46,28 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.sourceforge.plantuml.annotation.HaxeIgnored;
 import net.sourceforge.plantuml.api.ApiWarning;
-import net.sourceforge.plantuml.command.regex.Matcher2;
-import net.sourceforge.plantuml.command.regex.MyPattern;
-import net.sourceforge.plantuml.command.regex.Pattern2;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
+import net.sourceforge.plantuml.dot.GraphvizUtils;
+import net.sourceforge.plantuml.file.FileGroup;
+import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.preproc.Defines;
+import net.sourceforge.plantuml.regex.Matcher2;
+import net.sourceforge.plantuml.regex.MyPattern;
+import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.stats.StatsUtils;
-import net.sourceforge.plantuml.ugraphic.color.ColorMapper;
 import net.sourceforge.plantuml.utils.Log;
 
-@HaxeIgnored
 public class Option {
+	// ::remove file when __CORE__
+	// ::remove file when __HAXE__
 
 	private final List<String> excludes = new ArrayList<>();
 	private final List<String> config = new ArrayList<>();
 	private final Map<String, String> defines = new LinkedHashMap<String, String>();
 
 	private String charset;
+	// ::comment when __CORE__
 	private boolean computeurl = false;
 	private boolean decodeurl = false;
 	private boolean pipe = false;
@@ -74,6 +76,8 @@ public class Option {
 	private boolean pipeNoStdErr = false;
 	private boolean syntax = false;
 	private boolean checkOnly = false;
+	// ::done
+
 	private OptionPreprocOutputMode preprocessorOutput = null;
 	private boolean failfast = false;
 	private boolean failfast2 = false;
@@ -81,22 +85,25 @@ public class Option {
 
 	private boolean duration = false;
 	private boolean debugsvek = false;
+	private int nbThreads = 0;
+
+	// ::comment when __CORE__
 	private boolean splash = false;
 	private boolean textProgressBar = false;
-	private int nbThreads = 0;
 	private int ftpPort = -1;
 	private String picowebBindAddress = null;
 	private int picowebPort = -1;
 	private boolean picowebEnableStop = false;
+	private int stdrpt = 0;
 	private boolean hideMetadata = false;
 	private boolean checkMetadata = false;
-	private int stdrpt = 0;
+	private String filename;
+	// ::done
 	private int imageIndex = 0;
 	private String fileDir;
 
 	private File outputDir = null;
 	private File outputFile = null;
-	private String filename;
 
 	private final List<String> result = new ArrayList<>();
 
@@ -105,6 +112,9 @@ public class Option {
 
 	private FileFormatOption fileFormatOption = new FileFormatOption(FileFormat.PNG);
 
+	/**
+	 *  @deprecated Use {@link #setFileFormatOption(FileFormatOption)} instead
+	 */
 	@Deprecated
 	@ApiWarning(willBeRemoved = "in next major release")
 	final public void setFileFormat(FileFormat fileFormat) {
@@ -115,6 +125,7 @@ public class Option {
 		this.fileFormatOption = newFormat;
 	}
 
+	// ::comment when __CORE__
 	public Option(String... arg) throws InterruptedException, IOException {
 		if (arg.length == 0)
 			OptionFlags.getInstance().setGui(true);
@@ -130,44 +141,64 @@ public class Option {
 				System.setProperty("java.awt.headless", "true");
 			} else if (s.equalsIgnoreCase("-tsvg") || s.equalsIgnoreCase("-svg")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.SVG));
+
 			} else if (s.equalsIgnoreCase("-tsvg:nornd") || s.equalsIgnoreCase("-svg:nornd")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.SVG));
+
 			} else if (s.equalsIgnoreCase("-thtml") || s.equalsIgnoreCase("-html")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.HTML));
+
 			} else if (s.equalsIgnoreCase("-tscxml") || s.equalsIgnoreCase("-scxml")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.SCXML));
+
 			} else if (s.equalsIgnoreCase("-txmi") || s.equalsIgnoreCase("-xmi")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.XMI_STANDARD));
+
 			} else if (s.equalsIgnoreCase("-txmi:argo") || s.equalsIgnoreCase("-xmi:argo")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.XMI_ARGO));
+
 			} else if (s.equalsIgnoreCase("-txmi:star") || s.equalsIgnoreCase("-xmi:star")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.XMI_STAR));
+
 			} else if (s.equalsIgnoreCase("-teps") || s.equalsIgnoreCase("-eps")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.EPS));
+
 			} else if (s.equalsIgnoreCase("-teps:text") || s.equalsIgnoreCase("-eps:text")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.EPS_TEXT));
+
 			} else if (s.equalsIgnoreCase("-ttxt") || s.equalsIgnoreCase("-txt")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.ATXT));
+
 			} else if (s.equalsIgnoreCase("-tutxt") || s.equalsIgnoreCase("-utxt")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.UTXT));
+
 			} else if (s.equalsIgnoreCase("-braille") || s.equalsIgnoreCase("-tbraille")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.BRAILLE_PNG));
+
 			} else if (s.equalsIgnoreCase("-png") || s.equalsIgnoreCase("-tpng")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.PNG));
+
 			} else if (s.equalsIgnoreCase("-vdx") || s.equalsIgnoreCase("-tvdx")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.VDX));
+
 			} else if (s.equalsIgnoreCase("-latex") || s.equalsIgnoreCase("-tlatex")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.LATEX));
+
 			} else if (s.equalsIgnoreCase("-latex:nopreamble") || s.equalsIgnoreCase("-tlatex:nopreamble")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.LATEX_NO_PREAMBLE));
+
 			} else if (s.equalsIgnoreCase("-base64") || s.equalsIgnoreCase("-tbase64")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.BASE64));
+
 			} else if (s.equalsIgnoreCase("-pdf") || s.equalsIgnoreCase("-tpdf")) {
 				setFileFormatOption(new FileFormatOption(FileFormat.PDF));
+
 			} else if (s.equalsIgnoreCase("-darkmode")) {
 				setFileFormatOption(this.fileFormatOption.withColorMapper(ColorMapper.DARK_MODE));
+
 			} else if (s.equalsIgnoreCase("-overwrite")) {
 				OptionFlags.getInstance().setOverwrite(true);
+
 			} else if (s.equalsIgnoreCase("-output") || s.equalsIgnoreCase("-o")) {
 				i++;
 				if (i == arg.length)
@@ -235,12 +266,16 @@ public class Option {
 
 			} else if (s.equalsIgnoreCase("-failfast")) {
 				this.failfast = true;
+
 			} else if (s.equalsIgnoreCase("-failfast2")) {
 				this.failfast2 = true;
+
 			} else if (s.equalsIgnoreCase("-noerror")) {
 				this.noerror = true;
+
 			} else if (s.equalsIgnoreCase("-checkonly")) {
 				this.checkOnly = true;
+
 			} else if (s.equalsIgnoreCase("-theme")) {
 				i++;
 				if (i == arg.length)
@@ -255,15 +290,20 @@ public class Option {
 				initConfig(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg[i]));
 			} else if (s.startsWith("-I")) {
 				initInclude(s.substring(2));
+
 			} else if (s.equalsIgnoreCase("-computeurl") || s.equalsIgnoreCase("-encodeurl")) {
 				this.computeurl = true;
+
 			} else if (s.startsWith("-x")) {
 				s = s.substring(2);
 				excludes.add(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(s));
-			} else if (s.equalsIgnoreCase("-verbose") || s.equalsIgnoreCase("-v")) {
+
+			} else if (s.equalsIgnoreCase("-verbose") || s.equalsIgnoreCase("--verbose") || s.equalsIgnoreCase("-v")) {
 				OptionFlags.getInstance().setVerbose(true);
+
 			} else if (s.equalsIgnoreCase("-pipe") || s.equalsIgnoreCase("-p")) {
 				pipe = true;
+
 			} else if (s.equalsIgnoreCase("-pipedelimitor")) {
 				i++;
 				if (i == arg.length)
@@ -272,19 +312,26 @@ public class Option {
 				pipeDelimitor = arg[i];
 			} else if (s.equalsIgnoreCase("-pipemap")) {
 				pipeMap = true;
+
 			} else if (s.equalsIgnoreCase("-pipenostderr")) {
 				pipeNoStdErr = true;
+
 			} else if (s.equalsIgnoreCase("-syntax")) {
 				syntax = true;
 				OptionFlags.getInstance().setQuiet(true);
+
 			} else if (s.equalsIgnoreCase("-duration")) {
 				duration = true;
+
 			} else if (s.equalsIgnoreCase("-debugsvek") || s.equalsIgnoreCase("-debug_svek")) {
 				debugsvek = true;
+
 			} else if (s.equalsIgnoreCase("-keepfiles") || s.equalsIgnoreCase("-keepfile")) {
 				System.err.println("-keepfiles option has been removed. Please consider -debugsvek instead");
+
 			} else if (s.equalsIgnoreCase("-metadata")) {
 				OptionFlags.getInstance().setExtractFromMetadata(true);
+
 			} else if (s.equalsIgnoreCase("-logdata")) {
 				i++;
 				if (i == arg.length)
@@ -292,18 +339,24 @@ public class Option {
 
 				OptionFlags.getInstance()
 						.setLogData(new SFile(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg[i])));
+
 			} else if (s.equalsIgnoreCase("-word")) {
 				OptionFlags.getInstance().setWord(true);
 				OptionFlags.getInstance().setQuiet(true);
 				this.charset = "UTF-8";
+
 			} else if (s.equalsIgnoreCase("-quiet")) {
 				OptionFlags.getInstance().setQuiet(true);
+
 			} else if (s.equalsIgnoreCase("-decodeurl")) {
 				this.decodeurl = true;
-			} else if (s.equalsIgnoreCase("-version")) {
+
+			} else if (s.equalsIgnoreCase("-version") || s.equalsIgnoreCase("--version")) {
 				OptionPrint.printVersion();
+
 			} else if (s.matches("(?i)^-li[sc][ea]n[sc]e\\s*$")) {
 				OptionPrint.printLicense();
+
 			} else if (s.startsWith("-DPLANTUML_LIMIT_SIZE=")) {
 				final String v = s.substring("-DPLANTUML_LIMIT_SIZE=".length());
 				if (v.matches("\\d+"))
@@ -311,69 +364,103 @@ public class Option {
 
 			} else if (s.startsWith("-D")) {
 				manageDefine(s.substring(2));
+
 			} else if (s.startsWith("-S")) {
 				manageSkinParam(s.substring(2));
+
 			} else if (s.startsWith("-P")) {
 				managePragma(s.substring(2));
+
 			} else if (s.equalsIgnoreCase("-testdot")) {
 				OptionPrint.printTestDot();
+
 			} else if (s.equalsIgnoreCase("-about") || s.equalsIgnoreCase("-author")
 					|| s.equalsIgnoreCase("-authors")) {
 				OptionPrint.printAbout();
+
 			} else if (s.equalsIgnoreCase("-help") || s.equalsIgnoreCase("-h") || s.equalsIgnoreCase("-?")) {
 				OptionPrint.printHelp();
+
 			} else if (s.equalsIgnoreCase("-language")) {
 				OptionPrint.printLanguage();
+
 			} else if (s.equalsIgnoreCase("-gui")) {
 				OptionFlags.getInstance().setGui(true);
+
 			} else if (s.equalsIgnoreCase("-encodesprite")) {
 				OptionFlags.getInstance().setEncodesprite(true);
+
 			} else if (s.equalsIgnoreCase("-printfonts")) {
 				OptionFlags.getInstance().setPrintFonts(true);
+
 			} else if (s.equalsIgnoreCase("-dumphtmlstats")) {
 				OptionFlags.getInstance().setDumpHtmlStats(true);
+
 			} else if (s.equalsIgnoreCase("-dumpstats")) {
 				OptionFlags.getInstance().setDumpStats(true);
+
 			} else if (s.equalsIgnoreCase("-loopstats")) {
 				OptionFlags.getInstance().setLoopStats(true);
+
 			} else if (s.equalsIgnoreCase("-enablestats")) {
 				OptionFlags.getInstance().setEnableStats(true);
+
 			} else if (s.equalsIgnoreCase("-disablestats")) {
 				OptionFlags.getInstance().setEnableStats(false);
+
 			} else if (s.equalsIgnoreCase("-extractstdlib")) {
 				OptionFlags.getInstance().setExtractStdLib(true);
+
 			} else if (s.equalsIgnoreCase("-stdlib")) {
 				OptionFlags.getInstance().setStdLib(true);
+
 			} else if (s.equalsIgnoreCase("-clipboard")) {
 				OptionFlags.getInstance().setClipboard(true);
+
 			} else if (s.equalsIgnoreCase("-clipboardloop")) {
 				OptionFlags.getInstance().setClipboardLoop(true);
+
 			} else if (s.equalsIgnoreCase("-htmlstats")) {
 				StatsUtils.setHtmlStats(true);
+
 			} else if (s.equalsIgnoreCase("-xmlstats")) {
 				StatsUtils.setXmlStats(true);
+
 			} else if (s.equalsIgnoreCase("-realtimestats")) {
 				StatsUtils.setRealTimeStats(true);
+
 			} else if (s.equalsIgnoreCase("-useseparatorminus")) {
 				OptionFlags.getInstance().setFileSeparator("-");
+
 			} else if (s.equalsIgnoreCase("-splash")) {
 				splash = true;
+
 			} else if (s.equalsIgnoreCase("-progress")) {
 				textProgressBar = true;
+
 			} else if (s.equalsIgnoreCase("-nometadata")) {
 				hideMetadata = true;
+
 			} else if (s.equalsIgnoreCase("-preproc")) {
 				preprocessorOutput = OptionPreprocOutputMode.NORMAL;
+				setFileFormatOption(new FileFormatOption(FileFormat.PREPROC));
+
 			} else if (s.equalsIgnoreCase("-cypher")) {
 				preprocessorOutput = OptionPreprocOutputMode.CYPHER;
+				setFileFormatOption(new FileFormatOption(FileFormat.PREPROC));
+
 			} else if (s.equalsIgnoreCase("-checkmetadata")) {
 				checkMetadata = true;
+
 			} else if (s.equalsIgnoreCase("-stdrpt:1")) {
 				stdrpt = 1;
+
 			} else if (s.equalsIgnoreCase("-stdrpt:2")) {
 				stdrpt = 2;
+
 			} else if (s.equalsIgnoreCase("-stdrpt")) {
 				stdrpt = 2;
+
 			} else if (s.equalsIgnoreCase("-pipeimageindex")) {
 				i++;
 				if (i == arg.length)
@@ -394,10 +481,12 @@ public class Option {
 				final String[] parts = s.split(":");
 				this.picowebPort = parts.length > 1 ? Integer.parseInt(parts[1]) : 8080;
 				this.picowebBindAddress = parts.length > 2 ? parts[2] : null;
+
 				this.picowebEnableStop = StringUtils.goLowerCase(s).contains("stop");
 			} else if (s.startsWith("-c")) {
 				s = s.substring(2);
 				config.add(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(s));
+
 			} else {
 				result.add(s);
 			}
@@ -433,6 +522,7 @@ public class Option {
 	public boolean getPicowebEnableStop() {
 		return picowebEnableStop;
 	}
+	// ::done
 
 	private void addInConfig(BufferedReader br) throws IOException {
 		if (br == null)
@@ -519,6 +609,7 @@ public class Option {
 		return Collections.unmodifiableList(excludes);
 	}
 
+	// ::comment when __CORE__
 	public Defines getDefaultDefines(SFile f) {
 		final Defines result = Defines.createWithFileName(f);
 		for (Map.Entry<String, String> ent : defines.entrySet()) {
@@ -551,6 +642,7 @@ public class Option {
 
 		return result;
 	}
+	// ::done
 
 	public void define(String name, String value) {
 		defines.put(name, value);
@@ -573,6 +665,7 @@ public class Option {
 
 	}
 
+	// ::comment when __CORE__
 	public final boolean isComputeurl() {
 		return computeurl;
 	}
@@ -602,6 +695,7 @@ public class Option {
 
 		return fileFormatOption;
 	}
+	// ::done
 
 	public final boolean isDuration() {
 		return duration;
@@ -619,6 +713,7 @@ public class Option {
 		return Runtime.getRuntime().availableProcessors();
 	}
 
+	// ::comment when __CORE__
 	public final boolean isCheckOnly() {
 		return checkOnly;
 	}
@@ -626,6 +721,7 @@ public class Option {
 	public final void setCheckOnly(boolean checkOnly) {
 		this.checkOnly = checkOnly;
 	}
+	// ::done
 
 	public final boolean isFailfastOrFailfast2() {
 		return failfast || failfast2;
@@ -663,6 +759,7 @@ public class Option {
 		return debugsvek;
 	}
 
+	// ::comment when __CORE__
 	public final boolean isSplash() {
 		return splash;
 	}
@@ -683,16 +780,18 @@ public class Option {
 		return pipeNoStdErr;
 	}
 
-	public final int getImageIndex() {
-		return imageIndex;
+	public final boolean isCheckMetadata() {
+		return checkMetadata;
 	}
 
 	public final void setFilename(String filename) {
 		this.filename = filename;
 	}
 
-	public final boolean isCheckMetadata() {
-		return checkMetadata;
+	// ::done
+
+	public final int getImageIndex() {
+		return imageIndex;
 	}
 
 	public final OptionPreprocOutputMode getPreprocessorOutputMode() {

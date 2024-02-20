@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -46,49 +46,49 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.sourceforge.plantuml.BaseFile;
-import net.sourceforge.plantuml.Guillemet;
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.LineParam;
+import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.OptionFlags;
-import net.sourceforge.plantuml.Pragma;
-import net.sourceforge.plantuml.SkinParam;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.UmlDiagramType;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XRectangle2D;
-import net.sourceforge.plantuml.baraye.EntityFactory;
-import net.sourceforge.plantuml.baraye.EntityImp;
-import net.sourceforge.plantuml.baraye.IEntity;
-import net.sourceforge.plantuml.baraye.IGroup;
-import net.sourceforge.plantuml.baraye.ILeaf;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityFactory;
+import net.sourceforge.plantuml.abel.EntityPosition;
+import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.core.UmlSource;
-import net.sourceforge.plantuml.cucadiagram.EntityPosition;
-import net.sourceforge.plantuml.cucadiagram.GroupRoot;
-import net.sourceforge.plantuml.cucadiagram.GroupType;
-import net.sourceforge.plantuml.cucadiagram.LeafType;
-import net.sourceforge.plantuml.cucadiagram.Link;
 import net.sourceforge.plantuml.cucadiagram.PortionShower;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.cucadiagram.UnparsableGraphvizException;
-import net.sourceforge.plantuml.cucadiagram.dot.DotData;
-import net.sourceforge.plantuml.cucadiagram.dot.ExeState;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizVersion;
-import net.sourceforge.plantuml.cucadiagram.dot.Neighborhood;
+import net.sourceforge.plantuml.decoration.symbol.USymbolHexagon;
+import net.sourceforge.plantuml.decoration.symbol.USymbolInterface;
 import net.sourceforge.plantuml.descdiagram.EntityImageDesignedDomain;
 import net.sourceforge.plantuml.descdiagram.EntityImageDomain;
 import net.sourceforge.plantuml.descdiagram.EntityImageMachine;
 import net.sourceforge.plantuml.descdiagram.EntityImageRequirement;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.GraphicStrings;
-import net.sourceforge.plantuml.graphic.InnerStrategy;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.USymbolHexagon;
-import net.sourceforge.plantuml.graphic.USymbolInterface;
+import net.sourceforge.plantuml.dot.DotData;
+import net.sourceforge.plantuml.dot.ExeState;
+import net.sourceforge.plantuml.dot.GraphvizUtils;
+import net.sourceforge.plantuml.dot.GraphvizVersion;
+import net.sourceforge.plantuml.dot.Neighborhood;
+import net.sourceforge.plantuml.dot.UnparsableGraphvizException;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
+import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
+import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SecurityProfile;
 import net.sourceforge.plantuml.security.SecurityUtils;
+import net.sourceforge.plantuml.skin.LineParam;
+import net.sourceforge.plantuml.skin.Pragma;
+import net.sourceforge.plantuml.skin.SkinParam;
+import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
@@ -122,15 +122,13 @@ import net.sourceforge.plantuml.svek.image.EntityImageStateEmptyDescription;
 import net.sourceforge.plantuml.svek.image.EntityImageSynchroBar;
 import net.sourceforge.plantuml.svek.image.EntityImageTips;
 import net.sourceforge.plantuml.svek.image.EntityImageUseCase;
-import net.sourceforge.plantuml.ugraphic.MinMax;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.text.BackSlash;
+import net.sourceforge.plantuml.text.Guillemet;
 import net.sourceforge.plantuml.utils.Log;
 
 public final class GeneralImageBuilder {
 
-	public static IEntityImage createEntityImageBlock(ILeaf leaf, ISkinParam skinParam,
+	public static IEntityImage createEntityImageBlock(Entity leaf, ISkinParam skinParam,
 			boolean isHideEmptyDescriptionForState, PortionShower portionShower, Bibliotekon bibliotekon,
 			GraphvizVersion graphvizVersion, UmlDiagramType umlDiagramType, Collection<Link> links) {
 		final IEntityImage result = createEntityImageBlockInternal(leaf, skinParam, isHideEmptyDescriptionForState,
@@ -139,14 +137,14 @@ public final class GeneralImageBuilder {
 		return result;
 	}
 
-	private static IEntityImage createEntityImageBlockInternal(ILeaf leaf, ISkinParam skinParam,
+	private static IEntityImage createEntityImageBlockInternal(Entity leaf, ISkinParam skinParam,
 			boolean isHideEmptyDescriptionForState, PortionShower portionShower, Bibliotekon bibliotekon,
 			GraphvizVersion graphvizVersion, UmlDiagramType umlDiagramType, Collection<Link> links) {
 		if (leaf.isRemoved())
 			throw new IllegalStateException();
 
 		if (leaf.getLeafType().isLikeClass()) {
-			final EntityImageClass entityImageClass = new EntityImageClass((ILeaf) leaf, skinParam, portionShower);
+			final EntityImageClass entityImageClass = new EntityImageClass((Entity) leaf, skinParam, portionShower);
 			final Neighborhood neighborhood = leaf.getNeighborhood();
 			if (neighborhood != null)
 				return new EntityImageProtected(entityImageClass, 20, neighborhood, bibliotekon);
@@ -283,7 +281,7 @@ public final class GeneralImageBuilder {
 	public static UStroke getForcedStroke(Stereotype stereotype, ISkinParam skinParam) {
 		UStroke stroke = skinParam.getThickness(LineParam.packageBorder, stereotype);
 		if (stroke == null)
-			stroke = new UStroke(1.5);
+			stroke = UStroke.withThickness(1.5);
 
 		return stroke;
 	}
@@ -296,11 +294,10 @@ public final class GeneralImageBuilder {
 	private Map<String, Double> maxX;
 
 	private final StringBounder stringBounder;
-	private final boolean mergeIntricated;
 	private final SName styleName;
 
-	public GeneralImageBuilder(boolean mergeIntricated, DotData dotData, EntityFactory entityFactory, UmlSource source,
-			Pragma pragma, StringBounder stringBounder, SName styleName) {
+	public GeneralImageBuilder(DotData dotData, EntityFactory entityFactory, UmlSource source, Pragma pragma,
+			StringBounder stringBounder, SName styleName) {
 		this.dotData = dotData;
 		this.styleName = styleName;
 		this.entityFactory = entityFactory;
@@ -308,7 +305,6 @@ public final class GeneralImageBuilder {
 		this.pragma = pragma;
 		this.stringBounder = stringBounder;
 		this.strictUmlStyle = dotData.getSkinParam().strictUmlStyle();
-		this.mergeIntricated = mergeIntricated;
 	}
 
 	final public StyleSignature getDefaultStyleDefinitionArrow(Stereotype stereotype) {
@@ -319,7 +315,7 @@ public final class GeneralImageBuilder {
 		return result;
 	}
 
-	private boolean isOpalisable(IEntity entity) {
+	private boolean isOpalisable(Entity entity) {
 		if (strictUmlStyle)
 			return false;
 
@@ -379,6 +375,11 @@ public final class GeneralImageBuilder {
 			return 0;
 		}
 
+		@Override
+		public MagneticBorder getMagneticBorder() {
+			return new MagneticBorderNone();
+		}
+
 	}
 
 	// Duplicate SvekResult / GeneralImageBuilder
@@ -388,14 +389,15 @@ public final class GeneralImageBuilder {
 		return style.value(PName.BackGroundColor).asColor(dotData.getSkinParam().getIHtmlColorSet());
 	}
 
-	public IEntityImage buildImage(BaseFile basefile, String dotStrings[]) {
+	public IEntityImage buildImage(BaseFile basefile, String dotStrings[], boolean fileFormatOptionIsDebugSvek) {
+		// ::comment when __CORE__
 		if (dotData.isDegeneratedWithFewEntities(0))
 			return new EntityImageSimpleEmpty(dotData.getSkinParam().getBackgroundColor());
 
 		if (dotData.isDegeneratedWithFewEntities(1) && dotData.getUmlDiagramType() != UmlDiagramType.STATE) {
-			final ILeaf single = dotData.getLeafs().iterator().next();
-			final IGroup group = single.getParentContainer();
-			if (group instanceof GroupRoot && single.getUSymbol() instanceof USymbolHexagon == false) {
+			final Entity single = dotData.getLeafs().iterator().next();
+			final Entity group = single.getParentContainer();
+			if (group.isRoot() && single.getUSymbol() instanceof USymbolHexagon == false) {
 				final IEntityImage tmp = GeneralImageBuilder.createEntityImageBlock(single, dotData.getSkinParam(),
 						dotData.isHideEmptyDescriptionForState(), dotData, null, null, dotData.getUmlDiagramType(),
 						dotData.getLinks());
@@ -444,7 +446,7 @@ public final class GeneralImageBuilder {
 		if (dotStringFactory.illegalDotExe())
 			return error(dotStringFactory.getDotExe());
 
-		if (basefile == null && isSvekTrace()
+		if (basefile == null && (fileFormatOptionIsDebugSvek || isSvekTrace())
 				&& (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE
 						|| SecurityUtils.getSecurityProfile() == SecurityProfile.LEGACY
 						|| SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX))
@@ -454,22 +456,28 @@ public final class GeneralImageBuilder {
 		try {
 			svg = dotStringFactory.getSvg(basefile, dotStrings);
 		} catch (IOException e) {
-			return new GraphvizCrash(source.getPlainString(), GraphvizUtils.graphviz244onWindows(), e);
+			return new GraphvizCrash(source.getPlainString(BackSlash.lineSeparator()),
+					GraphvizUtils.graphviz244onWindows(), e);
 		}
 		if (svg.length() == 0)
-			return new GraphvizCrash(source.getPlainString(), GraphvizUtils.graphviz244onWindows(),
-					new EmptySvgException());
+			return new GraphvizCrash(source.getPlainString(BackSlash.lineSeparator()),
+					GraphvizUtils.graphviz244onWindows(), new EmptySvgException());
 
 		final String graphvizVersion = extractGraphvizVersion(svg);
 		try {
-			dotStringFactory.solve(mergeIntricated, dotData.getEntityFactory(), svg);
+			dotStringFactory.solve(dotData.getEntityFactory(), svg);
 			final SvekResult result = new SvekResult(dotData, dotStringFactory);
 			this.maxX = dotStringFactory.getBibliotekon().getMaxX();
 			return result;
 		} catch (Exception e) {
 			Log.error("Exception " + e);
-			throw new UnparsableGraphvizException(e, graphvizVersion, svg, source.getPlainString());
+			throw new UnparsableGraphvizException(e, graphvizVersion, svg,
+					source.getPlainString(BackSlash.lineSeparator()));
 		}
+		// ::done
+		// ::uncomment when __CORE__
+		// return null;
+		// ::done
 
 	}
 
@@ -492,7 +500,7 @@ public final class GeneralImageBuilder {
 		return null;
 	}
 
-	private Link onlyOneLink(IEntity ent) {
+	private Link onlyOneLink(Entity ent) {
 		Link single = null;
 		for (Link link : dotData.getLinks()) {
 			if (link.isInvis())
@@ -507,8 +515,8 @@ public final class GeneralImageBuilder {
 		return single;
 	}
 
+	// ::comment when __CORE__
 	private IEntityImage error(File dotExe) {
-
 		final List<String> msg = new ArrayList<>();
 		msg.add("Dot Executable: " + dotExe);
 		final ExeState exeState = ExeState.checkFile(dotExe);
@@ -525,9 +533,10 @@ public final class GeneralImageBuilder {
 		msg.add(" ");
 		return GraphicStrings.createForError(msg, false);
 	}
+	// ::done
 
-	private void printEntities(DotStringFactory dotStringFactory, Collection<ILeaf> entities2) {
-		for (ILeaf ent : entities2) {
+	private void printEntities(DotStringFactory dotStringFactory, Collection<Entity> entities2) {
+		for (Entity ent : entities2) {
 			if (ent.isRemoved())
 				continue;
 
@@ -535,7 +544,7 @@ public final class GeneralImageBuilder {
 		}
 	}
 
-	private void printEntity(DotStringFactory dotStringFactory, ILeaf ent) {
+	private void printEntity(DotStringFactory dotStringFactory, Entity ent) {
 		if (ent.isRemoved())
 			throw new IllegalStateException();
 
@@ -545,7 +554,7 @@ public final class GeneralImageBuilder {
 		dotStringFactory.addNode(node);
 	}
 
-	private IEntityImage printEntityInternal(DotStringFactory dotStringFactory, ILeaf ent) {
+	private IEntityImage printEntityInternal(DotStringFactory dotStringFactory, Entity ent) {
 		if (ent.isRemoved())
 			throw new IllegalStateException();
 
@@ -565,7 +574,7 @@ public final class GeneralImageBuilder {
 
 	private double getMaxWidth() {
 		double result = 0;
-		for (ILeaf ent : dotData.getLeafs()) {
+		for (Entity ent : dotData.getLeafs()) {
 			if (ent.getLeafType().isLikeClass() == false)
 				continue;
 
@@ -578,48 +587,40 @@ public final class GeneralImageBuilder {
 		return result;
 	}
 
-	private Collection<ILeaf> getUnpackagedEntities() {
-		final List<ILeaf> result = new ArrayList<>();
-		for (ILeaf ent : dotData.getLeafs())
+	private Collection<Entity> getUnpackagedEntities() {
+		final List<Entity> result = new ArrayList<>();
+		for (Entity ent : dotData.getLeafs())
 			if (dotData.getTopParent() == ent.getParentContainer())
 				result.add(ent);
 
 		return result;
 	}
 
-	private void printGroups(DotStringFactory dotStringFactory, IGroup parent) {
-		final Collection<IGroup> groups = dotData.getGroupHierarchy().getChildrenGroups(parent);
-		for (IGroup g : groups) {
+	private void printGroups(DotStringFactory dotStringFactory, Entity parent) {
+		// System.err.println("PARENT=" + parent);
+		final Collection<Entity> groups = dotData.getGroupHierarchy().getChildrenGroups(parent);
+		// System.err.println("groups=" + groups);
+		for (Entity g : groups) {
 			if (g.isRemoved())
 				continue;
 
-			if (dotData.isEmpty(g)
-					&& (g.getGroupType() == GroupType.PACKAGE || g.getGroupType() == GroupType.TOGETHER)) {
-				final ISkinParam skinParam = dotData.getSkinParam();
-				final ILeaf folder = entityFactory.createLeafForEmptyGroup(g, skinParam);
-				printEntity(dotStringFactory, folder);
+			if (dotData.isEmpty(g) && g.getGroupType() == GroupType.PACKAGE) {
+				g.muteToType(LeafType.EMPTY_PACKAGE);
+				printEntity(dotStringFactory, g);
 			} else {
 				printGroup(dotStringFactory, g);
 			}
 		}
 	}
 
-	private void printGroup(DotStringFactory dotStringFactory, IGroup g) {
+	private void printGroup(DotStringFactory dotStringFactory, Entity g) {
 		if (g.getGroupType() == GroupType.CONCURRENT_STATE)
 			return;
 
-		if (mergeIntricated) {
-			final IGroup intricated = dotData.getEntityFactory().isIntricated(g);
-			if (intricated != null) {
-				printGroup(dotStringFactory, intricated);
-				return;
-			}
-		}
-
-		final ClusterHeader clusterHeader = new ClusterHeader((EntityImp) g, dotData.getSkinParam(), dotData,
+		final ClusterHeader clusterHeader = new ClusterHeader(g, dotData.getSkinParam(), dotData,
 				stringBounder);
 		dotStringFactory.openCluster(g, clusterHeader);
-		this.printEntities(dotStringFactory, g.getLeafsDirect());
+		this.printEntities(dotStringFactory, g.leafs());
 
 		printGroups(dotStringFactory, g);
 

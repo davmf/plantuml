@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,20 +37,16 @@ package net.sourceforge.plantuml.project.draw;
 
 import java.util.Locale;
 
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.project.TimeHeaderParameters;
 import net.sourceforge.plantuml.project.time.Day;
 import net.sourceforge.plantuml.project.timescale.TimeScale;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
 
 public abstract class TimeHeaderCalendar extends TimeHeader {
 
-	private final TimeHeaderParameters thParam;
-
 	public TimeHeaderCalendar(TimeHeaderParameters thParam, TimeScale timeScale) {
-		super(thParam.getTimelineStyle(), thParam.getClosedStyle(), thParam.getMin(), thParam.getMax(), timeScale,
-				thParam.getColorSet());
-		this.thParam = thParam;
+		super(thParam, timeScale);
 	}
 
 	protected final Locale locale() {
@@ -60,7 +56,7 @@ public abstract class TimeHeaderCalendar extends TimeHeader {
 	protected final int getLoadAt(Day instant) {
 		return thParam.getLoadPlanable().getLoadAt(instant);
 	}
-
+	
 	// Duplicate in TimeHeaderSimple
 	class Pending {
 		final double x1;
@@ -80,10 +76,10 @@ public abstract class TimeHeaderCalendar extends TimeHeader {
 
 	protected final void drawTextsBackground(UGraphic ug, double totalHeightWithoutFooter) {
 
-		final double height = totalHeightWithoutFooter - getFullHeaderHeight();
+		final double height = totalHeightWithoutFooter - getFullHeaderHeight(ug.getStringBounder());
 		Pending pending = null;
 
-		for (Day wink = min; wink.compareTo(max) <= 0; wink = wink.increment()) {
+		for (Day wink = getMin(); wink.compareTo(getMax()) <= 0; wink = wink.increment()) {
 			final double x1 = getTimeScale().getStartingPosition(wink);
 			final double x2 = getTimeScale().getEndingPosition(wink);
 			HColor back = thParam.getColor(wink);
@@ -111,6 +107,10 @@ public abstract class TimeHeaderCalendar extends TimeHeader {
 
 			}
 		}
+
+		if (pending != null)
+			pending.draw(ug, height);
+
 	}
 
 }

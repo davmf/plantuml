@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -55,9 +55,9 @@ public class GitTextArea {
 				final String name = CursorPosition.getCommitNameInLine(s);
 				final int x = s.indexOf("*");
 				assert (name == null) == (x == -1);
-				if (x == -1) {
+				if (x == -1)
 					continue;
-				}
+
 				commits.add(new Commit(name, new CursorPosition(this, x, y)));
 			}
 
@@ -69,18 +69,17 @@ public class GitTextArea {
 	}
 
 	public String getLine(int y) {
-		if (y >= lines.size()) {
+		if (y >= lines.size())
 			return "";
-		}
+
 		return lines.get(y);
 	}
 
 	public Commit getCommitByName(String name) {
-		for (Commit commit : getAllCommits()) {
-			if (commit.getName().equals(name)) {
+		for (Commit commit : getAllCommits())
+			if (commit.getName().equals(name))
 				return commit;
-			}
-		}
+
 		return null;
 	}
 

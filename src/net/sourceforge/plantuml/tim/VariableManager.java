@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.tim;
 import net.sourceforge.plantuml.json.JsonArray;
 import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.json.JsonValue;
+import net.sourceforge.plantuml.text.TLineType;
 import net.sourceforge.plantuml.tim.expression.TValue;
 import net.sourceforge.plantuml.utils.LineLocation;
 
@@ -65,7 +66,8 @@ public class VariableManager {
 			} else if (value.toJson().isNumber()) {
 				result.append(value.toJson().toString());
 			} else {
-				JsonValue jsonValue = (JsonObject) value.toJson();
+				JsonValue jsonValue = (value.toJson().isArray()) ? (JsonArray) value.toJson()
+					: (JsonObject) value.toJson();
 				i++;
 				i = replaceJson(jsonValue, str, i, result) - 1;
 			}

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,11 +35,12 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.url.UrlBuilder;
 
 public class CommandParticipantA2 extends CommandParticipant {
 
@@ -56,9 +57,7 @@ public class CommandParticipantA2 extends CommandParticipant {
 				new RegexLeaf("as"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf("FULL", "[%g]([^%g]+)[%g]"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREO", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO"), //
 				getOrderRegex(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //

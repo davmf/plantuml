@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -47,6 +47,8 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
@@ -55,6 +57,8 @@ import net.sourceforge.plantuml.preproc.Defines;
 import net.sourceforge.plantuml.security.SFile;
 
 public class Pipe {
+	// ::remove file when __CORE__
+	// ::remove file when __HAXE__
 
 	private final Option option;
 	private final BufferedReader br;
@@ -122,9 +126,11 @@ public class Pipe {
 		// https://forum.plantuml.net/10049/2019-pipemap-diagrams-containing-links-give-zero-exit-code
 		// We don't check errors
 		error.goOk();
-		if (result == null)
+		if (result == null) {
+//			final CMapData empty = new CMapData();
+//			ps.println(empty.asString("plantuml"));
 			ps.println();
-		else
+		} else
 			ps.println(result);
 
 	}
@@ -185,7 +191,12 @@ public class Pipe {
 				if (state == State.START_MARK_NOT_FOUND && line.startsWith("@start")) {
 					sb.setLength(0); // discard any previous input
 					state = State.START_MARK_FOUND;
-					expectedEnd = "@end" + line.substring(6).split("^[A-Za-z]")[0];
+					final Matcher m = Pattern.compile("@start([A-Za-z]*)").matcher(line);
+					if (m.matches())
+						expectedEnd = "@end" + m.group(1);
+					else
+						expectedEnd = "@end";
+
 				} else if (state == State.START_MARK_FOUND && line.startsWith(expectedEnd)) {
 					state = State.COMPLETE;
 				}

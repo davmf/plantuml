@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -38,16 +38,16 @@ package net.sourceforge.plantuml.svek;
 
 import java.util.EnumSet;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.graphic.USymbol;
-import net.sourceforge.plantuml.graphic.USymbols;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UPolygon;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UShape;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.decoration.symbol.USymbol;
+import net.sourceforge.plantuml.decoration.symbol.USymbols;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UShape;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.ULine;
+import net.sourceforge.plantuml.klimt.shape.UPolygon;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
 
 public enum PackageStyle {
 
@@ -142,7 +142,7 @@ public enum PackageStyle {
 	}
 
 	private void drawStorage(UGraphic ug, double width, double height, boolean shadowing) {
-		final URectangle shape = new URectangle(width, height).rounded(70);
+		final URectangle shape = URectangle.build(width, height).rounded(70);
 		if (shadowing) {
 			shape.setDeltaShadow(3.0);
 		}
@@ -151,12 +151,12 @@ public enum PackageStyle {
 
 	private void drawComponent1(UGraphic ug, double widthTotal, double heightTotal, boolean shadowing) {
 
-		final URectangle form = new URectangle(widthTotal, heightTotal);
+		final URectangle form = URectangle.build(widthTotal, heightTotal);
 		if (shadowing) {
 			form.setDeltaShadow(4);
 		}
 
-		final UShape small = new URectangle(10, 5);
+		final UShape small = URectangle.build(10, 5);
 
 		ug.draw(form);
 
@@ -167,13 +167,13 @@ public enum PackageStyle {
 
 	private void drawComponent2(UGraphic ug, double widthTotal, double heightTotal, boolean shadowing) {
 
-		final URectangle form = new URectangle(widthTotal, heightTotal);
+		final URectangle form = URectangle.build(widthTotal, heightTotal);
 		if (shadowing) {
 			form.setDeltaShadow(4);
 		}
 
-		final UShape small = new URectangle(15, 10);
-		final UShape tiny = new URectangle(4, 2);
+		final UShape small = URectangle.build(15, 10);
+		final UShape tiny = URectangle.build(4, 2);
 
 		ug.draw(form);
 
@@ -184,7 +184,7 @@ public enum PackageStyle {
 	}
 
 	private void drawRect(UGraphic ug, double width, double height, boolean shadowing) {
-		final URectangle shape = new URectangle(width, height);
+		final URectangle shape = URectangle.build(width, height);
 		if (shadowing) {
 			shape.setDeltaShadow(3.0);
 		}
@@ -200,7 +200,7 @@ public enum PackageStyle {
 	}
 
 	private UPath getSpecificFrontierForCloud(double width, double height) {
-		final UPath path = new UPath();
+		final UPath path = UPath.none();
 		path.moveTo(0, 10);
 		double x = 0;
 		for (int i = 0; i < width - 9; i += 10) {
@@ -226,7 +226,7 @@ public enum PackageStyle {
 	}
 
 	private void drawFrame(UGraphic ug, double width, double height, XDimension2D dimTitle, boolean shadowing) {
-		final URectangle shape = new URectangle(width, height);
+		final URectangle shape = URectangle.build(width, height);
 		if (shadowing) {
 			shape.setDeltaShadow(3.0);
 		}
@@ -246,7 +246,7 @@ public enum PackageStyle {
 			cornersize = 10;
 		}
 
-		final UPath polygon = new UPath();
+		final UPath polygon = UPath.none();
 		polygon.moveTo(textWidth, 1);
 
 		polygon.lineTo(textWidth, textHeight - cornersize);
@@ -277,7 +277,7 @@ public enum PackageStyle {
 	}
 
 	private void drawDatabase(UGraphic ug, double width, double height, boolean shadowing) {
-		final UPath shape = new UPath();
+		final UPath shape = UPath.none();
 		if (shadowing) {
 			shape.setDeltaShadow(3.0);
 		}
@@ -291,7 +291,7 @@ public enum PackageStyle {
 
 		ug.draw(shape);
 
-		final UPath closing = new UPath();
+		final UPath closing = UPath.none();
 		closing.moveTo(0, 10);
 		closing.cubicTo(10, 20, width / 2 - 10, 20, width / 2, 20);
 		closing.cubicTo(width / 2 + 10, 20, width - 10, 20, width, 10);
@@ -316,7 +316,7 @@ public enum PackageStyle {
 		ug.apply(new UTranslate(xTheoricalPosition, yTheoricalPosition)).draw(shape);
 
 		ug.apply(new UTranslate(xTheoricalPosition + width - 10, yTheoricalPosition + 10)).draw(new ULine(9, -9));
-		final UPath path = new UPath();
+		final UPath path = UPath.none();
 		path.moveTo(0, 0);
 		path.lineTo(width - 10, 0);
 		path.lineTo(width - 10, height - 10);

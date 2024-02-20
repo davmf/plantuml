@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -43,6 +43,8 @@ import net.sourceforge.plantuml.command.PSystemCommandFactory;
 import net.sourceforge.plantuml.core.UmlSource;
 
 public class HelpFactory extends PSystemCommandFactory {
+	// ::comment when __CORE__
+	// ::comment when __HAXE__
 
 	@Override
 	public Help createEmptyDiagram(UmlSource source, Map<String, String> skinParam) {
@@ -51,11 +53,9 @@ public class HelpFactory extends PSystemCommandFactory {
 
 	@Override
 	protected void initCommandsList(List<Command> cmds) {
-		cmds.add(new CommandHelp());
 		cmds.add(new CommandHelpColor());
 		cmds.add(new CommandHelpFont());
 		cmds.add(new CommandHelpKeyword());
-		cmds.add(new CommandHelpSkinparam());
 		cmds.add(new CommandHelpType());
 		cmds.add(new CommandHelpTheme());
 	}

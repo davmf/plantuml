@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,13 +39,13 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import net.sourceforge.plantuml.ISkinParam;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.parser.StyleParser;
 import net.sourceforge.plantuml.style.parser.StyleParsingException;
+import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public class StyleExtractor {
 
@@ -113,7 +113,7 @@ public class StyleExtractor {
 		if (style.size() > 0) {
 			final StyleBuilder styleBuilder = skinParam.getCurrentStyleBuilder();
 			final BlocLines blocLines = BlocLines.from(style);
-			for (Style modifiedStyle : StyleParser.parse(blocLines.subExtract(1, 1), styleBuilder))
+			for (Style modifiedStyle : StyleParser.parse(blocLines, styleBuilder))
 				skinParam.muteStyle(modifiedStyle);
 		}
 	}

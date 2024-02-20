@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,26 +35,26 @@
  */
 package net.sourceforge.plantuml.project.lang;
 
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
+import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.project.Failable;
-import net.sourceforge.plantuml.project.GanttDiagram;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
 
-public class PairOfSomething implements Something {
+public class PairOfSomething<D extends Diagram> implements Something<D> {
 
-	private final Something complement1;
-	private final Something complement2;
+	private final Something<D> complement1;
+	private final Something<D> complement2;
 
-	public PairOfSomething(Something complement1, Something complement2) {
+	public PairOfSomething(Something<D> complement1, Something<D> complement2) {
 		this.complement1 = complement1;
 		this.complement2 = complement2;
 	}
 
-	public Failable<? extends Object> getMe(GanttDiagram system, RegexResult arg, String suffix) {
-		final Failable<? extends Object> r1 = complement1.getMe(system, arg, "A" + suffix);
-		final Failable<? extends Object> r2 = complement2.getMe(system, arg, "B" + suffix);
+	public Failable<? extends Object> getMe(D diagram, RegexResult arg, String suffix) {
+		final Failable<? extends Object> r1 = complement1.getMe(diagram, arg, "A" + suffix);
+		final Failable<? extends Object> r2 = complement2.getMe(diagram, arg, "B" + suffix);
 		if (r1.isFail()) {
 			return r1;
 		}

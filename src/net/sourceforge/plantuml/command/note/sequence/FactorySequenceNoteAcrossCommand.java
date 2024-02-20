@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,10 +35,6 @@
  */
 package net.sourceforge.plantuml.command.note.sequence;
 
-import net.sourceforge.plantuml.ColorParam;
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.UrlMode;
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
@@ -46,20 +42,25 @@ import net.sourceforge.plantuml.command.MultilinesStrategy;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.command.Trim;
 import net.sourceforge.plantuml.command.note.SingleMultiFactoryCommand;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.sequencediagram.Note;
 import net.sourceforge.plantuml.sequencediagram.NoteStyle;
 import net.sourceforge.plantuml.sequencediagram.Participant;
 import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.skin.ColorParam;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
 
@@ -70,11 +71,9 @@ public final class FactorySequenceNoteAcrossCommand implements SingleMultiFactor
 				new RegexLeaf("VMERGE", "(/)?"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("STYLE", "(note|hnote|rnote)"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREO", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO1"), //
 				new RegexLeaf("ACROSS", "(accross|across)"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO2"), //
 				color().getRegex(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //
@@ -87,11 +86,9 @@ public final class FactorySequenceNoteAcrossCommand implements SingleMultiFactor
 				new RegexLeaf("VMERGE", "(/)?"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("STYLE", "(note|hnote|rnote)"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREO", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO1"), //
 				new RegexLeaf("ACROSS", "(accross|across)"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO2"), //
 				color().getRegex(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //
@@ -157,7 +154,7 @@ public final class FactorySequenceNoteAcrossCommand implements SingleMultiFactor
 			final Note note = new Note((Participant) null, (Participant) null, display,
 					diagram.getSkinParam().getCurrentStyleBuilder());
 			Colors colors = color().getColor(line0, diagram.getSkinParam().getIHtmlColorSet());
-			final String stereotypeString = line0.get("STEREO", 0);
+			final String stereotypeString = line0.getLazzy("STEREO", 0);
 			if (stereotypeString != null) {
 				final Stereotype stereotype = Stereotype.build(stereotypeString);
 				colors = colors.applyStereotypeForNote(stereotype, diagram.getSkinParam(), ColorParam.noteBackground,

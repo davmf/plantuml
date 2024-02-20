@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,11 +35,7 @@
  */
 package net.sourceforge.plantuml.command.note.sequence;
 
-import net.sourceforge.plantuml.ColorParam;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.UrlMode;
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
@@ -47,24 +43,27 @@ import net.sourceforge.plantuml.command.MultilinesStrategy;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.command.Trim;
 import net.sourceforge.plantuml.command.note.SingleMultiFactoryCommand;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.graphic.color.Colors;
-import net.sourceforge.plantuml.sequencediagram.AbstractMessage;
-import net.sourceforge.plantuml.sequencediagram.EventWithDeactivate;
-import net.sourceforge.plantuml.sequencediagram.GroupingLeaf;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.sequencediagram.EventWithNote;
 import net.sourceforge.plantuml.sequencediagram.Note;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteStyle;
 import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
-import net.sourceforge.plantuml.ugraphic.color.HColorSet;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.skin.ColorParam;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
 
@@ -74,11 +73,9 @@ public final class FactorySequenceNoteOnArrowCommand implements SingleMultiFacto
 		return RegexConcat.build(FactorySequenceNoteOnArrowCommand.class.getName() + "multi", RegexLeaf.start(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("STYLE", "(note|hnote|rnote)"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREO", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceOneOrMore(), //
+				StereotypePattern.optional("STEREO1"), //
 				new RegexLeaf("POSITION", "(right|left|bottom|top)"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO2"), //
 				ColorParser.exp1(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //
@@ -89,11 +86,9 @@ public final class FactorySequenceNoteOnArrowCommand implements SingleMultiFacto
 		return RegexConcat.build(FactorySequenceNoteOnArrowCommand.class.getName() + "single", RegexLeaf.start(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("STYLE", "(note|hnote|rnote)"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREO", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceOneOrMore(), //
+				StereotypePattern.optional("STEREO1"), //
 				new RegexLeaf("POSITION", "(right|left|bottom|top)"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREO2"), //
 				ColorParser.exp1(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //
@@ -137,36 +132,33 @@ public final class FactorySequenceNoteOnArrowCommand implements SingleMultiFacto
 
 	private CommandExecutionResult executeInternal(SequenceDiagram diagram, final RegexResult line0, BlocLines lines)
 			throws NoSuchColorException {
-		final EventWithDeactivate m = diagram.getLastEventWithDeactivate();
-		if (m instanceof AbstractMessage || m instanceof GroupingLeaf) {
-			final NotePosition position = NotePosition.valueOf(StringUtils.goUpperCase(line0.get("POSITION", 0)));
-			Url url = null;
-			if (line0.get("URL", 0) != null) {
-				final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
-				url = urlBuilder.getUrl(line0.get("URL", 0));
-			}
+		final EventWithNote event = diagram.getLastEventWithNote();
+		if (event == null)
+			return CommandExecutionResult.ok();
 
-			final NoteStyle style = NoteStyle.getNoteStyle(line0.get("STYLE", 0));
-			final Display display = diagram.manageVariable(lines.toDisplay());
-			final String backcolor0 = line0.get("COLOR", 0);
-			Colors colors = Colors.empty().add(ColorType.BACK, backcolor0 == null ? null
-					: HColorSet.instance().getColor(backcolor0));
-			final Note note = new Note(display, position, style, diagram.getSkinParam().getCurrentStyleBuilder());
-			final String stereotypeString = line0.get("STEREO", 0);
-			if (stereotypeString != null) {
-				final Stereotype stereotype = Stereotype.build(stereotypeString);
-				colors = colors.applyStereotypeForNote(stereotype, diagram.getSkinParam(), ColorParam.noteBackground,
-						ColorParam.noteBorder);
-				note.setStereotype(stereotype);
-			}
-			note.setUrl(url);
-			note.setColors(colors);
-			if (m instanceof AbstractMessage) {
-				((AbstractMessage) m).setNote(note);
-			} else {
-				((GroupingLeaf) m).setNote(note);
-			}
+		final NotePosition position = NotePosition.valueOf(StringUtils.goUpperCase(line0.get("POSITION", 0)));
+		Url url = null;
+		if (line0.get("URL", 0) != null) {
+			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
+			url = urlBuilder.getUrl(line0.get("URL", 0));
 		}
+
+		final NoteStyle style = NoteStyle.getNoteStyle(line0.get("STYLE", 0));
+		final Display display = diagram.manageVariable(lines.toDisplay());
+		final String backcolor0 = line0.get("COLOR", 0);
+		Colors colors = Colors.empty().add(ColorType.BACK,
+				backcolor0 == null ? null : HColorSet.instance().getColor(backcolor0));
+		final Note note = new Note(display, position, style, diagram.getSkinParam().getCurrentStyleBuilder());
+		final String stereotypeString = line0.getLazzy("STEREO", 0);
+		if (stereotypeString != null) {
+			final Stereotype stereotype = Stereotype.build(stereotypeString);
+			colors = colors.applyStereotypeForNote(stereotype, diagram.getSkinParam(), ColorParam.noteBackground,
+					ColorParam.noteBorder);
+			note.setStereotype(stereotype);
+		}
+		note.setUrl(url);
+		note.setColors(colors);
+		event.addNote(note);
 
 		return CommandExecutionResult.ok();
 	}

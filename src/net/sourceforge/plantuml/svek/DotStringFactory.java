@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -45,32 +45,31 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.sourceforge.plantuml.BaseFile;
-import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.UmlDiagramType;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.baraye.EntityFactory;
-import net.sourceforge.plantuml.baraye.IGroup;
-import net.sourceforge.plantuml.command.Position;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityFactory;
 import net.sourceforge.plantuml.cucadiagram.ICucaDiagram;
-import net.sourceforge.plantuml.cucadiagram.Rankdir;
-import net.sourceforge.plantuml.cucadiagram.dot.DotData;
-import net.sourceforge.plantuml.cucadiagram.dot.DotSplines;
-import net.sourceforge.plantuml.cucadiagram.dot.Graphviz;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizUtils;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizVersion;
-import net.sourceforge.plantuml.cucadiagram.dot.GraphvizVersions;
-import net.sourceforge.plantuml.cucadiagram.dot.ProcessState;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.posimo.Moveable;
+import net.sourceforge.plantuml.dot.DotData;
+import net.sourceforge.plantuml.dot.DotSplines;
+import net.sourceforge.plantuml.dot.Graphviz;
+import net.sourceforge.plantuml.dot.GraphvizUtils;
+import net.sourceforge.plantuml.dot.GraphvizVersion;
+import net.sourceforge.plantuml.dot.GraphvizVersions;
+import net.sourceforge.plantuml.dot.ProcessState;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.Moveable;
+import net.sourceforge.plantuml.klimt.geom.Rankdir;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.security.SFile;
+import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.utils.Position;
 import net.sourceforge.plantuml.vizjs.GraphvizJs;
 import net.sourceforge.plantuml.vizjs.GraphvizJsRuntimeException;
 
 public class DotStringFactory implements Moveable {
 
-	private final Bibliotekon bibliotekon = new Bibliotekon();
+	private final Bibliotekon bibliotekon;
 
 	private final ColorSequence colorSequence;
 	private final Cluster root;
@@ -93,6 +92,7 @@ public class DotStringFactory implements Moveable {
 		this.root = new Cluster(dotData.getEntityFactory().getDiagram(), colorSequence, skinParam,
 				dotData.getRootGroup());
 		this.current = root;
+		this.bibliotekon = new Bibliotekon(dotData.getLinks());
 	}
 
 	public DotStringFactory(StringBounder stringBounder, ICucaDiagram diagram) {
@@ -104,6 +104,7 @@ public class DotStringFactory implements Moveable {
 		this.stringBounder = stringBounder;
 		this.root = new Cluster(diagram, colorSequence, skinParam, diagram.getEntityFactory().getRootGroup());
 		this.current = root;
+		this.bibliotekon = new Bibliotekon(diagram.getLinks());
 	}
 
 	public void addNode(SvekNode node) {
@@ -134,6 +135,7 @@ public class DotStringFactory implements Moveable {
 		return max / 10;
 	}
 
+	// ::comment when __CORE__
 	String createDotString(String... dotStrings) {
 		final StringBuilder sb = new StringBuilder();
 
@@ -224,6 +226,7 @@ public class DotStringFactory implements Moveable {
 
 		return sb.toString();
 	}
+	// ::done
 
 	private void manageMinMaxCluster(final StringBuilder sb) {
 		final List<String> minPointCluster = new ArrayList<>();
@@ -278,6 +281,12 @@ public class DotStringFactory implements Moveable {
 		return 35;
 	}
 
+	// ::uncomment when __CORE__
+	// public GraphvizVersion getGraphvizVersion() {
+	// return null;
+	// }
+	// ::done
+	// ::comment when __CORE__
 	private GraphvizVersion graphvizVersion;
 
 	public GraphvizVersion getGraphvizVersion() {
@@ -349,8 +358,7 @@ public class DotStringFactory implements Moveable {
 		return graphviz.getDotExe();
 	}
 
-	public void solve(boolean mergeIntricated, EntityFactory entityFactory, final String svg)
-			throws IOException, InterruptedException {
+	public void solve(EntityFactory entityFactory, final String svg) throws IOException, InterruptedException {
 		if (svg.length() == 0)
 			throw new EmptySvgException();
 
@@ -407,12 +415,9 @@ public class DotStringFactory implements Moveable {
 		}
 
 		for (Cluster cluster : bibliotekon.allCluster()) {
-			if (mergeIntricated) {
-				final IGroup group = cluster.getGroups().iterator().next();
-				if (entityFactory.isIntricated(group) != null)
-					continue;
-
-			}
+			if (cluster.getGroup().isPacked())
+				continue;
+			
 			int idx = getClusterIndex(svg, cluster.getColor());
 			final int starting = idx;
 			final List<XPoint2D> points = svgResult.substring(starting).extractList(SvgResult.POINTS_EQUALS);
@@ -448,9 +453,6 @@ public class DotStringFactory implements Moveable {
 		for (SvekLine line : bibliotekon.allLines())
 			line.manageCollision(bibliotekon.allNodes());
 
-		// corner1.manage(0, 0);
-//		return new ClusterPosition(corner1.getMinX(), corner1.getMinY(), fullWidth, fullHeight);
-//		// return new ClusterPosition(0, 0, fullWidth, fullHeight);
 	}
 
 	private int getClusterIndex(final String svg, int colorInt) {
@@ -466,8 +468,9 @@ public class DotStringFactory implements Moveable {
 
 		return idx;
 	}
+	// ::done
 
-	public void openCluster(IGroup g, ClusterHeader clusterHeader) {
+	public void openCluster(Entity g, ClusterHeader clusterHeader) {
 		this.current = current.createChild(clusterHeader, colorSequence, skinParam, g);
 		bibliotekon.addCluster(this.current);
 	}

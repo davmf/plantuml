@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,9 +35,9 @@
  */
 package net.sourceforge.plantuml.project;
 
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.HashSet;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.sourceforge.plantuml.project.core3.Histogram;
 import net.sourceforge.plantuml.project.core3.TimeLine;
@@ -46,25 +46,25 @@ import net.sourceforge.plantuml.project.time.DayOfWeek;
 
 public class OpenClose implements Histogram, LoadPlanable {
 
-	private final Collection<DayOfWeek> closedDayOfWeek = EnumSet.noneOf(DayOfWeek.class);
-	private final Collection<DayOfWeek> openedDayOfWeek = EnumSet.noneOf(DayOfWeek.class);
-	private final Collection<Day> closedDays = new HashSet<>();
-	private final Collection<Day> openedDays = new HashSet<>();
+	private final Map<DayOfWeek, DayStatus> weekdayStatus = new EnumMap<>(DayOfWeek.class);
+	private final Map<Day, DayStatus> dayStatus = new HashMap<>();
 	private Day startingDay;
+	private Day offBefore;
+	private Day offAfter;
 
 	public int daysInWeek() {
-		return 7 - closedDayOfWeek.size();
+		int result = 7;
+		for (DayStatus status : weekdayStatus.values())
+			if (status == DayStatus.CLOSE)
+				result--;
+		return result;
 	}
 
 	private boolean isThereSomeChangeAfter(Day day) {
-		if (closedDayOfWeek.size() > 0)
+		if (weekdayStatus.size() > 0)
 			return true;
 
-		for (Day tmp : closedDays)
-			if (tmp.compareTo(day) >= 0)
-				return true;
-
-		for (Day tmp : openedDays)
+		for (Day tmp : dayStatus.keySet())
 			if (tmp.compareTo(day) >= 0)
 				return true;
 
@@ -72,14 +72,10 @@ public class OpenClose implements Histogram, LoadPlanable {
 	}
 
 	private boolean isThereSomeChangeBefore(Day day) {
-		if (closedDayOfWeek.size() > 0)
+		if (weekdayStatus.size() > 0)
 			return true;
 
-		for (Day tmp : closedDays)
-			if (tmp.compareTo(day) <= 0)
-				return true;
-
-		for (Day tmp : openedDays)
+		for (Day tmp : dayStatus.keySet())
 			if (tmp.compareTo(day) <= 0)
 				return true;
 
@@ -87,28 +83,45 @@ public class OpenClose implements Histogram, LoadPlanable {
 	}
 
 	public boolean isClosed(Day day) {
-		if (openedDays.contains(day))
-			return false;
+		final DayStatus status = getLocalStatus(day);
+		if (status != null)
+			return status == DayStatus.CLOSE;
+
+		return false;
+	}
+
+	private DayStatus getLocalStatus(Day day) {
+		if (offBefore != null && day.compareTo(offBefore) < 0)
+			return DayStatus.CLOSE;
+		if (offAfter != null && day.compareTo(offAfter) > 0)
+			return DayStatus.CLOSE;
+
+		final DayStatus status1 = dayStatus.get(day);
+		if (status1 != null)
+			return status1;
 
 		final DayOfWeek dayOfWeek = day.getDayOfWeek();
-		return closedDayOfWeek.contains(dayOfWeek) || closedDays.contains(day);
+		final DayStatus status2 = weekdayStatus.get(dayOfWeek);
+		if (status2 != null)
+			return status2;
+
+		return null;
 	}
 
 	public void close(DayOfWeek day) {
-		closedDayOfWeek.add(day);
+		weekdayStatus.put(day, DayStatus.CLOSE);
 	}
 
 	public void open(DayOfWeek day) {
-		closedDayOfWeek.remove(day);
-		openedDayOfWeek.add(day);
+		weekdayStatus.put(day, DayStatus.OPEN);
 	}
 
 	public void close(Day day) {
-		closedDays.add(day);
+		dayStatus.put(day, DayStatus.CLOSE);
 	}
 
 	public void open(Day day) {
-		openedDays.add(day);
+		dayStatus.put(day, DayStatus.OPEN);
 	}
 
 	public final Day getStartingDay() {
@@ -168,6 +181,14 @@ public class OpenClose implements Histogram, LoadPlanable {
 		return getLoatAtInternal(day);
 	}
 
+	public void setOffBeforeDate(Day day) {
+		this.offBefore = day;
+	}
+
+	public void setOffAfterDate(Day day) {
+		this.offAfter = day;
+	}
+
 	private int getLoatAtInternal(Day day) {
 		if (isClosed(day))
 			return 0;
@@ -180,16 +201,25 @@ public class OpenClose implements Histogram, LoadPlanable {
 			return new LoadPlanable() {
 				@Override
 				public int getLoadAt(Day instant) {
-					if (except.openedDays.contains(instant))
-						return 100;
-					if (except.closedDays.contains(instant))
+					final DayStatus exceptStatus = except.getLocalStatus(instant);
+					if (exceptStatus == DayStatus.CLOSE)
 						return 0;
-					if (except.openedDayOfWeek.size() > 0 && except.openedDayOfWeek.contains(instant.getDayOfWeek()))
+					else if (exceptStatus == DayStatus.OPEN)
 						return 100;
 					return OpenClose.this.getLoadAt(instant);
 				}
+
+				@Override
+				public Day getLastDayIfAny() {
+					return offAfter;
+				}
 			};
 		return this;
+	}
+
+	@Override
+	public Day getLastDayIfAny() {
+		return offAfter;
 	}
 
 }

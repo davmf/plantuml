@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -38,29 +38,37 @@ package net.sourceforge.plantuml.svek.image;
 import java.util.EnumMap;
 import java.util.Map;
 
-import net.sourceforge.plantuml.CornerParam;
-import net.sourceforge.plantuml.FontParam;
-import net.sourceforge.plantuml.Guillemet;
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.LineConfigurable;
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XRectangle2D;
-import net.sourceforge.plantuml.baraye.ILeaf;
-import net.sourceforge.plantuml.creole.Stencil;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.EntityPortion;
+import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityPortion;
+import net.sourceforge.plantuml.abel.LineConfigurable;
 import net.sourceforge.plantuml.cucadiagram.PortionShower;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.InnerStrategy;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockEmpty;
-import net.sourceforge.plantuml.graphic.TextBlockLineBefore;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
-import net.sourceforge.plantuml.graphic.color.ColorType;
+import net.sourceforge.plantuml.klimt.Shadowable;
+import net.sourceforge.plantuml.klimt.UGroupType;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.creole.Stencil;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.drawing.UGraphicStencil;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.FontParam;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.PlacementStrategyY1Y2;
+import net.sourceforge.plantuml.klimt.geom.ULayoutGroup;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockEmpty;
+import net.sourceforge.plantuml.klimt.shape.TextBlockLineBefore;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.skin.CornerParam;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
@@ -69,16 +77,8 @@ import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.svek.WithPorts;
-import net.sourceforge.plantuml.ugraphic.PlacementStrategyY1Y2;
-import net.sourceforge.plantuml.ugraphic.Shadowable;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UGraphicStencil;
-import net.sourceforge.plantuml.ugraphic.UGroupType;
-import net.sourceforge.plantuml.ugraphic.ULayoutGroup;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.text.Guillemet;
+import net.sourceforge.plantuml.url.Url;
 
 public class EntityImageObject extends AbstractEntityImage implements Stencil, WithPorts {
 
@@ -87,10 +87,11 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 	final private TextBlock fields;
 	final private Url url;
 	final private double roundCorner;
+	private final boolean showFields;
 
 	final private LineConfigurable lineConfig;
 
-	public EntityImageObject(ILeaf entity, ISkinParam skinParam, PortionShower portionShower) {
+	public EntityImageObject(Entity entity, ISkinParam skinParam, PortionShower portionShower) {
 		super(entity, skinParam);
 		this.lineConfig = entity;
 		final Stereotype stereotype = entity.getStereotype();
@@ -100,6 +101,7 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 
 		final TextBlock tmp = getUnderlinedName(entity).create(fcHeader, HorizontalAlignment.CENTER, skinParam);
 		this.name = TextBlockUtils.withMargin(tmp, 2, 2);
+
 		if (stereotype == null || stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR) == null
 				|| portionShower.showPortion(EntityPortion.STEREOTYPE, entity) == false)
 			this.stereo = null;
@@ -108,9 +110,9 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 					FontConfiguration.create(getSkinParam(), FontParam.OBJECT_STEREOTYPE, stereotype),
 					HorizontalAlignment.CENTER, skinParam);
 
-		final boolean showFields = portionShower.showPortion(EntityPortion.FIELD, entity);
+		showFields = portionShower.showPortion(EntityPortion.FIELD, entity);
 
-		if (entity.getBodier().getFieldsToDisplay().size() == 0)
+		if (entity.getBodier().getFieldsToDisplay().size() == 0 && showFields)
 			this.fields = new TextBlockLineBefore(getStyle().value(PName.LineThickness).asDouble(),
 					new TextBlockEmpty(10, 16));
 		else
@@ -131,7 +133,7 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 				.withTOBECHANGED(getEntity().getStereotype()).getMergedStyle(getSkinParam().getCurrentStyleBuilder());
 	}
 
-	private Display getUnderlinedName(ILeaf entity) {
+	private Display getUnderlinedName(Entity entity) {
 		if (getSkinParam().strictUmlStyle())
 			return entity.getDisplay().underlinedName();
 
@@ -159,7 +161,7 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 
 		final double widthTotal = dimTotal.getWidth();
 		final double heightTotal = dimTotal.getHeight();
-		final Shadowable rect = new URectangle(widthTotal, heightTotal).rounded(roundCorner);
+		final Shadowable rect = URectangle.build(widthTotal, heightTotal).rounded(roundCorner);
 
 		HColor backcolor = getEntity().getColors().getColor(ColorType.BACK);
 		HColor headerBackcolor = getEntity().getColors().getColor(ColorType.HEADER);
@@ -184,13 +186,13 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 			ug.startUrl(url);
 
 		final Map<UGroupType, String> typeIDent = new EnumMap<>(UGroupType.class);
-		typeIDent.put(UGroupType.CLASS, "elem " + getEntity().getCode() + " selected");
-		typeIDent.put(UGroupType.ID, "elem_" + getEntity().getCode());
+		typeIDent.put(UGroupType.CLASS, "elem " + getEntity().getName() + " selected");
+		typeIDent.put(UGroupType.ID, "elem_" + getEntity().getName());
 		ug.startGroup(typeIDent);
 		ug.apply(stroke).draw(rect);
 
 		if (roundCorner == 0 && headerBackcolor != null && backcolor.equals(headerBackcolor) == false) {
-			final Shadowable rect2 = new URectangle(widthTotal, dimTitle.getHeight());
+			final Shadowable rect2 = URectangle.build(widthTotal, dimTitle.getHeight());
 			final UGraphic ugHeader = ug.apply(headerBackcolor.bg());
 			ugHeader.apply(stroke).draw(rect2);
 		}
@@ -218,7 +220,7 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 
 	private double getMethodOrFieldHeight(final XDimension2D dim) {
 		final double fieldsHeight = dim.getHeight();
-		if (fieldsHeight == 0)
+		if (fieldsHeight == 0 && showFields)
 			return marginEmptyFieldsOrMethod;
 
 		return fieldsHeight;
@@ -240,7 +242,7 @@ public class EntityImageObject extends AbstractEntityImage implements Stencil, W
 	}
 
 	public ShapeType getShapeType() {
-		if (((ILeaf) getEntity()).getPortShortNames().size() > 0)
+		if (getEntity().getPortShortNames().size() > 0)
 			return ShapeType.RECTANGLE_HTML_FOR_PORTS;
 
 		return ShapeType.RECTANGLE;

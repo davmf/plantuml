@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -44,6 +44,7 @@ import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 
 public class PSystemSudoku extends AbstractPSystem {
 
@@ -53,17 +54,25 @@ public class PSystemSudoku extends AbstractPSystem {
 	final protected ImageData exportDiagramNow(OutputStream os, int num, FileFormatOption fileFormat)
 			throws IOException {
 		final GraphicsSudoku sud = new GraphicsSudoku(sudoku);
-		if (fileFormat.getFileFormat() == FileFormat.EPS) {
+		// ::comment when __CORE__
+		if (fileFormat.getFileFormat() == FileFormat.EPS)
 			return sud.writeImageEps(os);
-		}
-		if (fileFormat.getFileFormat() == FileFormat.SVG) {
-			return sud.writeImageSvg(os);
-		}
+
 		if (fileFormat.getFileFormat() == FileFormat.LATEX
-				|| fileFormat.getFileFormat() == FileFormat.LATEX_NO_PREAMBLE) {
+				|| fileFormat.getFileFormat() == FileFormat.LATEX_NO_PREAMBLE)
 			return sud.writeImageLatex(os, fileFormat.getFileFormat());
-		}
+		// ::done
+
+		if (fileFormat.getFileFormat() == FileFormat.SVG)
+			return sud.writeImageSvg(os);
+
 		return sud.writeImagePng(os);
+	}
+
+	@Override
+	public void exportDiagramGraphic(UGraphic ug, FileFormatOption fileFormatOption) {
+		final GraphicsSudoku sud = new GraphicsSudoku(sudoku);
+		sud.drawInternal(ug);
 	}
 
 	public DiagramDescription getDescription() {

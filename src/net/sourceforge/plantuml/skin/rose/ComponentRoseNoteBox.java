@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,23 +35,23 @@
  */
 package net.sourceforge.plantuml.skin.rose;
 
-import net.sourceforge.plantuml.ISkinSimple;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.SymbolContext;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.klimt.Fashion;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.skin.AbstractTextualComponent;
 import net.sourceforge.plantuml.skin.Area;
+import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
 
 final public class ComponentRoseNoteBox extends AbstractTextualComponent {
 
-	private final SymbolContext symbolContext;
+	private final Fashion symbolContext;
 	private final double roundCorner;
 
 	public ComponentRoseNoteBox(Style style, Display strings, ISkinSimple spriteContainer, Colors colors) {
@@ -96,10 +96,10 @@ final public class ComponentRoseNoteBox extends AbstractTextualComponent {
 			x2 = (int) (area.getDimensionToUse().getWidth() - 2 * getPaddingX());
 
 		ug = symbolContext.apply(ug);
-		final URectangle rect = new URectangle(x2, textHeight).rounded(roundCorner);
+		final URectangle rect = URectangle.build(x2, textHeight).rounded(roundCorner);
 		rect.setDeltaShadow(symbolContext.getDeltaShadow());
 		ug.draw(rect);
-		ug = ug.apply(new UStroke());
+		ug = ug.apply(UStroke.simple());
 
 		getTextBlock().drawU(ug.apply(new UTranslate(getMarginX1() + diffX / 2, getMarginY())));
 

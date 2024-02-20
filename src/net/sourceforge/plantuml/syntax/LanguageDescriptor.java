@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -41,8 +41,8 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 
-import net.sourceforge.plantuml.SkinParam;
-import net.sourceforge.plantuml.ugraphic.color.HColorSet;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.skin.SkinParam;
 import net.sourceforge.plantuml.utils.Cypher;
 
 public class LanguageDescriptor {
@@ -87,6 +87,14 @@ public class LanguageDescriptor {
 		type.add("label");
 		type.add("person");
 		type.add("annotation");
+		type.add("protocol");
+		type.add("struct");
+		type.add("exception");
+		type.add("metaclass");
+		type.add("map");
+		type.add("json");
+		type.add("action");
+		type.add("process");
 
 		keyword.add("@startwire");
 		keyword.add("@startbpm");
@@ -111,6 +119,11 @@ public class LanguageDescriptor {
 		keyword.add("@startgit");
 		keyword.add("@startboard");
 		keyword.add("@startyaml");
+		keyword.add("@starthcl");
+		keyword.add("@startebnf");
+		keyword.add("@startregex");
+		keyword.add("@startfiles");
+		keyword.add("@startchronology");
 		keyword.add("@endwire");
 		keyword.add("@endbpm");
 		keyword.add("@enduml");
@@ -134,11 +147,18 @@ public class LanguageDescriptor {
 		keyword.add("@endgit");
 		keyword.add("@endboard");
 		keyword.add("@endyaml");
+		keyword.add("@endhcl");
+		keyword.add("@endebnf");
+		keyword.add("@endregex");
+		keyword.add("@endfiles");
+		keyword.add("@endchronology");
 		keyword.add("as");
 		keyword.add("also");
 		keyword.add("autonumber");
 		keyword.add("caption");
+		keyword.add("endcaption");
 		keyword.add("title");
+		keyword.add("endtitle");
 		keyword.add("newpage");
 		keyword.add("box");
 		keyword.add("alt");
@@ -152,6 +172,7 @@ public class LanguageDescriptor {
 		keyword.add("rnote");
 		keyword.add("hnote");
 		keyword.add("legend");
+		keyword.add("endlegend");
 		keyword.add("group");
 		keyword.add("left");
 		keyword.add("right");
@@ -185,7 +206,9 @@ public class LanguageDescriptor {
 		keyword.add("endif");
 		keyword.add("partition");
 		keyword.add("footer");
+		keyword.add("endfooter");
 		keyword.add("header");
+		keyword.add("endheader");
 		keyword.add("center");
 		keyword.add("rotate");
 		keyword.add("ref");
@@ -206,11 +229,15 @@ public class LanguageDescriptor {
 		keyword.add("mainframe");
 		keyword.add("across");
 		keyword.add("stereotype");
+		keyword.add("stereotypes");
 		keyword.add("split");
 		keyword.add("style");
-		keyword.add("sprite");		
+		keyword.add("sprite");
 		keyword.add("circle");
+		keyword.add("circles");
+		keyword.add("circled");
 		keyword.add("empty");
+		keyword.add("member");
 		keyword.add("members");
 		keyword.add("description");
 		keyword.add("true");
@@ -223,8 +250,16 @@ public class LanguageDescriptor {
 		keyword.add("dotted");
 		keyword.add("dashed");
 		keyword.add("bold");
-		keyword.add("map");
-
+		keyword.add("together");
+		keyword.add("attribute");
+		keyword.add("attributes");
+		keyword.add("field");
+		keyword.add("fields");
+		keyword.add("method");
+		keyword.add("methods");
+		keyword.add("public");
+		keyword.add("private");
+		keyword.add("protected");
 
 		preproc.add("!exit");
 		preproc.add("!include");
@@ -256,21 +291,21 @@ public class LanguageDescriptor {
 
 	public Cypher getCypher() {
 		final Cypher cypher = new Cypher();
-		for (String s : type) {
+		for (String s : type)
 			cypher.addException(s);
-		}
-		for (String s : keyword) {
+
+		for (String s : keyword)
 			cypher.addException(s.replace("@", ""));
-		}
-		for (String s : preproc) {
+
+		for (String s : preproc)
 			cypher.addException(s.substring(1));
-		}
-		for (String s : SkinParam.getPossibleValues()) {
+
+		for (String s : SkinParam.getPossibleValues())
 			cypher.addException(s);
-		}
-		for (String s : HColorSet.instance().names()) {
+
+		for (String s : HColorSet.instance().names())
 			cypher.addException(s);
-		}
+
 		cypher.addException("o");
 		return cypher;
 	}
@@ -287,9 +322,9 @@ public class LanguageDescriptor {
 	private static void print(PrintStream ps, String name, Collection<String> data) {
 		ps.println(";" + name);
 		ps.println(";" + data.size());
-		for (String k : data) {
+		for (String k : data)
 			ps.println(k);
-		}
+
 		ps.println();
 	}
 

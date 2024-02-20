@@ -1,19 +1,20 @@
 package net.sourceforge.plantuml.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Checks some security features
@@ -66,6 +67,7 @@ class SURLTest {
 	 * Checks a SURL after removing the UserInfo part.
 	 *
 	 * @throws MalformedURLException this should not be happened
+	 * @throws URISyntaxException should not happen
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {
@@ -75,8 +77,8 @@ class SURLTest {
 			"https://localhost:8080/api",
 			"https://alice@localhost:8080/api",
 			"https://alice_secret@localhost:8080/api"})
-	void removeUserInfo(String url) throws MalformedURLException {
-		SURL surl = SURL.createWithoutUser(new URL(url));
+	void removeUserInfo(String url) throws MalformedURLException, URISyntaxException {
+		SURL surl = SURL.createWithoutUser(new URI(url).toURL());
 
 		assertThat(surl).isNotNull();
 		assertThat(surl.isAuthorizationConfigured()).isFalse();

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -36,7 +36,7 @@
 package net.sourceforge.plantuml;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static net.sourceforge.plantuml.ugraphic.ImageBuilder.plainImageBuilder;
+import static net.atmp.ImageBuilder.plainImageBuilder;
 import static net.sourceforge.plantuml.utils.CharsetUtils.charsetOrDefault;
 
 import java.io.IOException;
@@ -47,18 +47,18 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import net.sourceforge.plantuml.annotation.HaxeIgnored;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.ImageData;
-import net.sourceforge.plantuml.graphic.GraphicStrings;
+import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.preproc.Defines;
 import net.sourceforge.plantuml.security.SFile;
-import net.sourceforge.plantuml.svek.TextBlockBackcolored;
+import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.Log;
 
-@HaxeIgnored
 public class SourceStringReader {
+	// ::remove file when __HAXE__
 
 	final private List<BlockUml> blocks;
 
@@ -107,6 +107,9 @@ public class SourceStringReader {
 		}
 	}
 
+	/**
+	 * @deprecated Use {@link #outputImage(OutputStream)} instead
+	 */
 	@Deprecated
 	public String generateImage(OutputStream os) throws IOException {
 		return outputImage(os).getDescription();
@@ -116,6 +119,10 @@ public class SourceStringReader {
 		return outputImage(os, 0);
 	}
 
+	// ::comment when __CORE__
+	/**
+	 * @deprecated Use {@link #outputImage(SFile)} instead
+	 */
 	@Deprecated
 	public String generateImage(SFile f) throws IOException {
 		return outputImage(f).getDescription();
@@ -126,7 +133,11 @@ public class SourceStringReader {
 			return outputImage(os, 0);
 		}
 	}
+	// ::done
 
+	/**
+	 * @deprecated Use {@link #outputImage(OutputStream, FileFormatOption)} instead
+	 */
 	@Deprecated
 	public String generateImage(OutputStream os, FileFormatOption fileFormatOption) throws IOException {
 		return outputImage(os, fileFormatOption).getDescription();
@@ -136,6 +147,9 @@ public class SourceStringReader {
 		return outputImage(os, 0, fileFormatOption);
 	}
 
+	/**
+	 * @deprecated Use {@link #outputImage(OutputStream, int)} instead
+	 */
 	@Deprecated
 	public String generateImage(OutputStream os, int numImage) throws IOException {
 		return outputImage(os, numImage).getDescription();
@@ -145,6 +159,9 @@ public class SourceStringReader {
 		return outputImage(os, numImage, new FileFormatOption(FileFormat.PNG));
 	}
 
+	/**
+	 * @deprecated Use {@link #outputImage(OutputStream, int, FileFormatOption)} instead
+	 */
 	@Deprecated
 	public String generateImage(OutputStream os, int numImage, FileFormatOption fileFormatOption) throws IOException {
 		return outputImage(os, numImage, fileFormatOption).getDescription();
@@ -153,8 +170,16 @@ public class SourceStringReader {
 	public DiagramDescription outputImage(OutputStream os, int numImage, FileFormatOption fileFormatOption)
 			throws IOException {
 		if (blocks.size() == 0) {
-			noStartumlFound(os, fileFormatOption);
+			noValidStartFound(os, fileFormatOption);
 			return null;
+		}
+		if (fileFormatOption.getFileFormat() == FileFormat.PREPROC) {
+			final BlockUml first = blocks.get(0);
+			for (StringLocated s : first.getData()) {
+				os.write(s.getString().getBytes(UTF_8));
+				os.write("\n".getBytes(UTF_8));
+			}
+			return new DiagramDescription("PREPROC");
 		}
 		for (BlockUml b : blocks) {
 			final Diagram system = b.getDiagram();
@@ -229,8 +254,9 @@ public class SourceStringReader {
 
 	}
 
-	public ImageData noStartumlFound(OutputStream os, FileFormatOption fileFormatOption) throws IOException {
-		final TextBlockBackcolored error = GraphicStrings.createForError(Arrays.asList("No @startuml/@enduml found"),
+	public ImageData noValidStartFound(OutputStream os, FileFormatOption fileFormatOption) throws IOException {
+		final TextBlock error = GraphicStrings.createForError(
+				Arrays.asList("No valid @start/@end found, please check the version"),
 				fileFormatOption.isUseRedForError());
 
 		return plainImageBuilder(error, fileFormatOption).write(os);

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -38,17 +38,19 @@ package net.sourceforge.plantuml.cucadiagram;
 import java.util.List;
 import java.util.Objects;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.baraye.ILeaf;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.TextBlock;
+import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.json.JsonValue;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
 
 public class BodierJSon implements Bodier {
 
-	private ILeaf leaf;
+	private Entity leaf;
 	private JsonValue json;
 
 	@Override
@@ -60,7 +62,7 @@ public class BodierJSon implements Bodier {
 	}
 
 	@Override
-	public void setLeaf(ILeaf leaf) {
+	public void setLeaf(Entity leaf) {
 		this.leaf = Objects.requireNonNull(leaf);
 
 	}

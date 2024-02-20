@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,6 +39,7 @@ import java.util.List;
 
 import net.sourceforge.plantuml.classdiagram.command.CommandHideShowByGender;
 import net.sourceforge.plantuml.classdiagram.command.CommandHideShowByVisibility;
+import net.sourceforge.plantuml.classdiagram.command.CommandNamespaceSeparator;
 import net.sourceforge.plantuml.sequencediagram.command.CommandSkin;
 import net.sourceforge.plantuml.statediagram.command.CommandHideEmptyDescription;
 import net.sourceforge.plantuml.style.CommandStyleImport;
@@ -72,8 +73,6 @@ public final class CommonCommands {
 		cmds.add(CommandScaleMaxWidth.ME);
 		cmds.add(CommandScaleMaxHeight.ME);
 		cmds.add(CommandScaleMaxWidthAndHeight.ME);
-		cmds.add(CommandAffineTransform.ME);
-		cmds.add(CommandAffineTransformMultiline.ME);
 		final CommandFactorySprite factorySpriteCommand = new CommandFactorySprite();
 		cmds.add(factorySpriteCommand.createMultiLine(false));
 		cmds.add(factorySpriteCommand.createSingleLine());
@@ -106,6 +105,7 @@ public final class CommonCommands {
 
 		cmds.add(CommandHeader.ME);
 		cmds.add(CommandMultilinesHeader.ME);
+		cmds.add(CommandNamespaceSeparator.ME);
 	}
 
 }

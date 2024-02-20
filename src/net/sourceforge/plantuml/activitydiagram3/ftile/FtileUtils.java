@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -44,9 +44,9 @@ public class FtileUtils {
 	}
 
 	public static Ftile addConnection(Ftile ftile, Collection<Connection> connections) {
-		if (connections.size() == 0) {
+		if (connections.size() == 0)
 			return ftile;
-		}
+
 		return new FtileWithConnection(ftile, connections);
 	}
 
@@ -59,23 +59,23 @@ public class FtileUtils {
 	}
 
 	public static Ftile addVerticalMargin(Ftile ftile, double marginTop, double marginBottom) {
-		if (marginTop == 0 && marginBottom == 0) {
+		if (marginTop == 0 && marginBottom == 0)
 			return ftile;
-		}
+
 		return new FtileMargedVertically(ftile, marginTop, marginBottom);
 	}
 
 	public static Ftile addHorizontalMargin(Ftile ftile, double margin1, double margin2) {
-		if (margin1 == 0 && margin2 == 0) {
+		if (margin1 == 0 && margin2 == 0)
 			return ftile;
-		}
+
 		return new FtileMarged(ftile, margin1, margin2);
 	}
 
 	public static Ftile addHorizontalMargin(Ftile ftile, double margin) {
-		if (margin == 0) {
+		if (margin == 0)
 			return ftile;
-		}
+
 		return new FtileMarged(ftile, margin, margin);
 	}
 

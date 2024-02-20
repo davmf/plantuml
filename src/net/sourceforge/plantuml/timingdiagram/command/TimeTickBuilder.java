@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -36,12 +36,12 @@ package net.sourceforge.plantuml.timingdiagram.command;
 
 import java.math.BigDecimal;
 
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexOptional;
-import net.sourceforge.plantuml.command.regex.RegexOr;
-import net.sourceforge.plantuml.command.regex.RegexResult;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexOr;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.timingdiagram.Clocks;
 import net.sourceforge.plantuml.timingdiagram.TimeTick;
 import net.sourceforge.plantuml.timingdiagram.TimingFormat;
@@ -50,7 +50,7 @@ public class TimeTickBuilder {
 
 	public static IRegex expressionAtWithoutArobase(String name) {
 		return new RegexOr( //
-				new RegexLeaf(name + "CODE", ":([%pLN_.]+)([-+]\\d+)?"), //
+				new RegexLeaf(name + "CODE", ":([%pLN_.]+)([-+][.\\d]+)?"), //
 				new RegexLeaf(name + "DATE", "(\\d+)/(\\d+)/(\\d+)"), //
 				new RegexLeaf(name + "HOUR", "(\\d+):(\\d+):(\\d+)"), //
 				new RegexLeaf(name + "DIGIT", "(\\+?)(-?\\d+\\.?\\d*)"), //

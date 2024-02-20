@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -45,6 +45,8 @@ import net.sourceforge.plantuml.error.PSystemError;
 import net.sourceforge.plantuml.utils.Log;
 
 public class StdrptV1 implements Stdrpt {
+	// ::remove file when __CORE__
+	// ::remove file when __HAXE__
 
 	public void printInfo(final PrintStream output, Diagram sys) {
 		if (sys instanceof PSystemWelcome) {

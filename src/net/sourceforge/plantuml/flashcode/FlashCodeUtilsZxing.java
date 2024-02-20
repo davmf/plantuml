@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -41,15 +41,16 @@ import java.util.Hashtable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import ext.plantuml.com.google.zxing.BarcodeFormat;
-import ext.plantuml.com.google.zxing.EncodeHintType;
-import ext.plantuml.com.google.zxing.client.j2se.MatrixToImageWriter;
-import ext.plantuml.com.google.zxing.common.BitMatrix;
-import ext.plantuml.com.google.zxing.qrcode.QRCodeWriter;
-import ext.plantuml.com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import zext.plantuml.com.google.zxing.BarcodeFormat;
+import zext.plantuml.com.google.zxing.EncodeHintType;
+import zext.plantuml.com.google.zxing.client.j2se.MatrixToImageWriter;
+import zext.plantuml.com.google.zxing.common.BitMatrix;
+import zext.plantuml.com.google.zxing.qrcode.QRCodeWriter;
+import zext.plantuml.com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import net.sourceforge.plantuml.utils.Log;
 
 public class FlashCodeUtilsZxing implements FlashCodeUtils {
+    // ::remove file when __MIT__ or __EPL__ or __BSD__ or __ASL__ or __LGPL__
 
 	private static final Lock lock = new ReentrantLock();
 

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -38,8 +38,9 @@ package net.sourceforge.plantuml.core;
 import net.sourceforge.plantuml.utils.StartUtils;
 
 public enum DiagramType {
-	UML, BPM, DITAA, DOT, PROJECT, JCCKIT, SALT, FLOW, CREOLE, JUNGLE, CUTE, MATH, LATEX, DEFINITION, GANTT, NW,
-	MINDMAP, WBS, WIRE, JSON, GIT, BOARD, YAML, HCL, EBNF, REGEX, UNKNOWN;
+	// ::remove folder when __HAXE__
+	UML, BPM, DITAA, DOT, PROJECT, JCCKIT, SALT, FLOW, CREOLE, MATH, LATEX, DEFINITION, GANTT, CHRONOLOGY, NW, MINDMAP,
+	WBS, WIRE, JSON, GIT, BOARD, YAML, HCL, EBNF, REGEX, FILES, UNKNOWN;
 
 	static public DiagramType getTypeFromArobaseStart(String s) {
 		s = s.toLowerCase();
@@ -58,11 +59,16 @@ public enum DiagramType {
 		if (StartUtils.startsWithSymbolAnd("startdot", s))
 			return DOT;
 
+		// ::comment when __CORE__ or __MIT__ or __EPL__ or __BSD__ or __ASL__ or
+		// __LGPL__
 		if (StartUtils.startsWithSymbolAnd("startjcckit", s))
 			return JCCKIT;
+		// ::done
 
+		// ::comment when __CORE__ or __MIT__ or __EPL__ or __BSD__ or __ASL__
 		if (StartUtils.startsWithSymbolAnd("startditaa", s))
 			return DITAA;
+		// ::done
 
 		if (StartUtils.startsWithSymbolAnd("startproject", s))
 			return PROJECT;
@@ -75,12 +81,6 @@ public enum DiagramType {
 
 		if (StartUtils.startsWithSymbolAnd("startcreole", s))
 			return CREOLE;
-
-		if (StartUtils.startsWithSymbolAnd("starttree", s))
-			return JUNGLE;
-
-		if (StartUtils.startsWithSymbolAnd("startcute", s))
-			return CUTE;
 
 		if (StartUtils.startsWithSymbolAnd("startmath", s))
 			return MATH;
@@ -123,6 +123,12 @@ public enum DiagramType {
 
 		if (StartUtils.startsWithSymbolAnd("startregex", s))
 			return REGEX;
+
+		if (StartUtils.startsWithSymbolAnd("startfiles", s))
+			return FILES;
+
+		if (StartUtils.startsWithSymbolAnd("startchronology", s))
+			return CHRONOLOGY;
 
 		return UNKNOWN;
 	}

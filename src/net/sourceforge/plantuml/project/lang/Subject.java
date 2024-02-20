@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,17 +37,17 @@ package net.sourceforge.plantuml.project.lang;
 
 import java.util.Collection;
 
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexResult;
+import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.project.Failable;
-import net.sourceforge.plantuml.project.GanttDiagram;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexResult;
 
-public interface Subject {
+public interface Subject<D extends Diagram> {
 
-	public Collection<? extends SentenceSimple> getSentences();
+	public Collection<? extends SentenceSimple<D>> getSentences();
 
 	public IRegex toRegex();
 
-	public Failable<? extends Object> getMe(GanttDiagram project, RegexResult arg);
+	public Failable<? extends Object> getMe(D project, RegexResult arg);
 
 }

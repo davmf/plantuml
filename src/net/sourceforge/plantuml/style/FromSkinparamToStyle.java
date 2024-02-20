@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -43,9 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import net.sourceforge.plantuml.cucadiagram.StereotypeDecoration;
+import net.sourceforge.plantuml.stereo.StereotypeDecoration;
 
 public class FromSkinparamToStyle {
+	// ::remove file when __HAXE__
 
 	static class Data {
 		final private SName[] styleNames;
@@ -180,8 +181,17 @@ public class FromSkinparamToStyle {
 
 		addConvert("classBackgroundColor", PName.BackGroundColor, SName.element, SName.class_);
 		addConvert("classBorderColor", PName.LineColor, SName.element, SName.class_);
-		addConFont("class", SName.element, SName.class_);
-		addConFont("classAttribute", SName.element, SName.class_);
+
+		addConvert("classFontSize", PName.FontSize, SName.element, SName.class_, SName.header);
+		addConvert("classFontStyle", PName.FontStyle, SName.element, SName.class_, SName.header);
+		addConvert("classFontColor", PName.FontColor, SName.element, SName.class_, SName.header);
+		addConvert("classFontName", PName.FontName, SName.element, SName.class_, SName.header);
+
+		addConvert("classAttributeFontSize", PName.FontSize, SName.element, SName.class_);
+		addConvert("classAttributeFontStyle", PName.FontStyle, SName.element, SName.class_);
+		addConvert("classAttributeFontColor", PName.FontColor, SName.element, SName.class_);
+		addConvert("classAttributeFontName", PName.FontName, SName.element, SName.class_);
+
 		addConvert("classBorderThickness", PName.LineThickness, SName.element, SName.class_);
 		addConvert("classHeaderBackgroundColor", PName.BackGroundColor, SName.element, SName.class_, SName.header);
 
@@ -237,7 +247,6 @@ public class FromSkinparamToStyle {
 		addConvert("lifelineStrategy", PName.LineStyle, SName.lifeLine);
 		addConvert("wrapWidth", PName.MaximumWidth, SName.element);
 		addConvert("HyperlinkUnderline", PName.HyperlinkUnderlineThickness, SName.element);
-
 
 	}
 

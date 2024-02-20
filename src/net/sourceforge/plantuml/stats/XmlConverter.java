@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -52,11 +52,11 @@ import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import net.sourceforge.plantuml.BackSlash;
 import net.sourceforge.plantuml.stats.api.Stats;
 import net.sourceforge.plantuml.stats.api.StatsColumn;
 import net.sourceforge.plantuml.stats.api.StatsLine;
 import net.sourceforge.plantuml.stats.api.StatsTable;
+import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.xml.XmlFactories;
 
 public class XmlConverter {
@@ -77,7 +77,8 @@ public class XmlConverter {
 		final Element root = (Element) document.createElement("plantuml".toUpperCase());
 		document.appendChild(root);
 
-		// final Element elt1 = (Element) document.createElement("totalLaunch".toUpperCase());
+		// final Element elt1 = (Element)
+		// document.createElement("totalLaunch".toUpperCase());
 		// elt1.setTextContent("" + stats.totalLaunch());
 		// root.appendChild(elt1);
 
@@ -138,7 +139,8 @@ public class XmlConverter {
 		final StringBuilder result = new StringBuilder();
 		result.append("<html>");
 		result.append("<style type=\"text/css\">");
-		result.append("body { font-family: arial, helvetica, sans-serif; font-size: 12px; font-weight: normal; color: black; background: white;}");
+		result.append(
+				"body { font-family: arial, helvetica, sans-serif; font-size: 12px; font-weight: normal; color: black; background: white;}");
 		result.append("th,td { font-size: 12px;}");
 		result.append("table { border-collapse: collapse; border-style: none;}");
 		result.append("</style>");

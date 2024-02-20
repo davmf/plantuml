@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,24 +39,29 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import net.sourceforge.plantuml.AlignmentParam;
-import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.skin.AlignmentParam;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.MinMax;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColorSet;
 
 public abstract class AbstractFtile extends AbstractTextBlock implements Ftile {
+
+	protected final boolean TRACE = false;
 
 	private final ISkinParam skinParam;
 
 	public AbstractFtile(ISkinParam skinParam) {
 		this.skinParam = skinParam;
+
+		if (TRACE)
+			System.err.println("TRACE Building " + this);
 	}
 
 	final public ISkinParam skinParam() {
@@ -105,9 +110,9 @@ public abstract class AbstractFtile extends AbstractTextBlock implements Ftile {
 	private FtileGeometry cachedGeometry;
 
 	final public FtileGeometry calculateDimension(StringBounder stringBounder) {
-		if (cachedGeometry == null) {
+		if (cachedGeometry == null)
 			cachedGeometry = calculateDimensionFtile(stringBounder);
-		}
+
 		return cachedGeometry;
 	}
 

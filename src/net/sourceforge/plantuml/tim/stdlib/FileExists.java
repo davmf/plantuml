@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.tim.EaterException;
 import net.sourceforge.plantuml.tim.EaterExceptionLocated;
@@ -60,15 +59,14 @@ public class FileExists extends SimpleReturnFunction {
 
 	public TValue executeReturnFunction(TContext context, TMemory memory, LineLocation location, List<TValue> values,
 			Map<String, TValue> named) throws EaterException, EaterExceptionLocated {
-		if (OptionFlags.ALLOW_INCLUDE == false) {
-			return TValue.fromBoolean(false);
-		}
+		// ::comment when __CORE__
 		final String path = values.get(0).toString();
-		return TValue.fromBoolean(fileExists(path));
+		return TValue.fromBoolean(new SFile(path).exists());
+		// ::done
+
+		// ::uncomment when __CORE__
+		// return TValue.fromBoolean(false);
+		// ::done
 	}
 
-	private boolean fileExists(String path) {
-		final SFile f = new SFile(path);
-		return f.exists();
-	}
 }

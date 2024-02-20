@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,26 +37,26 @@ package net.sourceforge.plantuml.skin.rose;
 
 import java.util.Objects;
 
-import net.sourceforge.plantuml.ISkinSimple;
-import net.sourceforge.plantuml.LineBreakStrategy;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.SymbolContext;
-import net.sourceforge.plantuml.graphic.TextBlock;
+import net.sourceforge.plantuml.klimt.Fashion;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.skin.AbstractTextualComponent;
 import net.sourceforge.plantuml.skin.Area;
+import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
 
 public class ComponentRoseGroupingHeader extends AbstractTextualComponent {
 
@@ -66,8 +66,8 @@ public class ComponentRoseGroupingHeader extends AbstractTextualComponent {
 	private final TextBlock commentTextBlock;
 
 	private final HColor background;
-	private final SymbolContext symbolContext;
-	private final SymbolContext symbolContextCorner;
+	private final Fashion symbolContext;
+	private final Fashion symbolContextCorner;
 	private final double roundCorner;
 
 	public ComponentRoseGroupingHeader(boolean teoz, Style style, Style styleHeader, Display strings,
@@ -124,7 +124,7 @@ public class ComponentRoseGroupingHeader extends AbstractTextualComponent {
 	protected void drawBackgroundInternalU(UGraphic ug, Area area) {
 		final XDimension2D dimensionToUse = area.getDimensionToUse();
 		ug = symbolContext.applyStroke(ug).apply(symbolContext.getForeColor());
-		final URectangle rect = new URectangle(dimensionToUse.getWidth(), dimensionToUse.getHeight())
+		final URectangle rect = URectangle.build(dimensionToUse.getWidth(), dimensionToUse.getHeight())
 				.rounded(roundCorner);
 		rect.setDeltaShadow(symbolContext.getDeltaShadow());
 		ug.apply(background.bg()).draw(rect);
@@ -140,11 +140,11 @@ public class ComponentRoseGroupingHeader extends AbstractTextualComponent {
 		symbolContextCorner.apply(ug).draw(getCorner(textWidth, textHeight));
 
 		ug = symbolContext.applyStroke(ug).apply(symbolContext.getForeColor());
-		final URectangle rect = new URectangle(dimensionToUse.getWidth(), dimensionToUse.getHeight())
+		final URectangle rect = URectangle.build(dimensionToUse.getWidth(), dimensionToUse.getHeight())
 				.rounded(roundCorner);
 		ug.draw(rect);
 
-		ug = ug.apply(new UStroke());
+		ug = ug.apply(UStroke.simple());
 
 		getTextBlock().drawU(ug.apply(new UTranslate(getMarginX1(), getMarginY())));
 
@@ -157,7 +157,7 @@ public class ComponentRoseGroupingHeader extends AbstractTextualComponent {
 	}
 
 	private UPath getCorner(final double width, final double height) {
-		final UPath polygon = new UPath();
+		final UPath polygon = UPath.none();
 		if (roundCorner == 0) {
 			polygon.moveTo(0, 0);
 			polygon.lineTo(width, 0);

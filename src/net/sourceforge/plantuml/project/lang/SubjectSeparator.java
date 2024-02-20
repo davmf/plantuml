@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -39,17 +39,17 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import net.sourceforge.plantuml.command.CommandExecutionResult;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexResult;
 import net.sourceforge.plantuml.project.Failable;
 import net.sourceforge.plantuml.project.GanttDiagram;
 import net.sourceforge.plantuml.project.core.TaskInstant;
 import net.sourceforge.plantuml.project.time.Day;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexResult;
 
-public class SubjectSeparator implements Subject {
+public class SubjectSeparator implements Subject<GanttDiagram> {
 
-	public static final Subject ME = new SubjectSeparator();
+	public static final Subject<GanttDiagram> ME = new SubjectSeparator();
 
 	private SubjectSeparator() {
 	}
@@ -62,14 +62,14 @@ public class SubjectSeparator implements Subject {
 		return Failable.ok(project);
 	}
 
-	public Collection<? extends SentenceSimple> getSentences() {
+	public Collection<? extends SentenceSimple<GanttDiagram>> getSentences() {
 		return Arrays.asList(new JustBefore(), new JustAfter(), new Just());
 	}
 
-	class JustBefore extends SentenceSimple {
+	class JustBefore extends SentenceSimple<GanttDiagram> {
 
 		public JustBefore() {
-			super(SubjectSeparator.this, Verbs.justBefore, new ComplementDate());
+			super(SubjectSeparator.this, Verbs.just, Words.exactly(Words.BEFORE), ComplementDate.any());
 		}
 
 		@Override
@@ -82,10 +82,10 @@ public class SubjectSeparator implements Subject {
 
 	}
 
-	class JustAfter extends SentenceSimple {
+	class JustAfter extends SentenceSimple<GanttDiagram> {
 
 		public JustAfter() {
-			super(SubjectSeparator.this, Verbs.justAfter, new ComplementDate());
+			super(SubjectSeparator.this, Verbs.just, Words.exactly(Words.AFTER), ComplementDate.any());
 		}
 
 		@Override
@@ -98,7 +98,7 @@ public class SubjectSeparator implements Subject {
 
 	}
 
-	class Just extends SentenceSimple {
+	class Just extends SentenceSimple<GanttDiagram> {
 
 		public Just() {
 			super(SubjectSeparator.this, Verbs.just, new ComplementBeforeOrAfterOrAtTaskStartOrEnd());

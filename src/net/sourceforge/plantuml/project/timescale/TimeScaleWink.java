@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -40,17 +40,17 @@ import net.sourceforge.plantuml.project.time.Day;
 
 public class TimeScaleWink implements TimeScale {
 
-	private final double scale;
+	private final double cellWidth;
 	private final PrintScale printScale;
 
-	public TimeScaleWink(double scale, PrintScale printScale) {
-		this.scale = 16.0 * scale;
+	public TimeScaleWink(double size, double scale, PrintScale printScale) {
+		this.cellWidth = size * scale;
 		this.printScale = printScale;
 	}
 
 	public double getStartingPosition(Day instant) {
 		final long wink = instant.getMillis();
-		return wink * scale / Day.MILLISECONDS_PER_DAY;
+		return wink * cellWidth / Day.MILLISECONDS_PER_DAY;
 	}
 
 	public double getEndingPosition(Day instant) {
@@ -58,7 +58,7 @@ public class TimeScaleWink implements TimeScale {
 	}
 
 	public double getWidth(Day instant) {
-		return scale;
+		return cellWidth;
 	}
 
 	public boolean isBreaking(Day instant) {

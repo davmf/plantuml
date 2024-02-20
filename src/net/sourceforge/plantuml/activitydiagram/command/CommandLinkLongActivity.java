@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -37,42 +37,41 @@ package net.sourceforge.plantuml.activitydiagram.command;
 
 import java.util.List;
 
-import net.sourceforge.plantuml.BackSlash;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.UrlMode;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.abel.Link;
+import net.sourceforge.plantuml.abel.LinkArg;
 import net.sourceforge.plantuml.activitydiagram.ActivityDiagram;
-import net.sourceforge.plantuml.baraye.IEntity;
 import net.sourceforge.plantuml.classdiagram.command.CommandLinkClass;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
 import net.sourceforge.plantuml.command.Trim;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.MyPattern;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexOptional;
-import net.sourceforge.plantuml.command.regex.RegexOr;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.GroupType;
-import net.sourceforge.plantuml.cucadiagram.Ident;
-import net.sourceforge.plantuml.cucadiagram.LeafType;
-import net.sourceforge.plantuml.cucadiagram.Link;
-import net.sourceforge.plantuml.cucadiagram.LinkArg;
-import net.sourceforge.plantuml.cucadiagram.LinkDecor;
-import net.sourceforge.plantuml.cucadiagram.LinkType;
-import net.sourceforge.plantuml.cucadiagram.NamespaceStrategy;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
+import net.sourceforge.plantuml.decoration.LinkDecor;
+import net.sourceforge.plantuml.decoration.LinkType;
 import net.sourceforge.plantuml.descdiagram.command.CommandLinkElement;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.MyPattern;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexOr;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.text.BackSlash;
+import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.Direction;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram> {
 
@@ -93,9 +92,7 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 								new RegexLeaf("CODE", "([%pLN][%pLN_.]*)"), //
 								new RegexLeaf("BAR", "(?:==+)[%s]*([%pLN_.]+)[%s]*(?:==+)"), //
 								new RegexLeaf("QUOTED", "[%g]([^%g]+)[%g](?:[%s]+as[%s]+([%pLN_.]+))?"))), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREOTYPE", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREOTYPE"), //
 				new RegexLeaf("BACKCOLOR", "(#\\w+)?"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //
@@ -122,7 +119,7 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 		lines = lines.trim();
 		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
 
-		final IEntity entity1 = CommandLinkActivity.getEntity(diagram, line0, true);
+		final Entity entity1 = CommandLinkActivity.getEntity(diagram, line0, true);
 		if (entity1 == null)
 			return CommandExecutionResult.error("No such entity");
 
@@ -178,15 +175,16 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 			partition = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(partition);
 		}
 		if (partition != null) {
-			final Ident idNewLong = diagram.buildLeafIdent(partition);
-			diagram.gotoGroup(idNewLong, diagram.buildCode(partition), Display.getWithNewlines(partition),
-					GroupType.PACKAGE, null, NamespaceStrategy.SINGLE);
+			final Quark<Entity> idNewLong = diagram.quarkInContext(true, diagram.cleanId(partition));
+			diagram.gotoGroup(idNewLong, Display.getWithNewlines(partition), GroupType.PACKAGE);
 		}
-		final Ident ident = diagram.buildLeafIdent(idShort);
-		final Code code = diagram.V1972() ? ident : diagram.buildCode(idShort);
-		final IEntity entity2 = diagram.getOrCreate(ident, code, Display.getWithNewlines(display), LeafType.ACTIVITY);
+		final Quark<Entity> ident = diagram.quarkInContext(true, diagram.cleanId(idShort));
+
+		Entity entity2 = ident.getData();
 		if (entity2 == null)
-			return CommandExecutionResult.error("No such entity");
+			entity2 = diagram.reallyCreateLeaf(ident, Display.getWithNewlines(display), LeafType.ACTIVITY, null);
+
+		diagram.setLastEntityConsulted(entity2);
 
 		if (partition != null)
 			diagram.endGroup();
@@ -217,7 +215,7 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 			type = type.goDotted();
 
 		final LinkArg linkArg = LinkArg.build(linkLabel, lenght, diagram.getSkinParam().classAttributeIconSize() > 0);
-		Link link = new Link(diagram.getIEntityFactory(), diagram.getSkinParam().getCurrentStyleBuilder(), entity1,
+		Link link = new Link(diagram.getEntityFactory(), diagram.getSkinParam().getCurrentStyleBuilder(), entity1,
 				entity2, type, linkArg);
 		final Direction direction = StringUtils.getArrowDirection(arrowBody1 + arrowDirection + arrowBody2 + ">");
 		if (direction == Direction.LEFT || direction == Direction.UP)

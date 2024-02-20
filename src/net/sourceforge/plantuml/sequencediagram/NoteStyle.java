@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -44,27 +44,27 @@ public enum NoteStyle {
 	NORMAL, HEXAGONAL, BOX;
 
 	public static NoteStyle getNoteStyle(String s) {
-		if (s.equalsIgnoreCase("hnote")) {
+		if (s.equalsIgnoreCase("hnote"))
 			return NoteStyle.HEXAGONAL;
-		} else if (s.equalsIgnoreCase("rnote")) {
+
+		if (s.equalsIgnoreCase("rnote"))
 			return NoteStyle.BOX;
-		}
+
 		return NoteStyle.NORMAL;
 	}
 
 	public ComponentType getNoteComponentType() {
-		if (this == NoteStyle.HEXAGONAL) {
+		if (this == NoteStyle.HEXAGONAL)
 			return ComponentType.NOTE_HEXAGONAL;
-		}
-		if (this == NoteStyle.BOX) {
+
+		if (this == NoteStyle.BOX)
 			return ComponentType.NOTE_BOX;
-		}
+
 		return ComponentType.NOTE;
 	}
 
 	public StyleSignatureBasic getDefaultStyleDefinition() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram,
-				SName.note);
+		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.note);
 	}
 
 }

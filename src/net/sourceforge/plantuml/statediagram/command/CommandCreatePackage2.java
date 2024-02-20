@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,32 +35,30 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.UrlBuilder;
-import net.sourceforge.plantuml.UrlMode;
-import net.sourceforge.plantuml.baraye.IEntity;
-import net.sourceforge.plantuml.baraye.IGroup;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
-import net.sourceforge.plantuml.command.regex.IRegex;
-import net.sourceforge.plantuml.command.regex.RegexConcat;
-import net.sourceforge.plantuml.command.regex.RegexLeaf;
-import net.sourceforge.plantuml.command.regex.RegexOptional;
-import net.sourceforge.plantuml.command.regex.RegexOr;
-import net.sourceforge.plantuml.command.regex.RegexResult;
-import net.sourceforge.plantuml.cucadiagram.Code;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.GroupType;
-import net.sourceforge.plantuml.cucadiagram.Ident;
-import net.sourceforge.plantuml.cucadiagram.NamespaceStrategy;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.USymbols;
-import net.sourceforge.plantuml.graphic.color.ColorParser;
-import net.sourceforge.plantuml.graphic.color.ColorType;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.decoration.symbol.USymbols;
+import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexOr;
+import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.statediagram.StateDiagram;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.color.NoSuchColorException;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
@@ -86,9 +84,7 @@ public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
 										new RegexLeaf("as"), RegexLeaf.spaceOneOrMore() //
 								)), //
 								new RegexLeaf("CODE2", "([%pLN_.]+)"))), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexLeaf("STEREOTYPE", "(\\<\\<.*\\>\\>)?"), //
-				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREOTYPE"), //
 				UrlBuilder.OPTIONAL, //
 				RegexLeaf.spaceZeroOrMore(), //
 				color().getRegex(), //
@@ -111,17 +107,15 @@ public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
 	@Override
 	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg)
 			throws NoSuchColorException {
-		final IGroup currentPackage = diagram.getCurrentGroup();
+
 		final String idShort = getNotNull(arg, "CODE1", "CODE2");
-		final Ident idNewLong = diagram.buildLeafIdentSpecial(idShort);
-		final Code code = diagram.V1972() ? idNewLong : diagram.buildCode(idShort);
+		final Quark<Entity> quark = diagram.quarkInContext(true, diagram.cleanId(idShort));
 		String display = getNotNull(arg, "DISPLAY1", "DISPLAY2");
 		if (display == null)
-			display = code.getName();
+			display = quark.getName();
 
-		diagram.gotoGroup(idNewLong, code, Display.getWithNewlines(display), GroupType.PACKAGE, currentPackage,
-				NamespaceStrategy.SINGLE);
-		final IEntity p = diagram.getCurrentGroup();
+		diagram.gotoGroup(quark, Display.getWithNewlines(display), GroupType.PACKAGE);
+		final Entity p = diagram.getCurrentGroup();
 		final String stereotype = arg.get("STEREOTYPE", 0);
 		if (stereotype != null)
 			p.setStereotype(Stereotype.build(stereotype));
@@ -137,8 +131,7 @@ public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
 		Colors colors = color().getColor(arg, diagram.getSkinParam().getIHtmlColorSet());
 		final String s = arg.get("LINECOLOR", 1);
 
-		final HColor lineColor = s == null ? null
-				: diagram.getSkinParam().getIHtmlColorSet().getColor(s);
+		final HColor lineColor = s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s);
 		if (lineColor != null)
 			colors = colors.add(ColorType.LINE, lineColor);
 

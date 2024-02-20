@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,15 +35,15 @@
  */
 package net.sourceforge.plantuml.svek.extremity;
 
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.ugraphic.UBackground;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.UPolygon;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.klimt.UBackground;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UEllipse;
+import net.sourceforge.plantuml.klimt.shape.ULine;
+import net.sourceforge.plantuml.klimt.shape.UPolygon;
 
 abstract class ExtremityExtendsLike extends Extremity {
 	private static final double XLEN = -19;// 8 * 2.4;
@@ -91,7 +91,7 @@ abstract class ExtremityExtendsLike extends Extremity {
 
 	static class Redefines extends ExtremityExtendsLike {
 		private static final double XSUFFIX = XLEN * 1.2;
-		private final UStroke barStroke = new UStroke(2.0);
+		private final UStroke barStroke = UStroke.withThickness(2.0);
 		private final UTranslate pos;
 		private final ULine bar;
 
@@ -134,7 +134,7 @@ abstract class ExtremityExtendsLike extends Extremity {
 			this.pos2 = getDotPos(XSUFFIX, +w, angle, DOTHSIZE, porig);
 
 			double s = DOTHSIZE + DOTHSIZE;
-			this.dot = new UEllipse(s, s);
+			this.dot = UEllipse.build(s, s);
 		}
 
 		public void drawU(UGraphic ug) {
@@ -168,6 +168,11 @@ abstract class ExtremityExtendsLike extends Extremity {
 
 	public void drawU(UGraphic ug) {
 		ug.apply(back).draw(trig);
+	}
+	
+	@Override
+	public double getDecorationLength() {
+		return 18;
 	}
 
 }

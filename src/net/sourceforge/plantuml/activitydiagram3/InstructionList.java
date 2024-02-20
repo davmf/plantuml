@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -41,7 +41,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import net.sourceforge.plantuml.ISkinParam;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Ftile;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileDecorateWelding;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileEmpty;
@@ -52,12 +51,13 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.Gtile;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GtileAssembly;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GtileEmpty;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.VerticalAlignment;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
+import net.sourceforge.plantuml.style.ISkinParam;
 
 public class InstructionList extends WithNote implements Instruction, InstructionCollection {
 
@@ -92,7 +92,13 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 		if (getLast() instanceof InstructionSpot)
 			return true;
 
-		return getLast() instanceof InstructionStop && ((InstructionStop) getLast()).hasNotes() == false;
+		if (getLast() instanceof InstructionStop)
+			return ((InstructionStop) getLast()).hasNotes() == false;
+
+		if (getLast() instanceof InstructionEnd)
+			return ((InstructionEnd) getLast()).hasNotes() == false;
+
+		return false;
 	}
 
 	@Override
@@ -101,6 +107,7 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 		return CommandExecutionResult.ok();
 	}
 
+	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		if (all.size() == 0)
@@ -118,11 +125,17 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 		}
 		return result;
 	}
+	// ::done
 
 	@Override
 	public Ftile createFtile(FtileFactory factory) {
-		if (all.size() == 0)
-			return new FtileEmpty(factory.skinParam(), defaultSwimlane);
+		if (all.size() == 0) {
+			Ftile result = new FtileEmpty(factory.skinParam(), defaultSwimlane);
+			// Not a typo, in that case, we decide to decorate the entry link.
+			if (outlinkRendering != null)
+				result = factory.decorateIn(result, outlinkRendering);
+			return result;
+		}
 
 		final List<WeldingPoint> breaks = new ArrayList<>();
 		Ftile result = eventuallyAddNote(factory, null, getSwimlaneIn(), VerticalAlignment.CENTER);

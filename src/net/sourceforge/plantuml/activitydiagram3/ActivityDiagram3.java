@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -42,28 +42,28 @@ import java.util.Objects;
 
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.UmlDiagram;
-import net.sourceforge.plantuml.UmlDiagramType;
-import net.sourceforge.plantuml.Url;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Swimlanes;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.core.UmlSource;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.cucadiagram.Stereotype;
-import net.sourceforge.plantuml.graphic.Rainbow;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockRecentred;
-import net.sourceforge.plantuml.graphic.USymbol;
-import net.sourceforge.plantuml.graphic.color.Colors;
+import net.sourceforge.plantuml.decoration.Rainbow;
+import net.sourceforge.plantuml.decoration.symbol.USymbol;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.compress.CompressionMode;
+import net.sourceforge.plantuml.klimt.compress.CompressionXorYBuilder;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockRecentred;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
+import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.comp.CompressionMode;
-import net.sourceforge.plantuml.ugraphic.comp.CompressionXorYBuilder;
+import net.sourceforge.plantuml.url.Url;
 
 public class ActivityDiagram3 extends UmlDiagram {
 
@@ -108,11 +108,11 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return swinlanes.nextLinkRenderer();
 	}
 
-	public CommandExecutionResult addActivity(Display activity, BoxStyle style, Url url, Colors colors,
+	public CommandExecutionResult addActivity(Display activity, BoxStyle boxStyle, Url url, Colors colors,
 			Stereotype stereotype) {
 		manageSwimlaneStrategy();
 		final InstructionSimple ins = new InstructionSimple(activity, nextLinkRenderer(),
-				swinlanes.getCurrentSwimlane(), style, url, colors, stereotype);
+				swinlanes.getCurrentSwimlane(), boxStyle, url, colors, stereotype);
 		final CommandExecutionResult added = current().add(ins);
 		if (added.isOk() == false)
 			return added;
@@ -201,17 +201,28 @@ public class ActivityDiagram3 extends UmlDiagram {
 	@Override
 	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)
 			throws IOException {
-		// BUG42
-		// COMPRESSION
 		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam());
+		TextBlock result = getTextBlock(stringBounder);
+		return createImageBuilder(fileFormatOption).drawable(result).write(os);
+	}
+
+	@Override
+	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
+		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam());
+		return getTextBlock(stringBounder);
+	}
+
+	private TextBlock getTextBlock(final StringBounder stringBounder) {
 		swinlanes.computeSize(stringBounder);
 		TextBlock result = swinlanes;
 
+		// BUG42
+		// COMMENT TO DISABLE COMPRESS
 		result = CompressionXorYBuilder.build(CompressionMode.ON_X, result, stringBounder);
 		result = CompressionXorYBuilder.build(CompressionMode.ON_Y, result, stringBounder);
 
 		result = new TextBlockRecentred(result);
-		return createImageBuilder(fileFormatOption).drawable(result).write(os);
+		return result;
 	}
 
 	public void fork() {
@@ -305,10 +316,10 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return CommandExecutionResult.error("Cannot find switch");
 	}
 
-	public void startIf(Display test, Display whenThen, HColor color, Url url) {
+	public void startIf(Display test, Display whenThen, HColor color, Url url, Stereotype stereotype) {
 		manageSwimlaneStrategy();
 		final InstructionIf instructionIf = new InstructionIf(swinlanes.getCurrentSwimlane(), current(), test,
-				LinkRendering.none().withDisplay(whenThen), nextLinkRenderer(), color, getSkinParam(), url);
+				LinkRendering.none().withDisplay(whenThen), nextLinkRenderer(), color, getSkinParam(), url, stereotype);
 		current().add(instructionIf);
 		setNextLinkRendererInternal(LinkRendering.none());
 		setCurrent(instructionIf);
@@ -375,16 +386,17 @@ public class ActivityDiagram3 extends UmlDiagram {
 	}
 
 	public CommandExecutionResult backward(Display label, BoxStyle boxStyle, LinkRendering incoming1,
-			LinkRendering incoming2) {
+			LinkRendering incoming2, Stereotype stereotype) {
 		manageSwimlaneStrategy();
 		if (current() instanceof InstructionRepeat) {
 			final InstructionRepeat instructionRepeat = (InstructionRepeat) current();
-			instructionRepeat.setBackward(label, swinlanes.getCurrentSwimlane(), boxStyle, incoming1, incoming2);
+			instructionRepeat.setBackward(label, swinlanes.getCurrentSwimlane(), boxStyle, incoming1, incoming2,
+					stereotype);
 			return CommandExecutionResult.ok();
 		}
 		if (current() instanceof InstructionWhile) {
 			final InstructionWhile instructionWhile = (InstructionWhile) current();
-			instructionWhile.setBackward(label, swinlanes.getCurrentSwimlane(), boxStyle, incoming1, incoming2);
+			instructionWhile.setBackward(label, boxStyle, incoming1, incoming2, stereotype);
 			return CommandExecutionResult.ok();
 		}
 		return CommandExecutionResult.error("Cannot find repeat");
@@ -394,7 +406,7 @@ public class ActivityDiagram3 extends UmlDiagram {
 	public void doWhile(Display test, Display yes, HColor color) {
 		manageSwimlaneStrategy();
 		final InstructionWhile instructionWhile = new InstructionWhile(swinlanes.getCurrentSwimlane(), current(), test,
-				nextLinkRenderer(), yes, color, getSkinParam());
+				nextLinkRenderer(), yes, color, getSkinParam().getCurrentStyleBuilder());
 		current().add(instructionWhile);
 		setCurrent(instructionWhile);
 	}

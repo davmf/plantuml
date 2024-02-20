@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,15 +35,15 @@
  */
 package net.sourceforge.plantuml.skin;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.SymbolContext;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
+import net.sourceforge.plantuml.klimt.Fashion;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.UEllipse;
 
 public class ActorHollow extends AbstractTextBlock implements TextBlock {
 
@@ -57,19 +57,19 @@ public class ActorHollow extends AbstractTextBlock implements TextBlock {
 	private final double bodyThickness = 6;
 	private final double legThickness = 6;
 
-	private final SymbolContext symbolContext;
+	private final Fashion fashion;
 
-	public ActorHollow(SymbolContext symbolContext) {
-		this.symbolContext = symbolContext;
+	public ActorHollow(Fashion fashion) {
+		this.fashion = fashion;
 	}
 
 	public void drawU(UGraphic ug) {
 
-		final UEllipse head = new UEllipse(headDiam, headDiam);
+		final UEllipse head = UEllipse.build(headDiam, headDiam);
 		final double centerX = getPreferredWidth() / 2;
 
-		final UPath path = new UPath();
-		path.moveTo(-bodyWidth/2, 0);
+		final UPath path = UPath.none();
+		path.moveTo(-bodyWidth / 2, 0);
 		path.lineTo(-bodyWidth / 2, armThickness);
 		path.lineTo(-bodyThickness / 2, armThickness);
 		path.lineTo(-bodyThickness / 2, bodyHeight - (bodyWidth + legThickness * Math.sqrt(2) - bodyThickness) / 2);
@@ -84,20 +84,20 @@ public class ActorHollow extends AbstractTextBlock implements TextBlock {
 		path.lineTo(+bodyThickness / 2, armThickness);
 		path.lineTo(+bodyWidth / 2, armThickness);
 		path.lineTo(+bodyWidth / 2, 0);
-		path.lineTo(-bodyWidth/2, 0);
+		path.lineTo(-bodyWidth / 2, 0);
 		path.closePath();
 
-		if (symbolContext.getDeltaShadow() != 0) {
-			head.setDeltaShadow(symbolContext.getDeltaShadow());
-			path.setDeltaShadow(symbolContext.getDeltaShadow());
+		if (fashion.getDeltaShadow() != 0) {
+			head.setDeltaShadow(fashion.getDeltaShadow());
+			path.setDeltaShadow(fashion.getDeltaShadow());
 		}
-		ug = symbolContext.apply(ug);
+		ug = fashion.apply(ug);
 		ug.apply(new UTranslate(centerX - head.getWidth() / 2, thickness())).draw(head);
 		ug.apply(new UTranslate(centerX, head.getHeight() + thickness() + neckHeight)).draw(path);
 	}
 
 	private double thickness() {
-		return symbolContext.getStroke().getThickness();
+		return fashion.getStroke().getThickness();
 	}
 
 	public double getPreferredWidth() {
@@ -105,7 +105,7 @@ public class ActorHollow extends AbstractTextBlock implements TextBlock {
 	}
 
 	public double getPreferredHeight() {
-		return headDiam + neckHeight + bodyHeight + thickness() * 2 + symbolContext.getDeltaShadow();
+		return headDiam + neckHeight + bodyHeight + thickness() * 2 + fashion.getDeltaShadow();
 	}
 
 	public XDimension2D calculateDimension(StringBounder stringBounder) {

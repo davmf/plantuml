@@ -2,12 +2,12 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * This file is part of Smetana.
  * Smetana is a partial translation of Graphviz/Dot sources from C to Java.
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
  * This translation is distributed under the same Licence as the original C program.
  * 
@@ -37,13 +37,13 @@ import h.ST_Agedgeinfo_t;
 import h.ST_bezier;
 import h.ST_pointf;
 import h.ST_splines;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UEllipse;
 
 public class JsonCurve {
 
@@ -90,7 +90,7 @@ public class JsonCurve {
 	}
 
 	public void drawCurve(HColor color, UGraphic ug) {
-		final UPath path = new UPath();
+		final UPath path = UPath.none();
 
 		path.moveTo(getVeryFirst());
 		path.lineTo(xMirror.invAndXYSwitch(points.get(0)));
@@ -112,8 +112,8 @@ public class JsonCurve {
 
 	public void drawSpot(UGraphic ug) {
 		final double size = 3;
-		ug = ug.apply(new UTranslate(getVeryFirst()).compose(new UTranslate(-size, -size)));
-		ug.apply(new UStroke()).draw(new UEllipse(2 * size, 2 * size));
+		ug = ug.apply(UTranslate.point(getVeryFirst()).compose(new UTranslate(-size, -size)));
+		ug.apply(UStroke.simple()).draw(UEllipse.build(2 * size, 2 * size));
 	}
 
 	private XPoint2D getVeryFirst() {

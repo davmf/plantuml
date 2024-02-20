@@ -2,12 +2,12 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -32,11 +32,9 @@ import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.prefs.Preferences;
 
-import net.sourceforge.plantuml.annotation.HaxeIgnored;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.utils.Log;
 
-@HaxeIgnored
 public class NumberAnalyzedDated extends NumberAnalyzed {
 
 	private final AtomicLong created = new AtomicLong();
@@ -99,11 +97,10 @@ public class NumberAnalyzedDated extends NumberAnalyzed {
 		}
 		try {
 			final StringTokenizer st = new StringTokenizer(value, ";");
-			return new NumberAnalyzedDated(name, Long.parseLong(st.nextToken(), 36),
-					Long.parseLong(st.nextToken(), 36), Long.parseLong(st.nextToken(), 36), Long.parseLong(
-							st.nextToken(), 36), Long.parseLong(st.nextToken(), 36),
-					Long.parseLong(st.nextToken(), 36), Long.parseLong(st.nextToken(), 36), Long.parseLong(
-							st.nextToken(), 36), st.nextToken());
+			return new NumberAnalyzedDated(name, Long.parseLong(st.nextToken(), 36), Long.parseLong(st.nextToken(), 36),
+					Long.parseLong(st.nextToken(), 36), Long.parseLong(st.nextToken(), 36),
+					Long.parseLong(st.nextToken(), 36), Long.parseLong(st.nextToken(), 36),
+					Long.parseLong(st.nextToken(), 36), Long.parseLong(st.nextToken(), 36), st.nextToken());
 		} catch (Exception e) {
 			Logme.error(e);
 			Log.info("Error reading " + value);

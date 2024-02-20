@@ -4,12 +4,12 @@
  *
  * (C) Copyright 2009-2020, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,16 +35,16 @@
  */
 package net.sourceforge.plantuml.ebnf;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.klimt.CopyForegroundColorToBackgroundColor;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.ugraphic.CopyForegroundColorToBackgroundColor;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
 
 public abstract class ETile extends AbstractTextBlock {
 
@@ -108,7 +108,7 @@ public abstract class ETile extends AbstractTextBlock {
 	}
 
 	static UPath getArrowToLeft() {
-		final UPath arrow = new UPath();
+		final UPath arrow = UPath.none();
 		arrow.moveTo(0, 0);
 		arrow.lineTo(0, -3);
 		arrow.lineTo(-6, 0);
@@ -119,7 +119,7 @@ public abstract class ETile extends AbstractTextBlock {
 	}
 
 	static UPath getArrowToRight() {
-		final UPath arrow = new UPath();
+		final UPath arrow = UPath.none();
 		arrow.moveTo(0, 0);
 		arrow.lineTo(0, -3);
 		arrow.lineTo(6, 0);
@@ -130,7 +130,7 @@ public abstract class ETile extends AbstractTextBlock {
 	}
 
 	static UPath getArrowToBottom() {
-		final UPath arrow = new UPath();
+		final UPath arrow = UPath.none();
 		arrow.moveTo(0, 0);
 		arrow.lineTo(3, 0);
 		arrow.lineTo(0, 6);
@@ -141,7 +141,7 @@ public abstract class ETile extends AbstractTextBlock {
 	}
 
 	static UPath getArrowToTop() {
-		final UPath arrow = new UPath();
+		final UPath arrow = UPath.none();
 		arrow.moveTo(0, 0);
 		arrow.lineTo(3, 0);
 		arrow.lineTo(0, -6);

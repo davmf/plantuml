@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,13 +35,16 @@
  */
 package net.sourceforge.plantuml.project.draw;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.SpriteContainerEmpty;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.sprite.SpriteContainerEmpty;
 import net.sourceforge.plantuml.project.LabelStrategy;
 import net.sourceforge.plantuml.project.ToTaskDraw;
 import net.sourceforge.plantuml.project.core.Task;
@@ -54,22 +57,16 @@ import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
+import net.sourceforge.plantuml.style.StyleSignature;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColors;
 
 public class TaskDrawGroup extends AbstractTaskDraw {
 
 	private final Day end;
 
-	private final ISkinParam skinParam;
-
-	public TaskDrawGroup(TimeScale timeScale, Real y, String prettyDisplay, Day start, Day end, ISkinParam skinParam,
-			Task task, ToTaskDraw toTaskDraw, StyleBuilder styleBuilder) {
-		super(timeScale, y, prettyDisplay, start, skinParam, task, toTaskDraw, styleBuilder);
-		this.skinParam = skinParam;
+	public TaskDrawGroup(TimeScale timeScale, Real y, String prettyDisplay, Day start, Day end, Task task,
+			ToTaskDraw toTaskDraw, StyleBuilder styleBuilder) {
+		super(timeScale, y, prettyDisplay, start, task, toTaskDraw, styleBuilder);
 		this.end = end;
 	}
 
@@ -122,7 +119,7 @@ public class TaskDrawGroup extends AbstractTaskDraw {
 	}
 
 	@Override
-	StyleSignatureBasic getStyleSignature() {
+	StyleSignature getStyleSignature() {
 		return StyleSignatureBasic.of(SName.root, SName.element, SName.ganttDiagram, SName.task);
 	}
 
@@ -196,7 +193,7 @@ public class TaskDrawGroup extends AbstractTaskDraw {
 	final private double height = 10;
 
 	private UPath getShape(final double startPos, final double endPos) {
-		final UPath rect = new UPath();
+		final UPath rect = UPath.none();
 
 		final double thick = 2;
 		final double y1 = (height - thick) / 2;
@@ -218,7 +215,7 @@ public class TaskDrawGroup extends AbstractTaskDraw {
 	}
 
 	private UPath getShapeOld2(final double startPos, final double endPos) {
-		final UPath rect = new UPath();
+		final UPath rect = UPath.none();
 
 		final double height1 = 9;
 		final double height2 = 7;
@@ -237,7 +234,7 @@ public class TaskDrawGroup extends AbstractTaskDraw {
 	}
 
 	private UPath getShapeOld(final double startPos, final double endPos) {
-		final UPath rect = new UPath();
+		final UPath rect = UPath.none();
 
 		final double height1 = 9;
 		final double height2 = 2;

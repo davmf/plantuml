@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,16 +35,16 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.graphic.AbstractTextBlock;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.UPath;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
+import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.MathUtils;
 
@@ -131,7 +131,7 @@ public class Opale extends AbstractTextBlock implements TextBlock {
 	}
 
 	public static UPath getCorner(double width, double roundCorner) {
-		final UPath path = new UPath();
+		final UPath path = UPath.none();
 		path.moveTo(width - cornersize, 0);
 		if (roundCorner == 0) {
 			path.lineTo(width - cornersize, cornersize);
@@ -146,7 +146,7 @@ public class Opale extends AbstractTextBlock implements TextBlock {
 	}
 
 	public static UPath getPolygonNormal(double width, double height, double roundCorner) {
-		final UPath polygon = new UPath();
+		final UPath polygon = UPath.none();
 		if (roundCorner == 0) {
 			polygon.moveTo(0, 0);
 			polygon.lineTo(0, height);
@@ -172,7 +172,7 @@ public class Opale extends AbstractTextBlock implements TextBlock {
 	private final double delta = 4;
 
 	private UPath getPolygonLeft(final StringBounder stringBounder, final XPoint2D pp1, final XPoint2D pp2) {
-		final UPath polygon = new UPath();
+		final UPath polygon = UPath.none();
 		polygon.moveTo(0, roundCorner / 2);
 
 		double y1 = pp1.getY() - delta;
@@ -195,7 +195,7 @@ public class Opale extends AbstractTextBlock implements TextBlock {
 	}
 
 	private UPath getPolygonRight(final StringBounder stringBounder, final XPoint2D pp1, final XPoint2D pp2) {
-		final UPath polygon = new UPath();
+		final UPath polygon = UPath.none();
 		polygon.moveTo(0, roundCorner / 2);
 		polygon.lineTo(0, getHeight(stringBounder) - roundCorner / 2);
 		polygon.arcTo(new XPoint2D(roundCorner / 2, getHeight(stringBounder)), roundCorner / 2, 0, 0);
@@ -218,7 +218,7 @@ public class Opale extends AbstractTextBlock implements TextBlock {
 	}
 
 	private UPath getPolygonUp(final StringBounder stringBounder, final XPoint2D pp1, final XPoint2D pp2) {
-		final UPath polygon = new UPath();
+		final UPath polygon = UPath.none();
 		polygon.moveTo(0, roundCorner / 2);
 		polygon.lineTo(0, getHeight(stringBounder) - roundCorner / 2);
 		polygon.arcTo(new XPoint2D(roundCorner / 2, getHeight(stringBounder)), roundCorner / 2, 0, 0);
@@ -241,7 +241,7 @@ public class Opale extends AbstractTextBlock implements TextBlock {
 	}
 
 	private UPath getPolygonDown(final StringBounder stringBounder, final XPoint2D pp1, final XPoint2D pp2) {
-		final UPath polygon = new UPath();
+		final UPath polygon = UPath.none();
 		polygon.moveTo(0, roundCorner / 2);
 		polygon.lineTo(0, getHeight(stringBounder) - roundCorner / 2);
 		polygon.arcTo(new XPoint2D(roundCorner / 2, getHeight(stringBounder)), roundCorner / 2, 0, 0);

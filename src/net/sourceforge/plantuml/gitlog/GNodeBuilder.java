@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 public class GNodeBuilder {
+	// ::remove folder when __HAXE__
 
 	private final List<GNode> all = new ArrayList<>();
 
@@ -57,11 +58,9 @@ public class GNodeBuilder {
 			tmp.put(commit.getName(), node);
 		}
 
-		for (Commit commit : allCommits) {
-			for (Commit parent : commit.getAncestors()) {
+		for (Commit commit : allCommits)
+			for (Commit parent : commit.getAncestors())
 				GNode.link(tmp.get(commit.getName()), tmp.get(parent.getName()));
-			}
-		}
 
 		this.all.addAll(tmp.values());
 
@@ -81,9 +80,9 @@ public class GNodeBuilder {
 					break;
 				}
 			}
-			if (changed == false) {
+			if (changed == false)
 				return;
-			}
+
 		}
 	}
 

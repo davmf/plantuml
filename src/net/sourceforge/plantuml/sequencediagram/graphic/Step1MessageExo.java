@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -38,8 +38,7 @@ package net.sourceforge.plantuml.sequencediagram.graphic;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sourceforge.plantuml.ISkinParam;
-import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.sequencediagram.InGroupable;
 import net.sourceforge.plantuml.sequencediagram.MessageExo;
 import net.sourceforge.plantuml.sequencediagram.MessageExoType;
@@ -47,7 +46,7 @@ import net.sourceforge.plantuml.sequencediagram.Note;
 import net.sourceforge.plantuml.skin.ArrowComponent;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
 import net.sourceforge.plantuml.skin.Component;
-import net.sourceforge.plantuml.skin.ComponentType;
+import net.sourceforge.plantuml.style.ISkinParam;
 
 class Step1MessageExo extends Step1Abstract {
 
@@ -69,7 +68,8 @@ class Step1MessageExo extends Step1Abstract {
 		for (Note noteOnMessage : noteOnMessages) {
 			final ISkinParam skinParam = noteOnMessage.getSkinParamBackcolored(drawingSet.getSkinParam());
 			final Component note = drawingSet.getSkin().createComponentNote(noteOnMessage.getUsedStyles(),
-					ComponentType.NOTE, skinParam, noteOnMessage.getStrings(), noteOnMessage.getColors());
+					noteOnMessage.getNoteStyle().getNoteComponentType(), skinParam, noteOnMessage.getDisplay(),
+					noteOnMessage.getColors());
 			addNote(note);
 		}
 

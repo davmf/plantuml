@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  *
  * If you like this project or if you find it useful, you can support us at:
  *
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  *
  * This file is part of PlantUML.
  *
@@ -66,6 +66,8 @@ import net.sourceforge.plantuml.preproc2.PreprocessorIncludeStrategy;
 import net.sourceforge.plantuml.preproc2.PreprocessorUtils;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SURL;
+import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.text.TLineType;
 import net.sourceforge.plantuml.theme.ThemeUtils;
 import net.sourceforge.plantuml.tim.expression.Knowledge;
 import net.sourceforge.plantuml.tim.expression.TValue;
@@ -95,6 +97,7 @@ import net.sourceforge.plantuml.tim.stdlib.Feature;
 import net.sourceforge.plantuml.tim.stdlib.FileExists;
 import net.sourceforge.plantuml.tim.stdlib.Filename;
 import net.sourceforge.plantuml.tim.stdlib.FunctionExists;
+import net.sourceforge.plantuml.tim.stdlib.GetAllTheme;
 import net.sourceforge.plantuml.tim.stdlib.GetJsonKey;
 import net.sourceforge.plantuml.tim.stdlib.GetJsonType;
 import net.sourceforge.plantuml.tim.stdlib.GetVariableValue;
@@ -119,6 +122,8 @@ import net.sourceforge.plantuml.tim.stdlib.LogicalXor;
 import net.sourceforge.plantuml.tim.stdlib.Lower;
 import net.sourceforge.plantuml.tim.stdlib.Newline;
 import net.sourceforge.plantuml.tim.stdlib.Now;
+import net.sourceforge.plantuml.tim.stdlib.Ord;
+import net.sourceforge.plantuml.tim.stdlib.RandomFunction;
 import net.sourceforge.plantuml.tim.stdlib.RetrieveProcedure;
 import net.sourceforge.plantuml.tim.stdlib.ReverseColor;
 import net.sourceforge.plantuml.tim.stdlib.ReverseHsluvColor;
@@ -132,7 +137,6 @@ import net.sourceforge.plantuml.tim.stdlib.Substr;
 import net.sourceforge.plantuml.tim.stdlib.Upper;
 import net.sourceforge.plantuml.tim.stdlib.VariableExists;
 import net.sourceforge.plantuml.utils.LineLocation;
-import net.sourceforge.plantuml.utils.StringLocated;
 
 public class TContext {
 
@@ -205,6 +209,9 @@ public class TContext {
 		functionsSet.addFunction(new LogicalNand());
 		functionsSet.addFunction(new LogicalNor());
 		functionsSet.addFunction(new LogicalNxor());
+		functionsSet.addFunction(new Ord());
+		functionsSet.addFunction(new RandomFunction());
+		functionsSet.addFunction(new GetAllTheme());
 		// %standard_exists_function
 		// %str_replace
 		// !exit
@@ -659,6 +666,10 @@ public class TContext {
 				reader = PreprocessorUtils.getReaderIncludeUrl(url, s, suf, charset);
 			} else if (location.startsWith("<") && location.endsWith(">")) {
 				reader = PreprocessorUtils.getReaderStdlibInclude(s, location.substring(1, location.length() - 1));
+				// ::comment when __CORE__
+			} else if (location.startsWith("[") && location.endsWith("]")) {
+				reader = PreprocessorUtils.getReaderNonstandardInclude(s, location.substring(1, location.length() - 1));
+				// ::done
 			} else {
 				final FileWithSuffix f2 = importedFiles.getFile(location, suf);
 				if (f2.fileOk()) {

@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,14 +35,19 @@
  */
 package net.sourceforge.plantuml.project.draw;
 
-import net.sourceforge.plantuml.SpriteContainerEmpty;
-import net.sourceforge.plantuml.Url;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.FontConfiguration;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
-import net.sourceforge.plantuml.graphic.TextBlock;
-import net.sourceforge.plantuml.graphic.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.ULine;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.klimt.sprite.SpriteContainerEmpty;
 import net.sourceforge.plantuml.project.LabelStrategy;
 import net.sourceforge.plantuml.project.core.Task;
 import net.sourceforge.plantuml.project.core.TaskAttribute;
@@ -56,12 +61,7 @@ import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.URectangle;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
-import net.sourceforge.plantuml.ugraphic.color.HColor;
-import net.sourceforge.plantuml.ugraphic.color.HColorSet;
+import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.Direction;
 
 public class TaskDrawSeparator implements TaskDraw {
@@ -138,13 +138,12 @@ public class TaskDrawSeparator implements TaskDraw {
 		final ClockwiseTopRightBottomLeft margin = getStyle().getMargin();
 		ug = ug.apply(new UTranslate(0, margin.getTop()));
 
-		final HColor backColor = getStyle().value(PName.BackGroundColor)
-				.asColor(colorSet);
+		final HColor backColor = getStyle().value(PName.BackGroundColor).asColor(colorSet);
 
 		if (backColor.isTransparent() == false) {
 			final double height = padding.getTop() + getTextHeight(stringBounder) + padding.getBottom();
 			if (height > 0) {
-				final URectangle rect = new URectangle(end - start, height);
+				final URectangle rect = URectangle.build(end - start, height);
 				ug.apply(backColor.bg()).draw(rect);
 			}
 		}

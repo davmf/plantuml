@@ -2,14 +2,14 @@
  * PlantUML : a free UML diagram generator
  * ========================================================================
  *
- * (C) Copyright 2009-2023, Arnaud Roques
+ * (C) Copyright 2009-2024, Arnaud Roques
  *
- * Project Info:  http://plantuml.com
+ * Project Info:  https://plantuml.com
  * 
  * If you like this project or if you find it useful, you can support us at:
  * 
- * http://plantuml.com/patreon (only 1$ per month!)
- * http://plantuml.com/paypal
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
  * 
  * This file is part of PlantUML.
  *
@@ -35,13 +35,18 @@
  */
 package net.sourceforge.plantuml.skin.rose;
 
-import net.sourceforge.plantuml.ISkinSimple;
-import net.sourceforge.plantuml.LineBreakStrategy;
-import net.sourceforge.plantuml.awt.geom.XDimension2D;
-import net.sourceforge.plantuml.awt.geom.XPoint2D;
-import net.sourceforge.plantuml.cucadiagram.Display;
-import net.sourceforge.plantuml.graphic.HorizontalAlignment;
-import net.sourceforge.plantuml.graphic.StringBounder;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.UEllipse;
+import net.sourceforge.plantuml.klimt.shape.ULine;
+import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.skin.Area;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
 import net.sourceforge.plantuml.skin.ArrowDecoration;
@@ -49,13 +54,8 @@ import net.sourceforge.plantuml.skin.ArrowDirection;
 import net.sourceforge.plantuml.skin.ArrowDressing;
 import net.sourceforge.plantuml.skin.ArrowHead;
 import net.sourceforge.plantuml.skin.ArrowPart;
+import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.ugraphic.UEllipse;
-import net.sourceforge.plantuml.ugraphic.UGraphic;
-import net.sourceforge.plantuml.ugraphic.ULine;
-import net.sourceforge.plantuml.ugraphic.UPolygon;
-import net.sourceforge.plantuml.ugraphic.UStroke;
-import net.sourceforge.plantuml.ugraphic.UTranslate;
 
 public class ComponentRoseArrow extends AbstractComponentRoseArrow {
 
@@ -106,13 +106,11 @@ public class ComponentRoseArrow extends AbstractComponentRoseArrow {
 		if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && dressing2.getHead() != ArrowHead.NONE)
 			len -= diamCircle / 2 + thinCircle;
 
-		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE
-				&& dressing1.getHead() == ArrowHead.NONE) {
+		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && dressing1.getHead() == ArrowHead.NONE) {
 			start += diamCircle / 2;
 			len -= diamCircle / 2;
 		}
-		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE
-				&& dressing1.getHead() == ArrowHead.NORMAL) {
+		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && dressing1.getHead() == ArrowHead.NORMAL) {
 			start += diamCircle + thinCircle;
 			len -= diamCircle + thinCircle;
 		}
@@ -187,14 +185,14 @@ public class ComponentRoseArrow extends AbstractComponentRoseArrow {
 	}
 
 	private boolean isBelowForResponse() {
-		return belowForResponse && getDirection2() == ArrowDirection.RIGHT_TO_LEFT_REVERSE;
+		return belowForResponse && getArrowConfiguration().isReverseDefine();
 	}
 
 	private void drawDressing1(UGraphic ug, ArrowDressing dressing, ArrowDecoration decoration, double lenFull) {
 
 		if (decoration == ArrowDecoration.CIRCLE) {
-			final UEllipse circle = new UEllipse(diamCircle, diamCircle);
-			ug.apply(new UStroke(thinCircle)).apply(getForegroundColor())
+			final UEllipse circle = UEllipse.build(diamCircle, diamCircle);
+			ug.apply(UStroke.withThickness(thinCircle)).apply(getForegroundColor())
 					.apply(new UTranslate(-diamCircle / 2 - thinCircle, -diamCircle / 2 - thinCircle / 2)).draw(circle);
 			if (dressing.getHead() != ArrowHead.CROSSX)
 				ug = ug.apply(UTranslate.dx(diamCircle / 2 + thinCircle));
@@ -210,7 +208,7 @@ public class ComponentRoseArrow extends AbstractComponentRoseArrow {
 						.draw(new ULine(getArrowDeltaX(), getArrowDeltaY()).rotate(Math.atan2(-inclination1, lenFull)));
 
 		} else if (dressing.getHead() == ArrowHead.CROSSX) {
-			ug = ug.apply(new UStroke(2));
+			ug = ug.apply(UStroke.withThickness(2));
 			ug.apply(new UTranslate(spaceCrossX, -getArrowDeltaX() / 2))
 					.draw(new ULine(getArrowDeltaX(), getArrowDeltaX()));
 			ug.apply(new UTranslate(spaceCrossX, getArrowDeltaX() / 2))
@@ -229,10 +227,10 @@ public class ComponentRoseArrow extends AbstractComponentRoseArrow {
 	private void drawDressing2(UGraphic ug, ArrowDressing dressing, ArrowDecoration decoration, double lenFull) {
 
 		if (decoration == ArrowDecoration.CIRCLE) {
-			ug = ug.apply(new UStroke(thinCircle)).apply(getForegroundColor());
-			final UEllipse circle = new UEllipse(diamCircle, diamCircle);
+			ug = ug.apply(UStroke.withThickness(thinCircle)).apply(getForegroundColor());
+			final UEllipse circle = UEllipse.build(diamCircle, diamCircle);
 			ug.apply(new UTranslate(-diamCircle / 2 + thinCircle, -diamCircle / 2 - thinCircle / 2)).draw(circle);
-			ug = ug.apply(new UStroke());
+			ug = ug.apply(UStroke.simple());
 			ug = ug.apply(UTranslate.dx(-diamCircle / 2 - thinCircle));
 		}
 
@@ -246,7 +244,7 @@ public class ComponentRoseArrow extends AbstractComponentRoseArrow {
 						.draw(new ULine(-getArrowDeltaX(), getArrowDeltaY()).rotate(Math.atan2(inclination2, lenFull)));
 
 		} else if (dressing.getHead() == ArrowHead.CROSSX) {
-			ug = ug.apply(new UStroke(2));
+			ug = ug.apply(UStroke.withThickness(2));
 			ug.apply(new UTranslate(-spaceCrossX - getArrowDeltaX(), -getArrowDeltaX() / 2))
 					.draw(new ULine(getArrowDeltaX(), getArrowDeltaX()));
 			ug.apply(new UTranslate(-spaceCrossX - getArrowDeltaX(), getArrowDeltaX() / 2))
