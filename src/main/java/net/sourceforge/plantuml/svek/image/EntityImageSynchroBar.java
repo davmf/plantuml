@@ -45,6 +45,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
@@ -57,7 +58,7 @@ public class EntityImageSynchroBar extends AbstractEntityImage {
     // private final SName styleName;
 
     public EntityImageSynchroBar(Entity entity, ISkinParam skinParam, SName styleName) {
-        super(entity, skinParam);
+        super(entity);
         // this.styleName = styleName;
     }
 

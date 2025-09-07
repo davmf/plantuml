@@ -56,6 +56,7 @@ import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.skin.LineParam;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.svek.image.EntityImageActivity;
 import net.sourceforge.plantuml.svek.image.EntityImageArcCircle;
 import net.sourceforge.plantuml.svek.image.EntityImageAssociation;
@@ -132,7 +133,7 @@ public final class GeneralImageBuilder {
 				return new EntityImageStateBorder(leaf, stateParent, bibliotekon);
 			}
 			if (isHideEmptyDescriptionForState && leaf.getBodier().getRawBody().size() == 0)
-				return new EntityImageStateEmptyDescription(leaf);
+				return new EntityImageStateEmptyDescription(leaf, leaf.getSkinParam());
 
 			if (leaf.getStereotype() != null
 					&& "<<sdlreceive>>".equals(leaf.getStereotype().getLabel(Guillemet.DOUBLE_COMPARATOR)))
@@ -148,7 +149,7 @@ public final class GeneralImageBuilder {
 			return new EntityImageCircleEnd(leaf);
 
 		if (leaf.getLeafType() == LeafType.BRANCH || leaf.getLeafType() == LeafType.STATE_CHOICE)
-			return new EntityImageBranch(leaf);
+			return new EntityImageBranch(leaf, leaf.getSkinParam());
 
 		if (leaf.getLeafType() == LeafType.LOLLIPOP_FULL || leaf.getLeafType() == LeafType.LOLLIPOP_HALF)
 			return new EntityImageLollipopInterface(leaf);
@@ -186,7 +187,7 @@ public final class GeneralImageBuilder {
 			return new EntityImageJson(leaf, portionShower);
 
 		if (leaf.getLeafType() == LeafType.SYNCHRO_BAR || leaf.getLeafType() == LeafType.STATE_FORK_JOIN)
-			return new EntityImageSynchroBar(leaf);
+			return new EntityImageSynchroBar(leaf, leaf.getSkinParam(), SName.activityBar);
 
 		if (leaf.getLeafType() == LeafType.ARC_CIRCLE)
 			return new EntityImageArcCircle(leaf);

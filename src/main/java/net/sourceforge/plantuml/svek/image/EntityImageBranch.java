@@ -45,6 +45,7 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
@@ -57,7 +58,7 @@ public class EntityImageBranch extends AbstractEntityImage {
     final private static int SIZE = 12;
 
     public EntityImageBranch(Entity entity, ISkinParam skinParam) {
-        super(entity, skinParam);
+        super(entity);
     }
 
     public StyleSignatureBasic getDefaultStyleDefinition() {

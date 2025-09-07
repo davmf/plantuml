@@ -55,7 +55,7 @@ public class EntityImageStateEmptyDescription extends EntityImageStateCommon {
     private boolean isTransition = false;
 
     public EntityImageStateEmptyDescription(Entity entity, ISkinParam skinParam) {
-        super(entity, skinParam);
+        super(entity);
         Stereotype stereotype = entity.getStereotype();
 
         if (stereotype != null) {
