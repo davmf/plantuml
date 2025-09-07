@@ -2,16 +2,18 @@ name: CI
 
 on:
   create:
+    tags:
+      - '*'
   pull_request:
     types: [ opened, synchronize, reopened ]
     paths-ignore:
-      - '*.md'
+      - '**.md'
       - 'docs/**'
   push:
     branches:
       - master
     paths-ignore:
-      - '*.md'
+      - '**.md'
       - 'docs/**'
   workflow_dispatch:
 
@@ -20,6 +22,49 @@ defaults:
     shell: bash
 
 jobs:
+
+  jdk8:
+    name: Build & Run with Ant (Java 8)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 8 (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Ensure Ant present
+        run: |
+          if ! command -v ant >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ant
+          fi
+          ant -version
+
+      - name: Build with Ant
+        run: ant -noinput
+
+      - name: Check PlantUML version
+        run: java -jar plantuml.jar -version
+        
+      - name: Upload plantuml.jar
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plantuml-jdk8-jar
+          path: plantuml.jar
+          if-no-files-found: error
+          retention-days: 30 
+                 
+      - name: Run sample diagram test (ASCII)
+        run: |
+          echo "Alice -> Bob : it works!" | java -jar plantuml.jar -pipe -ttxt
+
+
   workflow_config:
     runs-on: ubuntu-latest
     outputs:
@@ -31,7 +76,7 @@ jobs:
       do_test_windows: ${{ steps.config.outputs.do_test_windows }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure workflow
         id: config
@@ -89,17 +134,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java_version: [ 8, 17 ]
+        java_version: [ 17 ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout the repository
         if: needs.workflow_config.outputs.do_test_linux == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up java
         if: needs.workflow_config.outputs.do_test_linux == 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: ${{ matrix.java_version }}
           distribution: temurin
@@ -130,9 +175,9 @@ jobs:
       release_version: ${{ steps.version.outputs.release_version }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -186,16 +231,16 @@ jobs:
           key: "libs-${{ github.run_id }}"
           enableCrossOsArchive: true
 
-  deploy_javadoc:
-    needs: [ build_artifacts, test_linux ]
+  deploy_javadoc_jacoco:
+    needs: [ build_artifacts, test_linux, jdk8 ]
     if: needs.workflow_config.outputs.do_javadoc == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -203,25 +248,34 @@ jobs:
       - name: Build Javadoc
         run: gradle javadoc
 
-      - name: Deploy Javadoc to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Make Test
+        run: gradle test
+
+      - name: Build Jacoco HTML Report
+        run: gradle jacocoTestReport --stacktrace --info --warning-mode all
+
+      - name: Move Jacoco HTML Report to docs folder
+        run: mv ./build/reports/jacoco/test/html ./build/docs/jacoco
+
+      - name: Deploy Javadoc and Jacoco to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/docs/javadoc
+          publish_dir: ./build/docs
 
 
   upload:
     if: |
       needs.workflow_config.outputs.do_release == 'true' ||
       needs.workflow_config.outputs.do_snapshot_release == 'true'
-    needs: [ workflow_config, build_artifacts, test_linux ]
+    needs: [ workflow_config, build_artifacts, test_linux, jdk8 ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
@@ -298,7 +352,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -329,7 +383,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build/push container image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -338,3 +392,20 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
+
+  create_native_image_release:
+    needs: [ workflow_config, upload ]
+    if: needs.workflow_config.outputs.do_release == 'true'
+    uses: ./.github/workflows/native-image-release.yml
+
+  trigger_plantuml_eclipse_release:
+    needs: [ workflow_config, upload, build_artifacts ]
+    if: needs.workflow_config.outputs.do_release == 'true' || needs.workflow_config.outputs.do_snapshot_release == 'true'
+    uses: ./.github/workflows/trigger-plantuml-eclipse-release.yml
+    with:
+      release-version: ${{ needs.build_artifacts.outputs.release_version }}
+      git-ref: ${{ github.ref }}
+      git-commit: ${{ github.sha }}
+      snapshot: ${{ needs.workflow_config.outputs.do_snapshot_release == 'true' }}
+    secrets:
+      PLANTUML_ECLIPSE_DISPATCH_TOKEN: ${{ secrets.PLANTUML_ECLIPSE_DISPATCH_TOKEN }}

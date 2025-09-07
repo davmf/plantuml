@@ -18,16 +18,13 @@ description = "PlantUML"
 java {
 	withSourcesJar()
 	withJavadocJar()
-	registerFeature("pdf") {
-		usingSourceSet(sourceSets["main"])
-	}
 }
 
 dependencies {
-	compileOnly("org.apache.ant:ant:1.10.14")
-	testImplementation("org.assertj:assertj-core:3.25.3")
-	testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-	testImplementation("org.scilab.forge:jlatexmath:1.0.7")
+	compileOnly(libs.ant)
+	testImplementation(libs.assertj.core)
+	testImplementation(libs.junit.jupiter)
+	testImplementation(libs.jlatexmath)
 }
 
 repositories {
@@ -36,19 +33,16 @@ repositories {
 }
 
 sourceSets {
-	main {
-		java {
-			srcDirs("build/generated/sjpp")
-		}
-		resources {
-			srcDirs("build/sources/sjpp/java")
-			include("**/graphviz.dat")
-			include("**/*.png")
-			include("**/*.svg")
-			include("**/*.txt")
-		}
-	}
+  main {
+    java {
+      srcDirs("build/generated/sjpp")
+    }
+    resources {
+      srcDir(rootProject.layout.projectDirectory.dir("src/main/resources"))
+    }
+  }
 }
+
 
 tasks.compileJava {
 	if (JavaVersion.current().isJava8) {
@@ -63,12 +57,9 @@ tasks.withType<Jar>().configureEach {
 		attributes["Main-Class"] = "net.sourceforge.plantuml.Run"
 		attributes["Implementation-Version"] = archiveVersion
 		attributes["Build-Jdk-Spec"] = System.getProperty("java.specification.version")
-		from("../manifest.txt")
+		from(rootProject.layout.projectDirectory.file("manifest.txt"))
 	}
-	from("../skin") { into("skin") }
-	from("../stdlib") { into("stdlib") }
-	from("../svg") { into("svg") }
-	from("../themes") { into("themes") }
+
 	// source sets for java and resources are on "src", only put once into the jar
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
@@ -88,7 +79,7 @@ tasks.withType<Javadoc>().configureEach {
 }
 
 val syncSources by tasks.registering(Sync::class) {
-	from(rootProject.layout.projectDirectory.dir("src"))
+	from(rootProject.layout.projectDirectory.dir("src/main/java"))
 	into(project.layout.buildDirectory.dir("sources/sjpp/java"))
 }
 

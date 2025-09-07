@@ -10,10 +10,6 @@ Generate UML diagrams from textual descriptions.
 [![GitHub forks](https://img.shields.io/github/forks/plantuml/plantuml)](https://github.com/plantuml/plantuml/network/)
 [![GitHub all releases](https://img.shields.io/sourceforge/dt/plantuml?color=blue)](https://github.com/plantuml/plantuml/releases)
 
- - to improve the appearance of plantuml state diagrams, especially complex ones
- - (in conjunction with some preprocessing in another repo) to allow for hiding
-   of selected diagrm elements and links while retaining the overall layout
-
 [![Release (latest by date)](https://img.shields.io/github/v/release/plantuml/plantuml)](https://github.com/plantuml/plantuml/releases/latest)
 [![Release Date](https://img.shields.io/github/release-date/plantuml/plantuml?color=blue)](https://github.com/plantuml/plantuml/releases/latest)
 [![GitHub commits since latest release (by date)](https://img.shields.io/github/commits-since/plantuml/plantuml/latest)](https://github.com/plantuml/plantuml/commits/)
@@ -23,10 +19,8 @@ Generate UML diagrams from textual descriptions.
 [![Pre-release Date](https://img.shields.io/github/release-date-pre/plantuml/plantuml?color=chocolate)](https://github.com/plantuml/plantuml/releases/tag/snapshot)
 [![GitHub last commit](https://img.shields.io/github/last-commit/plantuml/plantuml?color=chocolate)](https://github.com/plantuml/plantuml/commits/)
 [![CI](https://github.com/plantuml/plantuml/actions/workflows/ci.yml/badge.svg?color=chocolate)](https://github.com/plantuml/plantuml/actions/workflows/ci.yml)
-[![snapshot javadoc](https://img.shields.io/badge/javadoc-snapshot-chocolate.svg?logo=github)](https://plantuml.github.io/plantuml/)
-
-> [!IMPORTANT]
-> [PlantUML is **not** affected by the log4j vulnerability.](https://github.com/plantuml/plantuml/issues/826)
+[![snapshot javadoc](https://img.shields.io/badge/javadoc-snapshot-chocolate.svg?logo=github)](https://plantuml.github.io/plantuml/javadoc)
+[![snapshot jacoco](https://img.shields.io/badge/code_coverage%3A_jacoco-snapshot-chocolate?logo=github)](https://plantuml.github.io/plantuml/jacoco)
 
 ## ℹ️ About
 
@@ -60,7 +54,9 @@ PlantUML is a component that allows you to create various UML diagrams through s
   - [MindMap diagram](http://plantuml.com/mindmap-diagram)
   - [WBS (Work Breakdown Structure)](http://plantuml.com/wbs-diagram)
   - [Mathematical Notations (AsciiMath, JLaTeXMath)](http://plantuml.com/ascii-math)
-  - [IE/ER (Information Engineering/Entity Relationship)](http://plantuml.com/ie-diagram)
+  - Entity Relationship (ER) diagram
+    - [Information Engineering (IE) diagram](http://plantuml.com/ie-diagram)
+    - [Entity Relationship (ER) diagram (Chen's notation)](http://plantuml.com/er-diagram)
 
 ### 📣 Additional Features
 
@@ -72,6 +68,13 @@ PlantUML is a component that allows you to create various UML diagrams through s
 ### 📖 Learn More
 
 For a more detailed overview, visit [PlantUML Official Website](https://plantuml.com/).
+
+## 🛡 Security
+
+See [Security Policy](SECURITY.md) and [Security overview](https://github.com/plantuml/plantuml/security).
+
+> [!IMPORTANT]
+> [PlantUML is **not** affected by the log4j vulnerability.](https://github.com/plantuml/plantuml/issues/826)
 
 ## 🚀 Getting Started
 
@@ -85,7 +88,7 @@ To build PlantUML from source, you'll need to have certain prerequisites install
 
 PlantUML is an open-source project, and we welcome contributions of all kinds. Whether you're helping us fix bugs, improve the docs, or spread the word, we appreciate your support. See our [contributing guide](CONTRIBUTING.md) for more information on how to get started.
 
-For comprehensive and detailed documentation on using PlantUML, refer to the [official Javadoc, available here](https://plantuml.github.io/plantuml/). Please note that this documentation is a work in progress and may not be complete. 
+For comprehensive and detailed documentation on using PlantUML, refer to the [official Javadoc, available here](https://plantuml.github.io/plantuml/javadoc). Please note that this documentation is a work in progress and may not be complete. 
 
 ## 🧑‍🤝‍🧑 Support and Community
 

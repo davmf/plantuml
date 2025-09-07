@@ -4,6 +4,9 @@
 //    also supported is to build first, with java17, then switch the java version, and run the test with java8:
 // gradle clean build -x javaDoc -x test
 // gradle test
+
+import java.util.jar.JarFile
+
 println("Running build.gradle.kts")
 println(project.version)
 
@@ -13,7 +16,9 @@ plugins {
 	java
 	`maven-publish`
 	signing
-//	id("com.adarshr.test-logger") version "3.2.0"
+    eclipse
+	jacoco
+//	alias(libs.plugins.adarshr.test.logger)
 }
 
 group = "net.sourceforge.plantuml"
@@ -28,53 +33,36 @@ java {
 }
 
 dependencies {
-	compileOnly("org.apache.ant:ant:1.10.14")
+	compileOnly(libs.ant)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
-	testImplementation("io.github.glytching:junit-extensions:2.6.0")
-	testImplementation("org.assertj:assertj-core:3.25.3")
-	testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-	testImplementation("org.xmlunit:xmlunit-core:2.9.+")
+	testImplementation(libs.glytching.junit.extensions)
+	testImplementation(libs.assertj.core)
+	testImplementation(libs.xmlunit.core)
 	if (JavaVersion.current().isJava8) {
-		testImplementation("org.mockito:mockito-core:4.+")
-		testImplementation("org.mockito:mockito-junit-jupiter:4.+")
+		testImplementation(libs.mockito.core.j8)
+		testImplementation(libs.mockito.junit.jupiter.j8)
 	} else {
-		testImplementation("org.mockito:mockito-core:5.+")
-		testImplementation("org.mockito:mockito-junit-jupiter:5.+")
+		testImplementation(libs.mockito.core)
+		testImplementation(libs.mockito.junit.jupiter)
 	}
-	testImplementation("org.scilab.forge:jlatexmath:1.0.7")
+	implementation(libs.jlatexmath)
+    implementation(libs.elk.core)
+    implementation(libs.elk.alg.layered)
+    implementation(libs.elk.alg.mrtree)
 
-	"pdfRuntimeOnly"("org.apache.xmlgraphics:fop:2.9")
-	"pdfRuntimeOnly"("org.apache.xmlgraphics:batik-all:1.17")
+    // Custom configuration for pdfJar task
+    configurations.create("pdfJarDeps")
+    "pdfJarDeps"(libs.fop)
+    "pdfJarDeps"(libs.batik.all)
+
 }
 
 repositories {
 	mavenLocal()
 	mavenCentral()
-}
-
-sourceSets {
-	main {
-		java {
-			srcDirs("src")
-		}
-		resources {
-			srcDirs("src")
-			include("**/graphviz.dat")
-			include("**/*.png")
-			include("**/*.svg")
-			include("**/*.txt")
-		}
-	}
-	test {
-		java {
-			srcDirs("test")
-		}
-		resources {
-			srcDirs(".")
-			include("skin/**/*.skin")
-			include("themes/**/*.puml")
-		}
-	}
 }
 
 tasks.compileJava {
@@ -86,19 +74,51 @@ tasks.compileJava {
 }
 
 tasks.withType<Jar>().configureEach {
-	manifest {
-		attributes["Main-Class"] = "net.sourceforge.plantuml.Run"
-		attributes["Implementation-Version"] = archiveVersion
-		attributes["Build-Jdk-Spec"] = System.getProperty("java.specification.version")
-		from("manifest.txt")
-	}
-	from("skin") { into("skin") }
-	from("stdlib") { into("stdlib") }
-	from("svg") { into("svg") }
-	from("themes") { into("themes") }
-	// source sets for java and resources are on "src", only put once into the jar
-	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes["Main-Class"] = "net.sourceforge.plantuml.Run"
+        attributes["Implementation-Version"] = archiveVersion
+        attributes["Build-Jdk-Spec"] = System.getProperty("java.specification.version")
+        from("manifest.txt")
+    }
+
+    // Add dependencies to the JAR
+    val runtimeClasspath = configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) }
+    from(runtimeClasspath) {
+        exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA") // Avoid conflict on signature
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+
+
+val checkJarEntries by tasks.registering {
+    dependsOn(tasks.named("jar"))
+    doLast {
+        val jarFile = tasks.named<Jar>("jar").get().archiveFile.get().asFile
+        JarFile(jarFile).use { jar ->
+            val required = listOf(
+                "net/sourceforge/plantuml/Run.class",
+                "sprites/archimate/access.png",
+                "skin/plantuml.skin"
+            )
+            val missing = required.filter { jar.getEntry(it) == null }
+            if (missing.isNotEmpty()) {
+                throw GradleException("Missing entries in JAR: $missing")
+            }
+        }
+        println("All required entries found in ${jarFile.name}")
+    }
+}
+
+tasks.named<Jar>("jar") {
+    finalizedBy(checkJarEntries)
+}
+
+tasks.named("check") {
+    dependsOn(checkJarEntries)
+}
+
 
 publishing {
 	publications.create<MavenPublication>("maven") {
@@ -167,13 +187,43 @@ tasks.test {
 	testLogging.showStandardStreams = true
 }
 
+tasks.register<Test>("runIntermediateTest") {
+    description = "Runs the 'IntermediateTest'"
+    group = "dev"
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("IntermediateTest*")
+    }
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+
+    val mainClasses = sourceSets.main.get().output.classesDirs
+
+    classDirectories.setFrom(
+        files(mainClasses).asFileTree.matching {
+            include("**/*.class")
+        }
+    )
+
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        csv.required.set(false)
+    }
+}
+
+
 val pdfJar by tasks.registering(Jar::class) {
 	group = "build" // OR for example, "build"
 	description = "Assembles a jar containing dependencies to create PDFs."
 	manifest.attributes["Main-Class"] = "net.sourceforge.plantuml.Run"
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-	val dependencies = configurations.runtimeClasspath.get().map(::zipTree)
-	from(dependencies)
+  val dependencies = configurations["pdfJarDeps"].map(::zipTree) + configurations.runtimeClasspath.get().map(::zipTree)
+	from(dependencies) {
+        exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA") // Avoid conflict on signature
+    }
 	with(tasks.jar.get())
 	archiveAppendix.set("pdf")
 }
