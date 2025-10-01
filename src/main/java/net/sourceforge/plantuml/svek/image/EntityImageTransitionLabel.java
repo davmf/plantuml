@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.svek.image;
 
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
@@ -43,6 +44,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
@@ -56,12 +58,19 @@ public class EntityImageTransitionLabel extends AbstractEntityImage {
 
 		final Stereotype stereotype = entity.getStereotype();
 
-		// Use smaller font for transition labels to make them less prominent
-		final FontConfiguration fontConfiguration = FontConfiguration.create(getSkinParam(), FontParam.STATE, stereotype)
-			.changeSize(-2); // Make font slightly smaller
+		// Use normal font size for transition labels (they're already small intermediate nodes)
+		final FontConfiguration fontConfiguration = FontConfiguration.create(getSkinParam(), FontParam.STATE, stereotype);
 
 		// Create text block from entity display
-		this.textBlock = getEntity().getDisplay().create(fontConfiguration, HorizontalAlignment.CENTER, getSkinParam());
+		final Display display = getEntity().getDisplay();
+
+		// Ensure we have a valid display to render
+		if (display != null && !Display.isNull(display)) {
+			this.textBlock = display.create(fontConfiguration, HorizontalAlignment.CENTER, getSkinParam());
+		} else {
+			// Fallback to entity name if display is not available
+			this.textBlock = Display.create(getEntity().getName()).create(fontConfiguration, HorizontalAlignment.CENTER, getSkinParam());
+		}
 	}
 
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
@@ -81,10 +90,10 @@ public class EntityImageTransitionLabel extends AbstractEntityImage {
 	}
 
 	final public void drawU(UGraphic ug) {
-		// Simply draw the text without any background shape
-		// This makes it appear as a label rather than a state box
+		// Draw the text for the transition label
 		if (textBlock != null) {
 			try {
+				// Draw the text without any background - appears as a clean label
 				textBlock.drawU(ug);
 			} catch (Exception e) {
 				// If drawing fails, we'll just skip the label rather than crash
