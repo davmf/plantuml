@@ -4,7 +4,8 @@
       "Bash(git add:*)",
       "Bash(find:*)",
       "Bash(./gradlew:*)",
-      "Read(//mnt/c/Users/dxf/Downloads/**)"
+      "Read(//mnt/c/Users/dxf/Downloads/**)",
+      "Bash(gradle build)"
     ],
     "deny": [],
     "ask": []

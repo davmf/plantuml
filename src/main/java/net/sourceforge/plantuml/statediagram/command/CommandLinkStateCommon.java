@@ -281,7 +281,6 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 
 		// Create the intermediate transition node
 		final Quark<Entity> transitionQuark = diagram.quarkInContext(true, diagram.cleanId(transitionNodeId));
-		final Display enhancedLabel = enhanceStateDiagramLabel(diagram, label);
 		final Entity transitionNode = diagram.reallyCreateLeaf(location, transitionQuark, label, LeafType.STATE_TRANSITION_LABEL, null);
 
 		// Set transition node stereotype to make it visually distinct
@@ -289,12 +288,12 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 
 		// Create first link: source -> transition node (no arrow decoration on intermediate link)
 		final LinkType firstLinkType = new LinkType(LinkDecor.NONE, LinkDecor.NONE);
-		final LinkArg firstLinkArg = LinkArg.build(Display.NULL, length/2, diagram.getSkinParam().classAttributeIconSize() > 0);
+		final LinkArg firstLinkArg = LinkArg.build(Display.NULL, Math.max(1, length/2), diagram.getSkinParam().classAttributeIconSize() > 0);
 		Link firstLink = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), source, transitionNode,
 				firstLinkType, firstLinkArg);
 
 		// Create second link: transition node -> target (with original arrow decoration)
-		final LinkArg secondLinkArg = LinkArg.build(Display.NULL, length/2, diagram.getSkinParam().classAttributeIconSize() > 0);
+		final LinkArg secondLinkArg = LinkArg.build(Display.NULL, Math.max(1, length/2), diagram.getSkinParam().classAttributeIconSize() > 0);
 		Link secondLink = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), transitionNode, target,
 				linkType, secondLinkArg);
 
