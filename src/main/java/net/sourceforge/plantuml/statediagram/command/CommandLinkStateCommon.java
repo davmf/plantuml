@@ -281,8 +281,8 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 
 		// Create the intermediate transition node
 		final Quark<Entity> transitionQuark = diagram.quarkInContext(true, diagram.cleanId(transitionNodeId));
-		final Display enhancedLabel = enhanceStateDiagramLabel(diagram, label);
-		final Entity transitionNode = diagram.reallyCreateLeaf(location, transitionQuark, enhancedLabel, LeafType.STATE_TRANSITION_LABEL, null);
+		// Use the label directly without enhancement to avoid bracket addition
+		final Entity transitionNode = diagram.reallyCreateLeaf(location, transitionQuark, label, LeafType.STATE_TRANSITION_LABEL, null);
 
 		// Set transition node stereotype to make it visually distinct
 		transitionNode.setStereotype(Stereotype.build("<<transition>>"));
