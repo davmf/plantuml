@@ -292,6 +292,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 		}
 
+		// Apply state diagram specific styling if appropriate
+		labelOnly = applyStateDiagramLabelStyling(labelOnly, font, skinParam);
+
 		final CucaNote note = link.getNote();
 		if (note == null) {
 			labelText = labelOnly;
@@ -361,6 +364,54 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	private LinkArrow getLinkArrow() {
 		return link.getLinkArrow();
+	}
+
+	private TextBlock applyStateDiagramLabelStyling(TextBlock originalLabel, FontConfiguration font, ISkinParam skinParam) {
+		// Only apply special styling for state diagrams
+		if (diagramType() != UmlDiagramType.STATE) {
+			return originalLabel;
+		}
+
+		// Check if label is empty
+		if (originalLabel == TextBlockUtils.EMPTY_TEXT_BLOCK) {
+			return originalLabel;
+		}
+
+		// For state diagrams, create a more label-like appearance
+		// This mimics what the preprocessor does with transparent backgrounds and smaller fonts
+		FontConfiguration stateLabelFont = font;
+
+		// Use a slightly smaller font size for transition labels in state diagrams
+		final float currentSize = font.getFont().getSize();
+		if (currentSize > 10) {
+			stateLabelFont = font.changeSize(Math.max(10, currentSize - 2));
+		}
+
+		// If the original label has text, recreate it with state diagram styling
+		if (link.getLabel() != null && !Display.isNull(link.getLabel())) {
+			final HorizontalAlignment alignment = getMessageTextAlignment(diagramType(), skinParam);
+			final boolean hasSeveralGuideLines = link.getLabel().hasSeveralGuideLines();
+
+			TextBlock styledBlock;
+			if (hasSeveralGuideLines) {
+				styledBlock = StringWithArrow.addSeveralMagicArrows(link.getLabel(), this, stateLabelFont, alignment, skinParam);
+			} else {
+				styledBlock = link.getLabel().create0(stateLabelFont, alignment, skinParam, skinParam.maxMessageSize(),
+						CreoleMode.SIMPLE_LINE, null, null);
+			}
+
+			// Apply any visibility modifiers
+			styledBlock = addVisibilityModifier(styledBlock, link, skinParam);
+
+			// Add arrow if needed
+			if (getLinkArrow() != LinkArrow.NONE_OR_SEVERAL && !hasSeveralGuideLines) {
+				styledBlock = StringWithArrow.addMagicArrow(styledBlock, this, stateLabelFont);
+			}
+
+			return styledBlock;
+		}
+
+		return originalLabel;
 	}
 
 	// ::comment when __CORE__

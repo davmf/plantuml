@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@
  *
  * Original Author:  Arnaud Roques
  * Contribution :  Hisashi Miyashita
- * 
+ *
  *
  */
 package net.sourceforge.plantuml.abel;
@@ -40,6 +40,8 @@ import java.util.EnumSet;
 
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
@@ -51,16 +53,16 @@ import net.sourceforge.plantuml.svek.ShapeType;
 
 public enum EntityPosition {
 
-	NORMAL, ENTRY_POINT, EXIT_POINT, INPUT_PIN, OUTPUT_PIN, EXPANSION_INPUT, EXPANSION_OUTPUT, PORTIN, PORTOUT;
+	NORMAL, ENTRY_POINT, ENTRY_POINT_HIDDEN, ENTRY_POINT_POINT, EXIT_POINT, EXIT_POINT_HIDDEN, INPUT_PIN, OUTPUT_PIN, EXPANSION_INPUT, EXPANSION_OUTPUT, PORTIN, PORTOUT;
 
 	public static final double RADIUS = 6;
 
 	public static EnumSet<EntityPosition> getInputs() {
-		return EnumSet.of(ENTRY_POINT, INPUT_PIN, EXPANSION_INPUT, PORTIN);
+		return EnumSet.of(ENTRY_POINT, ENTRY_POINT_HIDDEN, ENTRY_POINT_POINT, INPUT_PIN, EXPANSION_INPUT, PORTIN);
 	}
 
 	public static EnumSet<EntityPosition> getOutputs() {
-		return EnumSet.of(EXIT_POINT, OUTPUT_PIN, EXPANSION_OUTPUT, PORTOUT);
+		return EnumSet.of(EXIT_POINT, EXIT_POINT_HIDDEN, OUTPUT_PIN, EXPANSION_OUTPUT, PORTOUT);
 	}
 
 	public static EnumSet<EntityPosition> getNormals() {
@@ -84,6 +86,21 @@ public enum EntityPosition {
 			throw new IllegalStateException();
 		} else if (this == ENTRY_POINT || this == EXIT_POINT) {
 			final Shadowable circle = UEllipse.build(RADIUS * 2, RADIUS * 2);
+			ug.draw(circle);
+			if (this == EntityPosition.EXIT_POINT) {
+				final double xc = 0 + RADIUS + .5;
+				final double yc = 0 + RADIUS + .5;
+				final double radius = RADIUS - .5;
+				drawLine(ug, getPointOnCircle(xc, yc, Math.PI / 4, radius),
+						getPointOnCircle(xc, yc, Math.PI + Math.PI / 4, radius));
+				drawLine(ug, getPointOnCircle(xc, yc, -Math.PI / 4, radius),
+						getPointOnCircle(xc, yc, Math.PI - Math.PI / 4, radius));
+			}
+		} else if (this == ENTRY_POINT_HIDDEN || this == EXIT_POINT_HIDDEN) {
+			final Shadowable circle = UEllipse.build(RADIUS * 2, RADIUS * 2);
+			HColor border = HColors.transparent();
+			HColor back = HColors.transparent();
+			ug = ug.apply(back.bg()).apply(border);
 			ug.draw(circle);
 			if (this == EntityPosition.EXIT_POINT) {
 				final double xc = 0 + RADIUS + .5;
@@ -124,6 +141,9 @@ public enum EntityPosition {
 
 			return new XDimension2D(EntityPosition.RADIUS * 2, EntityPosition.RADIUS * 2 * 4);
 		}
+		else if (this == ENTRY_POINT_POINT) {
+			return new XDimension2D(0.1, 0.1);
+		}
 		return new XDimension2D(EntityPosition.RADIUS * 2, EntityPosition.RADIUS * 2);
 	}
 
@@ -160,6 +180,15 @@ public enum EntityPosition {
 		if ("<<exitpoint>>".equalsIgnoreCase(label))
 			return EXIT_POINT;
 
+		if ("<<entrypoint_hidden>>".equalsIgnoreCase(label))
+			return ENTRY_POINT_HIDDEN;
+
+		if ("<<entrypoint_point>>".equalsIgnoreCase(label))
+			return ENTRY_POINT_POINT;
+
+		if ("<<exitpoint_hidden>>".equalsIgnoreCase(label))
+			return EXIT_POINT_HIDDEN;
+
 		if ("<<inputpin>>".equalsIgnoreCase(label))
 			return INPUT_PIN;
 
@@ -175,9 +204,9 @@ public enum EntityPosition {
 		return EntityPosition.NORMAL;
 	}
 
-//	public static EnumSet<EntityPosition> getSame() {
-//		return EnumSet.of(PORT);
-//	}
+//  public static EnumSet<EntityPosition> getSame() {
+//      return EnumSet.of(PORT);
+//  }
 //
 	public boolean isPort() {
 		return /* this == PORT || */ this == PORTIN || this == PORTOUT;

@@ -57,7 +57,7 @@ public class SCXML0002_Test extends ScXmlTest {
 
 	@Test
 	void testSimple() throws IOException {
-		checkXmlAndDescription("(7 entities)");
+		checkXmlAndDescription("(9 entities)");
 	}
 
 }

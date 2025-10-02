@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -86,7 +86,7 @@ public class ScxmlStateDiagramStandard {
 		document.appendChild(scxml);
 
 		for (final Entity ent : diagram.leafs())
-			if (ent.getParentContainer().isRoot())
+			if (ent.getParentContainer().isRoot() && !isTransitionNode(ent))
 				scxml.appendChild(createState(ent));
 
 		for (Entity ent : diagram.groups())
@@ -98,11 +98,21 @@ public class ScxmlStateDiagramStandard {
 	private Element exportGroup(Element dest, Entity ent) {
 		final Element gr = createGroup(ent);
 		dest.appendChild(gr);
-		for (Entity leaf : ent.leafs())
+		for (Entity leaf : ent.leafs()) {
+			// Skip intermediate transition nodes in SCXML export
+			if (isTransitionNode(leaf))
+				continue;
 			gr.appendChild(createState(leaf));
+		}
 		for (Entity child : ent.groups())
 			exportGroup(gr, child);
 		return gr;
+	}
+
+	private boolean isTransitionNode(Entity entity) {
+		// Check if this is an intermediate transition node created for label display
+		final Stereotype stereotype = entity.getStereotype();
+		return stereotype != null && stereotype.getLabels(Guillemet.NONE).contains("transition");
 	}
 
 	private String getInitial() {
@@ -150,15 +160,29 @@ public class ScxmlStateDiagramStandard {
 	}
 
 	private void addLink(Element state, Link link) {
+		Entity target = link.getEntity2();
+		Display label = link.getLabel();
+
+		// If the target is an intermediate transition node, follow the link to find the actual target
+		if (isTransitionNode(target)) {
+			// The label is stored in the transition node's display
+			label = target.getDisplay();
+			// Find the outgoing link from the transition node to get the actual target
+			for (final Link outgoingLink : diagram.getLinks()) {
+				if (outgoingLink.getEntity1() == target) {
+					target = outgoingLink.getEntity2();
+					break;
+				}
+			}
+		}
+
 		final Element transition = document.createElement("transition");
-		final Display label = link.getLabel();
 		if (Display.isNull(label) == false) {
 			final String event = label.get(0).toString();
 			transition.setAttribute("event", event);
 		}
-		transition.setAttribute("target", getId(link.getEntity2()));
+		transition.setAttribute("target", getId(target));
 		state.appendChild(transition);
-
 	}
 
 	private String getId(Entity entity) {

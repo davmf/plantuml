@@ -39,11 +39,13 @@ import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
 import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
@@ -55,7 +57,7 @@ public class EntityImageBranch extends AbstractEntityImage {
 
 	final private static int SIZE = 12;
 
-	public EntityImageBranch(Entity entity) {
+	public EntityImageBranch(Entity entity, ISkinParam skinParam) {
 		super(entity);
 	}
 
@@ -76,12 +78,22 @@ public class EntityImageBranch extends AbstractEntityImage {
 		diams.addPoint(SIZE, 0);
 
 		final Style style = getDefaultStyleDefinition().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
-		final HColor border = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
-		final HColor back = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+
+		// Keep HEAD's entity color handling approach but fallback to style
+		HColor border = getEntity().getColors().getColor(ColorType.LINE);
+		if (border == null)
+			border = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
+
+		HColor back = getEntity().getColors().getColor(ColorType.BACK);
+		if (back == null)
+			back = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+
 		final UStroke stroke = style.getStroke();
-		final double shadowing = style.getShadowing();
+		final double shadowing = style.getShadowing(); // Use MASTER's improved shadowing
 
 		diams.setDeltaShadow(shadowing);
+
+		// Use MASTER's enhanced UGroup system with metadata
 		final UGroup group = new UGroup();
 		group.put(UGroupType.CLASS, "entity");
 		group.put(UGroupType.ID, "entity_" + getEntity().getName());

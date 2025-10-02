@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -30,12 +30,13 @@
  *
  *
  * Original Author:  Arnaud Roques
- * 
+ *
  *
  */
 package net.sourceforge.plantuml.svek.image;
 
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
@@ -44,6 +45,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
@@ -54,7 +56,7 @@ import net.sourceforge.plantuml.svek.ShapeType;
 public class EntityImageSynchroBar extends AbstractEntityImage {
 
 
-	public EntityImageSynchroBar(Entity entity) {
+	public EntityImageSynchroBar(Entity entity, ISkinParam skinParam, SName styleName) {
 		super(entity);
 	}
 
@@ -75,8 +77,14 @@ public class EntityImageSynchroBar extends AbstractEntityImage {
 
 		final Style style = getStyleSignature().withTOBECHANGED(getEntity().getStereotype())
 				.getMergedStyle(getSkinParam().getCurrentStyleBuilder());
-		final HColor color = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
-		final double shadowing = style.getShadowing();
+
+		HColor color = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+
+		if (getEntity().getLeafType() == LeafType.STATE_FORK_JOIN_HIDDEN) {
+			color = HColors.transparent();
+		}
+
+		final double shadowing = style.getShadowing(); // Use MASTER's improved shadowing method
 
 		rect.setDeltaShadow(shadowing);
 		ug.apply(HColors.none()).apply(color.bg()).draw(rect);

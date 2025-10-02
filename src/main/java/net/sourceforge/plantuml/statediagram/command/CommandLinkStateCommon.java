@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@
  *
  * Original Author:  Arnaud Roques
  * Contribution   :  Serge Wenger
- * 
+ *
  *
  */
 package net.sourceforge.plantuml.statediagram.command;
@@ -64,7 +64,7 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 	CommandLinkStateCommon(IRegex pattern) {
 		super(pattern);
 	}
-	
+
 	@Override
 	public boolean isEligibleFor(ParserPass pass) {
 		return pass == ParserPass.TWO;
@@ -117,20 +117,28 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 
 		final boolean crossStart = arg.get("ARROW_CROSS_START", 0) != null;
 		final boolean circleEnd = arg.get("ARROW_CIRCLE_END", 0) != null;
-		final LinkType linkType = new LinkType(circleEnd ? LinkDecor.ARROW_AND_CIRCLE : LinkDecor.ARROW,
+		final LinkType linkType = new LinkType(circleEnd ? LinkDecor.NONE : LinkDecor.ARROW,
 				crossStart ? LinkDecor.CIRCLE_CROSS : LinkDecor.NONE);
 
 		final Display label = Display.getWithNewlines(diagram.getPragma(), arg.get("LABEL", 0));
-		final LinkArg linkArg = LinkArg.build(label, lenght, diagram.getSkinParam().classAttributeIconSize() > 0);
-		Link link = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), cl1, cl2,
-				linkType, linkArg);
-		if (dir == Direction.LEFT || dir == Direction.UP)
-			link = link.getInv();
 
-		link.applyStyle(arg.getLazzy("ARROW_STYLE", 0));
-		diagram.addLink(link);
+		// Check if we have a non-empty label that should become an intermediate transition node
+		if (label != null && !Display.isNull(label) && !label.toString().trim().isEmpty()) {
+			// Create intermediate transition node for the label
+			return createTransitionWithIntermediateNode(diagram, location, cl1, cl2, label, linkType, lenght, dir, arg);
+		} else {
+			// Original direct link behavior for unlabeled transitions
+			final LinkArg linkArg = LinkArg.build(Display.NULL, lenght, diagram.getSkinParam().classAttributeIconSize() > 0);
+			Link link = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), cl1, cl2,
+					linkType, linkArg);
+			if (dir == Direction.LEFT || dir == Direction.UP)
+				link = link.getInv();
 
-		return CommandExecutionResult.ok();
+			link.applyStyle(arg.getLazzy("ARROW_STYLE", 0));
+			diagram.addLink(link);
+
+			return CommandExecutionResult.ok();
+		}
 	}
 
 	private Direction getDirection(RegexResult arg) {
@@ -200,6 +208,118 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 			code = code.substring(0, code.length() - 1);
 
 		return code;
+	}
+
+	private Display enhanceStateDiagramLabel(StateDiagram diagram, Display originalLabel) {
+		// Only enhance labels for state diagrams and when label exists
+		if (originalLabel == null || Display.isNull(originalLabel)) {
+			return originalLabel;
+		}
+
+		// Get the raw label text
+		String labelText = originalLabel.toString();
+
+		// Parse state machine transition notation: event [guard] / action
+		// This enhances the formatting to make it more readable
+		if (labelText.contains("[") && labelText.contains("]") && labelText.contains("/")) {
+			// Pattern: "event [guard] / action"
+			// Convert to multi-line format for better readability
+			labelText = parseStateMachineTransition(labelText);
+		} else if (labelText.contains("/") && !labelText.startsWith("/")) {
+			// Pattern: "event / action" - add line break before action for readability
+			labelText = labelText.replaceAll("\\s*/\\s*", " /\\n  ");
+		}
+
+		return Display.getWithNewlines(diagram.getPragma(), labelText);
+	}
+
+	private String parseStateMachineTransition(String transition) {
+		// Handle full transition notation: event [guard] / action
+		String result = transition.trim();
+
+		// Find the guard part [...]
+		int guardStart = result.indexOf('[');
+		int guardEnd = result.indexOf(']', guardStart);
+
+		// Find the action part /...
+		int actionStart = result.indexOf('/', guardEnd > -1 ? guardEnd : 0);
+
+		if (guardStart > -1 && guardEnd > guardStart && actionStart > guardEnd) {
+			// Full notation: event [guard] / action
+			String event = result.substring(0, guardStart).trim();
+			String guard = result.substring(guardStart, guardEnd + 1).trim();
+			String action = result.substring(actionStart).trim();
+
+			// Format as: event
+			//            [guard]
+			//              /action
+			StringBuilder formatted = new StringBuilder();
+			if (!event.isEmpty()) {
+				formatted.append(event);
+			}
+			if (!guard.isEmpty()) {
+				if (formatted.length() > 0) formatted.append("\\n");
+				formatted.append(guard);
+			}
+			if (!action.isEmpty()) {
+				if (formatted.length() > 0) formatted.append("\\n");
+				formatted.append("  ").append(action);
+			}
+
+			return formatted.toString();
+		}
+
+		return result;
+	}
+
+	private CommandExecutionResult createTransitionWithIntermediateNode(StateDiagram diagram, LineLocation location,
+			Entity source, Entity target, Display label, LinkType linkType, int length, Direction dir, RegexResult arg)
+			throws NoSuchColorException {
+
+		// Generate unique ID for the transition node
+		String transitionNodeId = generateTransitionNodeId(source, target, label);
+
+		// Create the intermediate transition node
+		final Quark<Entity> transitionQuark = diagram.quarkInContext(true, diagram.cleanId(transitionNodeId));
+		final Entity transitionNode = diagram.reallyCreateLeaf(location, transitionQuark, label, LeafType.STATE_TRANSITION_LABEL, null);
+
+		// Set transition node stereotype to make it visually distinct
+		transitionNode.setStereotype(Stereotype.build("<<transition>>"));
+
+		// Create first link: source -> transition node (no arrow decoration on intermediate link)
+		final LinkType firstLinkType = new LinkType(LinkDecor.NONE, LinkDecor.NONE);
+		final LinkArg firstLinkArg = LinkArg.build(Display.NULL, Math.max(1, length/2), diagram.getSkinParam().classAttributeIconSize() > 0);
+		Link firstLink = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), source, transitionNode,
+				firstLinkType, firstLinkArg);
+
+		// Create second link: transition node -> target (with original arrow decoration)
+		final LinkArg secondLinkArg = LinkArg.build(Display.NULL, Math.max(1, length/2), diagram.getSkinParam().classAttributeIconSize() > 0);
+		Link secondLink = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), transitionNode, target,
+				linkType, secondLinkArg);
+
+		// Handle direction for both links
+		if (dir == Direction.LEFT || dir == Direction.UP) {
+			firstLink = firstLink.getInv();
+			secondLink = secondLink.getInv();
+		}
+
+		// Apply styles
+		firstLink.applyStyle(arg.getLazzy("ARROW_STYLE", 0));
+		secondLink.applyStyle(arg.getLazzy("ARROW_STYLE", 0));
+
+		// Add both links to the diagram
+		diagram.addLink(firstLink);
+		diagram.addLink(secondLink);
+
+		return CommandExecutionResult.ok();
+	}
+
+	private String generateTransitionNodeId(Entity source, Entity target, Display label) {
+		// Generate a unique ID for the transition node based on source, target, and label
+		String sourceId = source.getName();
+		String targetId = target.getName();
+		String labelText = label.toString().replaceAll("[^a-zA-Z0-9_]", "_");
+		return "transition_" + sourceId + "_" + targetId + "_" + labelText + "_" + System.currentTimeMillis();
 	}
 
 }

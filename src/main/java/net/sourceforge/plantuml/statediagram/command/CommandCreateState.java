@@ -5,9 +5,9 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
  * 
@@ -30,7 +30,7 @@
  *
  *
  * Original Author:  Arnaud Roques
- * 
+ *
  *
  */
 package net.sourceforge.plantuml.statediagram.command;
@@ -187,6 +187,12 @@ public class CommandCreateState extends SingleLineCommand2<StateDiagram> {
 
 		if ("<<join>>".equalsIgnoreCase(stereotype))
 			return LeafType.STATE_FORK_JOIN;
+
+		if ("<<fork_hidden>>".equalsIgnoreCase(stereotype))
+			return LeafType.STATE_FORK_JOIN_HIDDEN;
+
+		if ("<<join_hidden>>".equalsIgnoreCase(stereotype))
+			return LeafType.STATE_FORK_JOIN_HIDDEN;
 
 		if ("<<start>>".equalsIgnoreCase(stereotype))
 			return LeafType.CIRCLE_START;

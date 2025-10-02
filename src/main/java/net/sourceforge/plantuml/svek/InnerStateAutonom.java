@@ -124,8 +124,10 @@ public final class InnerStateAutonom extends AbstractTextBlock implements IEntit
 		r.drawU(ug);
 		title.drawU(ug.apply(new UTranslate((total.getWidth() - text.getWidth()) / 2, IEntityImage.MARGIN)));
 		final HorizontalAlignment horizontalAlignment = styleHeader.getHorizontalAlignment();
+		// Add small extra spacing above internal text for better visual balance
+		final double extraSpacingAbove = attribute.calculateDimension(ug.getStringBounder()).getHeight() > 0 ? 2 : 0;
 		horizontalAlignment.draw(ug, attribute, IEntityImage.MARGIN,
-				IEntityImage.MARGIN + text.getHeight() + IEntityImage.MARGIN, total.getWidth());
+				IEntityImage.MARGIN + text.getHeight() + IEntityImage.MARGIN + extraSpacingAbove, total.getWidth());
 
 		final double spaceYforURL = getSpaceYforURL(ug.getStringBounder());
 		im.drawU(ug.apply(new UTranslate(IEntityImage.MARGIN, spaceYforURL)));
@@ -142,8 +144,9 @@ public final class InnerStateAutonom extends AbstractTextBlock implements IEntit
 		final XDimension2D text = title.calculateDimension(stringBounder);
 		final XDimension2D attr = attribute.calculateDimension(stringBounder);
 		final double marginForFields = attr.getHeight() > 0 ? IEntityImage.MARGIN : 0;
+		final double extraSpacingAbove = attr.getHeight() > 0 ? 2 : 0; // Extra spacing above internal text
 		final double titreHeight = IEntityImage.MARGIN + text.getHeight() + IEntityImage.MARGIN_LINE;
-		final double suppY = titreHeight + marginForFields + attr.getHeight();
+		final double suppY = titreHeight + marginForFields + attr.getHeight() + extraSpacingAbove;
 		return suppY + IEntityImage.MARGIN_LINE;
 	}
 
@@ -159,7 +162,8 @@ public final class InnerStateAutonom extends AbstractTextBlock implements IEntit
 		final XDimension2D dim = text.mergeTB(attr, img);
 		final double marginForFields = attr.getHeight() > 0 ? IEntityImage.MARGIN : 0;
 
-		final XDimension2D result = dim.delta(IEntityImage.MARGIN * 2 + 2 * IEntityImage.MARGIN_LINE + marginForFields);
+		final double extraSpacingAbove = attr.getHeight() > 0 ? 2 : 0; // Extra spacing above internal text
+		final XDimension2D result = dim.delta(IEntityImage.MARGIN * 2 + 2 * IEntityImage.MARGIN_LINE + marginForFields + extraSpacingAbove);
 
 		return result;
 	}
