@@ -58,8 +58,9 @@ public class EntityImageTransitionLabel extends AbstractEntityImage {
 
 		final Stereotype stereotype = entity.getStereotype();
 
-		// Use normal font size for transition labels (they're already small intermediate nodes)
-		final FontConfiguration fontConfiguration = FontConfiguration.create(getSkinParam(), FontParam.STATE, stereotype);
+		// Use smaller font size for transition labels to make them less prominent than states
+		final FontConfiguration fontConfiguration = FontConfiguration.create(getSkinParam(), FontParam.STATE, stereotype)
+			.changeSize(10.0f); // Use explicit smaller font size for transition labels
 
 		// Create text block from entity display
 		final Display display = getEntity().getDisplay();

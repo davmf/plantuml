@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@
  *
  * Original Author:  Arnaud Roques
  * Contribution   :  Serge Wenger
- * 
+ *
  *
  */
 package net.sourceforge.plantuml.statediagram.command;
@@ -64,7 +64,7 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 	CommandLinkStateCommon(IRegex pattern) {
 		super(pattern);
 	}
-	
+
 	@Override
 	public boolean isEligibleFor(ParserPass pass) {
 		return pass == ParserPass.TWO;
@@ -281,7 +281,7 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 
 		// Create the intermediate transition node
 		final Quark<Entity> transitionQuark = diagram.quarkInContext(true, diagram.cleanId(transitionNodeId));
-		// Use the label directly without enhancement to avoid bracket addition
+		final Display enhancedLabel = enhanceStateDiagramLabel(diagram, label);
 		final Entity transitionNode = diagram.reallyCreateLeaf(location, transitionQuark, label, LeafType.STATE_TRANSITION_LABEL, null);
 
 		// Set transition node stereotype to make it visually distinct
