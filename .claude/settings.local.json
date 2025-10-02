@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(find:*)",
-      "Bash(./gradlew:*)"
+      "Bash(./gradlew:*)",
+      "Read(//mnt/c/Users/dxf/Downloads/**)"
     ],
     "deny": [],
     "ask": []
