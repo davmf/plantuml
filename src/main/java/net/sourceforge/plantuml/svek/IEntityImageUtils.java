@@ -35,7 +35,6 @@
  */
 package net.sourceforge.plantuml.svek;
 
-import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -64,8 +63,8 @@ public class IEntityImageUtils {
 			}
 
 			@Override
-			public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-				return orig.getInnerPosition(member, stringBounder, strategy);
+			public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+				return orig.getInnerPosition(member, stringBounder);
 			}
 
 			@Override
@@ -108,6 +107,11 @@ public class IEntityImageUtils {
 						return magneticBorder.getForceAt(stringBounder, translate.reverse().getTranslated(position));
 					}
 				};
+			}
+
+			@Override
+			public boolean isCrash() {
+				return orig.isCrash();
 			}
 		};
 	}
