@@ -105,6 +105,7 @@ Line and scatter charts support an alternative coordinate-pair notation for plot
 - X-coordinates must fall within the h-axis range
 
 **Example**:
+
     @startchart line-chart-coordinate-pair
     h-axis "t" -10 --> 10 spacing 2 label-right
     v-axis "f(t)" -10 --> 50 spacing 10 label-top
