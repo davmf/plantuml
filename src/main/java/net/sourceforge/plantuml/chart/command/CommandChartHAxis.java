@@ -72,6 +72,13 @@ public class CommandChartHAxis extends SingleLineCommand2<ChartDiagram> {
 				new net.sourceforge.plantuml.regex.RegexOptional(new RegexLeaf(1, "LABELRIGHT", "(label-right)")), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new net.sourceforge.plantuml.regex.RegexOptional(new RegexLeaf(1, "GRID", "(grid)")), //
+				RegexLeaf.spaceZeroOrMore(), //
+				new net.sourceforge.plantuml.regex.RegexOptional(new RegexLeaf(1, "LOGSCALE", "(log-scale|log)")), //
+				RegexLeaf.spaceZeroOrMore(), //
+				new net.sourceforge.plantuml.regex.RegexOptional(new net.sourceforge.plantuml.regex.RegexConcat( //
+						new RegexLeaf("scale"), //
+						net.sourceforge.plantuml.regex.RegexLeaf.spaceOneOrMore(), //
+						new RegexLeaf(1, "SCALE", "([0-9]+\\.?[0-9]*)"))), //
 				RegexLeaf.end());
 	}
 
@@ -85,6 +92,8 @@ public class CommandChartHAxis extends SingleLineCommand2<ChartDiagram> {
 		final String spacingStr = arg.getLazzy("SPACING", 0);
 		final String labelRightStr = arg.getLazzy("LABELRIGHT", 0);
 		final String gridStr = arg.getLazzy("GRID", 0);
+		final String logScaleStr = arg.getLazzy("LOGSCALE", 0);
+		final String scaleStr = arg.getLazzy("SCALE", 0);
 
 		// Parse tick spacing if present (do this first, before any returns)
 		if (spacingStr != null) {
@@ -109,12 +118,32 @@ public class CommandChartHAxis extends SingleLineCommand2<ChartDiagram> {
 			diagram.setXGridMode(ChartDiagram.GridMode.MAJOR);
 		}
 
+		// Set scale if present
+		if (scaleStr != null) {
+			try {
+				final double scale = Double.parseDouble(scaleStr);
+				if (scale <= 0) {
+					return CommandExecutionResult.error("H-axis scale must be positive");
+				}
+				diagram.getXAxis().setScale(scale);
+			} catch (NumberFormatException e) {
+				return CommandExecutionResult.error("Invalid scale value: " + scaleStr);
+			}
+		}
+
 		// If numeric range is provided, this is for horizontal bar chart mode
 		if (minStr != null && maxStr != null) {
 			try {
 				final double min = Double.parseDouble(minStr);
 				final double max = Double.parseDouble(maxStr);
-				return diagram.setXAxis(title, min, max);
+				final CommandExecutionResult result = diagram.setXAxis(title, min, max);
+
+				// Enable log scale if log-scale option is present
+				if (logScaleStr != null && diagram.getXAxis() != null) {
+					diagram.getXAxis().setLogScale(true);
+				}
+
+				return result;
 			} catch (NumberFormatException e) {
 				return CommandExecutionResult.error("Invalid number format in axis range");
 			}

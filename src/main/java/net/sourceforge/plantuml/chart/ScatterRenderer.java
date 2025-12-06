@@ -151,7 +151,7 @@ public class ScatterRenderer {
 				final double yVal = values.get(i);
 
 				final double x = xAxis.valueToPixel(xVal, 0, plotWidth);
-				final double y = plotHeight - (yVal - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double y = plotHeight - axis.valueToPixel(yVal, 0, plotHeight);
 
 				drawMarker(ug, markerColor, x, y, markerSize, markerShape);
 
@@ -168,7 +168,7 @@ public class ScatterRenderer {
 			for (int i = 0; i < Math.min(values.size(), categoryCount); i++) {
 				final double value = values.get(i);
 				final double x = (i + 0.5) * categoryWidth;
-				final double y = plotHeight - (value - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double y = plotHeight - axis.valueToPixel(value, 0, plotHeight);
 
 				drawMarker(ug, markerColor, x, y, markerSize, markerShape);
 

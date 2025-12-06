@@ -358,35 +358,99 @@ public class ChartRenderer {
 			}
 		} else {
 			// Draw automatic ticks
-			final int numTicks = 5;
-			for (int i = 0; i <= numTicks; i++) {
-				final double y = height * (1.0 - (double) i / numTicks);
-				final double value = axis.getMin() + (axis.getMax() - axis.getMin()) * i / numTicks;
+			if (axis.isLogScale()) {
+				// For log scale, generate ticks at powers of 10
+				if (axis.getMin() > 0 && axis.getMax() > 0) {
+					final int minExponent = (int) Math.floor(Math.log10(axis.getMin()));
+					final int maxExponent = (int) Math.ceil(Math.log10(axis.getMax()));
 
-				// Draw grid lines if enabled (horizontal lines for Y axis)
-				// Skip if coordinate-pair mode (grid drawn separately in drawGridLines)
-				if (leftSide && yGridMode != ChartDiagram.GridMode.OFF && xAxis == null) {
-					final ULine gridLine = ULine.hline(width);
-					ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dy(y)).draw(gridLine);
+					for (int exp = minExponent; exp <= maxExponent; exp++) {
+						final double value = Math.pow(10, exp);
+
+						// Skip if outside axis range
+						if (value < axis.getMin() || value > axis.getMax())
+							continue;
+
+						// Use axis.valueToPixel for log scale transformation
+						final double y = height - axis.valueToPixel(value, 0, height);
+
+						// Draw grid lines if enabled
+						if (leftSide && yGridMode != ChartDiagram.GridMode.OFF && xAxis == null) {
+							final ULine gridLine = ULine.hline(width);
+							ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dy(y)).draw(gridLine);
+						}
+
+						// Draw tick
+						if (leftSide)
+							ug.apply(UTranslate.dy(y)).draw(ULine.hline(-TICK_SIZE));
+						else
+							ug.apply(UTranslate.dy(y)).draw(ULine.hline(TICK_SIZE));
+
+						// Draw label with scientific notation if needed
+						final String label = formatLogValue(value);
+						final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
+								.create(fontConfig, HorizontalAlignment.RIGHT, skinParam);
+						final double textHeight = textBlock.calculateDimension(stringBounder).getHeight();
+
+						if (leftSide) {
+							final double textWidth = textBlock.calculateDimension(stringBounder).getWidth();
+							textBlock.drawU(ug.apply(UTranslate.dx(-TICK_SIZE - textWidth - 5).compose(UTranslate.dy(y - textHeight / 2))));
+						} else {
+							textBlock.drawU(ug.apply(UTranslate.dx(TICK_SIZE + 5).compose(UTranslate.dy(y - textHeight / 2))));
+						}
+
+						// Optionally add minor ticks (2, 3, 4, 5, 6, 7, 8, 9 * 10^exp)
+						if (exp < maxExponent) { // Don't add minor ticks for the last major tick
+							for (int minor = 2; minor <= 9; minor++) {
+								final double minorValue = minor * Math.pow(10, exp);
+								if (minorValue > axis.getMax())
+									break;
+								if (minorValue < axis.getMin())
+									continue;
+
+								final double minorY = height - axis.valueToPixel(minorValue, 0, height);
+
+								// Draw smaller tick for minor values
+								if (leftSide)
+									ug.apply(UTranslate.dy(minorY)).draw(ULine.hline(-TICK_SIZE / 2));
+								else
+									ug.apply(UTranslate.dy(minorY)).draw(ULine.hline(TICK_SIZE / 2));
+							}
+						}
+					}
 				}
+			} else {
+				// Linear scale - existing code
+				final int numTicks = 5;
+				for (int i = 0; i <= numTicks; i++) {
+					final double y = height * (1.0 - (double) i / numTicks);
+					final double value = axis.getMin() + (axis.getMax() - axis.getMin()) * i / numTicks;
 
-				// Draw tick
-				if (leftSide)
-					ug.apply(UTranslate.dy(y)).draw(ULine.hline(-TICK_SIZE));
-				else
-					ug.apply(UTranslate.dy(y)).draw(ULine.hline(TICK_SIZE));
+					// Draw grid lines if enabled (horizontal lines for Y axis)
+					// Skip if coordinate-pair mode (grid drawn separately in drawGridLines)
+					if (leftSide && yGridMode != ChartDiagram.GridMode.OFF && xAxis == null) {
+						final ULine gridLine = ULine.hline(width);
+						ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dy(y)).draw(gridLine);
+					}
 
-				// Draw label
-				final String label = formatValue(value);
-				final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
-						.create(fontConfig, HorizontalAlignment.RIGHT, skinParam);
-				final double textHeight = textBlock.calculateDimension(stringBounder).getHeight();
+					// Draw tick
+					if (leftSide)
+						ug.apply(UTranslate.dy(y)).draw(ULine.hline(-TICK_SIZE));
+					else
+						ug.apply(UTranslate.dy(y)).draw(ULine.hline(TICK_SIZE));
 
-				if (leftSide) {
-					final double textWidth = textBlock.calculateDimension(stringBounder).getWidth();
-					textBlock.drawU(ug.apply(UTranslate.dx(-TICK_SIZE - textWidth - 5).compose(UTranslate.dy(y - textHeight / 2))));
-				} else {
-					textBlock.drawU(ug.apply(UTranslate.dx(TICK_SIZE + 5).compose(UTranslate.dy(y - textHeight / 2))));
+					// Draw label
+					final String label = formatValue(value);
+					final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
+							.create(fontConfig, HorizontalAlignment.RIGHT, skinParam);
+					final double textHeight = textBlock.calculateDimension(stringBounder).getHeight();
+
+					if (leftSide) {
+						final double textWidth = textBlock.calculateDimension(stringBounder).getWidth();
+						textBlock.drawU(ug.apply(UTranslate.dx(-TICK_SIZE - textWidth - 5).compose(UTranslate.dy(y - textHeight / 2))));
+					} else {
+						textBlock.drawU(ug.apply(UTranslate.dx(TICK_SIZE + 5).compose(UTranslate.dy(y - textHeight / 2))));
+					}
 				}
 			}
 		}
@@ -575,37 +639,83 @@ public class ChartRenderer {
 		}
 		} else if (xAxis != null) {
 			// Draw numeric x-axis ticks for coordinate-pair mode
-			final double range = xAxis.getMax() - xAxis.getMin();
-			final double tickInterval;
+			if (xAxis.isLogScale()) {
+				// For log scale, generate ticks at powers of 10
+				if (xAxis.getMin() > 0 && xAxis.getMax() > 0) {
+					final int minExponent = (int) Math.floor(Math.log10(xAxis.getMin()));
+					final int maxExponent = (int) Math.ceil(Math.log10(xAxis.getMax()));
 
-			if (xAxisTickSpacing != null && xAxisTickSpacing > 0) {
-				// Spacing directly specifies the tick interval
-				tickInterval = xAxisTickSpacing;
+					for (int exp = minExponent; exp <= maxExponent; exp++) {
+						final double value = Math.pow(10, exp);
+
+						// Skip if outside axis range
+						if (value < xAxis.getMin() || value > xAxis.getMax())
+							continue;
+
+						// Use axis.valueToPixel for log scale transformation
+						final double x = xAxis.valueToPixel(value, 0, width);
+
+						// Draw tick mark
+						ug.apply(UTranslate.dx(x)).draw(ULine.vline(TICK_SIZE));
+
+						// Draw label with appropriate formatting
+						final String label = formatLogValue(value);
+						final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
+								.create(fontConfig, HorizontalAlignment.CENTER, skinParam);
+						final double textWidth = textBlock.calculateDimension(stringBounder).getWidth();
+						textBlock.drawU(ug.apply(UTranslate.dx(x - textWidth / 2).compose(UTranslate.dy(TICK_SIZE + 5))));
+
+						// Optionally add minor ticks (2, 3, 4, 5, 6, 7, 8, 9 * 10^exp)
+						if (exp < maxExponent) {
+							for (int minor = 2; minor <= 9; minor++) {
+								final double minorValue = minor * Math.pow(10, exp);
+								if (minorValue > xAxis.getMax())
+									break;
+								if (minorValue < xAxis.getMin())
+									continue;
+
+								final double minorX = xAxis.valueToPixel(minorValue, 0, width);
+
+								// Draw smaller tick for minor values
+								ug.apply(UTranslate.dx(minorX)).draw(ULine.vline(TICK_SIZE / 2));
+							}
+						}
+					}
+				}
 			} else {
-				// Default: approximately 10 ticks
-				tickInterval = range / 10.0;
-			}
+				// Linear scale - existing code
+				final double range = xAxis.getMax() - xAxis.getMin();
+				final double tickInterval;
 
-			// Find the starting tick value (round down to nearest multiple of tickInterval)
-			final double startValue = Math.floor(xAxis.getMin() / tickInterval) * tickInterval;
+				if (xAxisTickSpacing != null && xAxisTickSpacing > 0) {
+					// Spacing directly specifies the tick interval
+					tickInterval = xAxisTickSpacing;
+				} else {
+					// Default: approximately 10 ticks
+					tickInterval = range / 10.0;
+				}
 
-			// Draw ticks and labels from start to end
-			for (double value = startValue; value <= xAxis.getMax() + tickInterval * 0.01; value += tickInterval) {
-				// Skip if outside axis range
-				if (value < xAxis.getMin() - tickInterval * 0.01 || value > xAxis.getMax() + tickInterval * 0.01)
-					continue;
+				// Find the starting tick value (round down to nearest multiple of tickInterval)
+				final double startValue = Math.floor(xAxis.getMin() / tickInterval) * tickInterval;
 
-				final double x = xAxis.valueToPixel(value, 0, width);
+				// Draw ticks and labels from start to end
+				for (double value = startValue; value <= xAxis.getMax() + tickInterval * 0.01; value += tickInterval) {
+					// Skip if outside axis range
+					if (value < xAxis.getMin() - tickInterval * 0.01 || value > xAxis.getMax() + tickInterval * 0.01)
+						continue;
 
-				// Draw tick mark
-				ug.apply(UTranslate.dx(x)).draw(ULine.vline(TICK_SIZE));
+					final double x = xAxis.valueToPixel(value, 0, width);
 
-				// Draw label
-				final String label = formatAxisValue(value);
-				final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
-						.create(fontConfig, HorizontalAlignment.CENTER, skinParam);
-				final double textWidth = textBlock.calculateDimension(stringBounder).getWidth();
-				textBlock.drawU(ug.apply(UTranslate.dx(x - textWidth / 2).compose(UTranslate.dy(TICK_SIZE + 5))));
+					// Draw tick mark
+					ug.apply(UTranslate.dx(x)).draw(ULine.vline(TICK_SIZE));
+
+					// Draw label
+					final String label = formatAxisValue(value);
+					final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
+							.create(fontConfig, HorizontalAlignment.CENTER, skinParam);
+					final double textWidth = textBlock.calculateDimension(stringBounder).getWidth();
+					textBlock.drawU(ug.apply(UTranslate.dx(x - textWidth / 2).compose(UTranslate.dy(TICK_SIZE + 5))));
+				}
 			}
 
 			// Draw X-axis title if present
@@ -726,47 +836,89 @@ public class ChartRenderer {
 
 		// Draw vertical grid lines (h-axis)
 		if (xGridMode != ChartDiagram.GridMode.OFF && xAxis != null) {
-			final double range = xAxis.getMax() - xAxis.getMin();
-			final double tickInterval;
+			if (xAxis.isLogScale()) {
+				// For log scale, draw grid lines at powers of 10
+				if (xAxis.getMin() > 0 && xAxis.getMax() > 0) {
+					final int minExponent = (int) Math.floor(Math.log10(xAxis.getMin()));
+					final int maxExponent = (int) Math.ceil(Math.log10(xAxis.getMax()));
 
-			if (xAxisTickSpacing != null && xAxisTickSpacing > 0) {
-				tickInterval = xAxisTickSpacing;
+					for (int exp = minExponent; exp <= maxExponent; exp++) {
+						final double value = Math.pow(10, exp);
+
+						// Skip if outside axis range
+						if (value < xAxis.getMin() || value > xAxis.getMax())
+							continue;
+
+						final double x = xAxis.valueToPixel(value, 0, plotWidth);
+						final ULine gridLine = ULine.vline(plotHeight);
+						ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dx(x)).draw(gridLine);
+					}
+				}
 			} else {
-				tickInterval = range / 10.0;
-			}
+				// Linear scale - existing code
+				final double range = xAxis.getMax() - xAxis.getMin();
+				final double tickInterval;
 
-			final double startValue = Math.floor(xAxis.getMin() / tickInterval) * tickInterval;
+				if (xAxisTickSpacing != null && xAxisTickSpacing > 0) {
+					tickInterval = xAxisTickSpacing;
+				} else {
+					tickInterval = range / 10.0;
+				}
 
-			for (double value = startValue; value <= xAxis.getMax() + tickInterval * 0.01; value += tickInterval) {
-				if (value < xAxis.getMin() - tickInterval * 0.01 || value > xAxis.getMax() + tickInterval * 0.01)
-					continue;
+				final double startValue = Math.floor(xAxis.getMin() / tickInterval) * tickInterval;
 
-				final double x = xAxis.valueToPixel(value, 0, plotWidth);
-				final ULine gridLine = ULine.vline(plotHeight);
-				ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dx(x)).draw(gridLine);
+				for (double value = startValue; value <= xAxis.getMax() + tickInterval * 0.01; value += tickInterval) {
+					if (value < xAxis.getMin() - tickInterval * 0.01 || value > xAxis.getMax() + tickInterval * 0.01)
+						continue;
+
+					final double x = xAxis.valueToPixel(value, 0, plotWidth);
+					final ULine gridLine = ULine.vline(plotHeight);
+					ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dx(x)).draw(gridLine);
+				}
 			}
 		}
 
 		// Draw horizontal grid lines (v-axis)
 		if (yGridMode != ChartDiagram.GridMode.OFF && yAxis != null) {
-			final double range = yAxis.getMax() - yAxis.getMin();
-			final double tickInterval;
+			if (yAxis.isLogScale()) {
+				// For log scale, draw grid lines at powers of 10
+				if (yAxis.getMin() > 0 && yAxis.getMax() > 0) {
+					final int minExponent = (int) Math.floor(Math.log10(yAxis.getMin()));
+					final int maxExponent = (int) Math.ceil(Math.log10(yAxis.getMax()));
 
-			if (yAxis.hasTickSpacing()) {
-				tickInterval = yAxis.getTickSpacing();
+					for (int exp = minExponent; exp <= maxExponent; exp++) {
+						final double value = Math.pow(10, exp);
+
+						// Skip if outside axis range
+						if (value < yAxis.getMin() || value > yAxis.getMax())
+							continue;
+
+						final double y = plotHeight - yAxis.valueToPixel(value, 0, plotHeight);
+						final ULine gridLine = ULine.hline(plotWidth);
+						ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dy(y)).draw(gridLine);
+					}
+				}
 			} else {
-				tickInterval = range / 10.0;
-			}
+				// Linear scale - existing code
+				final double range = yAxis.getMax() - yAxis.getMin();
+				final double tickInterval;
 
-			final double startValue = Math.ceil(yAxis.getMin() / tickInterval) * tickInterval;
+				if (yAxis.hasTickSpacing()) {
+					tickInterval = yAxis.getTickSpacing();
+				} else {
+					tickInterval = range / 10.0;
+				}
 
-			for (double value = startValue; value <= yAxis.getMax() + tickInterval * 0.01; value += tickInterval) {
-				if (value < yAxis.getMin() - tickInterval * 0.01 || value > yAxis.getMax() + tickInterval * 0.01)
-					continue;
+				final double startValue = Math.ceil(yAxis.getMin() / tickInterval) * tickInterval;
 
-				final double y = plotHeight * (1.0 - (value - yAxis.getMin()) / (yAxis.getMax() - yAxis.getMin()));
-				final ULine gridLine = ULine.hline(plotWidth);
-				ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dy(y)).draw(gridLine);
+				for (double value = startValue; value <= yAxis.getMax() + tickInterval * 0.01; value += tickInterval) {
+					if (value < yAxis.getMin() - tickInterval * 0.01 || value > yAxis.getMax() + tickInterval * 0.01)
+						continue;
+
+					final double y = plotHeight * (1.0 - (value - yAxis.getMin()) / (yAxis.getMax() - yAxis.getMin()));
+					final ULine gridLine = ULine.hline(plotWidth);
+					ug.apply(gridColor).apply(gridStroke).apply(UTranslate.dy(y)).draw(gridLine);
+				}
 			}
 		}
 	}
@@ -922,11 +1074,21 @@ public class ChartRenderer {
 	}
 
 	private double getPlotWidth() {
-		return Math.max(400, xAxisLabels.size() * 60);
+		double baseWidth = Math.max(400, xAxisLabels.size() * 60);
+		// Apply h-axis scale factor if set
+		if (xAxis != null) {
+			baseWidth *= xAxis.getScale();
+		}
+		return baseWidth;
 	}
 
 	private double getPlotHeight() {
-		return 300;
+		double baseHeight = 300;
+		// Apply v-axis scale factor if set
+		if (yAxis != null) {
+			baseHeight *= yAxis.getScale();
+		}
+		return baseHeight;
 	}
 
 	private String formatValue(double value) {
@@ -935,6 +1097,19 @@ public class ChartRenderer {
 		if (value == (long) value)
 			return String.format("%d", (long) value);
 		return String.format("%.2f", value);
+	}
+
+	private String formatLogValue(double value) {
+		// Format values for log scale labels
+		if (value >= 1000000) {
+			return String.format("%.0e", value);
+		} else if (value == (long) value) {
+			return String.format("%d", (long) value);
+		} else if (value < 1) {
+			return String.format("%.2g", value);
+		} else {
+			return String.format("%.1f", value);
+		}
 	}
 
 	private HColor getDefaultColor(int index) {

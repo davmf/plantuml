@@ -90,7 +90,7 @@ public class AreaRenderer {
 				topValue = baselineValues.get(i) + value;
 			}
 			final double x = (i + 0.5) * categoryWidth;
-			final double y = plotHeight - (topValue - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+			final double y = plotHeight - axis.valueToPixel(topValue, 0, plotHeight);
 			polygon.addPoint(x, y);
 		}
 
@@ -101,7 +101,7 @@ public class AreaRenderer {
 			if (baselineValues != null && i < baselineValues.size()) {
 				baselineValue = baselineValues.get(i);
 			}
-			final double y = plotHeight - (baselineValue - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+			final double y = plotHeight - axis.valueToPixel(baselineValue, 0, plotHeight);
 			polygon.addPoint(x, y);
 		}
 
@@ -126,10 +126,10 @@ public class AreaRenderer {
 			}
 
 			final double x1 = (i + 0.5) * categoryWidth;
-			final double y1 = plotHeight - (topValue1 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+			final double y1 = plotHeight - axis.valueToPixel(topValue1, 0, plotHeight);
 
 			final double x2 = (i + 1.5) * categoryWidth;
-			final double y2 = plotHeight - (topValue2 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+			final double y2 = plotHeight - axis.valueToPixel(topValue2, 0, plotHeight);
 
 			final ULine line = new ULine(x2 - x1, y2 - y1);
 			ug.apply(color).apply(UStroke.withThickness(2.0)).apply(UTranslate.dx(x1).compose(UTranslate.dy(y1))).draw(line);
@@ -145,7 +145,7 @@ public class AreaRenderer {
 					topValue = baselineValues.get(i) + value;
 				}
 				final double x = (i + 0.5) * categoryWidth;
-				final double y = plotHeight - (topValue - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double y = plotHeight - axis.valueToPixel(topValue, 0, plotHeight);
 				drawLabel(ug, value, x, y - 8);
 			}
 		}

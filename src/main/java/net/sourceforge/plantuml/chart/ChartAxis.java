@@ -51,6 +51,8 @@ public class ChartAxis {
 	private Map<Double, String> customTicks;
 	private Double tickSpacing;
 	private LabelPosition labelPosition;
+	private boolean logScale;
+	private double scale = 1.0;  // Scale factor for axis dimension
 
 	public ChartAxis() {
 		this.title = "";
@@ -60,6 +62,7 @@ public class ChartAxis {
 		this.customTicks = null;
 		this.tickSpacing = null;
 		this.labelPosition = LabelPosition.DEFAULT;
+		this.logScale = false;
 	}
 
 	public ChartAxis(String title, double min, double max) {
@@ -70,6 +73,7 @@ public class ChartAxis {
 		this.customTicks = null;
 		this.tickSpacing = null;
 		this.labelPosition = LabelPosition.DEFAULT;
+		this.logScale = false;
 	}
 
 	public String getTitle() {
@@ -112,7 +116,21 @@ public class ChartAxis {
 	public double valueToPixel(double value, double pixelMin, double pixelMax) {
 		if (max == min)
 			return pixelMin;
-		return pixelMin + (value - min) / (max - min) * (pixelMax - pixelMin);
+
+		if (logScale) {
+			// Logarithmic scale transformation
+			if (value <= 0 || min <= 0 || max <= 0) {
+				// For invalid values in log scale, return boundary
+				return value <= min ? pixelMin : pixelMax;
+			}
+			double logMin = Math.log10(min);
+			double logMax = Math.log10(max);
+			double logValue = Math.log10(value);
+			return pixelMin + (logValue - logMin) / (logMax - logMin) * (pixelMax - pixelMin);
+		} else {
+			// Linear scale transformation (existing)
+			return pixelMin + (value - min) / (max - min) * (pixelMax - pixelMin);
+		}
 	}
 
 	/**
@@ -120,6 +138,10 @@ public class ChartAxis {
 	 */
 	public void includeValue(double value) {
 		if (autoScale) {
+			if (logScale && value <= 0) {
+				// Skip non-positive values for log scale
+				return;
+			}
 			if (value < min)
 				min = value;
 			if (value > max)
@@ -181,5 +203,48 @@ public class ChartAxis {
 	 */
 	public void setLabelPosition(LabelPosition labelPosition) {
 		this.labelPosition = labelPosition;
+	}
+
+	/**
+	 * Check if this axis uses logarithmic scale
+	 */
+	public boolean isLogScale() {
+		return logScale;
+	}
+
+	/**
+	 * Set whether this axis uses logarithmic scale
+	 */
+	public void setLogScale(boolean logScale) {
+		this.logScale = logScale;
+		// Validate that min and max are positive for log scale
+		if (logScale) {
+			if (min <= 0) {
+				min = 1;  // Default to 1 if min is not positive
+			}
+			if (max <= 0) {
+				max = 10;  // Default to 10 if max is not positive
+			}
+			if (max <= min) {
+				max = min * 10;  // Ensure max > min
+			}
+		}
+	}
+
+	/**
+	 * Get the scale factor for this axis dimension
+	 */
+	public double getScale() {
+		return scale;
+	}
+
+	/**
+	 * Set the scale factor for this axis dimension.
+	 * A scale of 2.0 means the axis will be twice as long as default.
+	 */
+	public void setScale(double scale) {
+		if (scale > 0) {
+			this.scale = scale;
+		}
 	}
 }

@@ -140,8 +140,8 @@ public class BarRenderer {
 
 			// For negative values, bar extends from zero down to the value
 			// For positive values, bar extends from zero up to the value
-			final double zeroY = plotHeight - (0 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
-			final double valueY = plotHeight - (value - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+			final double zeroY = plotHeight - axis.valueToPixel(0, 0, plotHeight);
+			final double valueY = plotHeight - axis.valueToPixel(value, 0, plotHeight);
 
 			final double y;
 			final double barHeight;
@@ -201,7 +201,7 @@ public class BarRenderer {
 		for (int i = 0; i < Math.min(values.size(), categoryCount); i++) {
 			final double value = values.get(i);
 			final double y = i * categoryHeight + barOffset;
-			final double barWidth = Math.abs((value - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotWidth);
+			final double barWidth = Math.abs(axis.valueToPixel(value, 0, plotWidth) - axis.valueToPixel(axis.getMin(), 0, plotWidth));
 			final double x = 0; // Start from left
 
 			final URectangle rect = URectangle.build(barWidth, barHeight);
@@ -249,8 +249,8 @@ public class BarRenderer {
 				final double x = categoryIndex * categoryWidth + groupOffset + seriesIndex * barWidth;
 
 				// Calculate bar position and height relative to zero
-				final double zeroY = plotHeight - (0 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
-				final double valueY = plotHeight - (value - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double zeroY = plotHeight - axis.valueToPixel(0, 0, plotHeight);
+				final double valueY = plotHeight - axis.valueToPixel(value, 0, plotHeight);
 
 				final double y;
 				final double barHeight;
@@ -319,7 +319,7 @@ public class BarRenderer {
 
 		for (int categoryIndex = 0; categoryIndex < categoryCount; categoryIndex++) {
 			// Calculate zero position
-			final double zeroY = plotHeight - (0 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+			final double zeroY = plotHeight - axis.valueToPixel(0, 0, plotHeight);
 
 			// Track cumulative positions for positive and negative stacks separately
 			double cumulativePositiveY = zeroY; // Positive bars grow upward from zero
@@ -335,7 +335,7 @@ public class BarRenderer {
 
 				final double value = values.get(categoryIndex);
 				final double x = categoryIndex * categoryWidth + barOffset;
-				final double valueY = plotHeight - (value - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double valueY = plotHeight - axis.valueToPixel(value, 0, plotHeight);
 
 				final double y;
 				final double barHeight;

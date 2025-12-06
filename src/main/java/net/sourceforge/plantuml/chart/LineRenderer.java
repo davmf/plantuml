@@ -86,9 +86,9 @@ public class LineRenderer {
 				final double yVal2 = values.get(i + 1);
 
 				final double x1 = xAxis.valueToPixel(xVal1, 0, plotWidth);
-				final double y1 = plotHeight - (yVal1 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double y1 = plotHeight - axis.valueToPixel(yVal1, 0, plotHeight);
 				final double x2 = xAxis.valueToPixel(xVal2, 0, plotWidth);
-				final double y2 = plotHeight - (yVal2 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double y2 = plotHeight - axis.valueToPixel(yVal2, 0, plotHeight);
 
 				final ULine line = new ULine(x2 - x1, y2 - y1);
 				ug.apply(color).apply(UStroke.withThickness(2.0)).apply(UTranslate.dx(x1).compose(UTranslate.dy(y1))).draw(line);
@@ -103,10 +103,10 @@ public class LineRenderer {
 				final double value2 = values.get(i + 1);
 
 				final double x1 = (i + 0.5) * categoryWidth;
-				final double y1 = plotHeight - (value1 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double y1 = plotHeight - axis.valueToPixel(value1, 0, plotHeight);
 
 				final double x2 = (i + 1.5) * categoryWidth;
-				final double y2 = plotHeight - (value2 - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotHeight;
+				final double y2 = plotHeight - axis.valueToPixel(value2, 0, plotHeight);
 
 				final ULine line = new ULine(x2 - x1, y2 - y1);
 				ug.apply(color).apply(UStroke.withThickness(2.0)).apply(UTranslate.dx(x1).compose(UTranslate.dy(y1))).draw(line);
