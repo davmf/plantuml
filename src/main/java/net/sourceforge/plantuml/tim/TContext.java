@@ -117,6 +117,7 @@ import net.sourceforge.plantuml.tim.builtin.JsonRemove;
 import net.sourceforge.plantuml.tim.builtin.JsonSet;
 import net.sourceforge.plantuml.tim.builtin.LeftAlign;
 import net.sourceforge.plantuml.tim.builtin.Lighten;
+import net.sourceforge.plantuml.tim.builtin.LoadCsv;
 import net.sourceforge.plantuml.tim.builtin.LoadJson;
 import net.sourceforge.plantuml.tim.builtin.LogicalAnd;
 import net.sourceforge.plantuml.tim.builtin.LogicalNand;
@@ -231,6 +232,7 @@ public class TContext {
 		functionsSet.addFunction(new JsonSet());
 		functionsSet.addFunction(new LeftAlign());
 		functionsSet.addFunction(new Lighten());
+		functionsSet.addFunction(new LoadCsv());
 		functionsSet.addFunction(new LoadJson());
 		// functionsSet.addFunction(new LoadJsonLegacy());
 		functionsSet.addFunction(new LogicalAnd());
