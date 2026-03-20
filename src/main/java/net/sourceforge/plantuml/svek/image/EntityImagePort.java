@@ -36,6 +36,12 @@
 
 package net.sourceforge.plantuml.svek.image;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.List;
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.annotation.Fast;
@@ -93,6 +99,41 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		return parent.getRectangleArea().getClosestSide(node.getPosition());
 	}
 
+	private double getEvenSpacingAdjustY() {
+		final SvekNode thisNode = bibliotekon.getNode(getEntity());
+		final Side side = getPortSide();
+		final EnumSet<EntityPosition> positions = entityPosition.isInput()
+				? EntityPosition.getInputs() : EntityPosition.getOutputs();
+		final List<SvekNode> siblings = new ArrayList<SvekNode>(parent.getNodes(positions));
+		final List<SvekNode> sameSide = new ArrayList<SvekNode>();
+		for (SvekNode node : siblings) {
+			if (parent.getRectangleArea().getClosestSide(node.getPosition()) == side)
+				sameSide.add(node);
+		}
+		Collections.sort(sameSide, new Comparator<SvekNode>() {
+			public int compare(SvekNode a, SvekNode b) {
+				return Double.compare(a.getMinY(), b.getMinY());
+			}
+		});
+		int index = -1;
+		for (int i = 0; i < sameSide.size(); i++) {
+			if (sameSide.get(i) == thisNode) {
+				index = i;
+				break;
+			}
+		}
+		if (index < 0)
+			return 0;
+
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		final double spacing = symbolSize * 2.5;
+		final double clusterMinY = parent.getRectangleArea().getMinY();
+		final int titleHeight = parent.getTitleAndAttributeHeight();
+		final double startY = clusterMinY + titleHeight + LABEL_GAP * 3;
+		final double targetY = startY + index * spacing;
+		return targetY - thisNode.getMinY();
+	}
+
 	@Override
 	final public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		double sp = EntityPosition.RADIUS * 2;
@@ -120,15 +161,18 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		double x;
 		double y;
+		double titleShiftY = 0;
 
 		if (isLabelInside()) {
 			final Side side = getPortSide();
 			if (side == Side.WEST) {
 				x = symbolSize + LABEL_GAP;
 				y = (symbolSize - dimDesc.getHeight()) / 2;
+				titleShiftY = getEvenSpacingAdjustY();
 			} else if (side == Side.EAST) {
 				x = -dimDesc.getWidth() - LABEL_GAP;
 				y = (symbolSize - dimDesc.getHeight()) / 2;
+				titleShiftY = getEvenSpacingAdjustY();
 			} else if (side == Side.NORTH) {
 				x = -(dimDesc.getWidth() - symbolSize) / 2;
 				y = symbolSize + LABEL_GAP;
@@ -140,6 +184,9 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 			x = -(dimDesc.getWidth() - symbolSize) / 2;
 			y = upPosition() ? -(symbolSize + dimDesc.getHeight()) : symbolSize;
 		}
+
+		if (titleShiftY != 0)
+			ug = ug.apply(UTranslate.dy(titleShiftY));
 
 		final UGroup group = new UGroup(getEntity().getLocation());
 		group.put(UGroupType.CLASS, "entity");
