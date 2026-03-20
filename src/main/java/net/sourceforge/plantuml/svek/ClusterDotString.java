@@ -51,6 +51,7 @@ import net.sourceforge.plantuml.dot.GraphvizVersion;
 import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.skin.AlignmentParam;
 import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.style.ISkinParam;
@@ -265,9 +266,17 @@ public class ClusterDotString {
 
 			SvekUtils.println(sb);
 			if (hasPort()) {
+				final List<? extends SvekNode> ordered;
+				if (skinParam.getRankdir() == Rankdir.LEFT_TO_RIGHT) {
+					final List<SvekNode> reversed = new ArrayList<>(entries);
+					Collections.reverse(reversed);
+					ordered = reversed;
+				} else {
+					ordered = entries;
+				}
 				boolean arrow = false;
 				String node = null;
-				for (SvekNode sh : entries) {
+				for (SvekNode sh : ordered) {
 					if (arrow)
 						sb.append("->");
 
