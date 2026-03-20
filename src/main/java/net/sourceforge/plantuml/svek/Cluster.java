@@ -430,7 +430,7 @@ public class Cluster implements Moveable {
 			frontierCalculator.ensureMinWidth(getTitleAndAttributeWidth() + 10);
 
 		this.rectangleArea = frontierCalculator.getSuggestedPosition();
-		adjustRectangleForInsidePorts();
+		adjustRectangleForInsidePorts(stringBounder);
 
 		final double widthTitle = clusterHeader.getTitle().calculateDimension(stringBounder).getWidth();
 		final double minX = rectangleArea.getMinX();
@@ -438,8 +438,10 @@ public class Cluster implements Moveable {
 		this.xyTitle = new XPoint2D(minX + ((rectangleArea.getWidth() - widthTitle) / 2), minY + IEntityImage.MARGIN);
 	}
 
-	private void adjustRectangleForInsidePorts() {
+	private void adjustRectangleForInsidePorts(StringBounder stringBounder) {
 		int maxInsidePortCount = 0;
+		double maxLeftLabelWidth = 0;
+		double maxRightLabelWidth = 0;
 		for (SvekNode node : nodes) {
 			if (!node.getEntityPosition().isPort())
 				continue;
@@ -453,17 +455,38 @@ public class Cluster implements Moveable {
 						&& EntityImagePort.hasInsideLabel(other.getEntity()))
 					count++;
 			maxInsidePortCount = Math.max(maxInsidePortCount, count);
+			if (node.getImage() instanceof EntityImagePort) {
+				final double labelWidth = ((EntityImagePort) node.getImage())
+						.getInsideLabelWidth(stringBounder);
+				if (node.getEntityPosition().isInput())
+					maxLeftLabelWidth = Math.max(maxLeftLabelWidth, labelWidth);
+				else
+					maxRightLabelWidth = Math.max(maxRightLabelWidth, labelWidth);
+			}
 		}
 		if (maxInsidePortCount == 0)
 			return;
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		final double spacing = EntityImagePort.getInsidePortSpacing();
 		final double titleHeight = getTitleAndAttributeHeight();
-		final double gap = 5 * 3;
+		final double labelGap = 5;
+		final double gap = labelGap * 3;
 		final double neededHeight = titleHeight + gap + (maxInsidePortCount - 1) * spacing + symbolSize + gap;
 		final double currentHeight = rectangleArea.getHeight();
 		if (neededHeight < currentHeight)
 			this.rectangleArea = rectangleArea.withMaxY(rectangleArea.getMinY() + neededHeight);
+		final double innerGap = symbolSize * 3;
+		final double neededWidth = maxLeftLabelWidth + maxRightLabelWidth
+				+ symbolSize * 2 + labelGap * 4 + innerGap;
+		final double titleWidth = getTitleAndAttributeWidth() + 10;
+		final double minWidth = Math.max(neededWidth, titleWidth);
+		final double currentWidth = rectangleArea.getWidth();
+		if (minWidth != currentWidth) {
+			final double delta = (currentWidth - minWidth) / 2;
+			this.rectangleArea = rectangleArea
+					.addMinX(delta)
+					.addMaxX(-delta);
+		}
 	}
 
 	private void drawSwinLinesState(UGraphic ug, HColor borderColor) {
