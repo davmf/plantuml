@@ -1603,6 +1603,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		if (link.isInvis())
 			return;
 
+		if (link.isPartOfHarness())
+			return;
+
 		if (dotPath == null) {
 			Log.info(() -> "DotPath is null for " + this);
 			return;
@@ -2038,6 +2041,10 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	public int getLength() {
 		return link.getLength();
+	}
+
+	public Link getLink() {
+		return link;
 	}
 
 	public void setOpale(boolean opale) {

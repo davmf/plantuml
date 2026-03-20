@@ -58,6 +58,7 @@ import net.sourceforge.plantuml.abel.EntityFactory;
 import net.sourceforge.plantuml.abel.EntityGender;
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.Together;
@@ -128,6 +129,8 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 	private final AtomicInteger cpt2 = new AtomicInteger(1);
 
 	private List<Bag> stacks = new ArrayList<>();
+
+	private Harness currentHarness;
 
 	private boolean visibilityModifierPresent;
 
@@ -340,6 +343,13 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		return CommandExecutionResult.ok();
 	}
 
+	final public CommandExecutionResult gotoHarness(String label) {
+		final Harness harness = new Harness(label);
+		this.currentHarness = harness;
+		this.stacks.add(harness);
+		return CommandExecutionResult.ok();
+	}
+
 	final public CommandExecutionResult gotoGroup(LineLocation location, Quark<Entity> quark, Display display,
 			GroupType type) {
 		return gotoGroup(location, quark, display, type, null);
@@ -365,7 +375,9 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 
 	public boolean endGroup() {
 		if (stacks.size() > 0) {
-			stacks.remove(stacks.size() - 1);
+			final Bag removed = stacks.remove(stacks.size() - 1);
+			if (removed instanceof Harness)
+				this.currentHarness = null;
 			return true;
 		}
 		return false;
@@ -964,6 +976,10 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		if (link.isSingle() && containsSimilarLink(link))
 			return;
 
+		if (currentHarness != null) {
+			link.setHarness(currentHarness);
+			currentHarness.addLink(link);
+		}
 		this.links.add(link);
 	}
 

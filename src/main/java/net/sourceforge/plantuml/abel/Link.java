@@ -98,6 +98,8 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	private Url url;
 
+	private Harness harness;
+
 	public LinkStrategy getLinkStrategy() {
 		// return LinkStrategy.LEGACY;
 		return LinkStrategy.SIMPLIER;
@@ -453,6 +455,18 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	public void setUrl(Url url) {
 		this.url = url;
+	}
+
+	public void setHarness(Harness harness) {
+		this.harness = harness;
+	}
+
+	public Harness getHarness() {
+		return harness;
+	}
+
+	public boolean isPartOfHarness() {
+		return harness != null;
 	}
 
 	public boolean isHidden() {

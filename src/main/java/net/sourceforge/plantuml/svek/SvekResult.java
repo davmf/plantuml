@@ -35,9 +35,14 @@
  */
 package net.sourceforge.plantuml.svek;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.annotation.PerformanceIssue;
 import net.sourceforge.plantuml.dot.DotData;
@@ -95,10 +100,27 @@ public final class SvekResult implements IEntityImage {
 		computeKal();
 
 		clusterManager.getBibliotekon().clearPlacedSegments();
+		final Map<Harness, List<SvekEdge>> harnessMap = new LinkedHashMap<Harness, List<SvekEdge>>();
 		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
 			final UGraphic ug2 = svekEdge.isHidden() ? ug.apply(UHidden.HIDDEN) : ug;
 			svekEdge.setSharedIds(ids);
 			svekEdge.drawU(ug2);
+
+			final Harness h = svekEdge.getLink().getHarness();
+			if (h != null) {
+				List<SvekEdge> list = harnessMap.get(h);
+				if (list == null) {
+					list = new ArrayList<SvekEdge>();
+					harnessMap.put(h, list);
+				}
+				list.add(svekEdge);
+			}
+		}
+
+		for (Map.Entry<Harness, List<SvekEdge>> entry : harnessMap.entrySet()) {
+			final SvekHarness svekHarness = new SvekHarness(entry.getKey(), entry.getValue(),
+					dotData.getSkinParam());
+			svekHarness.drawU(ug);
 		}
 	}
 
