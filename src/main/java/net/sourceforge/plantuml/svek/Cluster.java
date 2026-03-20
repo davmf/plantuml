@@ -39,6 +39,7 @@ package net.sourceforge.plantuml.svek;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -123,6 +124,7 @@ public class Cluster implements Moveable {
 	private XPoint2D xyNoteBottom;
 
 	private RectangleArea rectangleArea;
+	private boolean insidePortsRepositioned;
 	private final LineLocation location;
 
 	public void moveDelta(double deltaX, double deltaY) {
@@ -410,6 +412,9 @@ public class Cluster implements Moveable {
 	}
 
 	void manageEntryExitPoint(StringBounder stringBounder) {
+		if (insidePortsRepositioned)
+			return;
+
 		final Collection<RectangleArea> insides = new ArrayList<>();
 		final List<XPoint2D> points = new ArrayList<>();
 		for (SvekNode sh : nodes)
@@ -486,6 +491,54 @@ public class Cluster implements Moveable {
 			this.rectangleArea = rectangleArea
 					.addMinX(delta)
 					.addMaxX(-delta);
+		}
+		if (!insidePortsRepositioned) {
+			repositionInsidePortNodes();
+			insidePortsRepositioned = true;
+		}
+	}
+
+	private void repositionInsidePortNodes() {
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		final double labelGap = 5;
+		final double gap = labelGap * 3;
+		final double spacing = EntityImagePort.getInsidePortSpacing();
+		final double titleHeight = getTitleAndAttributeHeight();
+		final double startY = rectangleArea.getMinY() + titleHeight + gap;
+
+		final List<SvekNode> inputs = new ArrayList<>();
+		final List<SvekNode> outputs = new ArrayList<>();
+		for (SvekNode node : nodes) {
+			if (!node.getEntityPosition().isPort())
+				continue;
+			if (!EntityImagePort.hasInsideLabel(node.getEntity()))
+				continue;
+			if (node.getEntityPosition().isInput())
+				inputs.add(node);
+			else
+				outputs.add(node);
+		}
+		Collections.sort(inputs, new Comparator<SvekNode>() {
+			public int compare(SvekNode a, SvekNode b) {
+				return Double.compare(a.getMinY(), b.getMinY());
+			}
+		});
+		Collections.sort(outputs, new Comparator<SvekNode>() {
+			public int compare(SvekNode a, SvekNode b) {
+				return Double.compare(a.getMinY(), b.getMinY());
+			}
+		});
+		for (int i = 0; i < inputs.size(); i++) {
+			final SvekNode node = inputs.get(i);
+			final double targetX = rectangleArea.getMinX() - symbolSize / 2;
+			final double targetY = startY + i * spacing;
+			node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
+		}
+		for (int i = 0; i < outputs.size(); i++) {
+			final SvekNode node = outputs.get(i);
+			final double targetX = rectangleArea.getMaxX() - symbolSize / 2;
+			final double targetY = startY + i * spacing;
+			node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
 		}
 	}
 

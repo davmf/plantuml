@@ -83,6 +83,7 @@ import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
@@ -109,6 +110,8 @@ import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactoryExtends;
 import net.sourceforge.plantuml.svek.extremity.ExtremityOther;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.abel.EntityPosition;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.Direction;
@@ -651,15 +654,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		dotPathInit = dotPath.copy();
 
 		if (projectionCluster != null) {
-			// System.err.println("Line::solveLine1 projectionCluster=" +
-			// projectionCluster.getClusterPosition());
 			projectionCluster.manageEntryExitPoint(stringBounder);
-			// System.err.println("Line::solveLine2 projectionCluster=" +
-			// projectionCluster.getClusterPosition());
-			// if (lhead != null)
-			// System.err.println("Line::solveLine ltail=" + lhead.getClusterPosition());
-			// if (ltail != null)
-			// System.err.println("Line::solveLine ltail=" + ltail.getClusterPosition());
 		}
 		dotPath = dotPath.simulateCompound(lhead == null ? null : lhead.getRectangleArea(),
 				ltail == null ? null : ltail.getRectangleArea());
@@ -776,6 +771,41 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			nb++;
 		}
 		return nb;
+	}
+
+	private DotPath adjustPathForInsidePorts(DotPath path, SvekNode node1, SvekNode node2,
+			double offsetX, double offsetY) {
+		final boolean startInside = node1 != null && node1.getEntityPosition().isPort()
+				&& EntityImagePort.hasInsideLabel(node1.getEntity());
+		final boolean endInside = node2 != null && node2.getEntityPosition().isPort()
+				&& EntityImagePort.hasInsideLabel(node2.getEntity());
+		if (!startInside && !endInside)
+			return path;
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		final XPoint2D startPoint;
+		if (startInside) {
+			final XPoint2D center = node1.getRectangleArea().getPointCenter();
+			startPoint = new XPoint2D(center.getX() + symbolSize / 2 - offsetX,
+					center.getY() - offsetY);
+		} else {
+			startPoint = path.getStartPoint();
+		}
+		final XPoint2D endPoint;
+		if (endInside) {
+			final XPoint2D center = node2.getRectangleArea().getPointCenter();
+			endPoint = new XPoint2D(center.getX() - symbolSize / 2 - offsetX,
+					center.getY() - offsetY);
+		} else {
+			endPoint = path.getEndPoint();
+		}
+		final XCubicCurve2D line = new XCubicCurve2D(
+				startPoint.getX(), startPoint.getY(),
+				startPoint.getX(), startPoint.getY(),
+				endPoint.getX(), endPoint.getY(),
+				endPoint.getX(), endPoint.getY());
+		final List<XCubicCurve2D> beziers = new ArrayList<XCubicCurve2D>();
+		beziers.add(line);
+		return DotPath.fromBeziers(beziers);
 	}
 
 	private SvekNode getSvekNode2() {
@@ -900,6 +930,21 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 		DotPath todraw = dotPath.copy();
 
+		UTranslate insidePortShift1 = UTranslate.none();
+		UTranslate insidePortShift2 = UTranslate.none();
+		final DotPath adjustedPath = adjustPathForInsidePorts(todraw, getSvekNode1(), getSvekNode2(), x, y);
+		if (adjustedPath != todraw) {
+			final XPoint2D oldStart = todraw.getStartPoint();
+			final XPoint2D oldEnd = todraw.getEndPoint();
+			todraw = adjustedPath;
+			final XPoint2D newStart = todraw.getStartPoint();
+			final XPoint2D newEnd = todraw.getEndPoint();
+			insidePortShift1 = new UTranslate(newStart.getX() - oldStart.getX(),
+					newStart.getY() - oldStart.getY());
+			insidePortShift2 = new UTranslate(newEnd.getX() - oldEnd.getX(),
+					newEnd.getY() - oldEnd.getY());
+		}
+
 		// Apply corner rounding if pragma is set
 		final String radiusStr = pragma.getValue(PragmaKey.EDGE_CORNER_RADIUS);
 		if (radiusStr != null) {
@@ -937,7 +982,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		todraw.setCommentAndCodeLine(uniq(ids, link.idCommentForSvg()), link.getCodeLine());
 
 		drawRainbow(ug.apply(new UTranslate(x, y)), color, arrowHeadColor, todraw, link.getSupplementaryColors(),
-				stroke, magneticForce1, magneticForce2);
+				stroke, magneticForce1.compose(insidePortShift1), magneticForce2.compose(insidePortShift2));
 
 		ug = ug.apply(UStroke.simple()).apply(color);
 
