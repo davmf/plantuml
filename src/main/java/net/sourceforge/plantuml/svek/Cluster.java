@@ -90,6 +90,7 @@ import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.svek.image.EntityImageState;
 import net.sourceforge.plantuml.svek.image.EntityImageStateCommon;
 import net.sourceforge.plantuml.url.Url;
@@ -429,11 +430,40 @@ public class Cluster implements Moveable {
 			frontierCalculator.ensureMinWidth(getTitleAndAttributeWidth() + 10);
 
 		this.rectangleArea = frontierCalculator.getSuggestedPosition();
+		adjustRectangleForInsidePorts();
 
 		final double widthTitle = clusterHeader.getTitle().calculateDimension(stringBounder).getWidth();
 		final double minX = rectangleArea.getMinX();
 		final double minY = rectangleArea.getMinY();
 		this.xyTitle = new XPoint2D(minX + ((rectangleArea.getWidth() - widthTitle) / 2), minY + IEntityImage.MARGIN);
+	}
+
+	private void adjustRectangleForInsidePorts() {
+		int maxInsidePortCount = 0;
+		for (SvekNode node : nodes) {
+			if (!node.getEntityPosition().isPort())
+				continue;
+			if (!EntityImagePort.hasInsideLabel(node.getEntity()))
+				continue;
+			final EnumSet<EntityPosition> positions = node.getEntityPosition().isInput()
+					? EntityPosition.getInputs() : EntityPosition.getOutputs();
+			int count = 0;
+			for (SvekNode other : nodes)
+				if (positions.contains(other.getEntityPosition())
+						&& EntityImagePort.hasInsideLabel(other.getEntity()))
+					count++;
+			maxInsidePortCount = Math.max(maxInsidePortCount, count);
+		}
+		if (maxInsidePortCount == 0)
+			return;
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		final double spacing = EntityImagePort.getInsidePortSpacing();
+		final double titleHeight = getTitleAndAttributeHeight();
+		final double gap = 5 * 3;
+		final double neededHeight = titleHeight + gap + (maxInsidePortCount - 1) * spacing + symbolSize + gap;
+		final double currentHeight = rectangleArea.getHeight();
+		if (neededHeight < currentHeight)
+			this.rectangleArea = rectangleArea.withMaxY(rectangleArea.getMinY() + neededHeight);
 	}
 
 	private void drawSwinLinesState(UGraphic ug, HColor borderColor) {

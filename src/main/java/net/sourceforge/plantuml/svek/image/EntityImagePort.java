@@ -88,10 +88,18 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	private boolean isLabelInside() {
-		final Stereotype stereotype = getEntity().getStereotype();
+		return hasInsideLabel(getEntity());
+	}
+
+	public static boolean hasInsideLabel(Entity entity) {
+		final Stereotype stereotype = entity.getStereotype();
 		if (stereotype == null)
 			return false;
 		return stereotype.getMultipleLabels().contains("inside");
+	}
+
+	public static double getInsidePortSpacing() {
+		return EntityPosition.RADIUS * 2 * 2.5;
 	}
 
 	private Side getPortSide() {
@@ -153,7 +161,7 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		ug.draw(rect);
 	}
 
-	private static final double LABEL_GAP = 3;
+	private static final double LABEL_GAP = 5;
 
 	final public void drawU(UGraphic ug) {
 		final TextBlock desc = getDesc();
