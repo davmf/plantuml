@@ -112,6 +112,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		ug.draw(rect);
 	}
 
+	private static final double LABEL_GAP = 3;
+
 	final public void drawU(UGraphic ug) {
 		final TextBlock desc = getDesc();
 		final XDimension2D dimDesc = desc.calculateDimension(ug.getStringBounder());
@@ -122,17 +124,17 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		if (isLabelInside()) {
 			final Side side = getPortSide();
 			if (side == Side.WEST) {
-				x = symbolSize;
+				x = symbolSize + LABEL_GAP;
 				y = (symbolSize - dimDesc.getHeight()) / 2;
 			} else if (side == Side.EAST) {
-				x = -dimDesc.getWidth();
+				x = -dimDesc.getWidth() - LABEL_GAP;
 				y = (symbolSize - dimDesc.getHeight()) / 2;
 			} else if (side == Side.NORTH) {
 				x = -(dimDesc.getWidth() - symbolSize) / 2;
-				y = symbolSize;
+				y = symbolSize + LABEL_GAP;
 			} else {
 				x = -(dimDesc.getWidth() - symbolSize) / 2;
-				y = -dimDesc.getHeight();
+				y = -dimDesc.getHeight() - LABEL_GAP;
 			}
 		} else {
 			x = -(dimDesc.getWidth() - symbolSize) / 2;
