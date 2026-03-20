@@ -49,6 +49,7 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
@@ -56,6 +57,7 @@ import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.Cluster;
@@ -79,6 +81,18 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		return node.getMinY() < clusterCenter.getY();
 	}
 
+	private boolean isLabelInside() {
+		final Stereotype stereotype = getEntity().getStereotype();
+		if (stereotype == null)
+			return false;
+		return stereotype.getMultipleLabels().contains("inside");
+	}
+
+	private Side getPortSide() {
+		final SvekNode node = bibliotekon.getNode(getEntity());
+		return parent.getRectangleArea().getClosestSide(node.getPosition());
+	}
+
 	@Override
 	final public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		double sp = EntityPosition.RADIUS * 2;
@@ -86,6 +100,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	public double getMaxWidthFromLabelForEntryExit(StringBounder stringBounder) {
+		if (isLabelInside())
+			return 0;
 		final TextBlock desc = getDesc();
 		final XDimension2D dimDesc = desc.calculateDimension(stringBounder);
 		return dimDesc.getWidth();
@@ -98,14 +114,30 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 
 	final public void drawU(UGraphic ug) {
 		final TextBlock desc = getDesc();
-		double y = 0;
 		final XDimension2D dimDesc = desc.calculateDimension(ug.getStringBounder());
-		final double x = 0 - (dimDesc.getWidth() - 2 * EntityPosition.RADIUS) / 2;
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		double x;
+		double y;
 
-		if (upPosition())
-			y -= 2 * EntityPosition.RADIUS + dimDesc.getHeight();
-		else
-			y += 2 * EntityPosition.RADIUS;
+		if (isLabelInside()) {
+			final Side side = getPortSide();
+			if (side == Side.WEST) {
+				x = symbolSize;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else if (side == Side.EAST) {
+				x = -dimDesc.getWidth();
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else if (side == Side.NORTH) {
+				x = -(dimDesc.getWidth() - symbolSize) / 2;
+				y = symbolSize;
+			} else {
+				x = -(dimDesc.getWidth() - symbolSize) / 2;
+				y = -dimDesc.getHeight();
+			}
+		} else {
+			x = -(dimDesc.getWidth() - symbolSize) / 2;
+			y = upPosition() ? -(symbolSize + dimDesc.getHeight()) : symbolSize;
+		}
 
 		final UGroup group = new UGroup(getEntity().getLocation());
 		group.put(UGroupType.CLASS, "entity");
