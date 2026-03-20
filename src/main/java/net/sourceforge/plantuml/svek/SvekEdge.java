@@ -939,9 +939,15 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			todraw = adjustedPath;
 			final XPoint2D newStart = todraw.getStartPoint();
 			final XPoint2D newEnd = todraw.getEndPoint();
-			insidePortShift1 = new UTranslate(newStart.getX() - oldStart.getX(),
+			final double deco1 = (this.extremity1 instanceof Extremity)
+					? ((Extremity) this.extremity1).getDecorationLength() : 0;
+			final double deco2 = (this.extremity2 instanceof Extremity)
+					? ((Extremity) this.extremity2).getDecorationLength() : 0;
+			insidePortShift1 = new UTranslate(
+					newStart.getX() - oldStart.getX() + deco1,
 					newStart.getY() - oldStart.getY());
-			insidePortShift2 = new UTranslate(newEnd.getX() - oldEnd.getX(),
+			insidePortShift2 = new UTranslate(
+					newEnd.getX() - oldEnd.getX() - deco2,
 					newEnd.getY() - oldEnd.getY());
 		}
 
