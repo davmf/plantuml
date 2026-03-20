@@ -798,13 +798,31 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		} else {
 			endPoint = path.getEndPoint();
 		}
-		final XCubicCurve2D line = new XCubicCurve2D(
-				startPoint.getX(), startPoint.getY(),
-				startPoint.getX(), startPoint.getY(),
-				endPoint.getX(), endPoint.getY(),
-				endPoint.getX(), endPoint.getY());
 		final List<XCubicCurve2D> beziers = new ArrayList<XCubicCurve2D>();
-		beziers.add(line);
+		if (skinParam.getDotSplines() == DotSplines.ORTHO) {
+			final double midX = (startPoint.getX() + endPoint.getX()) / 2;
+			beziers.add(new XCubicCurve2D(
+					startPoint.getX(), startPoint.getY(),
+					startPoint.getX(), startPoint.getY(),
+					midX, startPoint.getY(),
+					midX, startPoint.getY()));
+			beziers.add(new XCubicCurve2D(
+					midX, startPoint.getY(),
+					midX, startPoint.getY(),
+					midX, endPoint.getY(),
+					midX, endPoint.getY()));
+			beziers.add(new XCubicCurve2D(
+					midX, endPoint.getY(),
+					midX, endPoint.getY(),
+					endPoint.getX(), endPoint.getY(),
+					endPoint.getX(), endPoint.getY()));
+		} else {
+			beziers.add(new XCubicCurve2D(
+					startPoint.getX(), startPoint.getY(),
+					startPoint.getX(), startPoint.getY(),
+					endPoint.getX(), endPoint.getY(),
+					endPoint.getX(), endPoint.getY()));
+		}
 		return DotPath.fromBeziers(beziers);
 	}
 
