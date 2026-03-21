@@ -1091,8 +1091,24 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			if (Math.abs(y1 - y2) < 0.1 && Math.abs(x1 - x2) > 1) {
 				final double xMin = Math.min(x1, x2);
 				final double xMax = Math.max(x1, x2);
-				final double newY = bibliotekon.findNonOverlappingPosition(
+				final double preferredY = bibliotekon.findNonOverlappingPosition(
 						true, y1, xMin, xMax, staggerSpacing, preferPositive);
+				double newY = preferredY;
+				if (Math.abs(newY - y1) > 0.1
+						&& isShiftAllowed(beziers, i, false, newY, offsetX, offsetY,
+								srcCluster, dstCluster, margin, minStub) == false) {
+					// Try opposite direction
+					newY = bibliotekon.findNonOverlappingPosition(
+							true, y1, xMin, xMax, staggerSpacing, preferPositive == false);
+				}
+				if (Math.abs(newY - y1) > 0.1
+						&& isShiftAllowed(beziers, i, false, newY, offsetX, offsetY,
+								srcCluster, dstCluster, margin, minStub) == false) {
+					// Both directions blocked — record need for more cluster spacing
+					recordBlockedHorizontalShift(beziers, i, preferredY, offsetX, offsetY,
+							srcCluster, dstCluster);
+					newY = y1;
+				}
 				if (Math.abs(newY - y1) > 0.1
 						&& isShiftAllowed(beziers, i, false, newY, offsetX, offsetY,
 								srcCluster, dstCluster, margin, minStub)) {
@@ -1157,6 +1173,52 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 					bibliotekon.recordBlockedShift(srcCluster, -deficit, 0);
 				else
 					bibliotekon.recordBlockedShift(srcCluster, deficit, 0);
+			}
+		}
+	}
+
+	/**
+	 * Record a blocked horizontal segment shift so that cluster spacing can be
+	 * increased vertically. Finds the cluster that blocks the preferred shift
+	 * direction and records a vertical push.
+	 */
+	private void recordBlockedHorizontalShift(List<XCubicCurve2D> beziers, int segIndex,
+			double wantedY, double offsetX, double offsetY,
+			Cluster srcCluster, Cluster dstCluster) {
+		final XCubicCurve2D seg = beziers.get(segIndex);
+		final double xMin = Math.min(seg.getX1(), seg.getX2());
+		final double xMax = Math.max(seg.getX1(), seg.getX2());
+		final double currentY = seg.getY1();
+		final double staggerSpacing = 3 * EntityPosition.RADIUS;
+		// Find the cluster that blocks the shift in the preferred direction
+		for (Cluster cl : bibliotekon.allCluster()) {
+			if (cl == srcCluster || cl == dstCluster)
+				continue;
+			final RectangleArea rect = cl.getRectangleArea();
+			if (rect == null)
+				continue;
+			final double rMinX = rect.getMinX() - offsetX;
+			final double rMaxX = rect.getMaxX() - offsetX;
+			final double rMinY = rect.getMinY() - offsetY;
+			final double rMaxY = rect.getMaxY() - offsetY;
+			if (xMax <= rMinX || xMin >= rMaxX)
+				continue;
+			// Cluster overlaps horizontally with segment — check if it blocks vertically
+			if (wantedY > currentY && wantedY > rMinY && wantedY < rMaxY) {
+				// Blocking from below: push this cluster down
+				final double deficit = staggerSpacing - (rMinY - currentY) + 2;
+				if (deficit > 0)
+					bibliotekon.recordBlockedShift(cl, 0, deficit);
+				return;
+			}
+			if (wantedY < currentY && wantedY > rMinY && wantedY < rMaxY) {
+				// Blocking from above: push this cluster up (negative shift)
+				// Actually push everything below up — simpler: push the cluster above down
+				// and let everything below stay. Instead, push the blocking cluster further up.
+				final double deficit = staggerSpacing - (currentY - rMaxY) + 2;
+				if (deficit > 0)
+					bibliotekon.recordBlockedShift(cl, 0, -deficit);
+				return;
 			}
 		}
 	}

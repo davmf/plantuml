@@ -149,7 +149,7 @@ public final class SvekResult implements IEntityImage {
 	}
 
 	private MinMax minMax;
-	private boolean clusterSpacingAdjusted;
+	private int clusterSpacingPasses;
 
 	@PerformanceIssue
 	@Fast
@@ -158,8 +158,8 @@ public final class SvekResult implements IEntityImage {
 		if (minMax == null) {
 			minMax = TextBlockUtils.getMinMax(this, stringBounder, false);
 			clusterManager.moveDelta(6 - minMax.getMinX(), 6 - minMax.getMinY());
-			if (clusterSpacingAdjusted == false && adjustClusterSpacingIfNeeded()) {
-				clusterSpacingAdjusted = true;
+			if (clusterSpacingPasses < 3 && adjustClusterSpacingIfNeeded()) {
+				clusterSpacingPasses++;
 				minMax = null;
 				return calculateDimension(stringBounder);
 			}
