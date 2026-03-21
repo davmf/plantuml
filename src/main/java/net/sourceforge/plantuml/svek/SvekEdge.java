@@ -833,7 +833,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			double offsetX, double offsetY) {
 		final double margin = 8;
 		final double minStub = 3 * 2 * EntityPosition.RADIUS;
-		final double staggerSpacing = 2 * EntityPosition.RADIUS;
+		final double staggerSpacing = 3 * EntityPosition.RADIUS;
 		Cluster srcCluster = null;
 		Cluster dstCluster = null;
 		for (Cluster cl : bibliotekon.allCluster()) {
@@ -899,6 +899,11 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				// 5-segment path: H-V-H-V-H
 				// Each port goes to just past its own parent cluster edge,
 				// then a connecting horizontal bridges at a Y that avoids obstacles
+				// Clamp turn X to avoid crossing intermediate clusters
+				startTurnX = clampTurnX(startTurnX, startPoint, startIsEast,
+						srcCluster, offsetX, offsetY, margin);
+				endTurnX = clampTurnX(endTurnX, endPoint, endIsEast,
+						dstCluster, offsetX, offsetY, margin);
 				double midY = findSafeBridgeY(startTurnX, endTurnX,
 						startPoint.getY(), endPoint.getY(),
 						srcCluster, dstCluster, offsetX, offsetY, margin,
@@ -992,6 +997,11 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				else
 					endTurnX = Math.min(endTurnX, endPoint.getX() - minStub)
 							- endEdgeIndex * staggerSpacing;
+				// Clamp turn X to avoid crossing intermediate clusters
+				startTurnX = clampTurnX(startTurnX, startPoint, startIsEast,
+						srcCluster, offsetX, offsetY, margin);
+				endTurnX = clampTurnX(endTurnX, endPoint, endIsEast,
+						dstCluster, offsetX, offsetY, margin);
 				double bridgeY = findSafeBridgeY(startTurnX, endTurnX,
 						startPoint.getY(), endPoint.getY(),
 						srcCluster, dstCluster, offsetX, offsetY, margin,
@@ -1012,6 +1022,43 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				addOrthoSegment(beziers, midX, endPoint.getY(), endPoint.getX(), endPoint.getY());
 			}
 		}
+	}
+
+	private double clampTurnX(double turnX, XPoint2D point, boolean isEast,
+			Cluster ownCluster, double offsetX, double offsetY, double margin) {
+		// Clamp turnX so that:
+		// 1. The horizontal from point to turnX doesn't cross any cluster
+		// 2. turnX doesn't fall inside any cluster's X range (vertical segment would cross it)
+		for (Cluster cl : bibliotekon.allCluster()) {
+			if (cl == ownCluster)
+				continue;
+			final RectangleArea rect = cl.getRectangleArea();
+			if (rect == null)
+				continue;
+			final double rMinX = rect.getMinX() - offsetX;
+			final double rMaxX = rect.getMaxX() - offsetX;
+			final double rMinY = rect.getMinY() - offsetY;
+			final double rMaxY = rect.getMaxY() - offsetY;
+			// Check 1: horizontal segment crosses cluster
+			if (point.getY() >= rMinY && point.getY() <= rMaxY) {
+				final double hMinX = Math.min(point.getX(), turnX);
+				final double hMaxX = Math.max(point.getX(), turnX);
+				if (hMaxX > rMinX && hMinX < rMaxX) {
+					if (isEast)
+						turnX = Math.min(turnX, rMinX - margin);
+					else
+						turnX = Math.max(turnX, rMaxX + margin);
+				}
+			}
+			// Check 2: turnX falls inside cluster X range — vertical would cross it
+			if (turnX > rMinX && turnX < rMaxX) {
+				if (isEast)
+					turnX = Math.min(turnX, rMinX - margin);
+				else
+					turnX = Math.max(turnX, rMaxX + margin);
+			}
+		}
+		return turnX;
 	}
 
 	private double getClusterEdgeX(Cluster cluster, boolean eastSide, double offsetX, double margin) {
