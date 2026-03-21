@@ -171,8 +171,6 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	// Tee junction points where this edge branches off a shared trunk
 	private final List<XPoint2D> teeJunctions = new ArrayList<XPoint2D>();
-	// Trunk extension lines: from myTurnX to farthestTurnX at portY
-	private final List<double[]> teeTrunks = new ArrayList<double[]>();
 
 	@Override
 	public String toString() {
@@ -924,15 +922,15 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 						endTurnX, endPoint.getY());
 				addOrthoSegment(beziers, endTurnX, endPoint.getY(),
 						endPoint.getX(), endPoint.getY());
-				addTeeJunctionsForPort(node1, startPoint, startTurnX, startIsEast, srcCluster, startEdgeIndex, staggerSpacing);
-				addTeeJunctionsForPort(node2, endPoint, endTurnX, endIsEast, dstCluster, endEdgeIndex, staggerSpacing);
+				addTeeJunctionsForPort(node1, startPoint, startTurnX, startIsEast, srcCluster, startEdgeIndex);
+				addTeeJunctionsForPort(node2, endPoint, endTurnX, endIsEast, dstCluster, endEdgeIndex);
 			} else {
 				addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(), farX, startPoint.getY());
 				addOrthoSegment(beziers, farX, startPoint.getY(), farX, endPoint.getY());
 				addOrthoSegment(beziers, farX, endPoint.getY(), endPoint.getX(), endPoint.getY());
 				// For simple H-V-H, the turn is at farX for both endpoints
-				addTeeJunctionsForPort(node1, startPoint, farX, startIsEast, srcCluster, startEdgeIndex, staggerSpacing);
-				addTeeJunctionsForPort(node2, endPoint, farX, endIsEast, dstCluster, endEdgeIndex, staggerSpacing);
+				addTeeJunctionsForPort(node1, startPoint, farX, startIsEast, srcCluster, startEdgeIndex);
+				addTeeJunctionsForPort(node2, endPoint, farX, endIsEast, dstCluster, endEdgeIndex);
 			}
 		} else {
 			// Opposite-side routing (EAST→WEST or WEST→EAST)
@@ -1027,29 +1025,29 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 						endTurnX, endPoint.getY());
 				addOrthoSegment(beziers, endTurnX, endPoint.getY(),
 						endPoint.getX(), endPoint.getY());
-				addTeeJunctionsForPort(node1, startPoint, startTurnX, startIsEast, srcCluster, startEdgeIndex, staggerSpacing);
-				addTeeJunctionsForPort(node2, endPoint, endTurnX, endIsEast, dstCluster, endEdgeIndex, staggerSpacing);
+				addTeeJunctionsForPort(node1, startPoint, startTurnX, startIsEast, srcCluster, startEdgeIndex);
+				addTeeJunctionsForPort(node2, endPoint, endTurnX, endIsEast, dstCluster, endEdgeIndex);
 			} else {
 				addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(), midX, startPoint.getY());
 				addOrthoSegment(beziers, midX, startPoint.getY(), midX, endPoint.getY());
 				addOrthoSegment(beziers, midX, endPoint.getY(), endPoint.getX(), endPoint.getY());
-				addTeeJunctionsForPort(node1, startPoint, midX, startIsEast, srcCluster, startEdgeIndex, staggerSpacing);
-				addTeeJunctionsForPort(node2, endPoint, midX, endIsEast, dstCluster, endEdgeIndex, staggerSpacing);
+				addTeeJunctionsForPort(node1, startPoint, midX, startIsEast, srcCluster, startEdgeIndex);
+				addTeeJunctionsForPort(node2, endPoint, midX, endIsEast, dstCluster, endEdgeIndex);
 			}
 		}
 	}
 
 	/**
 	 * If this port has multiple edges (tee), add a junction dot at the turn point
-	 * and record the trunk extension so the tee shape is visible.
-	 * The edge with the highest cluster edge index (trunk terminus) gets no dot.
+	 * where this edge branches off the shared trunk. The edge with the highest
+	 * cluster edge index (farthest turn = trunk terminus) does not get a dot.
 	 */
 	private void addTeeJunctionsForPort(SvekNode portNode, XPoint2D portPoint,
-			double turnX, boolean isEast, Cluster cluster, int myEdgeIndex,
-			double staggerSpacing) {
+			double turnX, boolean isEast, Cluster cluster, int myEdgeIndex) {
 		if (portNode == null || !portNode.getEntityPosition().isPort()
 				|| !EntityImagePort.hasInsideLabel(portNode.getEntity()))
 			return;
+		// Find the max edge index among all edges from this same port
 		int maxIndex = myEdgeIndex;
 		int siblingCount = 0;
 		for (SvekEdge edge : bibliotekon.allLines()) {
@@ -1066,13 +1064,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		}
 		if (siblingCount <= 1)
 			return;
-		if (myEdgeIndex < maxIndex) {
+		// Place a dot unless we're the trunk terminus (highest index)
+		if (myEdgeIndex < maxIndex)
 			teeJunctions.add(new XPoint2D(turnX, portPoint.getY()));
-			// Draw trunk continuation past the junction in the outward direction
-			final double trunkEndX = isEast
-					? turnX + staggerSpacing : turnX - staggerSpacing;
-			teeTrunks.add(new double[] { turnX, portPoint.getY(), trunkEndX, portPoint.getY() });
-		}
 	}
 
 	private double clampTurnX(double turnX, XPoint2D point, boolean isEast,
@@ -1468,17 +1462,12 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		drawRainbow(ug.apply(new UTranslate(x, y)), color, arrowHeadColor, todraw, link.getSupplementaryColors(),
 				stroke, magneticForce1.compose(insidePortShift1), magneticForce2.compose(insidePortShift2));
 
-		// Draw trunk extensions and filled dots at tee junction points
+		// Draw filled dots at tee junction points
 		if (!teeJunctions.isEmpty()) {
-			final UGraphic ugTee = ug.apply(new UTranslate(x, y)).apply(color).apply(stroke);
-			// Draw trunk continuation lines through junction points
-			for (double[] trunk : teeTrunks)
-				ugTee.apply(new UTranslate(trunk[0], trunk[1]))
-						.draw(new ULine(trunk[2] - trunk[0], trunk[3] - trunk[1]));
-			// Draw filled junction dots
 			final double dotRadius = 3;
 			final UEllipse dot = UEllipse.build(2 * dotRadius, 2 * dotRadius);
-			final UGraphic ugDot = ugTee.apply(color.bg()).apply(UStroke.withThickness(1));
+			final UGraphic ugDot = ug.apply(new UTranslate(x, y)).apply(color.bg()).apply(color)
+					.apply(UStroke.withThickness(1));
 			for (XPoint2D junction : teeJunctions)
 				ugDot.apply(new UTranslate(junction.getX() - dotRadius, junction.getY() - dotRadius))
 						.draw(dot);
