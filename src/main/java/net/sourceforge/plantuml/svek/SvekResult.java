@@ -46,12 +46,14 @@ import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.annotation.PerformanceIssue;
 import net.sourceforge.plantuml.dot.DotData;
+import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UHidden;
@@ -100,6 +102,7 @@ public final class SvekResult implements IEntityImage {
 		computeKal();
 
 		clusterManager.getBibliotekon().clearPlacedSegments();
+		clusterManager.getBibliotekon().clearBlockedShifts();
 		final Map<Harness, List<SvekEdge>> harnessMap = new LinkedHashMap<Harness, List<SvekEdge>>();
 		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
 			final UGraphic ug2 = svekEdge.isHidden() ? ug.apply(UHidden.HIDDEN) : ug;
@@ -146,6 +149,7 @@ public final class SvekResult implements IEntityImage {
 	}
 
 	private MinMax minMax;
+	private boolean clusterSpacingAdjusted;
 
 	@PerformanceIssue
 	@Fast
@@ -154,8 +158,71 @@ public final class SvekResult implements IEntityImage {
 		if (minMax == null) {
 			minMax = TextBlockUtils.getMinMax(this, stringBounder, false);
 			clusterManager.moveDelta(6 - minMax.getMinX(), 6 - minMax.getMinY());
+			if (clusterSpacingAdjusted == false && adjustClusterSpacingIfNeeded()) {
+				clusterSpacingAdjusted = true;
+				minMax = null;
+				return calculateDimension(stringBounder);
+			}
 		}
 		return minMax.getDimension().delta(15, 15);
+	}
+
+	/**
+	 * After the first layout pass, check for blocked segment shifts that need
+	 * more cluster spacing. Applies the largest needed shift per cluster.
+	 * Returns true if adjustments were made.
+	 */
+	private boolean adjustClusterSpacingIfNeeded() {
+		if (dotData.getSkinParam().getDotSplines() != DotSplines.ORTHO)
+			return false;
+		final Bibliotekon bib = clusterManager.getBibliotekon();
+		final List<double[]> blocked = bib.getBlockedShifts();
+		if (blocked.isEmpty())
+			return false;
+		// Aggregate: for each cluster, find the max absolute shift needed per axis
+		final List<Cluster> clusters = bib.allCluster();
+		final double[] maxDx = new double[clusters.size()];
+		final double[] maxDy = new double[clusters.size()];
+		for (double[] bs : blocked) {
+			final int idx = (int) bs[0];
+			if (idx < 0 || idx >= clusters.size())
+				continue;
+			if (Math.abs(bs[1]) > Math.abs(maxDx[idx]))
+				maxDx[idx] = bs[1];
+			if (Math.abs(bs[2]) > Math.abs(maxDy[idx]))
+				maxDy[idx] = bs[2];
+		}
+		boolean adjusted = false;
+		for (int i = 0; i < clusters.size(); i++) {
+			final double dx = maxDx[i];
+			final double dy = maxDy[i];
+			if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1)
+				continue;
+			final Cluster target = clusters.get(i);
+			final RectangleArea targetRect = target.getRectangleArea();
+			if (targetRect == null)
+				continue;
+			// Push the target cluster and all clusters further in the shift direction
+			final double targetCenter = dx > 0
+					? (targetRect.getMinX() + targetRect.getMaxX()) / 2.0
+					: dy > 0 ? (targetRect.getMinY() + targetRect.getMaxY()) / 2.0 : 0;
+			for (Cluster cl : clusters) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final double clCenter = dx != 0
+						? (rect.getMinX() + rect.getMaxX()) / 2.0
+						: (rect.getMinY() + rect.getMaxY()) / 2.0;
+				if (clCenter >= targetCenter - 1) {
+					cl.moveDelta(dx, dy);
+					for (SvekNode node : cl.getNodes())
+						node.moveDelta(dx, dy);
+				}
+			}
+			adjusted = true;
+		}
+		bib.clearBlockedShifts();
+		return adjusted;
 	}
 
 	public ShapeType getShapeType() {

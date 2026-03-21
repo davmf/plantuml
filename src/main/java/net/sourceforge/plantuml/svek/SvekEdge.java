@@ -1046,14 +1046,23 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			if (Math.abs(x1 - x2) < 0.1 && Math.abs(y1 - y2) > 1) {
 				final double yMin = Math.min(y1, y2);
 				final double yMax = Math.max(y1, y2);
-				double newX = bibliotekon.findNonOverlappingPosition(
+				final double preferredX = bibliotekon.findNonOverlappingPosition(
 						false, x1, yMin, yMax, staggerSpacing, preferPositive);
+				double newX = preferredX;
 				if (Math.abs(newX - x1) > 0.1
 						&& isShiftAllowed(beziers, i, true, newX, offsetX, offsetY,
 								srcCluster, dstCluster, margin, minStub) == false) {
 					// Try opposite direction
 					newX = bibliotekon.findNonOverlappingPosition(
 							false, x1, yMin, yMax, staggerSpacing, preferPositive == false);
+				}
+				if (Math.abs(newX - x1) > 0.1
+						&& isShiftAllowed(beziers, i, true, newX, offsetX, offsetY,
+								srcCluster, dstCluster, margin, minStub) == false) {
+					// Both directions blocked — record need for more cluster spacing
+					recordBlockedVerticalShift(beziers, i, preferredX, offsetX, offsetY,
+							srcCluster, dstCluster, minStub, preferPositive);
+					newX = x1;
 				}
 				if (Math.abs(newX - x1) > 0.1
 						&& isShiftAllowed(beziers, i, true, newX, offsetX, offsetY,
@@ -1111,6 +1120,44 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				bibliotekon.registerSegment(true, sy1, Math.min(sx1, sx2), Math.max(sx1, sx2));
 			else if (Math.abs(sx1 - sx2) < 0.1 && Math.abs(sy1 - sy2) > 1)
 				bibliotekon.registerSegment(false, sx1, Math.min(sy1, sy2), Math.max(sy1, sy2));
+		}
+	}
+
+	/**
+	 * Record a blocked vertical segment shift so that cluster spacing can be
+	 * increased later. Computes the deficit: how far the destination cluster
+	 * needs to move to allow the shift.
+	 */
+	private void recordBlockedVerticalShift(List<XCubicCurve2D> beziers, int segIndex,
+			double wantedX, double offsetX, double offsetY,
+			Cluster srcCluster, Cluster dstCluster, double minStub, boolean preferPositive) {
+		if (dstCluster == null)
+			return;
+		// For segments heading toward the destination, the end stub is too short
+		if (segIndex + 1 < beziers.size() && segIndex + 1 == beziers.size() - 1) {
+			final XCubicCurve2D next = beziers.get(segIndex + 1);
+			final double endX = next.getX2();
+			final double stubLen = Math.abs(endX - wantedX);
+			if (stubLen < minStub) {
+				final double deficit = minStub - stubLen + 2;
+				if (preferPositive)
+					bibliotekon.recordBlockedShift(dstCluster, deficit, 0);
+				else
+					bibliotekon.recordBlockedShift(dstCluster, -deficit, 0);
+			}
+		}
+		// For segments heading from the source, the start stub is too short
+		if (segIndex > 0 && segIndex - 1 == 0) {
+			final XCubicCurve2D prev = beziers.get(segIndex - 1);
+			final double startX = prev.getX1();
+			final double stubLen = Math.abs(wantedX - startX);
+			if (stubLen < minStub) {
+				final double deficit = minStub - stubLen + 2;
+				if (preferPositive)
+					bibliotekon.recordBlockedShift(srcCluster, -deficit, 0);
+				else
+					bibliotekon.recordBlockedShift(srcCluster, deficit, 0);
+			}
 		}
 	}
 

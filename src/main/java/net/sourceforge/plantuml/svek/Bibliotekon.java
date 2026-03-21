@@ -65,6 +65,25 @@ public class Bibliotekon {
 	// Each entry: [isHorizontal(0/1), fixedCoord, rangeMin, rangeMax]
 	private final List<double[]> placedSegments = new ArrayList<>();
 
+	// Records of blocked segment shifts needing more cluster spacing.
+	// Each entry: [clusterIndex, neededShiftX, neededShiftY]
+	// clusterIndex is the index in allCluster of the cluster that needs to move.
+	private final List<double[]> blockedShifts = new ArrayList<>();
+
+	public void recordBlockedShift(Cluster cluster, double neededDx, double neededDy) {
+		final int idx = allCluster.indexOf(cluster);
+		if (idx >= 0)
+			blockedShifts.add(new double[] { idx, neededDx, neededDy });
+	}
+
+	public List<double[]> getBlockedShifts() {
+		return Collections.unmodifiableList(blockedShifts);
+	}
+
+	public void clearBlockedShifts() {
+		blockedShifts.clear();
+	}
+
 	public void registerSegment(boolean horizontal, double fixedCoord, double rangeMin, double rangeMax) {
 		placedSegments.add(new double[] { horizontal ? 1 : 0, fixedCoord, rangeMin, rangeMax });
 	}
