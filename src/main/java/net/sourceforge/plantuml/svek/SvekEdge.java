@@ -833,6 +833,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			double offsetX, double offsetY) {
 		final double margin = 8;
 		final double minStub = 3 * 2 * EntityPosition.RADIUS;
+		final double staggerSpacing = 2 * EntityPosition.RADIUS;
 		Cluster srcCluster = null;
 		Cluster dstCluster = null;
 		for (Cluster cl : bibliotekon.allCluster()) {
@@ -841,17 +842,25 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			if (node2 != null && cl.getNodes().contains(node2))
 				dstCluster = cl;
 		}
+		// Compute stagger indices for start and end cluster edges
+		final int startEdgeIndex = computeClusterEdgeIndex(srcCluster, startIsEast, node1);
+		final int endEdgeIndex = computeClusterEdgeIndex(dstCluster, endIsEast, node2);
+		// Use start edge index for bridge Y staggering (separates bridges from different ports)
 		if (startIsEast == endIsEast) {
 			// Same-side routing (EAST→EAST or WEST→WEST)
 			double startTurnX = getClusterEdgeX(srcCluster, startIsEast, offsetX, margin);
 			double endTurnX = getClusterEdgeX(dstCluster, endIsEast, offsetX, margin);
-			// Ensure minimum horizontal stub length from port to turn
+			// Enforce minimum stub, then stagger outward from there
 			if (startIsEast) {
-				startTurnX = Math.max(startTurnX, startPoint.getX() + minStub);
-				endTurnX = Math.max(endTurnX, endPoint.getX() + minStub);
+				startTurnX = Math.max(startTurnX, startPoint.getX() + minStub)
+						+ startEdgeIndex * staggerSpacing;
+				endTurnX = Math.max(endTurnX, endPoint.getX() + minStub)
+						+ endEdgeIndex * staggerSpacing;
 			} else {
-				startTurnX = Math.min(startTurnX, startPoint.getX() - minStub);
-				endTurnX = Math.min(endTurnX, endPoint.getX() - minStub);
+				startTurnX = Math.min(startTurnX, startPoint.getX() - minStub)
+						- startEdgeIndex * staggerSpacing;
+				endTurnX = Math.min(endTurnX, endPoint.getX() - minStub)
+						- endEdgeIndex * staggerSpacing;
 			}
 			// Check if the direct H-V-H path would cross any cluster
 			boolean needsDetour = false;
@@ -892,7 +901,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				// then a connecting horizontal bridges at a Y that avoids obstacles
 				double midY = findSafeBridgeY(startTurnX, endTurnX,
 						startPoint.getY(), endPoint.getY(),
-						srcCluster, dstCluster, offsetX, offsetY, margin);
+						srcCluster, dstCluster, offsetX, offsetY, margin,
+						startEdgeIndex, staggerSpacing);
 				addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(),
 						startTurnX, startPoint.getY());
 				addOrthoSegment(beziers, startTurnX, startPoint.getY(),
@@ -909,10 +919,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				addOrthoSegment(beziers, farX, endPoint.getY(), endPoint.getX(), endPoint.getY());
 			}
 		} else {
-			// Opposite-side routing (EAST→WEST or WEST→EAST) — simple H-V-H
+			// Opposite-side routing (EAST→WEST or WEST→EAST)
 			double midX = (startPoint.getX() + endPoint.getX()) / 2;
 			// Stagger parallel connections so vertical segments don't overlap
-			final double staggerSpacing = 2 * EntityPosition.RADIUS;
 			final int staggerIndex = computeStaggerIndex(srcCluster, dstCluster, node1);
 			midX += staggerIndex * staggerSpacing;
 			// Ensure minimum stub length from each port
@@ -924,12 +933,10 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				midX = Math.max(midX, endPoint.getX() + minStub);
 			else
 				midX = Math.min(midX, endPoint.getX() - minStub);
-			// Check vertical segment against clusters
-			final double minY = Math.min(startPoint.getY(), endPoint.getY());
-			final double maxY = Math.max(startPoint.getY(), endPoint.getY());
+			// Check all three segments against all clusters (except parent of each endpoint)
+			// and determine if a simple H-V-H works or if we need a 5-segment detour
+			boolean needsOppDetour = false;
 			for (Cluster cl : bibliotekon.allCluster()) {
-				if (cl == srcCluster || cl == dstCluster)
-					continue;
 				final RectangleArea rect = cl.getRectangleArea();
 				if (rect == null)
 					continue;
@@ -937,12 +944,73 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				final double rMaxX = rect.getMaxX() - offsetX;
 				final double rMinY = rect.getMinY() - offsetY;
 				final double rMaxY = rect.getMaxY() - offsetY;
-				if (midX >= rMinX && midX <= rMaxX && maxY >= rMinY && minY <= rMaxY)
-					midX = rMaxX + margin;
+				// Check start horizontal (startPoint → midX at startY) against non-src clusters
+				if (cl != srcCluster) {
+					final double hMinX = Math.min(startPoint.getX(), midX);
+					final double hMaxX = Math.max(startPoint.getX(), midX);
+					if (hMaxX > rMinX && hMinX < rMaxX
+							&& startPoint.getY() >= rMinY && startPoint.getY() <= rMaxY) {
+						needsOppDetour = true;
+						break;
+					}
+				}
+				// Check end horizontal (midX → endPoint at endY) against non-dst clusters
+				if (cl != dstCluster) {
+					final double hMinX = Math.min(midX, endPoint.getX());
+					final double hMaxX = Math.max(midX, endPoint.getX());
+					if (hMaxX > rMinX && hMinX < rMaxX
+							&& endPoint.getY() >= rMinY && endPoint.getY() <= rMaxY) {
+						needsOppDetour = true;
+						break;
+					}
+				}
+				// Check vertical segment (midX, from startY to endY) against non-src, non-dst
+				if (cl != srcCluster && cl != dstCluster) {
+					final double vMinY = Math.min(startPoint.getY(), endPoint.getY());
+					final double vMaxY = Math.max(startPoint.getY(), endPoint.getY());
+					if (midX >= rMinX && midX <= rMaxX && vMaxY >= rMinY && vMinY <= rMaxY) {
+						needsOppDetour = true;
+						break;
+					}
+				}
 			}
-			addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(), midX, startPoint.getY());
-			addOrthoSegment(beziers, midX, startPoint.getY(), midX, endPoint.getY());
-			addOrthoSegment(beziers, midX, endPoint.getY(), endPoint.getX(), endPoint.getY());
+			if (needsOppDetour) {
+				// 5-segment path: route each endpoint past its own cluster edge on the port's side,
+				// then bridge horizontally at a safe Y
+				double startTurnX = getClusterEdgeX(srcCluster, startIsEast, offsetX, margin);
+				double endTurnX = getClusterEdgeX(dstCluster, endIsEast, offsetX, margin);
+				// Enforce minimum stub, then stagger outward from there
+				if (startIsEast)
+					startTurnX = Math.max(startTurnX, startPoint.getX() + minStub)
+							+ startEdgeIndex * staggerSpacing;
+				else
+					startTurnX = Math.min(startTurnX, startPoint.getX() - minStub)
+							- startEdgeIndex * staggerSpacing;
+				if (endIsEast)
+					endTurnX = Math.max(endTurnX, endPoint.getX() + minStub)
+							+ endEdgeIndex * staggerSpacing;
+				else
+					endTurnX = Math.min(endTurnX, endPoint.getX() - minStub)
+							- endEdgeIndex * staggerSpacing;
+				double bridgeY = findSafeBridgeY(startTurnX, endTurnX,
+						startPoint.getY(), endPoint.getY(),
+						srcCluster, dstCluster, offsetX, offsetY, margin,
+						startEdgeIndex, staggerSpacing);
+				addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(),
+						startTurnX, startPoint.getY());
+				addOrthoSegment(beziers, startTurnX, startPoint.getY(),
+						startTurnX, bridgeY);
+				addOrthoSegment(beziers, startTurnX, bridgeY,
+						endTurnX, bridgeY);
+				addOrthoSegment(beziers, endTurnX, bridgeY,
+						endTurnX, endPoint.getY());
+				addOrthoSegment(beziers, endTurnX, endPoint.getY(),
+						endPoint.getX(), endPoint.getY());
+			} else {
+				addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(), midX, startPoint.getY());
+				addOrthoSegment(beziers, midX, startPoint.getY(), midX, endPoint.getY());
+				addOrthoSegment(beziers, midX, endPoint.getY(), endPoint.getX(), endPoint.getY());
+			}
 		}
 	}
 
@@ -954,6 +1022,56 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			return rect.getMaxX() - offsetX + margin;
 		else
 			return rect.getMinX() - offsetX - margin;
+	}
+
+	private int computeClusterEdgeIndex(Cluster cluster, boolean eastSide, SvekNode thisNode) {
+		if (cluster == null || thisNode == null)
+			return 0;
+		// Collect all edges that exit the given side of this cluster via inside ports
+		final List<SvekEdge> edgeList = new ArrayList<SvekEdge>();
+		for (SvekEdge edge : bibliotekon.allLines()) {
+			final SvekNode n1 = bibliotekon.getNode(edge.link.getEntity1());
+			final SvekNode n2 = bibliotekon.getNode(edge.link.getEntity2());
+			if (n1 == null || n2 == null)
+				continue;
+			// Check if either endpoint is an inside port on the given side of this cluster
+			for (SvekNode n : new SvekNode[] { n1, n2 }) {
+				if (!n.getEntityPosition().isPort() || !EntityImagePort.hasInsideLabel(n.getEntity()))
+					continue;
+				final boolean nIsEast = !n.getEntityPosition().isInput();
+				if (nIsEast != eastSide)
+					continue;
+				if (cluster.getNodes().contains(n)) {
+					edgeList.add(edge);
+					break;
+				}
+			}
+		}
+		// Sort by the Y of the port node in this cluster
+		edgeList.sort((a, b) -> {
+			final SvekNode na = getPortNodeInCluster(a, cluster, eastSide);
+			final SvekNode nb = getPortNodeInCluster(b, cluster, eastSide);
+			return Double.compare(
+					na.getRectangleArea().getPointCenter().getY(),
+					nb.getRectangleArea().getPointCenter().getY());
+		});
+		for (int i = 0; i < edgeList.size(); i++)
+			if (edgeList.get(i) == this)
+				return i;
+		return 0;
+	}
+
+	private SvekNode getPortNodeInCluster(SvekEdge edge, Cluster cluster, boolean eastSide) {
+		final SvekNode n1 = bibliotekon.getNode(edge.link.getEntity1());
+		final SvekNode n2 = bibliotekon.getNode(edge.link.getEntity2());
+		for (SvekNode n : new SvekNode[] { n1, n2 }) {
+			if (n != null && n.getEntityPosition().isPort()
+					&& EntityImagePort.hasInsideLabel(n.getEntity())
+					&& (!n.getEntityPosition().isInput()) == eastSide
+					&& cluster.getNodes().contains(n))
+				return n;
+		}
+		return n1;
 	}
 
 	private int computeStaggerIndex(Cluster srcCluster, Cluster dstCluster, SvekNode node1) {
@@ -993,7 +1111,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 	private double findSafeBridgeY(double bridgeMinX, double bridgeMaxX,
 			double startY, double endY,
 			Cluster srcCluster, Cluster dstCluster,
-			double offsetX, double offsetY, double margin) {
+			double offsetX, double offsetY, double margin,
+			int staggerIndex, double staggerSpacing) {
 		final double hMinX = Math.min(bridgeMinX, bridgeMaxX);
 		final double hMaxX = Math.max(bridgeMinX, bridgeMaxX);
 		// Collect Y intervals of clusters that overlap the bridge X range
@@ -1009,25 +1128,49 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			obstacles.add(new double[] { rect.getMinY() - offsetY, rect.getMaxY() - offsetY });
 		}
 		if (obstacles.isEmpty())
-			return (startY + endY) / 2;
-		// Sort by top edge
+			return (startY + endY) / 2 + staggerIndex * staggerSpacing;
+		// Sort by top edge and merge overlapping intervals
 		obstacles.sort((a, b) -> Double.compare(a[0], b[0]));
-		// Find the best gap between obstacles (or above/below all)
+		final List<double[]> merged = new ArrayList<double[]>();
+		merged.add(new double[] { obstacles.get(0)[0], obstacles.get(0)[1] });
+		for (int i = 1; i < obstacles.size(); i++) {
+			final double[] last = merged.get(merged.size() - 1);
+			if (obstacles.get(i)[0] <= last[1]) {
+				last[1] = Math.max(last[1], obstacles.get(i)[1]);
+			} else {
+				merged.add(new double[] { obstacles.get(i)[0], obstacles.get(i)[1] });
+			}
+		}
+		// Find the best gap between merged obstacles (or above/below all)
+		// For above/below: offset by stagger index away from obstacles
+		// For gaps: subdivide the gap space
 		double bestY = Double.NaN;
 		double bestDist = Double.MAX_VALUE;
 		final double targetY = (startY + endY) / 2;
-		// Try above the first obstacle
-		final double aboveY = obstacles.get(0)[0] - margin;
+		// Try above the first obstacle (stagger upward)
+		final double aboveY = merged.get(0)[0] - margin - staggerIndex * staggerSpacing;
 		double dist = Math.abs(targetY - aboveY);
 		if (dist < bestDist) {
 			bestDist = dist;
 			bestY = aboveY;
 		}
-		// Try gaps between obstacles
-		for (int i = 0; i < obstacles.size() - 1; i++) {
-			final double gapTop = obstacles.get(i)[1] + margin;
-			final double gapBottom = obstacles.get(i + 1)[0] - margin;
-			if (gapTop < gapBottom) {
+		// Try gaps between merged obstacles
+		for (int i = 0; i < merged.size() - 1; i++) {
+			final double gapTop = merged.get(i)[1] + margin;
+			final double gapBottom = merged.get(i + 1)[0] - margin;
+			final double gapSize = gapBottom - gapTop;
+			if (gapSize >= staggerSpacing) {
+				// Place within gap, offset by stagger index
+				final double slotY = gapTop + staggerIndex * staggerSpacing;
+				if (slotY <= gapBottom) {
+					final double gapY = Math.max(gapTop, Math.min(gapBottom, slotY));
+					dist = Math.abs(targetY - gapY);
+					if (dist < bestDist) {
+						bestDist = dist;
+						bestY = gapY;
+					}
+				}
+			} else if (gapTop < gapBottom) {
 				final double gapY = Math.max(gapTop, Math.min(gapBottom, targetY));
 				dist = Math.abs(targetY - gapY);
 				if (dist < bestDist) {
@@ -1036,8 +1179,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				}
 			}
 		}
-		// Try below the last obstacle
-		final double belowY = obstacles.get(obstacles.size() - 1)[1] + margin;
+		// Try below the last obstacle (stagger downward)
+		final double belowY = merged.get(merged.size() - 1)[1] + margin + staggerIndex * staggerSpacing;
 		dist = Math.abs(targetY - belowY);
 		if (dist < bestDist) {
 			bestDist = dist;
