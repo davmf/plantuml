@@ -911,6 +911,10 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		} else {
 			// Opposite-side routing (EAST→WEST or WEST→EAST) — simple H-V-H
 			double midX = (startPoint.getX() + endPoint.getX()) / 2;
+			// Stagger parallel connections so vertical segments don't overlap
+			final double staggerSpacing = 2 * EntityPosition.RADIUS;
+			final int staggerIndex = computeStaggerIndex(srcCluster, dstCluster, node1);
+			midX += staggerIndex * staggerSpacing;
 			// Ensure minimum stub length from each port
 			if (startIsEast)
 				midX = Math.max(midX, startPoint.getX() + minStub);
@@ -950,6 +954,40 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			return rect.getMaxX() - offsetX + margin;
 		else
 			return rect.getMinX() - offsetX - margin;
+	}
+
+	private int computeStaggerIndex(Cluster srcCluster, Cluster dstCluster, SvekNode node1) {
+		if (srcCluster == null || dstCluster == null)
+			return 0;
+		// Collect sibling edges between the same cluster pair that use inside ports
+		final List<SvekNode> siblings = new ArrayList<SvekNode>();
+		for (SvekEdge edge : bibliotekon.allLines()) {
+			final SvekNode n1 = bibliotekon.getNode(edge.link.getEntity1());
+			final SvekNode n2 = bibliotekon.getNode(edge.link.getEntity2());
+			if (n1 == null || n2 == null)
+				continue;
+			if (!n1.getEntityPosition().isPort() || !EntityImagePort.hasInsideLabel(n1.getEntity()))
+				continue;
+			if (!n2.getEntityPosition().isPort() || !EntityImagePort.hasInsideLabel(n2.getEntity()))
+				continue;
+			Cluster c1 = null, c2 = null;
+			for (Cluster cl : bibliotekon.allCluster()) {
+				if (cl.getNodes().contains(n1))
+					c1 = cl;
+				if (cl.getNodes().contains(n2))
+					c2 = cl;
+			}
+			if ((c1 == srcCluster && c2 == dstCluster) || (c1 == dstCluster && c2 == srcCluster))
+				siblings.add(n1);
+		}
+		// Sort by Y center; reverse index so top connections get farthest midX
+		siblings.sort((a, b) -> Double.compare(
+				a.getRectangleArea().getPointCenter().getY(),
+				b.getRectangleArea().getPointCenter().getY()));
+		for (int i = 0; i < siblings.size(); i++)
+			if (siblings.get(i) == node1)
+				return siblings.size() - 1 - i;
+		return 0;
 	}
 
 	private double findSafeBridgeY(double bridgeMinX, double bridgeMaxX,
