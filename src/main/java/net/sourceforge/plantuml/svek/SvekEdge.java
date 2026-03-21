@@ -1134,21 +1134,20 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		UTranslate insidePortShift2 = UTranslate.none();
 		final DotPath adjustedPath = adjustPathForInsidePorts(todraw, getSvekNode1(), getSvekNode2(), x, y);
 		if (adjustedPath != todraw) {
-			final XPoint2D oldStart = todraw.getStartPoint();
-			final XPoint2D oldEnd = todraw.getEndPoint();
 			todraw = adjustedPath;
 			final XPoint2D newStart = todraw.getStartPoint();
 			final XPoint2D newEnd = todraw.getEndPoint();
-			final double deco1 = (this.extremity1 instanceof Extremity)
-					? ((Extremity) this.extremity1).getDecorationLength() : 0;
-			final double deco2 = (this.extremity2 instanceof Extremity)
-					? ((Extremity) this.extremity2).getDecorationLength() : 0;
-			insidePortShift1 = new UTranslate(
-					newStart.getX() - oldStart.getX() + deco1,
-					newStart.getY() - oldStart.getY());
-			insidePortShift2 = new UTranslate(
-					newEnd.getX() - oldEnd.getX() - deco2,
-					newEnd.getY() - oldEnd.getY());
+			// Recreate extremities with correct angle from adjusted path
+			if (this.extremity1 instanceof ExtremityArrow) {
+				final double angle = todraw.getStartAngle() + Math.PI;
+				this.extremity1 = new ExtremityArrow(newStart, angle);
+				insidePortShift1 = UTranslate.none();
+			}
+			if (this.extremity2 instanceof ExtremityArrow) {
+				final double angle = todraw.getEndAngle();
+				this.extremity2 = new ExtremityArrow(newEnd, angle);
+				insidePortShift2 = UTranslate.none();
+			}
 		}
 
 		// Apply corner rounding if pragma is set
