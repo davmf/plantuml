@@ -29,6 +29,7 @@ public class SvekHarness implements UDrawable {
 
 	private static final double TRUNK_STROKE_WIDTH = 3.0;
 	private static final double FAN_GAP = 20.0;
+	private static final double LABEL_GAP = 3.0;
 
 	private final Harness harness;
 	private final List<SvekEdge> memberEdges;
@@ -40,23 +41,39 @@ public class SvekHarness implements UDrawable {
 		this.skinParam = skinParam;
 	}
 
+	private static final class EdgeData {
+		final XPoint2D start;
+		final XPoint2D end;
+		final Display label;
+
+		EdgeData(XPoint2D start, XPoint2D end, Display label) {
+			this.start = start;
+			this.end = end;
+			this.label = label;
+		}
+
+		boolean hasLabel() {
+			return Display.isNull(label) == false;
+		}
+	}
+
 	@Override
 	public void drawU(UGraphic ug) {
 		if (memberEdges.isEmpty())
 			return;
 
-		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
-		final List<XPoint2D> endPoints = new ArrayList<XPoint2D>();
-
+		final List<EdgeData> edges = new ArrayList<EdgeData>();
 		for (SvekEdge edge : memberEdges) {
 			final DotPath path = edge.getDotPath();
 			if (path == null)
 				continue;
-			startPoints.add(path.getStartPoint());
-			endPoints.add(path.getEndPoint());
+			edges.add(new EdgeData(
+					path.getStartPoint(),
+					path.getEndPoint(),
+					edge.getLink().getLabel()));
 		}
 
-		if (startPoints.isEmpty())
+		if (edges.isEmpty())
 			return;
 
 		final Style style = StyleSignatureBasic.of(SName.root, SName.element, SName.arrow)
@@ -65,10 +82,13 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugLine = ug.apply(color).apply(HColors.none().bg());
 
 		// Determine primary flow direction.
-		// If start points are more vertically spread than horizontally,
-		// ports are stacked vertically (typical for horizontal flow in
-		// LTR/RTL layouts). Use this together with the median displacement
-		// to determine the dominant axis.
+		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
+		final List<XPoint2D> endPoints = new ArrayList<XPoint2D>();
+		for (EdgeData e : edges) {
+			startPoints.add(e.start);
+			endPoints.add(e.end);
+		}
+
 		final XPoint2D startMedian = median(startPoints);
 		final XPoint2D endMedian = median(endPoints);
 		final double flowDx = endMedian.getX() - startMedian.getX();
@@ -83,8 +103,6 @@ public class SvekHarness implements UDrawable {
 					Math.abs(p.getY() - startMedian.getY()));
 		}
 
-		// If source ports are vertically stacked (spreadY > spreadX),
-		// the flow exits horizontally. Vice versa for horizontal spread.
 		final boolean horizontal;
 		if (srcSpreadY > srcSpreadX * 2)
 			horizontal = true;
@@ -94,34 +112,25 @@ public class SvekHarness implements UDrawable {
 			horizontal = Math.abs(flowDx) >= Math.abs(flowDy);
 
 		if (horizontal)
-			drawHorizontalFlow(ugLine, startPoints, endPoints, flowDx >= 0, style);
+			drawHorizontalFlow(ugLine, edges, flowDx >= 0, style);
 		else
-			drawVerticalFlow(ugLine, startPoints, endPoints, flowDy >= 0, style);
+			drawVerticalFlow(ugLine, edges, flowDy >= 0, style);
 	}
 
-	/**
-	 * Horizontal flow: trunk runs horizontally between two vertical fan columns.
-	 * Each endpoint connects to the trunk via orthogonal segments regardless of
-	 * which side of the diagram it sits on.
-	 */
-	private void drawHorizontalFlow(UGraphic ugLine, List<XPoint2D> startPoints,
-			List<XPoint2D> endPoints, boolean leftToRight, Style style) {
+	private void drawHorizontalFlow(UGraphic ugLine, List<EdgeData> edges,
+			boolean leftToRight, Style style) {
 		final double sign = leftToRight ? 1.0 : -1.0;
 
-		// Find the furthest source port in the flow direction
-		double srcEdgeX = startPoints.get(0).getX();
-		for (XPoint2D p : startPoints)
-			srcEdgeX = leftToRight ? Math.max(srcEdgeX, p.getX())
-					: Math.min(srcEdgeX, p.getX());
+		double srcEdgeX = edges.get(0).start.getX();
+		for (EdgeData e : edges)
+			srcEdgeX = leftToRight ? Math.max(srcEdgeX, e.start.getX())
+					: Math.min(srcEdgeX, e.start.getX());
 
-		// Find the nearest dest port in the flow direction
-		double dstNearX = endPoints.get(0).getX();
-		for (XPoint2D p : endPoints)
-			dstNearX = leftToRight ? Math.min(dstNearX, p.getX())
-					: Math.max(dstNearX, p.getX());
+		double dstNearX = edges.get(0).end.getX();
+		for (EdgeData e : edges)
+			dstNearX = leftToRight ? Math.min(dstNearX, e.end.getX())
+					: Math.max(dstNearX, e.end.getX());
 
-		// Place both fan columns in the gap between source and dest,
-		// with even spacing
 		final double gapStart = srcEdgeX;
 		final double gapEnd = dstNearX;
 		final double gapSize = (gapEnd - gapStart) * sign;
@@ -129,100 +138,101 @@ public class SvekHarness implements UDrawable {
 		final double srcFanX;
 		final double dstFanX;
 		if (gapSize > FAN_GAP * 4) {
-			// Enough room: place fans at 1/3 and 2/3 of the gap
 			srcFanX = gapStart + sign * gapSize / 3;
 			dstFanX = gapStart + sign * gapSize * 2 / 3;
 		} else if (gapSize > FAN_GAP * 2) {
 			srcFanX = gapStart + sign * FAN_GAP;
 			dstFanX = gapEnd - sign * FAN_GAP;
 		} else {
-			// Tight gap: place at midpoint
 			final double mid = (gapStart + gapEnd) / 2;
 			srcFanX = mid - sign * 2;
 			dstFanX = mid + sign * 2;
 		}
 
-		// Separate dest endpoints into "near side" (same side as trunk)
-		// and "far side" (opposite side of the dest component).
 		final double farThreshold = dstNearX + sign * FAN_GAP * 3;
-		final List<XPoint2D> nearEnds = new ArrayList<XPoint2D>();
-		final List<XPoint2D> farEnds = new ArrayList<XPoint2D>();
-		for (XPoint2D end : endPoints) {
+		final List<EdgeData> nearEdges = new ArrayList<EdgeData>();
+		final List<EdgeData> farEdges = new ArrayList<EdgeData>();
+		for (EdgeData e : edges) {
 			final boolean isFar = leftToRight
-					? end.getX() > farThreshold
-					: end.getX() < farThreshold;
+					? e.end.getX() > farThreshold
+					: e.end.getX() < farThreshold;
 			if (isFar)
-				farEnds.add(end);
+				farEdges.add(e);
 			else
-				nearEnds.add(end);
+				nearEdges.add(e);
 		}
 
-		// Trunk Y: use only near-side endpoints so far-side outliers
-		// don't distort the trunk position.
-		final double srcTrunkY = medianY(startPoints);
-		final double dstTrunkY = nearEnds.isEmpty()
-				? medianY(endPoints) : medianY(nearEnds);
+		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
+		final List<XPoint2D> nearEndPoints = new ArrayList<XPoint2D>();
+		for (EdgeData e : edges)
+			startPoints.add(e.start);
+		for (EdgeData e : nearEdges)
+			nearEndPoints.add(e.end);
 
+		final double srcTrunkY = medianY(startPoints);
+		final double dstTrunkY = nearEndPoints.isEmpty()
+				? medianY(endPointsOf(edges)) : medianY(nearEndPoints);
+
+		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Source fan: each port connects orthogonally to (srcFanX, srcTrunkY)
-		for (XPoint2D start : startPoints) {
-			drawLine(ugFan, start.getX(), start.getY(), srcFanX, start.getY());
-			drawLine(ugFan, srcFanX, start.getY(), srcFanX, srcTrunkY);
+		// Source fan
+		for (EdgeData e : edges) {
+			drawLine(ugFan, e.start.getX(), e.start.getY(), srcFanX, e.start.getY());
+			drawLine(ugFan, srcFanX, e.start.getY(), srcFanX, srcTrunkY);
 		}
 
-		// Trunk: orthogonal route from (srcFanX, srcTrunkY) to (dstFanX, dstTrunkY)
+		// Trunk
 		drawOrthoTrunk(ugTrunk, srcFanX, srcTrunkY, dstFanX, dstTrunkY);
 
-		// Near-side dest fan: simple orthogonal route
-		for (XPoint2D end : nearEnds) {
-			drawLine(ugFan, dstFanX, dstTrunkY, dstFanX, end.getY());
-			drawLine(ugFan, dstFanX, end.getY(), end.getX(), end.getY());
+		// Near-side dest fan
+		for (EdgeData e : nearEdges) {
+			drawLine(ugFan, dstFanX, dstTrunkY, dstFanX, e.end.getY());
+			drawLine(ugFan, dstFanX, e.end.getY(), e.end.getX(), e.end.getY());
+			if (e.hasLabel())
+				drawStubLabel(ugLine, fontConfig, e.label, dstFanX,
+						e.end.getY(), e.end.getX(), e.end.getY(), true);
 		}
 
-		// Far-side dest fan: route below the component body.
-		// Use the near-side port spread as an estimate of component height,
-		// then add generous clearance to pass below the component.
-		if (farEnds.isEmpty() == false) {
+		// Far-side dest fan
+		if (farEdges.isEmpty() == false) {
 			double nearTopY = Double.MAX_VALUE;
 			double nearBottomY = -Double.MAX_VALUE;
-			for (XPoint2D end : nearEnds) {
-				nearTopY = Math.min(nearTopY, end.getY());
-				nearBottomY = Math.max(nearBottomY, end.getY());
+			for (EdgeData e : nearEdges) {
+				nearTopY = Math.min(nearTopY, e.end.getY());
+				nearBottomY = Math.max(nearBottomY, e.end.getY());
 			}
-			// Estimate component height from port spread, add padding for
-			// the title area and borders above/below the port range
 			final double portSpread = nearBottomY - nearTopY;
 			final double estimatedPadding = Math.max(portSpread * 0.5, FAN_GAP * 2);
 			final double jogY = nearBottomY + estimatedPadding;
 
-			for (XPoint2D end : farEnds) {
+			for (EdgeData e : farEdges) {
 				drawLine(ugFan, dstFanX, dstTrunkY, dstFanX, jogY);
-				drawLine(ugFan, dstFanX, jogY, end.getX(), jogY);
-				drawLine(ugFan, end.getX(), jogY, end.getX(), end.getY());
+				drawLine(ugFan, dstFanX, jogY, e.end.getX(), jogY);
+				drawLine(ugFan, e.end.getX(), jogY, e.end.getX(), e.end.getY());
+				if (e.hasLabel())
+					drawStubLabel(ugLine, fontConfig, e.label, e.end.getX(),
+							jogY, e.end.getX(), e.end.getY(), false);
 			}
 		}
 
 		drawLabelOnTrunk(ugLine, srcFanX, srcTrunkY, dstFanX, dstTrunkY, true, style);
 	}
 
-	/**
-	 * Vertical flow: trunk runs vertically between two horizontal fan rows.
-	 */
-	private void drawVerticalFlow(UGraphic ugLine, List<XPoint2D> startPoints,
-			List<XPoint2D> endPoints, boolean topToBottom, Style style) {
+	private void drawVerticalFlow(UGraphic ugLine, List<EdgeData> edges,
+			boolean topToBottom, Style style) {
 		final double sign = topToBottom ? 1.0 : -1.0;
 
-		double srcEdgeY = startPoints.get(0).getY();
-		for (XPoint2D p : startPoints)
-			srcEdgeY = topToBottom ? Math.max(srcEdgeY, p.getY())
-					: Math.min(srcEdgeY, p.getY());
+		double srcEdgeY = edges.get(0).start.getY();
+		for (EdgeData e : edges)
+			srcEdgeY = topToBottom ? Math.max(srcEdgeY, e.start.getY())
+					: Math.min(srcEdgeY, e.start.getY());
 
-		double dstNearY = endPoints.get(0).getY();
-		for (XPoint2D p : endPoints)
-			dstNearY = topToBottom ? Math.min(dstNearY, p.getY())
-					: Math.max(dstNearY, p.getY());
+		double dstNearY = edges.get(0).end.getY();
+		for (EdgeData e : edges)
+			dstNearY = topToBottom ? Math.min(dstNearY, e.end.getY())
+					: Math.max(dstNearY, e.end.getY());
 
 		final double gapStart = srcEdgeY;
 		final double gapEnd = dstNearY;
@@ -242,32 +252,65 @@ public class SvekHarness implements UDrawable {
 			dstFanY = mid + sign * 2;
 		}
 
+		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
+		final List<XPoint2D> endPoints = new ArrayList<XPoint2D>();
+		for (EdgeData e : edges) {
+			startPoints.add(e.start);
+			endPoints.add(e.end);
+		}
+
 		final double srcTrunkX = medianX(startPoints);
 		final double dstTrunkX = medianX(endPoints);
 
+		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		for (XPoint2D start : startPoints) {
-			drawLine(ugFan, start.getX(), start.getY(), start.getX(), srcFanY);
-			drawLine(ugFan, start.getX(), srcFanY, srcTrunkX, srcFanY);
+		// Source fan
+		for (EdgeData e : edges) {
+			drawLine(ugFan, e.start.getX(), e.start.getY(), e.start.getX(), srcFanY);
+			drawLine(ugFan, e.start.getX(), srcFanY, srcTrunkX, srcFanY);
 		}
 
+		// Trunk
 		drawOrthoTrunk(ugTrunk, srcTrunkX, srcFanY, dstTrunkX, dstFanY);
 
-		for (XPoint2D end : endPoints) {
-			drawLine(ugFan, dstTrunkX, dstFanY, end.getX(), dstFanY);
-			drawLine(ugFan, end.getX(), dstFanY, end.getX(), end.getY());
+		// Dest fan
+		for (EdgeData e : edges) {
+			drawLine(ugFan, dstTrunkX, dstFanY, e.end.getX(), dstFanY);
+			drawLine(ugFan, e.end.getX(), dstFanY, e.end.getX(), e.end.getY());
+			if (e.hasLabel())
+				drawStubLabel(ugLine, fontConfig, e.label, e.end.getX(),
+						dstFanY, e.end.getX(), e.end.getY(), false);
 		}
 
 		drawLabelOnTrunk(ugLine, srcTrunkX, srcFanY, dstTrunkX, dstFanY, false, style);
 	}
 
-	/**
-	 * Draw a trunk between two points using orthogonal segments.
-	 * If already axis-aligned, draws a single segment.
-	 * Otherwise draws an L or Z route.
-	 */
+	private void drawStubLabel(UGraphic ug, FontConfiguration fontConfig,
+			Display label, double x1, double y1, double x2, double y2,
+			boolean horizontal) {
+		final TextBlock textBlock = label.create(fontConfig,
+				HorizontalAlignment.LEFT, skinParam);
+		final StringBounder stringBounder = ug.getStringBounder();
+		final XDimension2D textDim = textBlock.calculateDimension(stringBounder);
+
+		if (horizontal) {
+			// Place label on the horizontal stub, centered on both axes
+			// of the segment so it sits directly on the line.
+			final double midX = (x1 + x2) / 2;
+			final double labelX = midX - textDim.getWidth() / 2;
+			final double labelY = y1 - textDim.getHeight() / 2;
+			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
+		} else {
+			// Place label beside the vertical stub, centered on the segment
+			final double midY = (y1 + y2) / 2;
+			final double labelX = Math.min(x1, x2) - textDim.getWidth() - LABEL_GAP;
+			final double labelY = midY - textDim.getHeight() / 2;
+			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
+		}
+	}
+
 	private void drawOrthoTrunk(UGraphic ug, double x1, double y1,
 			double x2, double y2) {
 		final boolean sameX = Math.abs(x1 - x2) < 1.0;
@@ -276,7 +319,6 @@ public class SvekHarness implements UDrawable {
 		if (sameX || sameY) {
 			drawLine(ug, x1, y1, x2, y2);
 		} else {
-			// Z-route with midpoint transition
 			final double midX = (x1 + x2) / 2;
 			drawLine(ug, x1, y1, midX, y1);
 			drawLine(ug, midX, y1, midX, y2);
@@ -317,6 +359,13 @@ public class SvekHarness implements UDrawable {
 			final double labelY = midY - textDim.getHeight() / 2;
 			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 		}
+	}
+
+	private static List<XPoint2D> endPointsOf(List<EdgeData> edges) {
+		final List<XPoint2D> result = new ArrayList<XPoint2D>();
+		for (EdgeData e : edges)
+			result.add(e.end);
+		return result;
 	}
 
 	private static double medianX(List<XPoint2D> points) {
