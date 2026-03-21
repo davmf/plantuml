@@ -938,9 +938,13 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				midX = Math.max(midX, endPoint.getX() + minStub);
 			else
 				midX = Math.min(midX, endPoint.getX() - minStub);
+			// If stub constraints conflict (start wants midX on one side, end pushed it
+			// to the other), a single midX cannot satisfy both — force 5-segment detour.
+			final boolean stubConflict = (startIsEast && midX < startPoint.getX() + minStub)
+					|| (startIsEast == false && midX > startPoint.getX() - minStub);
 			// Check all three segments against all clusters (except parent of each endpoint)
 			// and determine if a simple H-V-H works or if we need a 5-segment detour
-			boolean needsOppDetour = false;
+			boolean needsOppDetour = stubConflict;
 			for (Cluster cl : bibliotekon.allCluster()) {
 				final RectangleArea rect = cl.getRectangleArea();
 				if (rect == null)
@@ -1128,6 +1132,12 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				}
 			}
 		}
+		// Shorten port-stub H segments that are too close to already-registered
+		// H segments by shifting the adjacent V segment toward the port.
+		shortenConflictingStub(beziers, true, staggerSpacing, offsetX, offsetY,
+				srcCluster, dstCluster, margin, minStub);
+		shortenConflictingStub(beziers, false, staggerSpacing, offsetX, offsetY,
+				srcCluster, dstCluster, margin, minStub);
 		// Register all segments
 		for (XCubicCurve2D seg : beziers) {
 			final double sx1 = seg.getX1(), sy1 = seg.getY1();
@@ -1136,6 +1146,78 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				bibliotekon.registerSegment(true, sy1, Math.min(sx1, sx2), Math.max(sx1, sx2));
 			else if (Math.abs(sx1 - sx2) < 0.1 && Math.abs(sy1 - sy2) > 1)
 				bibliotekon.registerSegment(false, sx1, Math.min(sy1, sy2), Math.max(sy1, sy2));
+		}
+	}
+
+	/**
+	 * If a port-stub H segment (first or last) conflicts with an
+	 * already-registered H segment, shorten it by moving the adjacent V turn
+	 * point closer to the port. This reduces the overlap range without changing
+	 * the stub's fixed Y coordinate.
+	 *
+	 * @param atEnd true to check the last segment, false for the first
+	 */
+	private void shortenConflictingStub(List<XCubicCurve2D> beziers, boolean atEnd,
+			double minSpacing, double offsetX, double offsetY,
+			Cluster srcCluster, Cluster dstCluster, double margin, double minStub) {
+		if (beziers.size() < 3)
+			return;
+		final int stubIdx = atEnd ? beziers.size() - 1 : 0;
+		final int vIdx = atEnd ? beziers.size() - 2 : 1;
+		final XCubicCurve2D stub = beziers.get(stubIdx);
+		final double sy = stub.getY1();
+		final double sy2 = stub.getY2();
+		if (Math.abs(sy - sy2) > 0.5)
+			return; // not horizontal
+		final double sxMin = Math.min(stub.getX1(), stub.getX2());
+		final double sxMax = Math.max(stub.getX1(), stub.getX2());
+		if (sxMax - sxMin < 2)
+			return; // too short to shorten
+		// Check the V segment is actually vertical
+		final XCubicCurve2D vSeg = beziers.get(vIdx);
+		if (Math.abs(vSeg.getX1() - vSeg.getX2()) > 0.5)
+			return; // not vertical
+		// Find the worst conflict with registered H segments
+		final double needed = bibliotekon.findNonOverlappingPosition(
+				true, sy, sxMin, sxMax, minSpacing, true);
+		if (Math.abs(needed - sy) < 0.1)
+			return; // no conflict
+		// There is a conflict but we cannot move the stub Y (it connects to a port).
+		// Instead, move the V turn point closer to the port to shorten the stub.
+		// The port end is fixed; the V end is adjustable.
+		final double portX = atEnd ? stub.getX2() : stub.getX1();
+		final double turnX = atEnd ? stub.getX1() : stub.getX2();
+		// Move turnX toward portX, halving the stub length
+		final double newTurnX = (turnX + portX) / 2.0;
+		// Ensure minimum stub remains
+		if (Math.abs(newTurnX - portX) < margin)
+			return;
+		// Check the new V position doesn't cross clusters
+		if (isShiftAllowed(beziers, vIdx, true, newTurnX, offsetX, offsetY,
+				srcCluster, dstCluster, margin, minStub) == false)
+			return;
+		// Apply the shift to the V segment and adjacent H segments
+		beziers.set(vIdx, new XCubicCurve2D(
+				newTurnX, vSeg.getY1(), newTurnX, vSeg.getY1(),
+				newTurnX, vSeg.getY2(), newTurnX, vSeg.getY2()));
+		if (atEnd) {
+			beziers.set(stubIdx, new XCubicCurve2D(
+					newTurnX, sy, newTurnX, sy, portX, sy2, portX, sy2));
+			if (vIdx > 0) {
+				final XCubicCurve2D prev = beziers.get(vIdx - 1);
+				beziers.set(vIdx - 1, new XCubicCurve2D(
+						prev.getX1(), prev.getY1(), prev.getX1(), prev.getY1(),
+						newTurnX, prev.getY2(), newTurnX, prev.getY2()));
+			}
+		} else {
+			beziers.set(stubIdx, new XCubicCurve2D(
+					portX, sy, portX, sy, newTurnX, sy2, newTurnX, sy2));
+			if (vIdx + 1 < beziers.size()) {
+				final XCubicCurve2D next = beziers.get(vIdx + 1);
+				beziers.set(vIdx + 1, new XCubicCurve2D(
+						newTurnX, next.getY1(), newTurnX, next.getY1(),
+						next.getX2(), next.getY2(), next.getX2(), next.getY2()));
+			}
 		}
 	}
 
