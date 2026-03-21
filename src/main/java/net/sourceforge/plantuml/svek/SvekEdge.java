@@ -832,6 +832,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			boolean startIsEast, boolean endIsEast,
 			double offsetX, double offsetY) {
 		final double margin = 8;
+		final double minStub = 3 * 2 * EntityPosition.RADIUS;
 		Cluster srcCluster = null;
 		Cluster dstCluster = null;
 		for (Cluster cl : bibliotekon.allCluster()) {
@@ -842,8 +843,16 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		}
 		if (startIsEast == endIsEast) {
 			// Same-side routing (EAST→EAST or WEST→WEST)
-			final double startTurnX = getClusterEdgeX(srcCluster, startIsEast, offsetX, margin);
-			final double endTurnX = getClusterEdgeX(dstCluster, endIsEast, offsetX, margin);
+			double startTurnX = getClusterEdgeX(srcCluster, startIsEast, offsetX, margin);
+			double endTurnX = getClusterEdgeX(dstCluster, endIsEast, offsetX, margin);
+			// Ensure minimum horizontal stub length from port to turn
+			if (startIsEast) {
+				startTurnX = Math.max(startTurnX, startPoint.getX() + minStub);
+				endTurnX = Math.max(endTurnX, endPoint.getX() + minStub);
+			} else {
+				startTurnX = Math.min(startTurnX, startPoint.getX() - minStub);
+				endTurnX = Math.min(endTurnX, endPoint.getX() - minStub);
+			}
 			// Check if the direct H-V-H path would cross any cluster
 			boolean needsDetour = false;
 			final double farX = startIsEast
@@ -902,6 +911,15 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		} else {
 			// Opposite-side routing (EAST→WEST or WEST→EAST) — simple H-V-H
 			double midX = (startPoint.getX() + endPoint.getX()) / 2;
+			// Ensure minimum stub length from each port
+			if (startIsEast)
+				midX = Math.max(midX, startPoint.getX() + minStub);
+			else
+				midX = Math.min(midX, startPoint.getX() - minStub);
+			if (endIsEast)
+				midX = Math.max(midX, endPoint.getX() + minStub);
+			else
+				midX = Math.min(midX, endPoint.getX() - minStub);
 			// Check vertical segment against clusters
 			final double minY = Math.min(startPoint.getY(), endPoint.getY());
 			final double maxY = Math.max(startPoint.getY(), endPoint.getY());
