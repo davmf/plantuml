@@ -83,6 +83,7 @@ import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
@@ -783,39 +784,33 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			return path;
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		final XPoint2D startPoint;
+		final boolean startIsEast;
 		if (startInside) {
 			final XPoint2D center = node1.getRectangleArea().getPointCenter();
-			startPoint = new XPoint2D(center.getX() + symbolSize / 2 - offsetX,
-					center.getY() - offsetY);
+			startIsEast = !node1.getEntityPosition().isInput();
+			final double edgeX = startIsEast
+					? center.getX() + symbolSize / 2 : center.getX() - symbolSize / 2;
+			startPoint = new XPoint2D(edgeX - offsetX, center.getY() - offsetY);
 		} else {
 			startPoint = path.getStartPoint();
+			startIsEast = false;
 		}
 		final XPoint2D endPoint;
+		final boolean endIsEast;
 		if (endInside) {
 			final XPoint2D center = node2.getRectangleArea().getPointCenter();
-			endPoint = new XPoint2D(center.getX() - symbolSize / 2 - offsetX,
-					center.getY() - offsetY);
+			endIsEast = !node2.getEntityPosition().isInput();
+			final double edgeX = endIsEast
+					? center.getX() + symbolSize / 2 : center.getX() - symbolSize / 2;
+			endPoint = new XPoint2D(edgeX - offsetX, center.getY() - offsetY);
 		} else {
 			endPoint = path.getEndPoint();
+			endIsEast = false;
 		}
 		final List<XCubicCurve2D> beziers = new ArrayList<XCubicCurve2D>();
 		if (skinParam.getDotSplines() == DotSplines.ORTHO) {
-			final double midX = (startPoint.getX() + endPoint.getX()) / 2;
-			beziers.add(new XCubicCurve2D(
-					startPoint.getX(), startPoint.getY(),
-					startPoint.getX(), startPoint.getY(),
-					midX, startPoint.getY(),
-					midX, startPoint.getY()));
-			beziers.add(new XCubicCurve2D(
-					midX, startPoint.getY(),
-					midX, startPoint.getY(),
-					midX, endPoint.getY(),
-					midX, endPoint.getY()));
-			beziers.add(new XCubicCurve2D(
-					midX, endPoint.getY(),
-					midX, endPoint.getY(),
-					endPoint.getX(), endPoint.getY(),
-					endPoint.getX(), endPoint.getY()));
+			buildOrthoPath(beziers, startPoint, endPoint, node1, node2,
+					startIsEast, endIsEast, offsetX, offsetY);
 		} else {
 			beziers.add(new XCubicCurve2D(
 					startPoint.getX(), startPoint.getY(),
@@ -824,6 +819,175 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 					endPoint.getX(), endPoint.getY()));
 		}
 		return DotPath.fromBeziers(beziers);
+	}
+
+	private static void addOrthoSegment(List<XCubicCurve2D> beziers,
+			double x1, double y1, double x2, double y2) {
+		beziers.add(new XCubicCurve2D(x1, y1, x1, y1, x2, y2, x2, y2));
+	}
+
+	private void buildOrthoPath(List<XCubicCurve2D> beziers,
+			XPoint2D startPoint, XPoint2D endPoint,
+			SvekNode node1, SvekNode node2,
+			boolean startIsEast, boolean endIsEast,
+			double offsetX, double offsetY) {
+		final double margin = 8;
+		Cluster srcCluster = null;
+		Cluster dstCluster = null;
+		for (Cluster cl : bibliotekon.allCluster()) {
+			if (node1 != null && cl.getNodes().contains(node1))
+				srcCluster = cl;
+			if (node2 != null && cl.getNodes().contains(node2))
+				dstCluster = cl;
+		}
+		if (startIsEast == endIsEast) {
+			// Same-side routing (EAST→EAST or WEST→WEST)
+			final double startTurnX = getClusterEdgeX(srcCluster, startIsEast, offsetX, margin);
+			final double endTurnX = getClusterEdgeX(dstCluster, endIsEast, offsetX, margin);
+			// Check if the direct H-V-H path would cross any cluster
+			boolean needsDetour = false;
+			final double farX = startIsEast
+					? Math.max(startTurnX, endTurnX) : Math.min(startTurnX, endTurnX);
+			for (Cluster cl : bibliotekon.allCluster()) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final double rMinX = rect.getMinX() - offsetX;
+				final double rMaxX = rect.getMaxX() - offsetX;
+				final double rMinY = rect.getMinY() - offsetY;
+				final double rMaxY = rect.getMaxY() - offsetY;
+				// Check start horizontal against all clusters except src
+				if (cl != srcCluster) {
+					final double hMinX1 = Math.min(startPoint.getX(), farX);
+					final double hMaxX1 = Math.max(startPoint.getX(), farX);
+					if (hMaxX1 > rMinX && hMinX1 < rMaxX
+							&& startPoint.getY() >= rMinY && startPoint.getY() <= rMaxY) {
+						needsDetour = true;
+						break;
+					}
+				}
+				// Check end horizontal against all clusters except dst
+				if (cl != dstCluster) {
+					final double hMinX2 = Math.min(endPoint.getX(), farX);
+					final double hMaxX2 = Math.max(endPoint.getX(), farX);
+					if (hMaxX2 > rMinX && hMinX2 < rMaxX
+							&& endPoint.getY() >= rMinY && endPoint.getY() <= rMaxY) {
+						needsDetour = true;
+						break;
+					}
+				}
+			}
+			if (needsDetour) {
+				// 5-segment path: H-V-H-V-H
+				// Each port goes to just past its own parent cluster edge,
+				// then a connecting horizontal bridges at a Y that avoids obstacles
+				double midY = findSafeBridgeY(startTurnX, endTurnX,
+						startPoint.getY(), endPoint.getY(),
+						srcCluster, dstCluster, offsetX, offsetY, margin);
+				addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(),
+						startTurnX, startPoint.getY());
+				addOrthoSegment(beziers, startTurnX, startPoint.getY(),
+						startTurnX, midY);
+				addOrthoSegment(beziers, startTurnX, midY,
+						endTurnX, midY);
+				addOrthoSegment(beziers, endTurnX, midY,
+						endTurnX, endPoint.getY());
+				addOrthoSegment(beziers, endTurnX, endPoint.getY(),
+						endPoint.getX(), endPoint.getY());
+			} else {
+				addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(), farX, startPoint.getY());
+				addOrthoSegment(beziers, farX, startPoint.getY(), farX, endPoint.getY());
+				addOrthoSegment(beziers, farX, endPoint.getY(), endPoint.getX(), endPoint.getY());
+			}
+		} else {
+			// Opposite-side routing (EAST→WEST or WEST→EAST) — simple H-V-H
+			double midX = (startPoint.getX() + endPoint.getX()) / 2;
+			// Check vertical segment against clusters
+			final double minY = Math.min(startPoint.getY(), endPoint.getY());
+			final double maxY = Math.max(startPoint.getY(), endPoint.getY());
+			for (Cluster cl : bibliotekon.allCluster()) {
+				if (cl == srcCluster || cl == dstCluster)
+					continue;
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final double rMinX = rect.getMinX() - offsetX;
+				final double rMaxX = rect.getMaxX() - offsetX;
+				final double rMinY = rect.getMinY() - offsetY;
+				final double rMaxY = rect.getMaxY() - offsetY;
+				if (midX >= rMinX && midX <= rMaxX && maxY >= rMinY && minY <= rMaxY)
+					midX = rMaxX + margin;
+			}
+			addOrthoSegment(beziers, startPoint.getX(), startPoint.getY(), midX, startPoint.getY());
+			addOrthoSegment(beziers, midX, startPoint.getY(), midX, endPoint.getY());
+			addOrthoSegment(beziers, midX, endPoint.getY(), endPoint.getX(), endPoint.getY());
+		}
+	}
+
+	private double getClusterEdgeX(Cluster cluster, boolean eastSide, double offsetX, double margin) {
+		if (cluster == null || cluster.getRectangleArea() == null)
+			return 0;
+		final RectangleArea rect = cluster.getRectangleArea();
+		if (eastSide)
+			return rect.getMaxX() - offsetX + margin;
+		else
+			return rect.getMinX() - offsetX - margin;
+	}
+
+	private double findSafeBridgeY(double bridgeMinX, double bridgeMaxX,
+			double startY, double endY,
+			Cluster srcCluster, Cluster dstCluster,
+			double offsetX, double offsetY, double margin) {
+		final double hMinX = Math.min(bridgeMinX, bridgeMaxX);
+		final double hMaxX = Math.max(bridgeMinX, bridgeMaxX);
+		// Collect Y intervals of clusters that overlap the bridge X range
+		final List<double[]> obstacles = new ArrayList<double[]>();
+		for (Cluster cl : bibliotekon.allCluster()) {
+			final RectangleArea rect = cl.getRectangleArea();
+			if (rect == null)
+				continue;
+			final double rMinX = rect.getMinX() - offsetX;
+			final double rMaxX = rect.getMaxX() - offsetX;
+			if (hMaxX <= rMinX || hMinX >= rMaxX)
+				continue;
+			obstacles.add(new double[] { rect.getMinY() - offsetY, rect.getMaxY() - offsetY });
+		}
+		if (obstacles.isEmpty())
+			return (startY + endY) / 2;
+		// Sort by top edge
+		obstacles.sort((a, b) -> Double.compare(a[0], b[0]));
+		// Find the best gap between obstacles (or above/below all)
+		double bestY = Double.NaN;
+		double bestDist = Double.MAX_VALUE;
+		final double targetY = (startY + endY) / 2;
+		// Try above the first obstacle
+		final double aboveY = obstacles.get(0)[0] - margin;
+		double dist = Math.abs(targetY - aboveY);
+		if (dist < bestDist) {
+			bestDist = dist;
+			bestY = aboveY;
+		}
+		// Try gaps between obstacles
+		for (int i = 0; i < obstacles.size() - 1; i++) {
+			final double gapTop = obstacles.get(i)[1] + margin;
+			final double gapBottom = obstacles.get(i + 1)[0] - margin;
+			if (gapTop < gapBottom) {
+				final double gapY = Math.max(gapTop, Math.min(gapBottom, targetY));
+				dist = Math.abs(targetY - gapY);
+				if (dist < bestDist) {
+					bestDist = dist;
+					bestY = gapY;
+				}
+			}
+		}
+		// Try below the last obstacle
+		final double belowY = obstacles.get(obstacles.size() - 1)[1] + margin;
+		dist = Math.abs(targetY - belowY);
+		if (dist < bestDist) {
+			bestDist = dist;
+			bestY = belowY;
+		}
+		return bestY;
 	}
 
 	private SvekNode getSvekNode2() {
