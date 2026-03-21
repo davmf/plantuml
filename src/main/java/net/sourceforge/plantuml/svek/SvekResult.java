@@ -94,6 +94,7 @@ public final class SvekResult implements IEntityImage {
 
 		computeKal();
 
+		clusterManager.getBibliotekon().clearPlacedSegments();
 		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
 			final UGraphic ug2 = svekEdge.isHidden() ? ug.apply(UHidden.HIDDEN) : ug;
 			svekEdge.setSharedIds(ids);

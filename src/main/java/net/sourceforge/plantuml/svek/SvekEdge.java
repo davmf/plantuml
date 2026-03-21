@@ -862,7 +862,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				endTurnX = Math.min(endTurnX, endPoint.getX() - minStub)
 						- endEdgeIndex * staggerSpacing;
 			}
-			// Check if the direct H-V-H path would cross any cluster
+				// Check if the direct H-V-H path would cross any cluster
 			boolean needsDetour = false;
 			final double farX = startIsEast
 					? Math.max(startTurnX, endTurnX) : Math.min(startTurnX, endTurnX);
@@ -1022,6 +1022,322 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				addOrthoSegment(beziers, midX, endPoint.getY(), endPoint.getX(), endPoint.getY());
 			}
 		}
+		// Adjust vertical segments to maintain minimum spacing from already-placed segments,
+		// then register all segments for future overlap detection
+		adjustAndRegisterSegments(beziers, startIsEast, offsetX, offsetY,
+				srcCluster, dstCluster);
+	}
+
+	/**
+	 * Post-process the bezier path: find vertical and horizontal segments, check
+	 * them against already-placed parallel segments, shift if too close, and
+	 * register all segments. Respects cluster boundaries and minimum stub length.
+	 */
+	private void adjustAndRegisterSegments(List<XCubicCurve2D> beziers, boolean preferPositive,
+			double offsetX, double offsetY, Cluster srcCluster, Cluster dstCluster) {
+		final double staggerSpacing = 3 * EntityPosition.RADIUS;
+		final double minStub = 3 * 2 * EntityPosition.RADIUS;
+		final double margin = 8;
+		// Adjust vertical segments
+		for (int i = 0; i < beziers.size(); i++) {
+			final XCubicCurve2D seg = beziers.get(i);
+			final double x1 = seg.getX1(), y1 = seg.getY1();
+			final double x2 = seg.getX2(), y2 = seg.getY2();
+			if (Math.abs(x1 - x2) < 0.1 && Math.abs(y1 - y2) > 1) {
+				final double yMin = Math.min(y1, y2);
+				final double yMax = Math.max(y1, y2);
+				double newX = bibliotekon.findNonOverlappingPosition(
+						false, x1, yMin, yMax, staggerSpacing, preferPositive);
+				if (Math.abs(newX - x1) > 0.1
+						&& isShiftAllowed(beziers, i, true, newX, offsetX, offsetY,
+								srcCluster, dstCluster, margin, minStub) == false) {
+					// Try opposite direction
+					newX = bibliotekon.findNonOverlappingPosition(
+							false, x1, yMin, yMax, staggerSpacing, preferPositive == false);
+				}
+				if (Math.abs(newX - x1) > 0.1
+						&& isShiftAllowed(beziers, i, true, newX, offsetX, offsetY,
+								srcCluster, dstCluster, margin, minStub)) {
+					beziers.set(i, new XCubicCurve2D(newX, y1, newX, y1, newX, y2, newX, y2));
+					if (i > 0) {
+						final XCubicCurve2D prev = beziers.get(i - 1);
+						beziers.set(i - 1, new XCubicCurve2D(
+								prev.getX1(), prev.getY1(), prev.getX1(), prev.getY1(),
+								newX, prev.getY2(), newX, prev.getY2()));
+					}
+					if (i + 1 < beziers.size()) {
+						final XCubicCurve2D next = beziers.get(i + 1);
+						beziers.set(i + 1, new XCubicCurve2D(
+								newX, next.getY1(), newX, next.getY1(),
+								next.getX2(), next.getY2(), next.getX2(), next.getY2()));
+					}
+				}
+			}
+		}
+		// Adjust horizontal segments (skip first and last — they connect to ports)
+		for (int i = 1; i < beziers.size() - 1; i++) {
+			final XCubicCurve2D seg = beziers.get(i);
+			final double x1 = seg.getX1(), y1 = seg.getY1();
+			final double x2 = seg.getX2(), y2 = seg.getY2();
+			if (Math.abs(y1 - y2) < 0.1 && Math.abs(x1 - x2) > 1) {
+				final double xMin = Math.min(x1, x2);
+				final double xMax = Math.max(x1, x2);
+				final double newY = bibliotekon.findNonOverlappingPosition(
+						true, y1, xMin, xMax, staggerSpacing, preferPositive);
+				if (Math.abs(newY - y1) > 0.1
+						&& isShiftAllowed(beziers, i, false, newY, offsetX, offsetY,
+								srcCluster, dstCluster, margin, minStub)) {
+					beziers.set(i, new XCubicCurve2D(x1, newY, x1, newY, x2, newY, x2, newY));
+					if (i > 0) {
+						final XCubicCurve2D prev = beziers.get(i - 1);
+						beziers.set(i - 1, new XCubicCurve2D(
+								prev.getX1(), prev.getY1(), prev.getX1(), prev.getY1(),
+								prev.getX2(), newY, prev.getX2(), newY));
+					}
+					if (i + 1 < beziers.size()) {
+						final XCubicCurve2D next = beziers.get(i + 1);
+						beziers.set(i + 1, new XCubicCurve2D(
+								next.getX1(), newY, next.getX1(), newY,
+								next.getX2(), next.getY2(), next.getX2(), next.getY2()));
+					}
+				}
+			}
+		}
+		// Register all segments
+		for (XCubicCurve2D seg : beziers) {
+			final double sx1 = seg.getX1(), sy1 = seg.getY1();
+			final double sx2 = seg.getX2(), sy2 = seg.getY2();
+			if (Math.abs(sy1 - sy2) < 0.1 && Math.abs(sx1 - sx2) > 1)
+				bibliotekon.registerSegment(true, sy1, Math.min(sx1, sx2), Math.max(sx1, sx2));
+			else if (Math.abs(sx1 - sx2) < 0.1 && Math.abs(sy1 - sy2) > 1)
+				bibliotekon.registerSegment(false, sx1, Math.min(sy1, sy2), Math.max(sy1, sy2));
+		}
+	}
+
+	/**
+	 * Check whether shifting segment at index {@code segIndex} to
+	 * {@code newCoord} is allowed: the shifted vertical/horizontal must not
+	 * cross any cluster, and first/last stubs must remain >= minStub.
+	 *
+	 * @param vertical true when shifting a vertical segment (newCoord = new X)
+	 */
+	private boolean isShiftAllowed(List<XCubicCurve2D> beziers, int segIndex,
+			boolean vertical, double newCoord, double offsetX, double offsetY,
+			Cluster srcCluster, Cluster dstCluster, double margin, double minStub) {
+		final XCubicCurve2D seg = beziers.get(segIndex);
+		// 1. Check the shifted segment against all clusters
+		for (Cluster cl : bibliotekon.allCluster()) {
+			if (cl == srcCluster || cl == dstCluster)
+				continue;
+			final RectangleArea rect = cl.getRectangleArea();
+			if (rect == null)
+				continue;
+			final double rMinX = rect.getMinX() - offsetX;
+			final double rMaxX = rect.getMaxX() - offsetX;
+			final double rMinY = rect.getMinY() - offsetY;
+			final double rMaxY = rect.getMaxY() - offsetY;
+			if (vertical) {
+				// Shifted vertical at x=newCoord spanning Y range of seg
+				final double yMin = Math.min(seg.getY1(), seg.getY2());
+				final double yMax = Math.max(seg.getY1(), seg.getY2());
+				if (newCoord > rMinX && newCoord < rMaxX && yMax > rMinY && yMin < rMaxY) {
+					return false;
+				}
+			} else {
+				// Shifted horizontal at y=newCoord spanning X range of seg
+				final double xMin = Math.min(seg.getX1(), seg.getX2());
+				final double xMax = Math.max(seg.getX1(), seg.getX2());
+				if (newCoord > rMinY && newCoord < rMaxY && xMax > rMinX && xMin < rMaxX)
+					return false;
+			}
+		}
+		// 2. Check that adjacent H stubs touching ports remain >= minStub
+		if (vertical) {
+			if (segIndex > 0) {
+				final XCubicCurve2D prev = beziers.get(segIndex - 1);
+				if (segIndex - 1 == 0) {
+					final double stubLen = Math.abs(newCoord - prev.getX1());
+					if (stubLen < minStub) {
+						return false;
+					}
+				}
+			}
+			if (segIndex + 1 < beziers.size()) {
+				final XCubicCurve2D next = beziers.get(segIndex + 1);
+				if (segIndex + 1 == beziers.size() - 1) {
+					final double stubLen = Math.abs(next.getX2() - newCoord);
+					if (stubLen < minStub) {
+						return false;
+					}
+				}
+			}
+		}
+		// 3. Check that the modified H stubs don't cross any cluster
+		if (vertical) {
+			for (Cluster cl : bibliotekon.allCluster()) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final double rMinX = rect.getMinX() - offsetX;
+				final double rMaxX = rect.getMaxX() - offsetX;
+				final double rMinY = rect.getMinY() - offsetY;
+				final double rMaxY = rect.getMaxY() - offsetY;
+				// Check preceding H segment if it exists
+				if (segIndex > 0) {
+					final XCubicCurve2D prev = beziers.get(segIndex - 1);
+					if (cl != srcCluster || segIndex - 1 != 0) {
+						final double hY = prev.getY1();
+						final double hMinX = Math.min(prev.getX1(), newCoord);
+						final double hMaxX = Math.max(prev.getX1(), newCoord);
+						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX) {
+							return false;
+						}
+					}
+				}
+				// Check following H segment if it exists
+				if (segIndex + 1 < beziers.size()) {
+					final XCubicCurve2D next = beziers.get(segIndex + 1);
+					if (cl != dstCluster || segIndex + 2 != beziers.size()) {
+						final double hY = next.getY2();
+						final double hMinX = Math.min(newCoord, next.getX2());
+						final double hMaxX = Math.max(newCoord, next.getX2());
+						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX) {
+							return false;
+						}
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Extract axis-aligned segments from this edge's DotPath for global
+	 * overlap detection. Returns an empty list if dotPath is null.
+	 */
+	List<Bibliotekon.OrthoSegment> extractOrthoSegments() {
+		final List<Bibliotekon.OrthoSegment> result = new ArrayList<>();
+		if (dotPath == null)
+			return result;
+		final List<XCubicCurve2D> beziers = dotPath.getBeziers();
+		for (int i = 0; i < beziers.size(); i++) {
+			final XCubicCurve2D seg = beziers.get(i);
+			final double x1 = seg.getX1(), y1 = seg.getY1();
+			final double x2 = seg.getX2(), y2 = seg.getY2();
+			if (Math.abs(x1 - x2) < 0.1 && Math.abs(y1 - y2) > 1)
+				result.add(new Bibliotekon.OrthoSegment(this, i, false,
+						x1, Math.min(y1, y2), Math.max(y1, y2)));
+			else if (Math.abs(y1 - y2) < 0.1 && Math.abs(x1 - x2) > 1)
+				result.add(new Bibliotekon.OrthoSegment(this, i, true,
+						y1, Math.min(x1, x2), Math.max(x1, x2)));
+		}
+		return result;
+	}
+
+	/**
+	 * Apply coordinate shifts from globally-adjusted OrthoSegments back to
+	 * this edge's DotPath. Skips shifts that would cross clusters or violate
+	 * minimum stub length.
+	 */
+	void applySegmentShifts(List<Bibliotekon.OrthoSegment> shifts) {
+		if (dotPath == null || shifts.isEmpty())
+			return;
+		final double minStub = 3 * 2 * EntityPosition.RADIUS;
+		final List<XCubicCurve2D> beziers = new ArrayList<>(dotPath.getBeziers());
+		boolean changed = false;
+		for (Bibliotekon.OrthoSegment os : shifts) {
+			final int idx = os.bezierIndex;
+			final XCubicCurve2D seg = beziers.get(idx);
+			if (os.horizontal) {
+				final double oldY = seg.getY1();
+				if (Math.abs(os.fixedCoord - oldY) < 0.1)
+					continue;
+				if (wouldCrossCluster(os.fixedCoord, seg.getX1(), seg.getX2(), true))
+					continue;
+				final double newY = os.fixedCoord;
+				beziers.set(idx, new XCubicCurve2D(
+						seg.getX1(), newY, seg.getX1(), newY,
+						seg.getX2(), newY, seg.getX2(), newY));
+				if (idx > 0) {
+					final XCubicCurve2D prev = beziers.get(idx - 1);
+					beziers.set(idx - 1, new XCubicCurve2D(
+							prev.getX1(), prev.getY1(), prev.getX1(), prev.getY1(),
+							prev.getX2(), newY, prev.getX2(), newY));
+				}
+				if (idx + 1 < beziers.size()) {
+					final XCubicCurve2D next = beziers.get(idx + 1);
+					beziers.set(idx + 1, new XCubicCurve2D(
+							next.getX1(), newY, next.getX1(), newY,
+							next.getX2(), next.getY2(), next.getX2(), next.getY2()));
+				}
+				changed = true;
+			} else {
+				final double oldX = seg.getX1();
+				if (Math.abs(os.fixedCoord - oldX) < 0.1)
+					continue;
+				if (wouldCrossCluster(os.fixedCoord, seg.getY1(), seg.getY2(), false))
+					continue;
+				// Check stub lengths
+				if (idx == 1 && idx - 1 == 0) {
+					final double stubLen = Math.abs(os.fixedCoord - beziers.get(0).getX1());
+					if (stubLen < minStub)
+						continue;
+				}
+				if (idx + 1 == beziers.size() - 1) {
+					final double stubLen = Math.abs(beziers.get(beziers.size() - 1).getX2() - os.fixedCoord);
+					if (stubLen < minStub)
+						continue;
+				}
+				final double newX = os.fixedCoord;
+				beziers.set(idx, new XCubicCurve2D(
+						newX, seg.getY1(), newX, seg.getY1(),
+						newX, seg.getY2(), newX, seg.getY2()));
+				if (idx > 0) {
+					final XCubicCurve2D prev = beziers.get(idx - 1);
+					beziers.set(idx - 1, new XCubicCurve2D(
+							prev.getX1(), prev.getY1(), prev.getX1(), prev.getY1(),
+							newX, prev.getY2(), newX, prev.getY2()));
+				}
+				if (idx + 1 < beziers.size()) {
+					final XCubicCurve2D next = beziers.get(idx + 1);
+					beziers.set(idx + 1, new XCubicCurve2D(
+							newX, next.getY1(), newX, next.getY1(),
+							next.getX2(), next.getY2(), next.getX2(), next.getY2()));
+				}
+				changed = true;
+			}
+		}
+		if (changed)
+			replaceDotPath(DotPath.fromBeziers(beziers));
+	}
+
+	/**
+	 * Check whether a shifted segment would cross any cluster.
+	 * @param coord the new fixed coordinate (X for vertical, Y for horizontal)
+	 * @param range1 first endpoint on the varying axis
+	 * @param range2 second endpoint on the varying axis
+	 * @param horizontal true if checking a horizontal segment
+	 */
+	private boolean wouldCrossCluster(double coord, double range1, double range2, boolean horizontal) {
+		final double rngMin = Math.min(range1, range2);
+		final double rngMax = Math.max(range1, range2);
+		for (Cluster cl : bibliotekon.allCluster()) {
+			final RectangleArea rect = cl.getRectangleArea();
+			if (rect == null)
+				continue;
+			final double cMinX = rect.getMinX();
+			final double cMaxX = rect.getMaxX();
+			final double cMinY = rect.getMinY();
+			final double cMaxY = rect.getMaxY();
+			if (horizontal) {
+				if (coord > cMinY && coord < cMaxY && rngMax > cMinX && rngMin < cMaxX)
+					return true;
+			} else {
+				if (coord > cMinX && coord < cMaxX && rngMax > cMinY && rngMin < cMaxY)
+					return true;
+			}
+		}
+		return false;
 	}
 
 	private double clampTurnX(double turnX, XPoint2D point, boolean isEast,

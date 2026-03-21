@@ -38,6 +38,7 @@ package net.sourceforge.plantuml.svek;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,6 +60,119 @@ public class Bibliotekon {
 
 	private final Collection<Link> links;
 	private final ColorSequence colorSequence;
+
+	// Registry of placed ortho segments for overlap detection
+	// Each entry: [isHorizontal(0/1), fixedCoord, rangeMin, rangeMax]
+	private final List<double[]> placedSegments = new ArrayList<>();
+
+	public void registerSegment(boolean horizontal, double fixedCoord, double rangeMin, double rangeMax) {
+		placedSegments.add(new double[] { horizontal ? 1 : 0, fixedCoord, rangeMin, rangeMax });
+	}
+
+	public void clearPlacedSegments() {
+		placedSegments.clear();
+	}
+
+	/**
+	 * Find the best position for a segment that avoids spacing violations.
+	 * Tries pushing in the preferred direction first, then opposite if needed.
+	 * Returns the adjusted coordinate, or the original if no violation.
+	 */
+	public double findNonOverlappingPosition(boolean horizontal, double fixedCoord, double rangeMin, double rangeMax,
+			double minSpacing, boolean preferPositive) {
+		double candidate = fixedCoord;
+		// Try up to 20 iterations to find a clear position
+		for (int iter = 0; iter < 20; iter++) {
+			boolean violation = false;
+			for (double[] seg : placedSegments) {
+				if ((seg[0] > 0.5) != horizontal)
+					continue;
+				final double dist = Math.abs(candidate - seg[1]);
+				if (dist >= minSpacing)
+					continue;
+				final double overlapMin = Math.max(rangeMin, seg[2]);
+				final double overlapMax = Math.min(rangeMax, seg[3]);
+				if (overlapMax <= overlapMin + 1)
+					continue;
+				// Push away from this segment in the preferred direction
+				if (preferPositive)
+					candidate = seg[1] + minSpacing;
+				else
+					candidate = seg[1] - minSpacing;
+				violation = true;
+				break;
+			}
+			if (!violation)
+				return candidate;
+		}
+		return candidate;
+	}
+
+	/**
+	 * A mutable record representing one axis-aligned segment of an ortho edge.
+	 */
+	static class OrthoSegment {
+		final SvekEdge edge;
+		final int bezierIndex;
+		final boolean horizontal;
+		double fixedCoord;
+		double rangeMin;
+		double rangeMax;
+
+		OrthoSegment(SvekEdge edge, int bezierIndex, boolean horizontal,
+				double fixedCoord, double rangeMin, double rangeMax) {
+			this.edge = edge;
+			this.bezierIndex = bezierIndex;
+			this.horizontal = horizontal;
+			this.fixedCoord = fixedCoord;
+			this.rangeMin = rangeMin;
+			this.rangeMax = rangeMax;
+		}
+	}
+
+	/**
+	 * Iteratively push apart parallel segments that are too close and have
+	 * overlapping ranges, using symmetric displacement. Modifies fixedCoord
+	 * in-place on each OrthoSegment.
+	 */
+	public void separateParallelSegments(List<OrthoSegment> allSegments, double minSpacing) {
+		final int maxIterations = 10;
+		for (int iter = 0; iter < maxIterations; iter++) {
+			boolean changed = false;
+			for (int orientation = 0; orientation < 2; orientation++) {
+				final boolean horiz = (orientation == 0);
+				final List<OrthoSegment> group = new ArrayList<>();
+				for (OrthoSegment seg : allSegments)
+					if (seg.horizontal == horiz)
+						group.add(seg);
+
+				Collections.sort(group, new Comparator<OrthoSegment>() {
+					public int compare(OrthoSegment a, OrthoSegment b) {
+						return Double.compare(a.fixedCoord, b.fixedCoord);
+					}
+				});
+				for (int i = 0; i < group.size(); i++) {
+					final OrthoSegment si = group.get(i);
+					for (int j = i + 1; j < group.size(); j++) {
+						final OrthoSegment sj = group.get(j);
+						final double gap = sj.fixedCoord - si.fixedCoord;
+						if (gap >= minSpacing)
+							break;
+						final double overlapMin = Math.max(si.rangeMin, sj.rangeMin);
+						final double overlapMax = Math.min(si.rangeMax, sj.rangeMax);
+						if (overlapMax <= overlapMin + 1)
+							continue;
+						final double delta = (minSpacing - gap) / 2.0;
+						si.fixedCoord -= delta;
+						sj.fixedCoord += delta;
+						changed = true;
+					}
+				}
+			}
+			if (changed == false)
+				break;
+		}
+	}
 
 	public Bibliotekon(Collection<Link> links) {
 		this.links = links;

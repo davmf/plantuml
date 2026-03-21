@@ -41,12 +41,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.dot.Graphviz;
@@ -444,6 +447,10 @@ public final class DotStringFactory implements Moveable {
 		if (skinParam.getDotSplines() == DotSplines.ORTHO)
 			alignEdgesAtLabelNodes();
 
+		// Separate parallel segments that are too close
+		if (skinParam.getDotSplines() == DotSplines.ORTHO)
+			separateParallelSegments();
+
 		for (SvekEdge line : getBibliotekon().allLines())
 			line.manageCollision(getBibliotekon().allNodes());
 
@@ -468,6 +475,43 @@ public final class DotStringFactory implements Moveable {
 		for (SvekNode labelNode : labelNodes) {
 			alignEdgesThroughLabel(labelNode);
 		}
+	}
+
+	/**
+	 * Global multi-pass separation of parallel ortho segments that are closer
+	 * than one port width apart and have overlapping ranges.
+	 */
+	private void separateParallelSegments() {
+		final double minSpacing = 2 * EntityPosition.RADIUS;
+		final List<Bibliotekon.OrthoSegment> allSegments = new ArrayList<>();
+		for (SvekEdge edge : getBibliotekon().allLines())
+			allSegments.addAll(edge.extractOrthoSegments());
+
+		if (allSegments.isEmpty())
+			return;
+
+		// Record original fixedCoord values to detect which segments moved
+		final double[] originals = new double[allSegments.size()];
+		for (int i = 0; i < allSegments.size(); i++)
+			originals[i] = allSegments.get(i).fixedCoord;
+
+		getBibliotekon().separateParallelSegments(allSegments, minSpacing);
+
+		// Group shifted segments by edge and apply
+		final Map<SvekEdge, List<Bibliotekon.OrthoSegment>> byEdge = new LinkedHashMap<>();
+		for (int i = 0; i < allSegments.size(); i++) {
+			final Bibliotekon.OrthoSegment os = allSegments.get(i);
+			if (Math.abs(os.fixedCoord - originals[i]) > 0.1) {
+				List<Bibliotekon.OrthoSegment> list = byEdge.get(os.edge);
+				if (list == null) {
+					list = new ArrayList<>();
+					byEdge.put(os.edge, list);
+				}
+				list.add(os);
+			}
+		}
+		for (Map.Entry<SvekEdge, List<Bibliotekon.OrthoSegment>> entry : byEdge.entrySet())
+			entry.getKey().applySegmentShifts(entry.getValue());
 	}
 
 	/**
