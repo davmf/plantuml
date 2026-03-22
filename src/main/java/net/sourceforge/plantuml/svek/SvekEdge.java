@@ -831,7 +831,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			SvekNode node1, SvekNode node2,
 			boolean startIsEast, boolean endIsEast,
 			double offsetX, double offsetY) {
-		final double margin = 8;
+		final double margin = 4 * EntityPosition.RADIUS;
 		final double minStub = 3 * 2 * EntityPosition.RADIUS;
 		final double staggerSpacing = 3 * EntityPosition.RADIUS;
 		Cluster srcCluster = null;
@@ -1041,7 +1041,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			double offsetX, double offsetY, Cluster srcCluster, Cluster dstCluster) {
 		final double staggerSpacing = 3 * EntityPosition.RADIUS;
 		final double minStub = 3 * 2 * EntityPosition.RADIUS;
-		final double margin = 8;
+		final double margin = 4 * EntityPosition.RADIUS;
 		// Adjust vertical segments
 		for (int i = 0; i < beziers.size(); i++) {
 			final XCubicCurve2D seg = beziers.get(i);
