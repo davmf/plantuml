@@ -1196,6 +1196,13 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		if (isShiftAllowed(beziers, vIdx, true, newTurnX, offsetX, offsetY,
 				srcCluster, dstCluster, margin, minStub) == false)
 			return;
+		// Check the new V position doesn't overlap with registered vertical segments
+		final double vYMin = Math.min(vSeg.getY1(), vSeg.getY2());
+		final double vYMax = Math.max(vSeg.getY1(), vSeg.getY2());
+		final double adjusted = bibliotekon.findNonOverlappingPosition(
+				false, newTurnX, vYMin, vYMax, minSpacing, true);
+		if (Math.abs(adjusted - newTurnX) > 0.1)
+			return;
 		// Apply the shift to the V segment and adjacent H segments
 		beziers.set(vIdx, new XCubicCurve2D(
 				newTurnX, vSeg.getY1(), newTurnX, vSeg.getY1(),
@@ -1348,18 +1355,16 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				final XCubicCurve2D prev = beziers.get(segIndex - 1);
 				if (segIndex - 1 == 0) {
 					final double stubLen = Math.abs(newCoord - prev.getX1());
-					if (stubLen < minStub) {
+					if (stubLen < minStub)
 						return false;
-					}
 				}
 			}
 			if (segIndex + 1 < beziers.size()) {
 				final XCubicCurve2D next = beziers.get(segIndex + 1);
 				if (segIndex + 1 == beziers.size() - 1) {
 					final double stubLen = Math.abs(next.getX2() - newCoord);
-					if (stubLen < minStub) {
+					if (stubLen < minStub)
 						return false;
-					}
 				}
 			}
 		}
@@ -1380,9 +1385,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 						final double hY = prev.getY1();
 						final double hMinX = Math.min(prev.getX1(), newCoord);
 						final double hMaxX = Math.max(prev.getX1(), newCoord);
-						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX) {
+						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX)
 							return false;
-						}
 					}
 				}
 				// Check following H segment if it exists
@@ -1392,9 +1396,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 						final double hY = next.getY2();
 						final double hMinX = Math.min(newCoord, next.getX2());
 						final double hMaxX = Math.max(newCoord, next.getX2());
-						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX) {
+						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX)
 							return false;
-						}
 					}
 				}
 			}
