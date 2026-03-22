@@ -894,6 +894,16 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 						break;
 					}
 				}
+				// Check vertical segment (farX, from startY to endY) against non-src, non-dst
+				if (cl != srcCluster && cl != dstCluster) {
+					final double vMinY = Math.min(startPoint.getY(), endPoint.getY());
+					final double vMaxY = Math.max(startPoint.getY(), endPoint.getY());
+					if (farX >= rMinX && farX <= rMaxX
+							&& vMaxY >= rMinY && vMinY <= rMaxY) {
+						needsDetour = true;
+						break;
+					}
+				}
 			}
 			if (needsDetour) {
 				// 5-segment path: H-V-H-V-H
@@ -1042,6 +1052,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		final double staggerSpacing = 3 * EntityPosition.RADIUS;
 		final double minStub = 3 * 2 * EntityPosition.RADIUS;
 		final double margin = 4 * EntityPosition.RADIUS;
+		// Push segments away from non-src/dst cluster edges to maintain margin
+		enforceClusterMargin(beziers, offsetX, offsetY, srcCluster, dstCluster, margin, minStub);
 		// Adjust vertical segments
 		for (int i = 0; i < beziers.size(); i++) {
 			final XCubicCurve2D seg = beziers.get(i);
@@ -1146,6 +1158,68 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				bibliotekon.registerSegment(true, sy1, Math.min(sx1, sx2), Math.max(sx1, sx2));
 			else if (Math.abs(sx1 - sx2) < 0.1 && Math.abs(sy1 - sy2) > 1)
 				bibliotekon.registerSegment(false, sx1, Math.min(sy1, sy2), Math.max(sy1, sy2));
+		}
+	}
+
+	/**
+	 * Push vertical segments away from non-src/dst cluster edges to maintain
+	 * the required margin clearance. For each V segment that is too close to a
+	 * cluster's left or right edge, shift it outward if the shift is allowed.
+	 */
+	private void enforceClusterMargin(List<XCubicCurve2D> beziers,
+			double offsetX, double offsetY,
+			Cluster srcCluster, Cluster dstCluster, double margin, double minStub) {
+		for (int i = 0; i < beziers.size(); i++) {
+			final XCubicCurve2D seg = beziers.get(i);
+			final double x1 = seg.getX1(), y1 = seg.getY1();
+			final double x2 = seg.getX2(), y2 = seg.getY2();
+			if (Math.abs(x1 - x2) > 0.5 || Math.abs(y1 - y2) < 1)
+				continue; // not vertical
+			final double yMin = Math.min(y1, y2);
+			final double yMax = Math.max(y1, y2);
+			double newX = x1;
+			for (Cluster cl : bibliotekon.allCluster()) {
+				if (cl == srcCluster || cl == dstCluster)
+					continue;
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final double rMinX = rect.getMinX() - offsetX;
+				final double rMaxX = rect.getMaxX() - offsetX;
+				final double rMinY = rect.getMinY() - offsetY;
+				final double rMaxY = rect.getMaxY() - offsetY;
+				if (yMax <= rMinY || yMin >= rMaxY)
+					continue; // no Y overlap
+				// Check if V segment is inside or too close to cluster edges
+				if (newX >= rMinX && newX <= rMaxX) {
+					// Inside cluster — push to nearest edge + margin
+					if (newX - rMinX < rMaxX - newX)
+						newX = rMinX - margin;
+					else
+						newX = rMaxX + margin;
+				} else if (newX > rMinX - margin && newX < rMinX) {
+					newX = rMinX - margin;
+				} else if (newX > rMaxX && newX < rMaxX + margin) {
+					newX = rMaxX + margin;
+				}
+			}
+			if (Math.abs(newX - x1) > 0.1
+					&& isShiftAllowed(beziers, i, true, newX, offsetX, offsetY,
+							srcCluster, dstCluster, margin, minStub)) {
+				beziers.set(i, new XCubicCurve2D(newX, y1, newX, y1, newX, y2, newX, y2));
+				if (i > 0) {
+					final XCubicCurve2D prev = beziers.get(i - 1);
+					beziers.set(i - 1, new XCubicCurve2D(
+							prev.getX1(), prev.getY1(), prev.getX1(), prev.getY1(),
+							newX, prev.getY2(), newX, prev.getY2()));
+				}
+				if (i + 1 < beziers.size()) {
+					final XCubicCurve2D next = beziers.get(i + 1);
+					beziers.set(i + 1, new XCubicCurve2D(
+							newX, next.getY1(), newX, next.getY1(),
+							next.getX2(), next.getY2(), next.getX2(), next.getY2()));
+				}
+			}
 		}
 	}
 
@@ -1338,14 +1412,14 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				// Shifted vertical at x=newCoord spanning Y range of seg
 				final double yMin = Math.min(seg.getY1(), seg.getY2());
 				final double yMax = Math.max(seg.getY1(), seg.getY2());
-				if (newCoord > rMinX && newCoord < rMaxX && yMax > rMinY && yMin < rMaxY) {
+				if (newCoord > rMinX - margin && newCoord < rMaxX + margin && yMax > rMinY && yMin < rMaxY) {
 					return false;
 				}
 			} else {
 				// Shifted horizontal at y=newCoord spanning X range of seg
 				final double xMin = Math.min(seg.getX1(), seg.getX2());
 				final double xMax = Math.max(seg.getX1(), seg.getX2());
-				if (newCoord > rMinY && newCoord < rMaxY && xMax > rMinX && xMin < rMaxX)
+				if (newCoord > rMinY - margin && newCoord < rMaxY + margin && xMax > rMinX && xMin < rMaxX)
 					return false;
 			}
 		}
@@ -1385,7 +1459,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 						final double hY = prev.getY1();
 						final double hMinX = Math.min(prev.getX1(), newCoord);
 						final double hMaxX = Math.max(prev.getX1(), newCoord);
-						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX)
+						if (hY > rMinY - margin && hY < rMaxY + margin && hMaxX > rMinX && hMinX < rMaxX)
 							return false;
 					}
 				}
@@ -1396,7 +1470,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 						final double hY = next.getY2();
 						final double hMinX = Math.min(newCoord, next.getX2());
 						final double hMaxX = Math.max(newCoord, next.getX2());
-						if (hY > rMinY && hY < rMaxY && hMaxX > rMinX && hMinX < rMaxX)
+						if (hY > rMinY - margin && hY < rMaxY + margin && hMaxX > rMinX && hMinX < rMaxX)
 							return false;
 					}
 				}
