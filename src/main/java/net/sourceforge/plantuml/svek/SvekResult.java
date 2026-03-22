@@ -120,11 +120,13 @@ public final class SvekResult implements IEntityImage {
 			}
 		}
 
-		for (Map.Entry<Harness, List<SvekEdge>> entry : harnessMap.entrySet()) {
-			final SvekHarness svekHarness = new SvekHarness(entry.getKey(), entry.getValue(),
-					dotData.getSkinParam(), clusterManager.getBibliotekon());
+		final List<SvekHarness> svekHarnesses = new ArrayList<SvekHarness>();
+		for (Map.Entry<Harness, List<SvekEdge>> entry : harnessMap.entrySet())
+			svekHarnesses.add(new SvekHarness(entry.getKey(), entry.getValue(),
+					dotData.getSkinParam(), clusterManager.getBibliotekon()));
+		SvekHarness.resolveOverlaps(svekHarnesses);
+		for (SvekHarness svekHarness : svekHarnesses)
 			svekHarness.drawU(ug);
-		}
 	}
 
 	private void computeKal() {

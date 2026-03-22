@@ -20,6 +20,7 @@ import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.ULine;
+import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
@@ -31,11 +32,18 @@ public class SvekHarness implements UDrawable {
 	private static final double TRUNK_STROKE_WIDTH = 3.0;
 	private static final double FAN_GAP = 20.0;
 	private static final double LABEL_GAP = 3.0;
+	private static final double PORT_RADIUS = 6.0;
+	private static final int ARROW_WING = 9;
+	private static final int ARROW_APERTURE = 4;
+	private static final int ARROW_CONTACT = 5;
+
+	private static final double PORT_WIDTH = 2 * PORT_RADIUS;
 
 	private final Harness harness;
 	private final List<SvekEdge> memberEdges;
 	private final ISkinParam skinParam;
 	private final Bibliotekon bibliotekon;
+	private double spineXOffset;
 
 	public SvekHarness(Harness harness, List<SvekEdge> memberEdges, ISkinParam skinParam,
 			Bibliotekon bibliotekon) {
@@ -43,6 +51,51 @@ public class SvekHarness implements UDrawable {
 		this.memberEdges = memberEdges;
 		this.skinParam = skinParam;
 		this.bibliotekon = bibliotekon;
+	}
+
+	public static void resolveOverlaps(List<SvekHarness> harnesses) {
+		final List<double[]> spines = new ArrayList<double[]>();
+		for (SvekHarness h : harnesses)
+			spines.add(h.computeNaturalSpineX());
+
+		for (int i = 0; i < harnesses.size(); i++) {
+			final double xi = spines.get(i)[0];
+			if (Double.isNaN(xi))
+				continue;
+			for (int j = i + 1; j < harnesses.size(); j++) {
+				final double xj = spines.get(j)[0];
+				if (Double.isNaN(xj))
+					continue;
+				if (Math.abs(xi + harnesses.get(i).spineXOffset
+						- (xj + harnesses.get(j).spineXOffset)) < PORT_WIDTH)
+					harnesses.get(j).spineXOffset =
+							xi + harnesses.get(i).spineXOffset + PORT_WIDTH - xj;
+			}
+		}
+	}
+
+	private double[] computeNaturalSpineX() {
+		final List<EdgeData> edges = buildEdgeData();
+		if (edges.isEmpty())
+			return new double[]{Double.NaN};
+		final double srcX = medianX(startPointsOf(edges));
+		final double dstX = medianX(endPointsOf(edges));
+		return new double[]{(srcX + dstX) / 2};
+	}
+
+	private List<EdgeData> buildEdgeData() {
+		final List<EdgeData> edges = new ArrayList<EdgeData>();
+		for (SvekEdge edge : memberEdges) {
+			final DotPath path = edge.getDotPath();
+			if (path == null)
+				continue;
+			final XPoint2D startPt = resolveEntityCenter(edge.getLink().getEntity1(),
+					path.getStartPoint());
+			final XPoint2D endPt = resolveEntityCenter(edge.getLink().getEntity2(),
+					path.getEndPoint());
+			edges.add(new EdgeData(startPt, endPt, edge.getLink().getLabel()));
+		}
+		return edges;
 	}
 
 	private static final class EdgeData {
@@ -66,18 +119,7 @@ public class SvekHarness implements UDrawable {
 		if (memberEdges.isEmpty())
 			return;
 
-		final List<EdgeData> edges = new ArrayList<EdgeData>();
-		for (SvekEdge edge : memberEdges) {
-			final DotPath path = edge.getDotPath();
-			if (path == null)
-				continue;
-			final XPoint2D startPt = resolveEntityCenter(edge.getLink().getEntity1(),
-					path.getStartPoint());
-			final XPoint2D endPt = resolveEntityCenter(edge.getLink().getEntity2(),
-					path.getEndPoint());
-			edges.add(new EdgeData(startPt, endPt, edge.getLink().getLabel()));
-		}
-
+		final List<EdgeData> edges = buildEdgeData();
 		if (edges.isEmpty())
 			return;
 
@@ -169,7 +211,9 @@ public class SvekHarness implements UDrawable {
 
 		// Source fan: converge to srcFanX, then horizontal trunk to spine
 		for (EdgeData e : edges) {
-			drawLine(ugFan, e.start.getX(), e.start.getY(), srcFanX, e.start.getY());
+			final double srcDir = Math.signum(srcFanX - e.start.getX());
+			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
+			drawLine(ugFan, srcEdge, e.start.getY(), srcFanX, e.start.getY());
 			drawLine(ugFan, srcFanX, e.start.getY(), srcFanX, srcTrunkY);
 		}
 
@@ -183,8 +227,12 @@ public class SvekHarness implements UDrawable {
 		for (EdgeData e : edges) {
 			final double endX = e.end.getX();
 			final double endY = e.end.getY();
-			if (Math.abs(endX - spineX) > 0.5 || Math.abs(endY - spineTopY) > 0.5)
-				drawLine(ugFan, spineX, endY, endX, endY);
+			if (Math.abs(endX - spineX) > 0.5 || Math.abs(endY - spineTopY) > 0.5) {
+				final double dir = Math.signum(endX - spineX);
+				final double tipX = endX - dir * PORT_RADIUS;
+				drawLine(ugFan, spineX, endY, tipX, endY);
+				drawHArrow(ugFan, tipX, endY, dir);
+			}
 			if (e.hasLabel())
 				drawStubLabel(ugLine, fontConfig, e.label, spineX,
 						endY, endX, endY, true);
@@ -196,10 +244,10 @@ public class SvekHarness implements UDrawable {
 	private void drawVerticalFlow(UGraphic ugLine, List<EdgeData> edges,
 			boolean topToBottom, Style style) {
 
-		// Spine X: midway between source and nearest destination X
+		// Spine X: midway between source and nearest destination X, plus offset
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
-		final double spineX = (srcX + dstX) / 2;
+		final double spineX = (srcX + dstX) / 2 + spineXOffset;
 
 		// Spine vertical extent: from topmost to bottommost destination port
 		double spineTopY = edges.get(0).end.getY();
@@ -218,22 +266,27 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Source stub: horizontal from source port to spine
-		for (EdgeData e : edges)
-			drawLine(ugFan, e.start.getX(), e.start.getY(), spineX, e.start.getY());
+		// Source stub: horizontal from source port edge to spine
+		for (EdgeData e : edges) {
+			final double srcDir = Math.signum(spineX - e.start.getX());
+			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
+			drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
+		}
 
 		// Vertical spine
 		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
 
-		// Horizontal stub connecting source to spine
-		drawLine(ugFan, srcX, srcY, spineX, srcY);
-
 		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {
-			drawLine(ugFan, spineX, e.end.getY(), e.end.getX(), e.end.getY());
+			final double endX = e.end.getX();
+			final double endY = e.end.getY();
+			final double dir = Math.signum(endX - spineX);
+			final double tipX = endX - dir * PORT_RADIUS;
+			drawLine(ugFan, spineX, endY, tipX, endY);
+			drawHArrow(ugFan, tipX, endY, dir);
 			if (e.hasLabel())
 				drawStubLabel(ugLine, fontConfig, e.label, spineX,
-						e.end.getY(), e.end.getX(), e.end.getY(), true);
+						endY, tipX, endY, true);
 		}
 
 		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
@@ -284,6 +337,19 @@ public class SvekHarness implements UDrawable {
 		if (Math.abs(lineDx) < 0.5 && Math.abs(lineDy) < 0.5)
 			return;
 		ug.apply(new UTranslate(x1, y1)).draw(new ULine(lineDx, lineDy));
+	}
+
+	private void drawHArrow(UGraphic ug, double tipX, double tipY, double dir) {
+		final HColor color = ug.getParam().getColor();
+		if (color != null)
+			ug = ug.apply(color.bg());
+		final UPolygon polygon = new UPolygon();
+		polygon.addPoint(0, 0);
+		polygon.addPoint(-dir * ARROW_WING, -ARROW_APERTURE);
+		polygon.addPoint(-dir * ARROW_CONTACT, 0);
+		polygon.addPoint(-dir * ARROW_WING, ARROW_APERTURE);
+		polygon.addPoint(0, 0);
+		ug.apply(new UTranslate(tipX, tipY)).draw(polygon);
 	}
 
 	private void drawLabelOnTrunk(UGraphic ug, double srcX, double srcY,
