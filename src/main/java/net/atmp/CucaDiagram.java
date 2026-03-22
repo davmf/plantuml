@@ -344,7 +344,7 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 	}
 
 	final public CommandExecutionResult gotoHarness(String label) {
-		final Harness harness = new Harness(label);
+		final Harness harness = new Harness(label, currentHarness);
 		this.currentHarness = harness;
 		this.stacks.add(harness);
 		return CommandExecutionResult.ok();
@@ -377,7 +377,7 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		if (stacks.size() > 0) {
 			final Bag removed = stacks.remove(stacks.size() - 1);
 			if (removed instanceof Harness)
-				this.currentHarness = null;
+				this.currentHarness = ((Harness) removed).getParent();
 			return true;
 		}
 		return false;
@@ -977,8 +977,11 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 			return;
 
 		if (currentHarness != null) {
-			link.setHarness(currentHarness);
-			currentHarness.addLink(link);
+			final Harness root = currentHarness.getRoot();
+			link.setHarness(root);
+			root.addLink(link);
+			if (currentHarness.isNested())
+				link.setSourceLabel(currentHarness.getLabel());
 		}
 		this.links.add(link);
 	}

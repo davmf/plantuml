@@ -7,14 +7,35 @@ import java.util.List;
 public class Harness implements Bag {
 
 	private final String label;
+	private final Harness parent;
 	private final List<Link> links = new ArrayList<Link>();
 
 	public Harness(String label) {
+		this(label, null);
+	}
+
+	public Harness(String label, Harness parent) {
 		this.label = label;
+		this.parent = parent;
 	}
 
 	public String getLabel() {
 		return label;
+	}
+
+	public Harness getParent() {
+		return parent;
+	}
+
+	public Harness getRoot() {
+		Harness h = this;
+		while (h.parent != null)
+			h = h.parent;
+		return h;
+	}
+
+	public boolean isNested() {
+		return parent != null;
 	}
 
 	public void addLink(Link link) {

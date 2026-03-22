@@ -96,7 +96,8 @@ public class SvekHarness implements UDrawable {
 					path.getStartPoint());
 			final XPoint2D endPt = resolveEntityCenter(edge.getLink().getEntity2(),
 					path.getEndPoint());
-			edges.add(new EdgeData(startPt, endPt, edge.getLink().getLabel()));
+			edges.add(new EdgeData(startPt, endPt, edge.getLink().getLabel(),
+					edge.getLink().getSourceLabel()));
 		}
 		return edges;
 	}
@@ -105,15 +106,21 @@ public class SvekHarness implements UDrawable {
 		final XPoint2D start;
 		final XPoint2D end;
 		final Display label;
+		final String sourceLabel;
 
-		EdgeData(XPoint2D start, XPoint2D end, Display label) {
+		EdgeData(XPoint2D start, XPoint2D end, Display label, String sourceLabel) {
 			this.start = start;
 			this.end = end;
 			this.label = label;
+			this.sourceLabel = sourceLabel;
 		}
 
 		boolean hasLabel() {
 			return Display.isNull(label) == false;
+		}
+
+		boolean hasSourceLabel() {
+			return sourceLabel != null && sourceLabel.isEmpty() == false;
 		}
 	}
 
@@ -191,10 +198,15 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
 		// Source stubs: single horizontal segment from source port edge to spine
+		final java.util.Set<Long> labeledSourceY = new java.util.HashSet<Long>();
 		for (EdgeData e : edges) {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
+			if (e.hasSourceLabel() && labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
+				drawStubLabel(ugLine, fontConfig,
+						Display.getWithNewlines(skinParam.getPragma(), e.sourceLabel),
+						spineX, e.start.getY(), e.start.getX(), true);
 		}
 
 		// Vertical spine
@@ -209,8 +221,8 @@ public class SvekHarness implements UDrawable {
 			drawLine(ugFan, spineX, endY, tipX, endY);
 			drawHArrow(ugFan, tipX, endY, dir);
 			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label, spineX,
-						endY, endX, endY, true);
+				drawStubLabel(ugLine, fontConfig, e.label,
+						spineX, endY, endX, false);
 		}
 
 		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
@@ -245,10 +257,15 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
 		// Source stub: horizontal from source port edge to spine
+		final java.util.Set<Long> labeledSourceY = new java.util.HashSet<Long>();
 		for (EdgeData e : edges) {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
+			if (e.hasSourceLabel() && labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
+				drawStubLabel(ugLine, fontConfig,
+						Display.getWithNewlines(skinParam.getPragma(), e.sourceLabel),
+						spineX, e.start.getY(), e.start.getX(), true);
 		}
 
 		// Vertical spine
@@ -263,16 +280,16 @@ public class SvekHarness implements UDrawable {
 			drawLine(ugFan, spineX, endY, tipX, endY);
 			drawHArrow(ugFan, tipX, endY, dir);
 			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label, spineX,
-						endY, tipX, endY, true);
+				drawStubLabel(ugLine, fontConfig, e.label,
+						spineX, endY, endX, false);
 		}
 
 		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
 	}
 
 	private void drawStubLabel(UGraphic ug, FontConfiguration fontConfig,
-			Display label, double x1, double y1, double x2, double y2,
-			boolean horizontal) {
+			Display label, double spineX, double stubY, double portX,
+			boolean rightJustify) {
 		final FontConfiguration smallFont = fontConfig.changeSize(
 				(float) (fontConfig.getFont().getSize2D() * LABEL_SCALE));
 		final TextBlock textBlock = label.create(smallFont,
@@ -280,17 +297,13 @@ public class SvekHarness implements UDrawable {
 		final StringBounder stringBounder = ug.getStringBounder();
 		final XDimension2D textDim = textBlock.calculateDimension(stringBounder);
 
-		if (horizontal) {
-			// Place label above the stub, adjacent to the spine (x1)
-			final double labelX = x1 + LABEL_GAP;
-			final double labelY = y1 - textDim.getHeight() - LABEL_GAP;
-			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
-		} else {
-			// Place label beside the spine end of the stub
-			final double labelX = Math.min(x1, x2) - textDim.getWidth() - LABEL_GAP;
-			final double labelY = y1 - textDim.getHeight() - LABEL_GAP;
-			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
-		}
+		final double labelX;
+		if (rightJustify)
+			labelX = spineX - textDim.getWidth() - 5;
+		else
+			labelX = spineX + 5;
+		final double labelY = stubY - textDim.getHeight() - 3;
+		textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 	}
 
 	private void drawOrthoTrunk(UGraphic ug, double x1, double y1,
