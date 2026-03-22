@@ -225,8 +225,8 @@ public class SvekHarness implements UDrawable {
 		// Vertical spine
 		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
 
-		// Horizontal trunk connecting source to spine (if source Y not on spine)
-		drawLine(ugTrunk, srcX, srcY, spineX, srcY);
+		// Horizontal stub connecting source to spine
+		drawLine(ugFan, srcX, srcY, spineX, srcY);
 
 		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {
