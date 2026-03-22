@@ -3,6 +3,7 @@ package net.sourceforge.plantuml.svek;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -34,11 +35,14 @@ public class SvekHarness implements UDrawable {
 	private final Harness harness;
 	private final List<SvekEdge> memberEdges;
 	private final ISkinParam skinParam;
+	private final Bibliotekon bibliotekon;
 
-	public SvekHarness(Harness harness, List<SvekEdge> memberEdges, ISkinParam skinParam) {
+	public SvekHarness(Harness harness, List<SvekEdge> memberEdges, ISkinParam skinParam,
+			Bibliotekon bibliotekon) {
 		this.harness = harness;
 		this.memberEdges = memberEdges;
 		this.skinParam = skinParam;
+		this.bibliotekon = bibliotekon;
 	}
 
 	private static final class EdgeData {
@@ -67,10 +71,11 @@ public class SvekHarness implements UDrawable {
 			final DotPath path = edge.getDotPath();
 			if (path == null)
 				continue;
-			edges.add(new EdgeData(
-					path.getStartPoint(),
-					path.getEndPoint(),
-					edge.getLink().getLabel()));
+			final XPoint2D startPt = resolveEntityCenter(edge.getLink().getEntity1(),
+					path.getStartPoint());
+			final XPoint2D endPt = resolveEntityCenter(edge.getLink().getEntity2(),
+					path.getEndPoint());
+			edges.add(new EdgeData(startPt, endPt, edge.getLink().getLabel()));
 		}
 
 		if (edges.isEmpty())
@@ -136,155 +141,102 @@ public class SvekHarness implements UDrawable {
 		final double gapSize = (gapEnd - gapStart) * sign;
 
 		final double srcFanX;
-		final double dstFanX;
+		final double spineX;
 		if (gapSize > FAN_GAP * 4) {
 			srcFanX = gapStart + sign * gapSize / 3;
-			dstFanX = gapStart + sign * gapSize * 2 / 3;
+			spineX = gapStart + sign * gapSize * 2 / 3;
 		} else if (gapSize > FAN_GAP * 2) {
 			srcFanX = gapStart + sign * FAN_GAP;
-			dstFanX = gapEnd - sign * FAN_GAP;
+			spineX = gapEnd - sign * FAN_GAP;
 		} else {
 			final double mid = (gapStart + gapEnd) / 2;
 			srcFanX = mid - sign * 2;
-			dstFanX = mid + sign * 2;
+			spineX = mid + sign * 2;
 		}
 
-		final double farThreshold = dstNearX + sign * FAN_GAP * 3;
-		final List<EdgeData> nearEdges = new ArrayList<EdgeData>();
-		final List<EdgeData> farEdges = new ArrayList<EdgeData>();
+		// Compute spine vertical extent: covers all source and destination ports
+		final double srcTrunkY = medianY(startPointsOf(edges));
+		double spineTopY = srcTrunkY;
+		double spineBottomY = srcTrunkY;
 		for (EdgeData e : edges) {
-			final boolean isFar = leftToRight
-					? e.end.getX() > farThreshold
-					: e.end.getX() < farThreshold;
-			if (isFar)
-				farEdges.add(e);
-			else
-				nearEdges.add(e);
+			spineTopY = Math.min(spineTopY, e.end.getY());
+			spineBottomY = Math.max(spineBottomY, e.end.getY());
 		}
-
-		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
-		final List<XPoint2D> nearEndPoints = new ArrayList<XPoint2D>();
-		for (EdgeData e : edges)
-			startPoints.add(e.start);
-		for (EdgeData e : nearEdges)
-			nearEndPoints.add(e.end);
-
-		final double srcTrunkY = medianY(startPoints);
-		final double dstTrunkY = nearEndPoints.isEmpty()
-				? medianY(endPointsOf(edges)) : medianY(nearEndPoints);
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Source fan
+		// Source fan: converge to srcFanX, then horizontal trunk to spine
 		for (EdgeData e : edges) {
 			drawLine(ugFan, e.start.getX(), e.start.getY(), srcFanX, e.start.getY());
 			drawLine(ugFan, srcFanX, e.start.getY(), srcFanX, srcTrunkY);
 		}
 
-		// Trunk
-		drawOrthoTrunk(ugTrunk, srcFanX, srcTrunkY, dstFanX, dstTrunkY);
+		// Horizontal trunk from source fan to spine
+		drawLine(ugTrunk, srcFanX, srcTrunkY, spineX, srcTrunkY);
 
-		// Near-side dest fan
-		for (EdgeData e : nearEdges) {
-			drawLine(ugFan, dstFanX, dstTrunkY, dstFanX, e.end.getY());
-			drawLine(ugFan, dstFanX, e.end.getY(), e.end.getX(), e.end.getY());
+		// Vertical spine spanning all destination ports
+		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
+
+		// Destination stubs: horizontal from spine to each destination port
+		for (EdgeData e : edges) {
+			final double endX = e.end.getX();
+			final double endY = e.end.getY();
+			if (Math.abs(endX - spineX) > 0.5 || Math.abs(endY - spineTopY) > 0.5)
+				drawLine(ugFan, spineX, endY, endX, endY);
 			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label, dstFanX,
-						e.end.getY(), e.end.getX(), e.end.getY(), true);
+				drawStubLabel(ugLine, fontConfig, e.label, spineX,
+						endY, endX, endY, true);
 		}
 
-		// Far-side dest fan
-		if (farEdges.isEmpty() == false) {
-			double nearTopY = Double.MAX_VALUE;
-			double nearBottomY = -Double.MAX_VALUE;
-			for (EdgeData e : nearEdges) {
-				nearTopY = Math.min(nearTopY, e.end.getY());
-				nearBottomY = Math.max(nearBottomY, e.end.getY());
-			}
-			final double portSpread = nearBottomY - nearTopY;
-			final double estimatedPadding = Math.max(portSpread * 0.5, FAN_GAP * 2);
-			final double jogY = nearBottomY + estimatedPadding;
-
-			for (EdgeData e : farEdges) {
-				drawLine(ugFan, dstFanX, dstTrunkY, dstFanX, jogY);
-				drawLine(ugFan, dstFanX, jogY, e.end.getX(), jogY);
-				drawLine(ugFan, e.end.getX(), jogY, e.end.getX(), e.end.getY());
-				if (e.hasLabel())
-					drawStubLabel(ugLine, fontConfig, e.label, e.end.getX(),
-							jogY, e.end.getX(), e.end.getY(), false);
-			}
-		}
-
-		drawLabelOnTrunk(ugLine, srcFanX, srcTrunkY, dstFanX, dstTrunkY, true, style);
+		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
 	}
 
 	private void drawVerticalFlow(UGraphic ugLine, List<EdgeData> edges,
 			boolean topToBottom, Style style) {
-		final double sign = topToBottom ? 1.0 : -1.0;
 
-		double srcEdgeY = edges.get(0).start.getY();
-		for (EdgeData e : edges)
-			srcEdgeY = topToBottom ? Math.max(srcEdgeY, e.start.getY())
-					: Math.min(srcEdgeY, e.start.getY());
+		// Spine X: midway between source and nearest destination X
+		final double srcX = medianX(startPointsOf(edges));
+		final double dstX = medianX(endPointsOf(edges));
+		final double spineX = (srcX + dstX) / 2;
 
-		double dstNearY = edges.get(0).end.getY();
-		for (EdgeData e : edges)
-			dstNearY = topToBottom ? Math.min(dstNearY, e.end.getY())
-					: Math.max(dstNearY, e.end.getY());
-
-		final double gapStart = srcEdgeY;
-		final double gapEnd = dstNearY;
-		final double gapSize = (gapEnd - gapStart) * sign;
-
-		final double srcFanY;
-		final double dstFanY;
-		if (gapSize > FAN_GAP * 4) {
-			srcFanY = gapStart + sign * gapSize / 3;
-			dstFanY = gapStart + sign * gapSize * 2 / 3;
-		} else if (gapSize > FAN_GAP * 2) {
-			srcFanY = gapStart + sign * FAN_GAP;
-			dstFanY = gapEnd - sign * FAN_GAP;
-		} else {
-			final double mid = (gapStart + gapEnd) / 2;
-			srcFanY = mid - sign * 2;
-			dstFanY = mid + sign * 2;
-		}
-
-		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
-		final List<XPoint2D> endPoints = new ArrayList<XPoint2D>();
+		// Spine vertical extent: from topmost to bottommost destination port
+		double spineTopY = edges.get(0).end.getY();
+		double spineBottomY = spineTopY;
 		for (EdgeData e : edges) {
-			startPoints.add(e.start);
-			endPoints.add(e.end);
+			spineTopY = Math.min(spineTopY, e.end.getY());
+			spineBottomY = Math.max(spineBottomY, e.end.getY());
 		}
 
-		final double srcTrunkX = medianX(startPoints);
-		final double dstTrunkX = medianX(endPoints);
+		// Extend spine to include source attachment point
+		final double srcY = medianY(startPointsOf(edges));
+		spineTopY = Math.min(spineTopY, srcY);
+		spineBottomY = Math.max(spineBottomY, srcY);
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Source fan
-		for (EdgeData e : edges) {
-			drawLine(ugFan, e.start.getX(), e.start.getY(), e.start.getX(), srcFanY);
-			drawLine(ugFan, e.start.getX(), srcFanY, srcTrunkX, srcFanY);
-		}
+		// Source stub: horizontal from source port to spine
+		for (EdgeData e : edges)
+			drawLine(ugFan, e.start.getX(), e.start.getY(), spineX, e.start.getY());
 
-		// Trunk
-		drawOrthoTrunk(ugTrunk, srcTrunkX, srcFanY, dstTrunkX, dstFanY);
+		// Vertical spine
+		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
 
-		// Dest fan
+		// Horizontal trunk connecting source to spine (if source Y not on spine)
+		drawLine(ugTrunk, srcX, srcY, spineX, srcY);
+
+		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {
-			drawLine(ugFan, dstTrunkX, dstFanY, e.end.getX(), dstFanY);
-			drawLine(ugFan, e.end.getX(), dstFanY, e.end.getX(), e.end.getY());
+			drawLine(ugFan, spineX, e.end.getY(), e.end.getX(), e.end.getY());
 			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label, e.end.getX(),
-						dstFanY, e.end.getX(), e.end.getY(), false);
+				drawStubLabel(ugLine, fontConfig, e.label, spineX,
+						e.end.getY(), e.end.getX(), e.end.getY(), true);
 		}
 
-		drawLabelOnTrunk(ugLine, srcTrunkX, srcFanY, dstTrunkX, dstFanY, false, style);
+		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
 	}
 
 	private void drawStubLabel(UGraphic ug, FontConfiguration fontConfig,
@@ -359,6 +311,24 @@ public class SvekHarness implements UDrawable {
 			final double labelY = midY - textDim.getHeight() / 2;
 			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 		}
+	}
+
+	private XPoint2D resolveEntityCenter(Entity entity, XPoint2D fallback) {
+		if (bibliotekon == null)
+			return fallback;
+		final SvekNode node = bibliotekon.getNode(entity);
+		if (node == null)
+			return fallback;
+		final double cx = node.getMinX() + node.getSize().getWidth() / 2;
+		final double cy = node.getMinY() + node.getSize().getHeight() / 2;
+		return new XPoint2D(cx, cy);
+	}
+
+	private static List<XPoint2D> startPointsOf(List<EdgeData> edges) {
+		final List<XPoint2D> result = new ArrayList<XPoint2D>();
+		for (EdgeData e : edges)
+			result.add(e.start);
+		return result;
 	}
 
 	private static List<XPoint2D> endPointsOf(List<EdgeData> edges) {

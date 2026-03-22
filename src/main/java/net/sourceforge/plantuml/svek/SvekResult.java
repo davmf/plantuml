@@ -122,7 +122,7 @@ public final class SvekResult implements IEntityImage {
 
 		for (Map.Entry<Harness, List<SvekEdge>> entry : harnessMap.entrySet()) {
 			final SvekHarness svekHarness = new SvekHarness(entry.getKey(), entry.getValue(),
-					dotData.getSkinParam());
+					dotData.getSkinParam(), clusterManager.getBibliotekon());
 			svekHarness.drawU(ug);
 		}
 	}
