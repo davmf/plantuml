@@ -38,6 +38,8 @@ public class SvekHarness implements UDrawable {
 	private static final int ARROW_CONTACT = 5;
 
 	private static final double PORT_WIDTH = 2 * PORT_RADIUS;
+	private static final double MIN_STUB_LENGTH = 5 * PORT_WIDTH;
+	private static final double LABEL_SCALE = 0.8;
 
 	private final Harness harness;
 	private final List<SvekEdge> memberEdges;
@@ -80,7 +82,8 @@ public class SvekHarness implements UDrawable {
 			return new double[]{Double.NaN};
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
-		return new double[]{(srcX + dstX) / 2};
+		final double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges);
+		return new double[]{spineX};
 	}
 
 	private List<EdgeData> buildEdgeData() {
@@ -166,73 +169,45 @@ public class SvekHarness implements UDrawable {
 
 	private void drawHorizontalFlow(UGraphic ugLine, List<EdgeData> edges,
 			boolean leftToRight, Style style) {
-		final double sign = leftToRight ? 1.0 : -1.0;
 
-		double srcEdgeX = edges.get(0).start.getX();
-		for (EdgeData e : edges)
-			srcEdgeX = leftToRight ? Math.max(srcEdgeX, e.start.getX())
-					: Math.min(srcEdgeX, e.start.getX());
+		// Spine X: midway between source and nearest destination X,
+		// clamped so every destination stub is at least MIN_STUB_LENGTH long,
+		// then offset for overlap resolution.
+		final double srcX = medianX(startPointsOf(edges));
+		final double dstX = medianX(endPointsOf(edges));
+		double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges)
+				+ spineXOffset;
 
-		double dstNearX = edges.get(0).end.getX();
-		for (EdgeData e : edges)
-			dstNearX = leftToRight ? Math.min(dstNearX, e.end.getX())
-					: Math.max(dstNearX, e.end.getX());
-
-		final double gapStart = srcEdgeX;
-		final double gapEnd = dstNearX;
-		final double gapSize = (gapEnd - gapStart) * sign;
-
-		final double srcFanX;
-		final double spineX;
-		if (gapSize > FAN_GAP * 4) {
-			srcFanX = gapStart + sign * gapSize / 3;
-			spineX = gapStart + sign * gapSize * 2 / 3;
-		} else if (gapSize > FAN_GAP * 2) {
-			srcFanX = gapStart + sign * FAN_GAP;
-			spineX = gapEnd - sign * FAN_GAP;
-		} else {
-			final double mid = (gapStart + gapEnd) / 2;
-			srcFanX = mid - sign * 2;
-			spineX = mid + sign * 2;
-		}
-
-		// Compute spine vertical extent: covers all source and destination ports
-		final double srcTrunkY = medianY(startPointsOf(edges));
-		double spineTopY = srcTrunkY;
-		double spineBottomY = srcTrunkY;
+		// Spine vertical extent: covers all source and destination ports
+		double spineTopY = edges.get(0).start.getY();
+		double spineBottomY = spineTopY;
 		for (EdgeData e : edges) {
-			spineTopY = Math.min(spineTopY, e.end.getY());
-			spineBottomY = Math.max(spineBottomY, e.end.getY());
+			spineTopY = Math.min(spineTopY, Math.min(e.start.getY(), e.end.getY()));
+			spineBottomY = Math.max(spineBottomY, Math.max(e.start.getY(), e.end.getY()));
 		}
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Source fan: converge to srcFanX, then horizontal trunk to spine
+		// Source stubs: single horizontal segment from source port edge to spine
 		for (EdgeData e : edges) {
-			final double srcDir = Math.signum(srcFanX - e.start.getX());
+			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
-			drawLine(ugFan, srcEdge, e.start.getY(), srcFanX, e.start.getY());
-			drawLine(ugFan, srcFanX, e.start.getY(), srcFanX, srcTrunkY);
+			drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
 		}
 
-		// Horizontal trunk from source fan to spine
-		drawLine(ugTrunk, srcFanX, srcTrunkY, spineX, srcTrunkY);
-
-		// Vertical spine spanning all destination ports
+		// Vertical spine
 		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
 
 		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {
 			final double endX = e.end.getX();
 			final double endY = e.end.getY();
-			if (Math.abs(endX - spineX) > 0.5 || Math.abs(endY - spineTopY) > 0.5) {
-				final double dir = Math.signum(endX - spineX);
-				final double tipX = endX - dir * PORT_RADIUS;
-				drawLine(ugFan, spineX, endY, tipX, endY);
-				drawHArrow(ugFan, tipX, endY, dir);
-			}
+			final double dir = Math.signum(endX - spineX);
+			final double tipX = endX - dir * PORT_RADIUS;
+			drawLine(ugFan, spineX, endY, tipX, endY);
+			drawHArrow(ugFan, tipX, endY, dir);
 			if (e.hasLabel())
 				drawStubLabel(ugLine, fontConfig, e.label, spineX,
 						endY, endX, endY, true);
@@ -244,10 +219,13 @@ public class SvekHarness implements UDrawable {
 	private void drawVerticalFlow(UGraphic ugLine, List<EdgeData> edges,
 			boolean topToBottom, Style style) {
 
-		// Spine X: midway between source and nearest destination X, plus offset
+		// Spine X: midway between source and nearest destination X,
+		// clamped so every destination stub is at least MIN_STUB_LENGTH long,
+		// then offset for overlap resolution.
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
-		final double spineX = (srcX + dstX) / 2 + spineXOffset;
+		double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges)
+				+ spineXOffset;
 
 		// Spine vertical extent: from topmost to bottommost destination port
 		double spineTopY = edges.get(0).end.getY();
@@ -295,23 +273,22 @@ public class SvekHarness implements UDrawable {
 	private void drawStubLabel(UGraphic ug, FontConfiguration fontConfig,
 			Display label, double x1, double y1, double x2, double y2,
 			boolean horizontal) {
-		final TextBlock textBlock = label.create(fontConfig,
+		final FontConfiguration smallFont = fontConfig.changeSize(
+				(float) (fontConfig.getFont().getSize2D() * LABEL_SCALE));
+		final TextBlock textBlock = label.create(smallFont,
 				HorizontalAlignment.LEFT, skinParam);
 		final StringBounder stringBounder = ug.getStringBounder();
 		final XDimension2D textDim = textBlock.calculateDimension(stringBounder);
 
 		if (horizontal) {
-			// Place label on the horizontal stub, centered on both axes
-			// of the segment so it sits directly on the line.
-			final double midX = (x1 + x2) / 2;
-			final double labelX = midX - textDim.getWidth() / 2;
-			final double labelY = y1 - textDim.getHeight() / 2;
+			// Place label above the stub, adjacent to the spine (x1)
+			final double labelX = x1 + LABEL_GAP;
+			final double labelY = y1 - textDim.getHeight() - LABEL_GAP;
 			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 		} else {
-			// Place label beside the vertical stub, centered on the segment
-			final double midY = (y1 + y2) / 2;
+			// Place label beside the spine end of the stub
 			final double labelX = Math.min(x1, x2) - textDim.getWidth() - LABEL_GAP;
-			final double labelY = midY - textDim.getHeight() / 2;
+			final double labelY = y1 - textDim.getHeight() - LABEL_GAP;
 			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 		}
 	}
@@ -337,6 +314,26 @@ public class SvekHarness implements UDrawable {
 		if (Math.abs(lineDx) < 0.5 && Math.abs(lineDy) < 0.5)
 			return;
 		ug.apply(new UTranslate(x1, y1)).draw(new ULine(lineDx, lineDy));
+	}
+
+	private static double clampSpineForMinStub(double spineX, List<EdgeData> edges) {
+		// Find the nearest destination on each side and ensure the visible stub
+		// (spine to arrow tip at port edge) is at least MIN_STUB_LENGTH long.
+		final double minGap = MIN_STUB_LENGTH + PORT_RADIUS;
+		double nearestRight = Double.MAX_VALUE;
+		double nearestLeft = -Double.MAX_VALUE;
+		for (EdgeData e : edges) {
+			final double ex = e.end.getX();
+			if (ex >= spineX)
+				nearestRight = Math.min(nearestRight, ex);
+			else
+				nearestLeft = Math.max(nearestLeft, ex);
+		}
+		if (nearestRight < Double.MAX_VALUE && nearestRight - spineX < minGap)
+			spineX = nearestRight - minGap;
+		if (nearestLeft > -Double.MAX_VALUE && spineX - nearestLeft < minGap)
+			spineX = nearestLeft + minGap;
+		return spineX;
 	}
 
 	private void drawHArrow(UGraphic ug, double tipX, double tipY, double dir) {
