@@ -62,22 +62,6 @@ public class SvekHarness implements UDrawable {
 		for (SvekHarness h : harnesses)
 			spines.add(h.computeNaturalSpineX());
 
-		// Separate harness spines from each other
-		for (int i = 0; i < harnesses.size(); i++) {
-			final double xi = spines.get(i)[0];
-			if (Double.isNaN(xi))
-				continue;
-			for (int j = i + 1; j < harnesses.size(); j++) {
-				final double xj = spines.get(j)[0];
-				if (Double.isNaN(xj))
-					continue;
-				if (Math.abs(xi + harnesses.get(i).spineXOffset
-						- (xj + harnesses.get(j).spineXOffset)) < PORT_WIDTH)
-					harnesses.get(j).spineXOffset =
-							xi + harnesses.get(i).spineXOffset + PORT_WIDTH - xj;
-			}
-		}
-
 		// Collect vertical segment X positions from non-harness connectors
 		if (harnesses.isEmpty())
 			return;
@@ -112,7 +96,7 @@ public class SvekHarness implements UDrawable {
 			if (Double.isNaN(spine[0]))
 				continue;
 			final SvekHarness h = harnesses.get(i);
-			final double naturalX = spine[0] + h.spineXOffset;
+			final double naturalX = spine[0];
 			final double topY = spine[1];
 			final double bottomY = spine[2];
 
@@ -125,7 +109,7 @@ public class SvekHarness implements UDrawable {
 				if (overlapMax > overlapMin + 1)
 					conflictXs.add(seg[0]);
 			}
-				if (conflictXs.isEmpty())
+			if (conflictXs.isEmpty())
 				continue;
 
 			// Check if natural position is already clear
@@ -179,6 +163,22 @@ public class SvekHarness implements UDrawable {
 						+ "px) from adjacent connectors. "
 						+ "Consider increasing ranksep to provide more space.");
 			h.spineXOffset = bestX - spine[0];
+		}
+
+		// Separate harness spines from each other (after non-harness separation)
+		for (int i = 0; i < harnesses.size(); i++) {
+			final double xi = spines.get(i)[0];
+			if (Double.isNaN(xi))
+				continue;
+			for (int j = i + 1; j < harnesses.size(); j++) {
+				final double xj = spines.get(j)[0];
+				if (Double.isNaN(xj))
+					continue;
+				if (Math.abs(xi + harnesses.get(i).spineXOffset
+						- (xj + harnesses.get(j).spineXOffset)) < PORT_WIDTH)
+					harnesses.get(j).spineXOffset =
+							xi + harnesses.get(i).spineXOffset + PORT_WIDTH - xj;
+			}
 		}
 	}
 
