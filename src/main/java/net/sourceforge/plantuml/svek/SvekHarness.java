@@ -15,6 +15,7 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
@@ -26,6 +27,7 @@ import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.utils.Log;
 
 public class SvekHarness implements UDrawable {
 
@@ -60,6 +62,7 @@ public class SvekHarness implements UDrawable {
 		for (SvekHarness h : harnesses)
 			spines.add(h.computeNaturalSpineX());
 
+		// Separate harness spines from each other
 		for (int i = 0; i < harnesses.size(); i++) {
 			final double xi = spines.get(i)[0];
 			if (Double.isNaN(xi))
@@ -74,16 +77,125 @@ public class SvekHarness implements UDrawable {
 							xi + harnesses.get(i).spineXOffset + PORT_WIDTH - xj;
 			}
 		}
+
+		// Collect vertical segment X positions from non-harness connectors
+		if (harnesses.isEmpty())
+			return;
+		final Bibliotekon bib = harnesses.get(0).bibliotekon;
+		if (bib == null)
+			return;
+		final java.util.Set<SvekEdge> harnessEdges = new java.util.HashSet<SvekEdge>();
+		for (SvekHarness h : harnesses)
+			harnessEdges.addAll(h.memberEdges);
+
+		final List<double[]> nonHarnessVerts = new ArrayList<double[]>();
+		for (SvekEdge edge : bib.allLines()) {
+			if (harnessEdges.contains(edge))
+				continue;
+			if (edge.isHidden())
+				continue;
+			final DotPath path = edge.getRenderedPath();
+			if (path == null)
+				continue;
+			for (XCubicCurve2D seg : path.getBeziers()) {
+				final double sx1 = seg.getX1(), sy1 = seg.getY1();
+				final double sx2 = seg.getX2(), sy2 = seg.getY2();
+				if (Math.abs(sx1 - sx2) < 0.5 && Math.abs(sy1 - sy2) > 1)
+					nonHarnessVerts.add(new double[]{sx1,
+							Math.min(sy1, sy2), Math.max(sy1, sy2)});
+			}
+		}
+
+		// Separate harness spines from non-harness vertical segments
+		for (int i = 0; i < harnesses.size(); i++) {
+			final double[] spine = spines.get(i);
+			if (Double.isNaN(spine[0]))
+				continue;
+			final SvekHarness h = harnesses.get(i);
+			final double naturalX = spine[0] + h.spineXOffset;
+			final double topY = spine[1];
+			final double bottomY = spine[2];
+
+			// Collect X positions of conflicting vertical segments
+			// (those whose Y range overlaps the harness spine)
+			final List<Double> conflictXs = new ArrayList<Double>();
+			for (double[] seg : nonHarnessVerts) {
+				final double overlapMin = Math.max(topY, seg[1]);
+				final double overlapMax = Math.min(bottomY, seg[2]);
+				if (overlapMax > overlapMin + 1)
+					conflictXs.add(seg[0]);
+			}
+				if (conflictXs.isEmpty())
+				continue;
+
+			// Check if natural position is already clear
+			boolean clear = true;
+			for (double cx : conflictXs)
+				if (Math.abs(naturalX - cx) < PORT_WIDTH)
+					clear = false;
+			if (clear)
+				continue;
+
+			// Sort conflict positions and find the nearest gap that fits
+			java.util.Collections.sort(conflictXs);
+			double bestX = naturalX;
+			double bestDist = Double.MAX_VALUE;
+
+			// Try below the lowest conflict
+			final double belowCandidate = conflictXs.get(0) - PORT_WIDTH;
+			if (Math.abs(belowCandidate - naturalX) < bestDist) {
+				bestX = belowCandidate;
+				bestDist = Math.abs(belowCandidate - naturalX);
+			}
+			// Try above the highest conflict
+			final double aboveCandidate = conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH;
+			if (Math.abs(aboveCandidate - naturalX) < bestDist) {
+				bestX = aboveCandidate;
+				bestDist = Math.abs(aboveCandidate - naturalX);
+			}
+			// Try gaps between adjacent conflicts
+			for (int g = 0; g < conflictXs.size() - 1; g++) {
+				final double gapCenter = (conflictXs.get(g) + conflictXs.get(g + 1)) / 2;
+				final double gapWidth = conflictXs.get(g + 1) - conflictXs.get(g);
+				if (gapWidth >= PORT_WIDTH * 2
+						&& Math.abs(gapCenter - naturalX) < bestDist) {
+					bestX = gapCenter;
+					bestDist = Math.abs(gapCenter - naturalX);
+				}
+			}
+			// Check if the best position still violates minimum clearance
+			boolean stillConflicting = false;
+			for (double cx : conflictXs) {
+				if (Math.abs(bestX - cx) < PORT_WIDTH) {
+					stillConflicting = true;
+					break;
+				}
+			}
+			if (stillConflicting)
+				Log.error("Harness '"
+						+ h.harness.getLabel()
+						+ "' spine cannot achieve minimum clearance ("
+						+ PORT_WIDTH
+						+ "px) from adjacent connectors. "
+						+ "Consider increasing ranksep to provide more space.");
+			h.spineXOffset = bestX - spine[0];
+		}
 	}
 
 	private double[] computeNaturalSpineX() {
 		final List<EdgeData> edges = buildEdgeData();
 		if (edges.isEmpty())
-			return new double[]{Double.NaN};
+			return new double[]{Double.NaN, 0, 0};
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
 		final double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges);
-		return new double[]{spineX};
+		double topY = edges.get(0).start.getY();
+		double bottomY = topY;
+		for (EdgeData e : edges) {
+			topY = Math.min(topY, Math.min(e.start.getY(), e.end.getY()));
+			bottomY = Math.max(bottomY, Math.max(e.start.getY(), e.end.getY()));
+		}
+		return new double[]{spineX, topY, bottomY};
 	}
 
 	private List<EdgeData> buildEdgeData() {

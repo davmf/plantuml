@@ -146,6 +146,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	private DotPath dotPath;
 	private DotPath dotPathInit;
+	private DotPath renderedPath;
 
 	private Positionable startTailLabelXY;
 	private Positionable endHeadLabelXY;
@@ -2001,6 +2002,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 		todraw.setCommentAndCodeLine(uniq(ids, link.idCommentForSvg()), link.getCodeLine());
 
+		this.renderedPath = todraw.copy();
+		this.renderedPath.moveDelta(x, y);
+
 		drawRainbow(ug.apply(new UTranslate(x, y)), color, arrowHeadColor, todraw, link.getSupplementaryColors(),
 				stroke, magneticForce1.compose(insidePortShift1), magneticForce2.compose(insidePortShift2));
 
@@ -2305,6 +2309,10 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		final DotPath result = dotPath.copy();
 		result.moveDelta(dx, dy);
 		return result;
+	}
+
+	public DotPath getRenderedPath() {
+		return renderedPath;
 	}
 
 	public int getLength() {
