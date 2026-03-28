@@ -179,7 +179,7 @@ public class CommandLinkElement extends SingleLineCommand2<DescriptionDiagram> {
 
 	private static RegexLeaf getGroup(String name) {
 		return new RegexLeaf(1, name, "(" + //
-				"[%pLN_.]+" + //
+				"[%pLN_.]+(?:::[%pLN_.]+)*" + //
 				"|" + //
 				"[%g][^%g]+[%g]" + //
 				"|" + //
@@ -219,6 +219,12 @@ public class CommandLinkElement extends SingleLineCommand2<DescriptionDiagram> {
 			cl1 = diagram.getGroup(ent1clean);
 			cl2 = diagram.getGroup(ent2clean);
 		} else {
+			final String err1 = validateQualifiedName(diagram, ent1);
+			if (err1 != null)
+				return CommandExecutionResult.error(err1);
+			final String err2 = validateQualifiedName(diagram, ent2);
+			if (err2 != null)
+				return CommandExecutionResult.error(err2);
 			cl1 = getDummy(location, diagram, ent1);
 			cl2 = getDummy(location, diagram, ent2);
 		}
@@ -248,6 +254,12 @@ public class CommandLinkElement extends SingleLineCommand2<DescriptionDiagram> {
 //	}
 
 	private Entity getDummy(LineLocation location, DescriptionDiagram diagram, String ident) {
+		if (ident.contains("::")) {
+			final Entity resolved = resolveQualifiedName(diagram, ident);
+			if (resolved != null)
+				return resolved;
+		}
+
 		if (ident.startsWith("()")) {
 			ident = diagram.cleanId(ident);
 			final Quark<Entity> quark = diagram.quarkInContext(true, ident);
@@ -289,6 +301,46 @@ public class CommandLinkElement extends SingleLineCommand2<DescriptionDiagram> {
 		}
 
 		return diagram.reallyCreateLeaf(location, quark, display, LeafType.STILL_UNKNOWN, null);
+	}
+
+	private String validateQualifiedName(DescriptionDiagram diagram, String ident) {
+		if (ident.contains("::") == false)
+			return null;
+		final String[] parts = ident.split("::");
+		Quark<Entity> current = null;
+		for (int i = 0; i < parts.length; i++) {
+			final String cleanPart = diagram.cleanId(parts[i]);
+			if (i == 0) {
+				current = diagram.quarkInContext(true, cleanPart);
+				if (current == null || current.getData() == null)
+					return "'" + cleanPart + "' not found";
+			} else {
+				final Quark<Entity> child = current.childIfExists(cleanPart);
+				if (child == null || child.getData() == null)
+					return "'" + cleanPart + "' not found in '" + parts[i - 1] + "'";
+				current = child;
+			}
+		}
+		return null;
+	}
+
+	private Entity resolveQualifiedName(DescriptionDiagram diagram, String qualifiedName) {
+		final String[] parts = qualifiedName.split("::");
+		Quark<Entity> current = null;
+		for (String part : parts) {
+			final String cleanPart = diagram.cleanId(part);
+			if (current == null) {
+				current = diagram.quarkInContext(true, cleanPart);
+			} else {
+				final Quark<Entity> child = current.childIfExists(cleanPart);
+				if (child == null)
+					return null;
+				current = child;
+			}
+			if (current == null)
+				return null;
+		}
+		return current == null ? null : current.getData();
 	}
 
 }

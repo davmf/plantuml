@@ -63,6 +63,7 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockEmpty;
 import net.sourceforge.plantuml.plasma.Quark;
@@ -132,6 +133,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	private Neighborhood neighborhood;
 	private Colors colors = Colors.empty();
 	private final Map<String, Display> tips = new LinkedHashMap<String, Display>();
+	private Side connectorSide;
 
 	//
 	public void addNote(Display note, Position position, Colors colors) {
@@ -331,6 +333,9 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		if (leafType == LeafType.PORTOUT)
 			return EntityPosition.PORTOUT;
 
+		if (leafType == LeafType.PIN)
+			return EntityPosition.PORTIN;
+
 		if (leafType != LeafType.STATE)
 			return EntityPosition.NORMAL;
 
@@ -362,6 +367,14 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	public GroupType getGroupType() {
 		checkGroup();
 		return groupType;
+	}
+
+	public Side getConnectorSide() {
+		return connectorSide;
+	}
+
+	public void setConnectorSide(Side connectorSide) {
+		this.connectorSide = connectorSide;
 	}
 
 	public PackageStyle getPackageStyle() {

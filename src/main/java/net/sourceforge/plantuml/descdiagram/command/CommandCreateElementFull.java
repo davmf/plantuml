@@ -40,6 +40,7 @@ import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.classdiagram.command.CommandCreateClassMultilines;
@@ -72,7 +73,7 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiagram> {
 
-	public static final String ALL_TYPES = "person|artifact|actor/|actor|folder|card|file|package|rectangle|hexagon|label|node|frame|cloud|action|process|database|queue|stack|storage|agent|usecase/|usecase|component|boundary|control|entity|interface|circle|collections|port|portin|portout";
+	public static final String ALL_TYPES = "person|artifact|actor/|actor|folder|card|file|package|rectangle|hexagon|label|node|frame|cloud|action|process|database|queue|stack|storage|agent|usecase/|usecase|component|boundary|control|entity|interface|circle|collections|port|portin|portout|pin";
 
 	public CommandCreateElementFull() {
 		super(getRegexConcat());
@@ -193,6 +194,9 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 		} else if (symbol.equalsIgnoreCase("port")) {
 			type = LeafType.PORTIN;
 			usymbol = null;
+		} else if (symbol.equalsIgnoreCase("pin")) {
+			type = LeafType.PIN;
+			usymbol = null;
 		} else if (symbol.equalsIgnoreCase("usecase")) {
 			type = LeafType.USECASE;
 			usymbol = null;
@@ -226,6 +230,12 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 
 		if ((type == LeafType.PORTIN || type == LeafType.PORTOUT) && diagram.getCurrentGroup().isRoot())
 			return CommandExecutionResult.error("Port can only be used inside an element and not at root level");
+
+		if (type == LeafType.PIN) {
+			final Entity currentGroup = diagram.getCurrentGroup();
+			if (currentGroup.isRoot() || currentGroup.getGroupType() != GroupType.CONNECTOR)
+				return CommandExecutionResult.error("Pin can only be used inside a connector");
+		}
 
 		Entity entity = quark.getData();
 		if (entity == null)

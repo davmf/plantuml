@@ -44,6 +44,7 @@ import java.util.List;
 
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
+import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UGroup;
@@ -92,6 +93,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	public static boolean hasInsideLabel(Entity entity) {
+		if (entity.getLeafType() == LeafType.PIN)
+			return true;
 		final Stereotype stereotype = entity.getStereotype();
 		if (stereotype == null)
 			return false;
@@ -103,6 +106,15 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	private Side getPortSide() {
+		if (getEntity().getLeafType() == LeafType.PIN) {
+			final Entity parentEntity = (Entity) getEntity().getParentContainer();
+			final Side connectorSide = parentEntity.getConnectorSide();
+			if (connectorSide == Side.EAST || connectorSide == Side.WEST)
+				return Side.WEST;
+			if (connectorSide == Side.NORTH)
+				return Side.SOUTH;
+			return Side.NORTH;
+		}
 		if (isLabelInside()) {
 			if (entityPosition.isInput())
 				return Side.WEST;
@@ -114,6 +126,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	private double getEdgeAdjustX() {
+		if (getEntity().getLeafType() == LeafType.PIN)
+			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final Side side = getPortSide();
 		final double symbolSize = 2 * EntityPosition.RADIUS;
@@ -128,6 +142,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	private double getEvenSpacingAdjustY() {
+		if (getEntity().getLeafType() == LeafType.PIN)
+			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final EnumSet<EntityPosition> positions = entityPosition.isInput()
 				? EntityPosition.getInputs() : EntityPosition.getOutputs();
