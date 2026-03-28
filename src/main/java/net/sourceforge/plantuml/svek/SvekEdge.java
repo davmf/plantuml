@@ -1875,6 +1875,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		if (link.isPartOfHarness())
 			return;
 
+		if (link.isIntraBoardPortConnection())
+			return;
+
 		if (dotPath == null) {
 			Log.info(() -> "DotPath is null for " + this);
 			return;

@@ -120,6 +120,15 @@ public final class SvekResult implements IEntityImage {
 			}
 		}
 
+		final List<SvekPortConnector> portConnectors = new ArrayList<SvekPortConnector>();
+		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
+			if (svekEdge.isHidden() || svekEdge.getLink().isInvis())
+				continue;
+			if (svekEdge.getLink().isIntraBoardPortConnection())
+				portConnectors.add(new SvekPortConnector(svekEdge,
+						dotData.getSkinParam(), clusterManager.getBibliotekon()));
+		}
+
 		final List<SvekHarness> svekHarnesses = new ArrayList<SvekHarness>();
 		for (Map.Entry<Harness, List<SvekEdge>> entry : harnessMap.entrySet())
 			svekHarnesses.add(new SvekHarness(entry.getKey(), entry.getValue(),
@@ -127,6 +136,9 @@ public final class SvekResult implements IEntityImage {
 		SvekHarness.resolveOverlaps(svekHarnesses);
 		for (SvekHarness svekHarness : svekHarnesses)
 			svekHarness.drawU(ug);
+
+		for (SvekPortConnector pc : portConnectors)
+			pc.drawU(ug);
 	}
 
 	private void computeKal() {
