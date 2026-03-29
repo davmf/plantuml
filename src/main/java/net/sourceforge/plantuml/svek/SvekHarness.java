@@ -49,6 +49,7 @@ public class SvekHarness implements UDrawable {
 	private final ISkinParam skinParam;
 	private final Bibliotekon bibliotekon;
 	private double spineXOffset;
+	private RectangleArea renderedSpine;
 
 	public SvekHarness(Harness harness, List<SvekEdge> memberEdges, ISkinParam skinParam,
 			Bibliotekon bibliotekon) {
@@ -56,6 +57,10 @@ public class SvekHarness implements UDrawable {
 		this.memberEdges = memberEdges;
 		this.skinParam = skinParam;
 		this.bibliotekon = bibliotekon;
+	}
+
+	public RectangleArea getRenderedSpine() {
+		return renderedSpine;
 	}
 
 	public static void resolveOverlaps(List<SvekHarness> harnesses) {
@@ -308,8 +313,8 @@ public class SvekHarness implements UDrawable {
 
 		// Avoid routing spine through component clusters
 		final List<RectangleArea> obstacles = collectObstacles();
-		spineX = SvekPortConnector.avoidObstacles(spineX, spineTopY, spineBottomY,
-				obstacles, srcX, dstX);
+		spineX = SvekPortConnector.findClearVerticalBidirectional(spineX,
+				spineTopY, spineBottomY, obstacles);
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
@@ -329,6 +334,8 @@ public class SvekHarness implements UDrawable {
 
 		// Vertical spine
 		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
+		renderedSpine = new RectangleArea(spineX - TRUNK_STROKE_WIDTH,
+				spineTopY, spineX + TRUNK_STROKE_WIDTH, spineBottomY);
 
 		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {
@@ -372,8 +379,8 @@ public class SvekHarness implements UDrawable {
 
 		// Avoid routing spine through component clusters
 		final List<RectangleArea> obstacles = collectObstacles();
-		spineX = SvekPortConnector.avoidObstacles(spineX, spineTopY, spineBottomY,
-				obstacles, srcX, dstX);
+		spineX = SvekPortConnector.findClearVerticalBidirectional(spineX,
+				spineTopY, spineBottomY, obstacles);
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
@@ -393,6 +400,8 @@ public class SvekHarness implements UDrawable {
 
 		// Vertical spine
 		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
+		renderedSpine = new RectangleArea(spineX - TRUNK_STROKE_WIDTH,
+				spineTopY, spineX + TRUNK_STROKE_WIDTH, spineBottomY);
 
 		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {

@@ -137,6 +137,16 @@ public final class SvekResult implements IEntityImage {
 		for (SvekHarness svekHarness : svekHarnesses)
 			svekHarness.drawU(ug);
 
+		// Collect harness spines as obstacles for port connector routing
+		final List<RectangleArea> harnessSpines = new ArrayList<RectangleArea>();
+		for (SvekHarness svekHarness : svekHarnesses) {
+			final RectangleArea spine = svekHarness.getRenderedSpine();
+			if (spine != null)
+				harnessSpines.add(spine);
+		}
+
+		// Pre-compute all connector paths, then draw
+		SvekPortConnector.resolveAllPaths(portConnectors, harnessSpines);
 		for (SvekPortConnector pc : portConnectors)
 			pc.drawU(ug);
 	}
