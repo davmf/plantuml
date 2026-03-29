@@ -14,6 +14,7 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
@@ -305,6 +306,11 @@ public class SvekHarness implements UDrawable {
 			spineBottomY = Math.max(spineBottomY, Math.max(e.start.getY(), e.end.getY()));
 		}
 
+		// Avoid routing spine through component clusters
+		final List<RectangleArea> obstacles = collectObstacles();
+		spineX = SvekPortConnector.avoidObstacles(spineX, spineTopY, spineBottomY,
+				obstacles, srcX, dstX);
+
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
@@ -363,6 +369,11 @@ public class SvekHarness implements UDrawable {
 		final double srcY = medianY(startPointsOf(edges));
 		spineTopY = Math.min(spineTopY, srcY);
 		spineBottomY = Math.max(spineBottomY, srcY);
+
+		// Avoid routing spine through component clusters
+		final List<RectangleArea> obstacles = collectObstacles();
+		spineX = SvekPortConnector.avoidObstacles(spineX, spineTopY, spineBottomY,
+				obstacles, srcX, dstX);
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
@@ -546,6 +557,37 @@ public class SvekHarness implements UDrawable {
 
 	private static XPoint2D median(List<XPoint2D> points) {
 		return new XPoint2D(medianX(points), medianY(points));
+	}
+
+	private List<RectangleArea> collectObstacles() {
+		final List<RectangleArea> obstacles = new ArrayList<RectangleArea>();
+		if (bibliotekon == null)
+			return obstacles;
+
+		Entity boardEntity = null;
+		final java.util.Set<Entity> endpointComponents = new java.util.HashSet<Entity>();
+		for (SvekEdge edge : memberEdges) {
+			final Entity p1 = edge.getLink().getEntity1().getParentContainer();
+			final Entity p2 = edge.getLink().getEntity2().getParentContainer();
+			if (p1 != null)
+				endpointComponents.add(p1);
+			if (p2 != null)
+				endpointComponents.add(p2);
+			if (boardEntity == null && p1 != null && p1.getParentContainer() != null)
+				boardEntity = p1.getParentContainer();
+		}
+
+		for (Cluster cl : bibliotekon.allCluster()) {
+			final RectangleArea rect = cl.getRectangleArea();
+			if (rect == null)
+				continue;
+			if (cl.getGroup() == boardEntity)
+				continue;
+			if (endpointComponents.contains(cl.getGroup()))
+				continue;
+			obstacles.add(rect);
+		}
+		return obstacles;
 	}
 
 }
