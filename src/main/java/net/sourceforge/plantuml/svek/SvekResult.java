@@ -145,8 +145,27 @@ public final class SvekResult implements IEntityImage {
 				harnessSpines.add(spine);
 		}
 
+		// Find board cluster bounds for boundary enforcement
+		RectangleArea boardBounds = null;
+		if (portConnectors.isEmpty() == false) {
+			final SvekEdge firstEdge = portConnectors.get(0).getEdge();
+			final net.sourceforge.plantuml.abel.Entity portParent =
+					firstEdge.getLink().getEntity1().getParentContainer();
+			if (portParent != null) {
+				final net.sourceforge.plantuml.abel.Entity board =
+						portParent.getParentContainer();
+				if (board != null) {
+					final Cluster boardCluster =
+							clusterManager.getBibliotekon().getCluster(board);
+					if (boardCluster != null)
+						boardBounds = boardCluster.getRectangleArea();
+				}
+			}
+		}
+
 		// Pre-compute all connector paths, then draw
-		SvekPortConnector.resolveAllPaths(portConnectors, harnessSpines);
+		SvekPortConnector.resolveAllPaths(portConnectors, harnessSpines,
+				boardBounds);
 		for (SvekPortConnector pc : portConnectors)
 			pc.drawU(ug);
 	}
