@@ -257,6 +257,94 @@ public class SvekPortConnector implements UDrawable {
 	}
 
 	// ==================================================================
+	// Single vertical attempt
+	// ==================================================================
+
+	/**
+	 * Try to connect src and dst with a single vertical segment
+	 * (3-segment path: srcStub → vertical → dstStub). Scans for a
+	 * clear X between the two tips where the vertical from srcPortY
+	 * to dstPortY and both horizontal stubs are all clear.
+	 * Returns true and populates waypoints if successful.
+	 */
+	private boolean trySingleVertical(double srcEdge, double dstEdge,
+			List<RectangleArea> obstacles, RectangleArea boardBounds) {
+		final double yMin = Math.min(srcPortY, dstPortY);
+		final double yMax = Math.max(srcPortY, dstPortY);
+		final double lo = Math.min(srcTipX, dstTipX);
+		final double hi = Math.max(srcTipX, dstTipX);
+		final double naturalX = (srcTipX + dstTipX) / 2;
+
+		// Enforce board boundary on scan range
+		double scanLo = lo;
+		double scanHi = hi;
+		if (boardBounds != null) {
+			scanLo = Math.max(scanLo,
+					boardBounds.getMinX() + PORT_WIDTH);
+			scanHi = Math.min(scanHi,
+					boardBounds.getMaxX() - PORT_WIDTH);
+		}
+
+		for (double offset = 0; offset < SCAN_LIMIT;
+				offset += SCAN_STEP) {
+			final double x1 = naturalX + offset;
+			if (x1 >= scanLo && x1 <= scanHi
+					&& isSingleVerticalClear(x1, yMin, yMax,
+							srcEdge, dstEdge, obstacles)) {
+				buildSingleVerticalPath(srcEdge, dstEdge, x1);
+				return true;
+			}
+			if (offset == 0)
+				continue;
+			final double x2 = naturalX - offset;
+			if (x2 >= scanLo && x2 <= scanHi
+					&& isSingleVerticalClear(x2, yMin, yMax,
+							srcEdge, dstEdge, obstacles)) {
+				buildSingleVerticalPath(srcEdge, dstEdge, x2);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isSingleVerticalClear(double x, double yMin,
+			double yMax, double srcEdge, double dstEdge,
+			List<RectangleArea> obstacles) {
+		// Vertical must be outside both parent component boundaries
+		final RectangleArea srcBounds = getParentClusterBounds(
+				edge.getLink().getEntity1());
+		final RectangleArea dstBounds = getParentClusterBounds(
+				edge.getLink().getEntity2());
+		if (srcBounds != null && x > srcBounds.getMinX() - PORT_WIDTH
+				&& x < srcBounds.getMaxX() + PORT_WIDTH
+				&& yMax > srcBounds.getMinY() && yMin < srcBounds.getMaxY())
+			return false;
+		if (dstBounds != null && x > dstBounds.getMinX() - PORT_WIDTH
+				&& x < dstBounds.getMaxX() + PORT_WIDTH
+				&& yMax > dstBounds.getMinY() && yMin < dstBounds.getMaxY())
+			return false;
+		if (verticalCollides(x, yMin, yMax, obstacles))
+			return false;
+		if (horizontalCollides(srcPortY,
+				Math.min(srcEdge, x), Math.max(srcEdge, x),
+				obstacles))
+			return false;
+		if (horizontalCollides(dstPortY,
+				Math.min(dstEdge, x), Math.max(dstEdge, x),
+				obstacles))
+			return false;
+		return true;
+	}
+
+	private void buildSingleVerticalPath(double srcEdge,
+			double dstEdge, double vertX) {
+		waypoints.add(new XPoint2D(srcEdge, srcPortY));
+		waypoints.add(new XPoint2D(vertX, srcPortY));
+		waypoints.add(new XPoint2D(vertX, dstPortY));
+		waypoints.add(new XPoint2D(dstEdge, dstPortY));
+	}
+
+	// ==================================================================
 	// Phase 2c: Fix crossovers after separation
 	// ==================================================================
 
@@ -495,6 +583,9 @@ public class SvekPortConnector implements UDrawable {
 			waypoints.add(new XPoint2D(srcTipX, srcPortY));
 			waypoints.add(new XPoint2D(srcTipX, dstPortY));
 			waypoints.add(new XPoint2D(dstEdge, dstPortY));
+		} else if (trySingleVertical(srcEdge, dstEdge, obstacles,
+				boardBounds)) {
+			// Found a single vertical that connects both stubs
 		} else {
 			// Need a horizontal crossover between the two verticals
 			final double xMin = Math.min(srcTipX, dstTipX);
