@@ -57,6 +57,7 @@ import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UHidden;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
@@ -149,11 +150,16 @@ public final class SvekResult implements IEntityImage {
 		RectangleArea boardBounds = null;
 		if (portConnectors.isEmpty() == false) {
 			final SvekEdge firstEdge = portConnectors.get(0).getEdge();
+			final net.sourceforge.plantuml.abel.Entity entity1 =
+					firstEdge.getLink().getEntity1();
 			final net.sourceforge.plantuml.abel.Entity portParent =
-					firstEdge.getLink().getEntity1().getParentContainer();
+					entity1.getParentContainer();
 			if (portParent != null) {
-				final net.sourceforge.plantuml.abel.Entity board =
-						portParent.getParentContainer();
+				final net.sourceforge.plantuml.abel.Entity board;
+				if (EntityImagePort.isBoardPort(entity1))
+					board = portParent;
+				else
+					board = portParent.getParentContainer();
 				if (board != null) {
 					final Cluster boardCluster =
 							clusterManager.getBibliotekon().getCluster(board);

@@ -474,22 +474,27 @@ public class Cluster implements Moveable {
 		}
 		if (maxInsidePortCount == 0)
 			return;
+		final boolean hasBoardPorts = hasBoardPortNodes();
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		final double spacing = EntityImagePort.getInsidePortSpacing();
 		final double titleHeight = getTitleAndAttributeHeight();
 		final double labelGap = 5;
 		final double gap = labelGap * 3;
-		final double neededHeight = titleHeight + gap + (maxInsidePortCount - 1) * spacing + symbolSize + gap;
-		final double currentHeight = rectangleArea.getHeight();
-		if (neededHeight < currentHeight)
-			this.rectangleArea = rectangleArea.withMaxY(rectangleArea.getMinY() + neededHeight);
+		if (hasBoardPorts == false) {
+			final double neededHeight = titleHeight + gap
+					+ (maxInsidePortCount - 1) * spacing + symbolSize + gap;
+			final double currentHeight = rectangleArea.getHeight();
+			if (neededHeight < currentHeight)
+				this.rectangleArea = rectangleArea.withMaxY(
+						rectangleArea.getMinY() + neededHeight);
+		}
 		final double innerGap = symbolSize * 3;
 		final double neededWidth = maxLeftLabelWidth + maxRightLabelWidth
 				+ symbolSize * 2 + labelGap * 4 + innerGap;
 		final double titleWidth = getTitleAndAttributeWidth() + 10;
 		final double minWidth = Math.max(neededWidth, titleWidth);
 		final double currentWidth = rectangleArea.getWidth();
-		if (minWidth != currentWidth) {
+		if (hasBoardPorts == false && minWidth != currentWidth) {
 			final double delta = (currentWidth - minWidth) / 2;
 			this.rectangleArea = rectangleArea
 					.addMinX(delta)
@@ -502,6 +507,7 @@ public class Cluster implements Moveable {
 	}
 
 	private void repositionInsidePortNodes() {
+		final boolean hasBoardPorts = hasBoardPortNodes();
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		final double labelGap = 5;
 		final double gap = labelGap * 3;
@@ -531,18 +537,57 @@ public class Cluster implements Moveable {
 				return Double.compare(a.getMinY(), b.getMinY());
 			}
 		});
-		for (int i = 0; i < inputs.size(); i++) {
-			final SvekNode node = inputs.get(i);
-			final double targetX = rectangleArea.getMinX() - symbolSize / 2;
-			final double targetY = startY + i * spacing;
-			node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
+		if (hasBoardPorts) {
+			repositionBoardPorts(inputs, symbolSize, true);
+			repositionBoardPorts(outputs, symbolSize, false);
+		} else {
+			for (int i = 0; i < inputs.size(); i++) {
+				final SvekNode node = inputs.get(i);
+				final double targetX = rectangleArea.getMinX() - symbolSize / 2;
+				final double targetY = startY + i * spacing;
+				node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
+			}
+			for (int i = 0; i < outputs.size(); i++) {
+				final SvekNode node = outputs.get(i);
+				final double targetX = rectangleArea.getMaxX() - symbolSize / 2;
+				final double targetY = startY + i * spacing;
+				node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
+			}
 		}
-		for (int i = 0; i < outputs.size(); i++) {
-			final SvekNode node = outputs.get(i);
-			final double targetX = rectangleArea.getMaxX() - symbolSize / 2;
-			final double targetY = startY + i * spacing;
-			node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
+	}
+
+	private void repositionBoardPorts(List<SvekNode> ports,
+			double symbolSize, boolean isInput) {
+		if (ports.isEmpty())
+			return;
+		final double titleHeight = getTitleAndAttributeHeight();
+		final double margin = titleHeight + symbolSize;
+		final double availableHeight = rectangleArea.getHeight() - 2 * margin;
+		final double spacing = ports.size() > 1
+				? availableHeight / (ports.size() - 1)
+				: 0;
+		final double targetX = isInput
+				? rectangleArea.getMinX() - symbolSize / 2
+				: rectangleArea.getMaxX() - symbolSize / 2;
+		for (int i = 0; i < ports.size(); i++) {
+			final SvekNode node = ports.get(i);
+			final double targetY;
+			if (ports.size() == 1)
+				targetY = rectangleArea.getMinY() + margin
+						+ availableHeight / 2;
+			else
+				targetY = rectangleArea.getMinY() + margin + i * spacing;
+			node.moveDelta(targetX - node.getMinX(),
+					targetY - node.getMinY());
 		}
+	}
+
+	private boolean hasBoardPortNodes() {
+		for (SvekNode node : nodes)
+			if (node.getEntityPosition().isPort()
+					&& EntityImagePort.isBoardPort(node.getEntity()))
+				return true;
+		return false;
 	}
 
 	private boolean connectorsRepositioned;

@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -126,33 +127,53 @@ public class SvekPortConnector implements UDrawable {
 				edge.getLink().getEntity2());
 
 		if (srcBounds != null) {
-			if (srcDir > 0)
-				srcTipX = Math.max(srcTipX,
-						srcBounds.getMaxX() + PORT_WIDTH);
-			else
-				srcTipX = Math.min(srcTipX,
-						srcBounds.getMinX() - PORT_WIDTH);
+			if (EntityImagePort.isBoardPort(edge.getLink().getEntity1())) {
+				if (srcDir > 0)
+					srcTipX = Math.max(srcTipX,
+							srcBounds.getMinX() + PORT_WIDTH);
+				else
+					srcTipX = Math.min(srcTipX,
+							srcBounds.getMaxX() - PORT_WIDTH);
+			} else {
+				if (srcDir > 0)
+					srcTipX = Math.max(srcTipX,
+							srcBounds.getMaxX() + PORT_WIDTH);
+				else
+					srcTipX = Math.min(srcTipX,
+							srcBounds.getMinX() - PORT_WIDTH);
+			}
 		}
 		if (dstBounds != null) {
-			if (dstDir > 0)
-				dstTipX = Math.max(dstTipX,
-						dstBounds.getMaxX() + PORT_WIDTH);
-			else
-				dstTipX = Math.min(dstTipX,
-						dstBounds.getMinX() - PORT_WIDTH);
+			if (EntityImagePort.isBoardPort(edge.getLink().getEntity2())) {
+				if (dstDir > 0)
+					dstTipX = Math.max(dstTipX,
+							dstBounds.getMinX() + PORT_WIDTH);
+				else
+					dstTipX = Math.min(dstTipX,
+							dstBounds.getMaxX() - PORT_WIDTH);
+			} else {
+				if (dstDir > 0)
+					dstTipX = Math.max(dstTipX,
+							dstBounds.getMaxX() + PORT_WIDTH);
+				else
+					dstTipX = Math.min(dstTipX,
+							dstBounds.getMinX() - PORT_WIDTH);
+			}
 		}
 	}
 
 	/**
 	 * Determine stub direction by comparing port X to the centre of its
 	 * parent component. Port on the right half exits right, left half
-	 * exits left.
+	 * exits left. Board ports are inverted: stubs point inward.
 	 */
 	private double stubDirection(Entity portEntity, double portX) {
 		final RectangleArea bounds = getParentClusterBounds(portEntity);
 		if (bounds == null)
 			return 1.0;
 		final double centreX = (bounds.getMinX() + bounds.getMaxX()) / 2;
+		if (EntityImagePort.isBoardPort(portEntity))
+			return (portX >= centreX) ? -1.0 : 1.0;
 		return (portX >= centreX) ? 1.0 : -1.0;
 	}
 
@@ -834,12 +855,18 @@ public class SvekPortConnector implements UDrawable {
 		if (bibliotekon == null)
 			return obstacles;
 
-		final Entity parent1 = edge.getLink().getEntity1()
-				.getParentContainer();
-		final Entity parent2 = edge.getLink().getEntity2()
-				.getParentContainer();
-		final Entity board = (parent1 != null)
-				? parent1.getParentContainer() : null;
+		final Entity entity1 = edge.getLink().getEntity1();
+		final Entity entity2 = edge.getLink().getEntity2();
+		final Entity parent1 = entity1.getParentContainer();
+		final Entity parent2 = entity2.getParentContainer();
+		Entity board;
+		if (EntityImagePort.isBoardPort(entity1))
+			board = parent1;
+		else if (EntityImagePort.isBoardPort(entity2))
+			board = parent2;
+		else
+			board = (parent1 != null)
+					? parent1.getParentContainer() : null;
 
 		for (Cluster cl : bibliotekon.allCluster()) {
 			final RectangleArea rect = cl.getRectangleArea();
