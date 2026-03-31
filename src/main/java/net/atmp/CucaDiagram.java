@@ -132,6 +132,10 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 
 	private Harness currentHarness;
 
+	public Harness getCurrentHarness() {
+		return currentHarness;
+	}
+
 	private boolean visibilityModifierPresent;
 
 	private final List<Link> links = new ArrayList<>();

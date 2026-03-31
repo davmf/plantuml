@@ -4,11 +4,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.stereo.Stereotype;
+
 public class Harness implements Bag {
 
 	private final String label;
 	private final Harness parent;
 	private final List<Link> links = new ArrayList<Link>();
+	private Stereotype stereotype;
+	private Colors colors = Colors.empty();
 
 	public Harness(String label) {
 		this(label, null);
@@ -44,6 +49,22 @@ public class Harness implements Bag {
 
 	public List<Link> getLinks() {
 		return Collections.unmodifiableList(links);
+	}
+
+	public Stereotype getStereotype() {
+		return stereotype;
+	}
+
+	public void setStereotype(Stereotype stereotype) {
+		this.stereotype = stereotype;
+	}
+
+	public Colors getColors() {
+		return colors;
+	}
+
+	public void setColors(Colors colors) {
+		this.colors = colors;
 	}
 
 }

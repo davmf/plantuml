@@ -8,6 +8,8 @@ import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -252,10 +254,28 @@ public class SvekHarness implements UDrawable {
 		if (edges.isEmpty())
 			return;
 
-		final Style style = StyleSignatureBasic.of(SName.root, SName.element, SName.arrow)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
-		final HColor color = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
-		final UGraphic ugLine = ug.apply(color).apply(HColors.none().bg());
+		StyleSignatureBasic sig = StyleSignatureBasic.of(SName.root,
+				SName.element, SName.arrow);
+		final Style style;
+		if (harness.getRoot().getStereotype() != null)
+			style = sig.withTOBECHANGED(
+					harness.getRoot().getStereotype())
+					.getMergedStyle(
+							skinParam.getCurrentStyleBuilder());
+		else
+			style = sig.getMergedStyle(
+					skinParam.getCurrentStyleBuilder());
+		HColor color = style.value(PName.LineColor)
+				.asColor(skinParam.getIHtmlColorSet());
+		final Colors harnessColors = harness.getRoot().getColors();
+		if (harnessColors != null) {
+			final HColor direct = harnessColors.getColor(
+					ColorType.LINE);
+			if (direct != null)
+				color = direct;
+		}
+		final UGraphic ugLine = ug.apply(color)
+				.apply(HColors.none().bg());
 
 		// Determine primary flow direction.
 		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
