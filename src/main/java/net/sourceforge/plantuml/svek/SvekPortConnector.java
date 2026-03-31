@@ -668,12 +668,27 @@ public class SvekPortConnector implements UDrawable {
 				boardBounds)) {
 			// Found a single vertical that connects both stubs
 		} else {
-			// Need a horizontal crossover between the two verticals
+			// Need a horizontal crossover between the two verticals.
+			// Middle segments must avoid parent clusters too — only
+			// stubs are exempt from parent collision. Don't add the
+			// board cluster (already excluded from obstacles) since
+			// connectors route inside it.
+			final List<RectangleArea> middleObs =
+					new ArrayList<RectangleArea>(obstacles);
+			if (srcParent != null
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity1()) == false)
+				middleObs.add(srcParent);
+			if (dstParent != null
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity2()) == false)
+				middleObs.add(dstParent);
+
 			final double xMin = Math.min(srcTipX, dstTipX);
 			final double xMax = Math.max(srcTipX, dstTipX);
 			final double naturalCrossY = (srcPortY + dstPortY) / 2;
 			double crossY = findClearHorizontal(naturalCrossY, xMin,
-					xMax, obstacles);
+					xMax, middleObs);
 
 			// Enforce board boundary on crossover Y
 			if (boardBounds != null) {
@@ -683,7 +698,7 @@ public class SvekPortConnector implements UDrawable {
 						- PORT_WIDTH;
 				if (crossY < innerTop || crossY > innerBottom)
 					crossY = findClearHorizontalInBounds(
-							naturalCrossY, xMin, xMax, obstacles,
+							naturalCrossY, xMin, xMax, middleObs,
 							innerTop, innerBottom);
 			}
 
@@ -693,32 +708,34 @@ public class SvekPortConnector implements UDrawable {
 			final double srcVMax = Math.max(srcPortY, crossY);
 			final double dstVMin = Math.min(dstPortY, crossY);
 			final double dstVMax = Math.max(dstPortY, crossY);
-			if (verticalCollides(srcTipX, srcVMin, srcVMax, obstacles)) {
+			if (verticalCollides(srcTipX, srcVMin, srcVMax,
+					middleObs)) {
 				final double outward = findClearVertical(srcTipX,
-						srcVMin, srcVMax, srcDir, obstacles);
+						srcVMin, srcVMax, srcDir, middleObs);
 				if (verticalCollides(outward, srcVMin, srcVMax,
-						obstacles) == false)
+						middleObs) == false)
 					srcTipX = outward;
 				else
 					srcTipX = findClearVerticalBidirectional(srcTipX,
-							srcVMin, srcVMax, obstacles);
+							srcVMin, srcVMax, middleObs);
 			}
-			if (verticalCollides(dstTipX, dstVMin, dstVMax, obstacles)) {
+			if (verticalCollides(dstTipX, dstVMin, dstVMax,
+					middleObs)) {
 				final double outward = findClearVertical(dstTipX,
-						dstVMin, dstVMax, dstDir, obstacles);
+						dstVMin, dstVMax, dstDir, middleObs);
 				if (verticalCollides(outward, dstVMin, dstVMax,
-						obstacles) == false)
+						middleObs) == false)
 					dstTipX = outward;
 				else
 					dstTipX = findClearVerticalBidirectional(dstTipX,
-							dstVMin, dstVMax, obstacles);
+							dstVMin, dstVMax, middleObs);
 			}
 
 			// Re-check crossover with final positions
 			final double xMin2 = Math.min(srcTipX, dstTipX);
 			final double xMax2 = Math.max(srcTipX, dstTipX);
 			crossY = findClearHorizontal(crossY, xMin2, xMax2,
-					obstacles);
+					middleObs);
 
 			waypoints.add(new XPoint2D(srcEdge, srcPortY));
 			waypoints.add(new XPoint2D(srcTipX, srcPortY));
