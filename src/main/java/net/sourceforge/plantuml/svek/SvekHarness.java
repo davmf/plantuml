@@ -406,22 +406,38 @@ public class SvekHarness implements UDrawable {
 			spine2Bottom = Math.max(spine2Bottom, e.end.getY());
 		}
 
-		// Crossbar Y: connects bottom of spine1 to bottom of spine2,
-		// forming a U shape. Place below both groups' lowest port.
-		final double lowestY = Math.max(spine1Bottom, spine2Bottom);
-		double crossbarY = lowestY + MIN_STUB_LENGTH;
-
-		// Find a clear horizontal channel for the crossbar
+		// Crossbar Y: place at the end of spine1 closest to the far
+		// group — bottom for a U shape, top for an inverted U.
+		final double farMidY = (spine2Top + spine2Bottom) / 2;
+		final boolean crossbarAtBottom =
+				Math.abs(farMidY - spine1Bottom)
+						< Math.abs(farMidY - spine1Top);
 		final double xMin = Math.min(spine1X, spine2X);
 		final double xMax = Math.max(spine1X, spine2X);
+		double crossbarY;
+		if (crossbarAtBottom) {
+			final double lowestY = Math.max(spine1Bottom,
+					spine2Bottom);
+			crossbarY = lowestY + MIN_STUB_LENGTH;
+		} else {
+			final double highestY = Math.min(spine1Top, spine2Top);
+			crossbarY = highestY - MIN_STUB_LENGTH;
+		}
+
+		// Find a clear horizontal channel for the crossbar
 		if (SvekPortConnector.horizontalCollides(crossbarY, xMin,
 				xMax, obstacles))
 			crossbarY = findClearCrossbarY(crossbarY, xMin, xMax,
 					obstacles);
 
-		// Extend both spines down to the crossbar
-		spine1Bottom = crossbarY;
-		spine2Bottom = crossbarY;
+		// Extend spines to the crossbar
+		if (crossbarAtBottom) {
+			spine1Bottom = crossbarY;
+			spine2Bottom = crossbarY;
+		} else {
+			spine1Top = crossbarY;
+			spine2Top = crossbarY;
+		}
 
 		// Find clear position for spine2 vertical
 		spine2X = SvekPortConnector.findClearVerticalBidirectional(
