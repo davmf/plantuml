@@ -88,8 +88,10 @@ public class SvekPortConnector implements UDrawable {
 			pc.fixCrossoversAfterSeparation(harnessSpines);
 
 		// Phase 2d: re-separate after fixup (2c can collapse segments
-		// back to the same position)
+		// back to the same position), then fixup again
 		separateParallelSegments(connectors);
+		for (SvekPortConnector pc : connectors)
+			pc.fixCrossoversAfterSeparation(harnessSpines);
 
 		// Phase 3: validate all segments
 		for (SvekPortConnector pc : connectors)
