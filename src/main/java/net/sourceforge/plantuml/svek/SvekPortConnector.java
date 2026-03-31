@@ -82,10 +82,14 @@ public class SvekPortConnector implements UDrawable {
 		// Phase 2b: separate parallel segments that are too close
 		separateParallelSegments(connectors);
 
-		// Phase 2c: re-check crossover horizontals that may now collide
-		// after separation shifted verticals
+		// Phase 2c: re-check segments that may now collide after
+		// separation shifted verticals/horizontals
 		for (SvekPortConnector pc : connectors)
 			pc.fixCrossoversAfterSeparation(harnessSpines);
+
+		// Phase 2d: re-separate after fixup (2c can collapse segments
+		// back to the same position)
+		separateParallelSegments(connectors);
 
 		// Phase 3: validate all segments
 		for (SvekPortConnector pc : connectors)
