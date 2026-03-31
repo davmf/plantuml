@@ -346,6 +346,7 @@ public class SvekPortConnector implements UDrawable {
 			return false;
 		if (verticalCollides(x, yMin, yMax, obstacles))
 			return false;
+		// Check stubs against general obstacles
 		if (horizontalCollides(srcPortY,
 				Math.min(srcEdge, x), Math.max(srcEdge, x),
 				obstacles))
@@ -354,7 +355,25 @@ public class SvekPortConnector implements UDrawable {
 				Math.min(dstEdge, x), Math.max(dstEdge, x),
 				obstacles))
 			return false;
+		// Stubs must not cross through their own parent body —
+		// the vertical must be on the port's side of its parent
+		if (srcBounds != null
+				&& stubCrossesParent(x, srcEdge, srcPortY, srcBounds))
+			return false;
+		if (dstBounds != null
+				&& stubCrossesParent(x, dstEdge, dstPortY, dstBounds))
+			return false;
 		return true;
+	}
+
+	private static boolean stubCrossesParent(double vertX,
+			double portEdge, double stubY, RectangleArea parent) {
+		if (stubY < parent.getMinY() || stubY > parent.getMaxY())
+			return false;
+		final double xMin = Math.min(vertX, portEdge);
+		final double xMax = Math.max(vertX, portEdge);
+		return (xMin < parent.getMinX() && xMax > parent.getMinX())
+				|| (xMin < parent.getMaxX() && xMax > parent.getMaxX());
 	}
 
 	private void buildSingleVerticalPath(double srcEdge,
@@ -444,7 +463,12 @@ public class SvekPortConnector implements UDrawable {
 		for (SvekPortConnector pc : connectors) {
 			if (pc.waypoints == null || pc.waypoints.size() < 2)
 				continue;
-			for (int i = 0; i < pc.waypoints.size() - 1; i++) {
+			final int lastSeg = pc.waypoints.size() - 2;
+			for (int i = 0; i <= lastSeg; i++) {
+				// Skip stub segments — their endpoints are
+				// anchored to port positions
+				if (i == 0 || i == lastSeg)
+					continue;
 				final XPoint2D a = pc.waypoints.get(i);
 				final XPoint2D b = pc.waypoints.get(i + 1);
 				if (Math.abs(a.getX() - b.getX()) < 0.5
@@ -625,7 +649,16 @@ public class SvekPortConnector implements UDrawable {
 		// Route from srcTip to dstTip
 		waypoints = new ArrayList<XPoint2D>();
 
-		if (Math.abs(srcTipX - dstTipX) < 1.0) {
+		final RectangleArea srcParent = getParentClusterBounds(
+				edge.getLink().getEntity1());
+		final RectangleArea dstParent = getParentClusterBounds(
+				edge.getLink().getEntity2());
+		final boolean sameTipClear = Math.abs(srcTipX - dstTipX) < 1.0
+				&& (srcParent == null || stubCrossesParent(
+						srcTipX, srcEdge, srcPortY, srcParent) == false)
+				&& (dstParent == null || stubCrossesParent(
+						srcTipX, dstEdge, dstPortY, dstParent) == false);
+		if (sameTipClear) {
 			// Tips at same X — single vertical connects them
 			waypoints.add(new XPoint2D(srcEdge, srcPortY));
 			waypoints.add(new XPoint2D(srcTipX, srcPortY));
