@@ -555,6 +555,7 @@ public class SkinParam implements ISkinParam {
 		result.add("Linetype");
 		result.add("PackageStyle");
 		result.add("ComponentStyle");
+		result.add("PortLabels");
 		result.add("StereotypePosition");
 		result.add("Nodesep");
 		result.add("Ranksep");
@@ -813,6 +814,12 @@ public class SkinParam implements ISkinParam {
 	@Override
 	public boolean stereotypePositionTop() {
 		return !valueIs("stereotypePosition", "bottom");
+	}
+
+	@Override
+	public boolean portLabelsInside() {
+		return isTrue("portlabelsinside")
+				|| valueIs("portlabels", "inside");
 	}
 
 	@Override

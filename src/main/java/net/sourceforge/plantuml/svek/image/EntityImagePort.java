@@ -108,6 +108,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 			return true;
 		if (isBoardPort(entity))
 			return true;
+		if (entity.getSkinParam().portLabelsInside())
+			return true;
 		final Stereotype stereotype = entity.getStereotype();
 		if (stereotype == null)
 			return false;
@@ -226,7 +228,21 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		double titleShiftY = 0;
 		double edgeShiftX = 0;
 
-		if (isLabelInside()) {
+		if (isBoardPort(getEntity())) {
+			final Side side = getPortSide();
+			if (side == Side.WEST) {
+				x = -dimDesc.getWidth() - LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else if (side == Side.EAST) {
+				x = symbolSize + LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else {
+				x = -(dimDesc.getWidth() - symbolSize) / 2;
+				y = (side == Side.NORTH)
+						? -dimDesc.getHeight() - LABEL_GAP
+						: symbolSize + LABEL_GAP;
+			}
+		} else if (isLabelInside()) {
 			final Side side = getPortSide();
 			if (side == Side.WEST) {
 				x = symbolSize + LABEL_GAP;
