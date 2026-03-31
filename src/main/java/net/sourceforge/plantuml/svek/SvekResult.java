@@ -140,11 +140,8 @@ public final class SvekResult implements IEntityImage {
 
 		// Collect harness spines as obstacles for port connector routing
 		final List<RectangleArea> harnessSpines = new ArrayList<RectangleArea>();
-		for (SvekHarness svekHarness : svekHarnesses) {
-			final RectangleArea spine = svekHarness.getRenderedSpine();
-			if (spine != null)
-				harnessSpines.add(spine);
-		}
+		for (SvekHarness svekHarness : svekHarnesses)
+			harnessSpines.addAll(svekHarness.getRenderedSpines());
 
 		// Find board cluster bounds for boundary enforcement
 		RectangleArea boardBounds = null;

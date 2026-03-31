@@ -1,6 +1,7 @@
 package net.sourceforge.plantuml.svek;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.abel.Entity;
@@ -49,7 +50,7 @@ public class SvekHarness implements UDrawable {
 	private final ISkinParam skinParam;
 	private final Bibliotekon bibliotekon;
 	private double spineXOffset;
-	private RectangleArea renderedSpine;
+	private final List<RectangleArea> renderedSpines = new ArrayList<RectangleArea>();
 
 	public SvekHarness(Harness harness, List<SvekEdge> memberEdges, ISkinParam skinParam,
 			Bibliotekon bibliotekon) {
@@ -59,8 +60,8 @@ public class SvekHarness implements UDrawable {
 		this.bibliotekon = bibliotekon;
 	}
 
-	public RectangleArea getRenderedSpine() {
-		return renderedSpine;
+	public List<RectangleArea> getRenderedSpines() {
+		return Collections.unmodifiableList(renderedSpines);
 	}
 
 	public static void resolveOverlaps(List<SvekHarness> harnesses) {
@@ -316,6 +317,22 @@ public class SvekHarness implements UDrawable {
 		spineX = SvekPortConnector.findClearVerticalBidirectional(spineX,
 				spineTopY, spineBottomY, obstacles);
 
+		// Check if destinations split into near/far X-groups
+		final double farThreshold = 2 * MIN_STUB_LENGTH;
+		final List<EdgeData> nearEdges = new ArrayList<EdgeData>();
+		final List<EdgeData> farEdges = new ArrayList<EdgeData>();
+		for (EdgeData e : edges) {
+			if (Math.abs(e.end.getX() - spineX) > farThreshold)
+				farEdges.add(e);
+			else
+				nearEdges.add(e);
+		}
+		if (farEdges.isEmpty() == false && nearEdges.isEmpty() == false) {
+			drawSplitHorizontalFlow(ugLine, edges, nearEdges, farEdges,
+					spineX, obstacles, style);
+			return;
+		}
+
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(UStroke.simple());
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
@@ -334,8 +351,8 @@ public class SvekHarness implements UDrawable {
 
 		// Vertical spine
 		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
-		renderedSpine = new RectangleArea(spineX - TRUNK_STROKE_WIDTH,
-				spineTopY, spineX + TRUNK_STROKE_WIDTH, spineBottomY);
+		renderedSpines.add(new RectangleArea(spineX - TRUNK_STROKE_WIDTH,
+				spineTopY, spineX + TRUNK_STROKE_WIDTH, spineBottomY));
 
 		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {
@@ -351,6 +368,137 @@ public class SvekHarness implements UDrawable {
 		}
 
 		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
+	}
+
+	private void drawSplitHorizontalFlow(UGraphic ugLine,
+			List<EdgeData> allEdges, List<EdgeData> nearEdges,
+			List<EdgeData> farEdges, double spine1X,
+			List<RectangleArea> obstacles, Style style) {
+
+		final FontConfiguration fontConfig = FontConfiguration.create(
+				skinParam, style);
+		final UGraphic ugFan = ugLine.apply(UStroke.simple());
+		final UGraphic ugTrunk = ugLine.apply(
+				UStroke.withThickness(TRUNK_STROKE_WIDTH));
+
+		// Spine2 X: midway between spine1 and the far group median,
+		// clamped for minimum stub length
+		final double farMedianX = medianX(endPointsOf(farEdges));
+		double spine2X = clampSpineForMinStub(
+				(spine1X + farMedianX) / 2, farEdges)
+				+ spineXOffset;
+
+		// Spine1 Y extent: source ports + near destinations
+		double spine1Top = allEdges.get(0).start.getY();
+		double spine1Bottom = spine1Top;
+		for (EdgeData e : allEdges) {
+			spine1Top = Math.min(spine1Top, e.start.getY());
+			spine1Bottom = Math.max(spine1Bottom, e.start.getY());
+		}
+		for (EdgeData e : nearEdges) {
+			spine1Top = Math.min(spine1Top, e.end.getY());
+			spine1Bottom = Math.max(spine1Bottom, e.end.getY());
+		}
+
+		// Spine2 Y extent: far destinations only
+		double spine2Top = farEdges.get(0).end.getY();
+		double spine2Bottom = spine2Top;
+		for (EdgeData e : farEdges) {
+			spine2Top = Math.min(spine2Top, e.end.getY());
+			spine2Bottom = Math.max(spine2Bottom, e.end.getY());
+		}
+
+		// Crossbar Y: connects end of spine1 to start of spine2.
+		// Determine which end of spine1 is closer to spine2's range.
+		final double spine1MidY = (spine1Top + spine1Bottom) / 2;
+		final double spine2MidY = (spine2Top + spine2Bottom) / 2;
+		final double crossbarY;
+		if (spine2MidY > spine1MidY) {
+			// Far group is below — crossbar at bottom of spine1,
+			// spine2 extends downward
+			crossbarY = spine1Bottom;
+			spine2Top = Math.min(spine2Top, crossbarY);
+		} else {
+			// Far group is above — crossbar at top of spine1,
+			// spine2 extends upward
+			crossbarY = spine1Top;
+			spine2Bottom = Math.max(spine2Bottom, crossbarY);
+		}
+
+		// Find clear positions for spine2 vertical
+		spine2X = SvekPortConnector.findClearVerticalBidirectional(
+				spine2X, spine2Top, spine2Bottom, obstacles);
+
+		// Source stubs: connect to spine1
+		final java.util.Set<Long> labeledSourceY =
+				new java.util.HashSet<Long>();
+		for (EdgeData e : allEdges) {
+			final double srcDir = Math.signum(
+					spine1X - e.start.getX());
+			final double srcEdge = e.start.getX()
+					+ srcDir * PORT_RADIUS;
+			drawLine(ugFan, srcEdge, e.start.getY(),
+					spine1X, e.start.getY());
+			if (e.hasSourceLabel()
+					&& labeledSourceY.add(
+							Double.doubleToLongBits(
+									e.start.getY())))
+				drawStubLabel(ugLine, fontConfig,
+						Display.getWithNewlines(
+								skinParam.getPragma(),
+								e.sourceLabel),
+						spine1X, e.start.getY(),
+						e.start.getX(), true);
+		}
+
+		// Draw spine1 vertical
+		drawLine(ugTrunk, spine1X, spine1Top, spine1X, spine1Bottom);
+		renderedSpines.add(new RectangleArea(
+				spine1X - TRUNK_STROKE_WIDTH, spine1Top,
+				spine1X + TRUNK_STROKE_WIDTH, spine1Bottom));
+
+		// Draw horizontal crossbar
+		drawLine(ugTrunk, spine1X, crossbarY, spine2X, crossbarY);
+		renderedSpines.add(new RectangleArea(
+				Math.min(spine1X, spine2X),
+				crossbarY - TRUNK_STROKE_WIDTH,
+				Math.max(spine1X, spine2X),
+				crossbarY + TRUNK_STROKE_WIDTH));
+
+		// Draw spine2 vertical
+		drawLine(ugTrunk, spine2X, spine2Top, spine2X, spine2Bottom);
+		renderedSpines.add(new RectangleArea(
+				spine2X - TRUNK_STROKE_WIDTH, spine2Top,
+				spine2X + TRUNK_STROKE_WIDTH, spine2Bottom));
+
+		// Near destination stubs: connect to spine1
+		for (EdgeData e : nearEdges) {
+			final double endX = e.end.getX();
+			final double endY = e.end.getY();
+			final double dir = Math.signum(endX - spine1X);
+			final double tipX = endX - dir * PORT_RADIUS;
+			drawLine(ugFan, spine1X, endY, tipX, endY);
+			drawHArrow(ugFan, tipX, endY, dir);
+			if (e.hasLabel())
+				drawStubLabel(ugLine, fontConfig, e.label,
+						spine1X, endY, endX, false);
+		}
+
+		// Far destination stubs: connect to spine2
+		for (EdgeData e : farEdges) {
+			final double endX = e.end.getX();
+			final double endY = e.end.getY();
+			final double dir = Math.signum(endX - spine2X);
+			final double tipX = endX - dir * PORT_RADIUS;
+			drawLine(ugFan, spine2X, endY, tipX, endY);
+			drawHArrow(ugFan, tipX, endY, dir);
+			if (e.hasLabel())
+				drawStubLabel(ugLine, fontConfig, e.label,
+						spine2X, endY, endX, false);
+		}
+
+		drawLabelOnTrunk(ugLine, spine1X, spine1Top,
+				spine1X, spine1Bottom, false, style);
 	}
 
 	private void drawVerticalFlow(UGraphic ugLine, List<EdgeData> edges,
@@ -400,8 +548,8 @@ public class SvekHarness implements UDrawable {
 
 		// Vertical spine
 		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
-		renderedSpine = new RectangleArea(spineX - TRUNK_STROKE_WIDTH,
-				spineTopY, spineX + TRUNK_STROKE_WIDTH, spineBottomY);
+		renderedSpines.add(new RectangleArea(spineX - TRUNK_STROKE_WIDTH,
+				spineTopY, spineX + TRUNK_STROKE_WIDTH, spineBottomY));
 
 		// Destination stubs: horizontal from spine to each destination port
 		for (EdgeData e : edges) {
