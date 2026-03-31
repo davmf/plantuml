@@ -254,17 +254,9 @@ public class SvekHarness implements UDrawable {
 		if (edges.isEmpty())
 			return;
 
-		StyleSignatureBasic sig = StyleSignatureBasic.of(SName.root,
-				SName.element, SName.arrow);
-		final Style style;
-		if (harness.getRoot().getStereotype() != null)
-			style = sig.withTOBECHANGED(
-					harness.getRoot().getStereotype())
-					.getMergedStyle(
-							skinParam.getCurrentStyleBuilder());
-		else
-			style = sig.getMergedStyle(
-					skinParam.getCurrentStyleBuilder());
+		final Style style = StyleSignatureBasic.of(SName.root,
+				SName.element, SName.arrow)
+				.getMergedStyle(skinParam.getCurrentStyleBuilder());
 		HColor color = style.value(PName.LineColor)
 				.asColor(skinParam.getIHtmlColorSet());
 		final Colors harnessColors = harness.getRoot().getColors();

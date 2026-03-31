@@ -12,9 +12,7 @@ import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
-import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexResult;
-import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
@@ -28,9 +26,6 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 				new RegexLeaf("harness"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf(1, "LABEL", "[%g]([^%g]+)[%g]"), //
-				RegexLeaf.spaceZeroOrMore(), //
-				new RegexOptional( //
-						new RegexLeaf(1, "STEREOTYPE", "(\\<\\<.+?\\>\\>)")), //
 				RegexLeaf.spaceZeroOrMore(), //
 				color().getRegex(), //
 				RegexLeaf.spaceZeroOrMore(), //
@@ -49,9 +44,6 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 		if (result.isOk()) {
 			final Harness harness = diagram.getCurrentHarness();
 			if (harness != null) {
-				final String stereotype = arg.getLazzy("STEREOTYPE", 0);
-				if (stereotype != null)
-					harness.setStereotype(Stereotype.build(stereotype, false));
 				final Colors colors = color().getColor(arg,
 						diagram.getSkinParam().getIHtmlColorSet());
 				if (colors != null)
