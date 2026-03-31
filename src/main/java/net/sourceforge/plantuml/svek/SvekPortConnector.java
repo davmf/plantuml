@@ -375,22 +375,49 @@ public class SvekPortConnector implements UDrawable {
 			return;
 		final List<RectangleArea> obstacles =
 				collectObstacles(harnessSpines);
-		// Check each non-stub horizontal segment
 		for (int i = 1; i < waypoints.size() - 2; i++) {
 			final XPoint2D a = waypoints.get(i);
 			final XPoint2D b = waypoints.get(i + 1);
-			// Only horizontal segments
-			if (Math.abs(a.getY() - b.getY()) > 0.5)
-				continue;
-			final double y = a.getY();
-			final double xMin = Math.min(a.getX(), b.getX());
-			final double xMax = Math.max(a.getX(), b.getX());
-			if (horizontalCollides(y, xMin, xMax, obstacles)) {
-				final double newY = findClearHorizontal(y, xMin, xMax,
-						obstacles);
-				// Update this segment and its connected vertical endpoints
-				waypoints.set(i, new XPoint2D(a.getX(), newY));
-				waypoints.set(i + 1, new XPoint2D(b.getX(), newY));
+			if (Math.abs(a.getY() - b.getY()) < 0.5) {
+				// Horizontal segment
+				final double y = a.getY();
+				final double xMin = Math.min(a.getX(), b.getX());
+				final double xMax = Math.max(a.getX(), b.getX());
+				if (horizontalCollides(y, xMin, xMax, obstacles)) {
+					final double newY = findClearHorizontal(y, xMin,
+							xMax, obstacles);
+					waypoints.set(i, new XPoint2D(a.getX(), newY));
+					waypoints.set(i + 1, new XPoint2D(b.getX(), newY));
+				}
+			} else if (Math.abs(a.getX() - b.getX()) < 0.5) {
+				// Vertical segment shifted by separation
+				final double x = a.getX();
+				final double yMin = Math.min(a.getY(), b.getY());
+				final double yMax = Math.max(a.getY(), b.getY());
+				if (verticalCollides(x, yMin, yMax, obstacles)) {
+					final double newX =
+							findClearVerticalBidirectional(x,
+									yMin, yMax, obstacles);
+					waypoints.set(i, new XPoint2D(newX, a.getY()));
+					waypoints.set(i + 1,
+							new XPoint2D(newX, b.getY()));
+					// Update connected horizontal endpoints
+					if (i > 0) {
+						final XPoint2D prev = waypoints.get(i - 1);
+						if (Math.abs(prev.getY() - a.getY()) < 0.5)
+							waypoints.set(i - 1,
+									new XPoint2D(prev.getX(),
+											a.getY()));
+					}
+					if (i + 2 < waypoints.size()) {
+						final XPoint2D next =
+								waypoints.get(i + 2);
+						if (Math.abs(next.getY() - b.getY()) < 0.5)
+							waypoints.set(i + 2,
+									new XPoint2D(next.getX(),
+											b.getY()));
+					}
+				}
 			}
 		}
 	}
@@ -628,17 +655,31 @@ public class SvekPortConnector implements UDrawable {
 			}
 
 			// Check verticals over their actual Y spans —
-			// push outward only, which keeps stubs short
+			// try outward first (keeps stubs short), then inward
 			final double srcVMin = Math.min(srcPortY, crossY);
 			final double srcVMax = Math.max(srcPortY, crossY);
 			final double dstVMin = Math.min(dstPortY, crossY);
 			final double dstVMax = Math.max(dstPortY, crossY);
-			if (verticalCollides(srcTipX, srcVMin, srcVMax, obstacles))
-				srcTipX = findClearVertical(srcTipX, srcVMin, srcVMax,
-						srcDir, obstacles);
-			if (verticalCollides(dstTipX, dstVMin, dstVMax, obstacles))
-				dstTipX = findClearVertical(dstTipX, dstVMin, dstVMax,
-						dstDir, obstacles);
+			if (verticalCollides(srcTipX, srcVMin, srcVMax, obstacles)) {
+				final double outward = findClearVertical(srcTipX,
+						srcVMin, srcVMax, srcDir, obstacles);
+				if (verticalCollides(outward, srcVMin, srcVMax,
+						obstacles) == false)
+					srcTipX = outward;
+				else
+					srcTipX = findClearVerticalBidirectional(srcTipX,
+							srcVMin, srcVMax, obstacles);
+			}
+			if (verticalCollides(dstTipX, dstVMin, dstVMax, obstacles)) {
+				final double outward = findClearVertical(dstTipX,
+						dstVMin, dstVMax, dstDir, obstacles);
+				if (verticalCollides(outward, dstVMin, dstVMax,
+						obstacles) == false)
+					dstTipX = outward;
+				else
+					dstTipX = findClearVerticalBidirectional(dstTipX,
+							dstVMin, dstVMax, obstacles);
+			}
 
 			// Re-check crossover with final positions
 			final double xMin2 = Math.min(srcTipX, dstTipX);
