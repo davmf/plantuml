@@ -381,11 +381,9 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugTrunk = ugLine.apply(
 				UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Spine2 X: midway between spine1 and the far group median,
-		// clamped for minimum stub length
-		final double farMedianX = medianX(endPointsOf(farEdges));
+		// Spine2 X: close to the far group, clamped for min stub
 		double spine2X = clampSpineForMinStub(
-				(spine1X + farMedianX) / 2, farEdges)
+				medianX(endPointsOf(farEdges)), farEdges)
 				+ spineXOffset;
 
 		// Spine1 Y extent: source ports + near destinations
@@ -408,24 +406,24 @@ public class SvekHarness implements UDrawable {
 			spine2Bottom = Math.max(spine2Bottom, e.end.getY());
 		}
 
-		// Crossbar Y: connects end of spine1 to start of spine2.
-		// Determine which end of spine1 is closer to spine2's range.
-		final double spine1MidY = (spine1Top + spine1Bottom) / 2;
-		final double spine2MidY = (spine2Top + spine2Bottom) / 2;
-		final double crossbarY;
-		if (spine2MidY > spine1MidY) {
-			// Far group is below — crossbar at bottom of spine1,
-			// spine2 extends downward
-			crossbarY = spine1Bottom;
-			spine2Top = Math.min(spine2Top, crossbarY);
-		} else {
-			// Far group is above — crossbar at top of spine1,
-			// spine2 extends upward
-			crossbarY = spine1Top;
-			spine2Bottom = Math.max(spine2Bottom, crossbarY);
-		}
+		// Crossbar Y: connects bottom of spine1 to bottom of spine2,
+		// forming a U shape. Place below both groups' lowest port.
+		final double lowestY = Math.max(spine1Bottom, spine2Bottom);
+		double crossbarY = lowestY + MIN_STUB_LENGTH;
 
-		// Find clear positions for spine2 vertical
+		// Find a clear horizontal channel for the crossbar
+		final double xMin = Math.min(spine1X, spine2X);
+		final double xMax = Math.max(spine1X, spine2X);
+		if (SvekPortConnector.horizontalCollides(crossbarY, xMin,
+				xMax, obstacles))
+			crossbarY = findClearCrossbarY(crossbarY, xMin, xMax,
+					obstacles);
+
+		// Extend both spines down to the crossbar
+		spine1Bottom = crossbarY;
+		spine2Bottom = crossbarY;
+
+		// Find clear position for spine2 vertical
 		spine2X = SvekPortConnector.findClearVerticalBidirectional(
 				spine2X, spine2Top, spine2Bottom, obstacles);
 
@@ -584,6 +582,26 @@ public class SvekHarness implements UDrawable {
 			labelX = spineX + 5;
 		final double labelY = stubY - textDim.getHeight() - 3;
 		textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
+	}
+
+	private static double findClearCrossbarY(double proposedY,
+			double xMin, double xMax,
+			List<RectangleArea> obstacles) {
+		final double step = 4.0;
+		final double limit = 2000.0;
+		for (double offset = 0; offset < limit; offset += step) {
+			final double y1 = proposedY + offset;
+			if (SvekPortConnector.horizontalCollides(y1, xMin, xMax,
+					obstacles) == false)
+				return y1;
+			if (offset == 0)
+				continue;
+			final double y2 = proposedY - offset;
+			if (SvekPortConnector.horizontalCollides(y2, xMin, xMax,
+					obstacles) == false)
+				return y2;
+		}
+		return proposedY;
 	}
 
 	private void drawOrthoTrunk(UGraphic ug, double x1, double y1,
