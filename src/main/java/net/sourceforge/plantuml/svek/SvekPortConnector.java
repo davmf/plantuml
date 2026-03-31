@@ -695,8 +695,16 @@ public class SvekPortConnector implements UDrawable {
 								+ r.getMaxY() + "]");
 			}
 
-			if (boardBounds != null && segmentOutsideBoard(
-					a.getX(), a.getY(), b.getX(), b.getY(), boardBounds))
+			final boolean srcBoardStub = i == 0
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity1());
+			final boolean dstBoardStub = i == last
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity2());
+			if (boardBounds != null
+					&& srcBoardStub == false && dstBoardStub == false
+					&& segmentOutsideBoard(a.getX(), a.getY(),
+							b.getX(), b.getY(), boardBounds))
 				Log.error("Port connector " + ent1 + "->" + ent2
 						+ " seg " + i + " outside board boundary");
 		}
