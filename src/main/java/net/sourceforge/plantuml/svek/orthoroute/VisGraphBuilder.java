@@ -119,8 +119,7 @@ public final class VisGraphBuilder {
 				j--;
 			}
 
-			// Also add Ys from currently active obstacle boundaries
-			// (these create segments in corridors between obstacles)
+			// Add Ys from currently active obstacle boundaries
 			for (RectangleArea obs : obstacles) {
 				final double obsMinX = obs.getMinX() - margin;
 				final double obsMaxX = obs.getMaxX() + margin;
@@ -129,6 +128,10 @@ public final class VisGraphBuilder {
 					interestingYs.add(obs.getMaxY() + margin);
 				}
 			}
+
+			// Add ALL port Ys so the graph connects at every X
+			for (XPoint2D pt : portConnections)
+				interestingYs.add(pt.getY());
 
 			// For each interesting Y, find vertical visibility range
 			// and add edges between consecutive visible nodes
@@ -254,6 +257,10 @@ public final class VisGraphBuilder {
 					interestingXs.add(obs.getMaxX() + margin);
 				}
 			}
+
+			// Add ALL port Xs so the graph connects at every Y
+			for (XPoint2D pt : portConnections)
+				interestingXs.add(pt.getX());
 
 			for (Double ix : interestingXs) {
 				if (active.isBlocked(ix))

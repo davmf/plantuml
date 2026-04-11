@@ -50,8 +50,6 @@ public final class OrthoRouteEngine {
 				obstacles, portPoints, boardBounds, PORT_WIDTH);
 		final VisGraph graph = builder.build();
 
-		// Log.info requires Supplier<String> in PlantUML's Log API
-
 		// Route each connector via A*
 		final AStarRouter router = new AStarRouter(graph);
 		boolean allOk = true;
