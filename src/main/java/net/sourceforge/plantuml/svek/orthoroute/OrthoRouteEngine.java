@@ -87,6 +87,13 @@ public final class OrthoRouteEngine {
 			cd.resultWaypoints = waypoints;
 		}
 
+		// Nudge parallel segments apart and center in corridors
+		final List<List<XPoint2D>> allWaypoints =
+				new ArrayList<List<XPoint2D>>();
+		for (ConnectorData cd : connectors)
+			allWaypoints.add(cd.resultWaypoints);
+		NudgeEngine.nudge(allWaypoints, obstacles, boardBounds);
+
 		return allOk;
 	}
 

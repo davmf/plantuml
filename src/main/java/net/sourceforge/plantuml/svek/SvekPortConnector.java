@@ -85,9 +85,6 @@ public class SvekPortConnector implements UDrawable {
 				pc.routeMiddle(harnessSpines, boardBounds);
 		}
 
-		// Phase 2b: separate parallel segments that are too close
-		separateParallelSegments(connectors);
-
 		// Phase 3: validate all segments
 		for (SvekPortConnector pc : connectors)
 			pc.validate(harnessSpines, boardBounds);
