@@ -6,6 +6,7 @@ import java.util.List;
 
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.svek.image.EntityImagePort;
+import net.sourceforge.plantuml.svek.orthoroute.OrthoRouteEngine;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -72,30 +73,93 @@ public class SvekPortConnector implements UDrawable {
 			pc.computeStubs();
 
 		// Phase 1b: separate stub tips that are too close at the same X
-		// Only separate tips that share the same direction
 		separateStubTips(connectors);
 
-		// Phase 2: route the middle (between stub tips)
-		for (SvekPortConnector pc : connectors)
-			pc.routeMiddle(harnessSpines, boardBounds);
+		// Phase 2: route via orthogonal visibility graph + A*
+		routeViaVisGraph(connectors, harnessSpines, boardBounds);
+
+		// Phase 2 fallback: any connector without waypoints gets
+		// routed via the old scan-and-test method
+		for (SvekPortConnector pc : connectors) {
+			if (pc.waypoints == null || pc.waypoints.isEmpty())
+				pc.routeMiddle(harnessSpines, boardBounds);
+		}
 
 		// Phase 2b: separate parallel segments that are too close
 		separateParallelSegments(connectors);
 
-		// Phase 2c: re-check segments that may now collide after
-		// separation shifted verticals/horizontals
-		for (SvekPortConnector pc : connectors)
-			pc.fixCrossoversAfterSeparation(harnessSpines);
-
-		// Phase 2d: re-separate after fixup (2c can collapse segments
-		// back to the same position), then fixup again
-		separateParallelSegments(connectors);
-		for (SvekPortConnector pc : connectors)
-			pc.fixCrossoversAfterSeparation(harnessSpines);
-
 		// Phase 3: validate all segments
 		for (SvekPortConnector pc : connectors)
 			pc.validate(harnessSpines, boardBounds);
+	}
+
+	private static void routeViaVisGraph(
+			List<SvekPortConnector> connectors,
+			List<RectangleArea> harnessSpines,
+			RectangleArea boardBounds) {
+
+		final List<OrthoRouteEngine.ConnectorData> data =
+				new ArrayList<OrthoRouteEngine.ConnectorData>();
+		Bibliotekon bib = null;
+		for (SvekPortConnector pc : connectors) {
+			if (pc.srcPortX == 0 && pc.srcPortY == 0)
+				continue;
+			if (bib == null)
+				bib = pc.bibliotekon;
+			data.add(new OrthoRouteEngine.ConnectorData(
+					pc.edge.getLink().getEntity1(),
+					pc.edge.getLink().getEntity2(),
+					pc.srcPortX, pc.srcPortY,
+					pc.dstPortX, pc.dstPortY,
+					pc.srcDir, pc.dstDir,
+					pc.srcTipX, pc.dstTipX));
+		}
+
+		// Collect all obstacles from within the svek package
+		// (Cluster.getGroup() is package-private)
+		final List<RectangleArea> obstacles =
+				new ArrayList<RectangleArea>();
+		if (bib != null) {
+			Entity boardEntity = null;
+			for (OrthoRouteEngine.ConnectorData cd : data) {
+				if (cd.srcParent != null) {
+					if (EntityImagePort.isBoardPort(cd.entity1))
+						boardEntity = cd.srcParent;
+					else if (cd.srcParent.getParentContainer()
+							!= null)
+						boardEntity = cd.srcParent
+								.getParentContainer();
+					if (boardEntity != null)
+						break;
+				}
+			}
+			for (Cluster cl : bib.allCluster()) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				if (boardEntity != null
+						&& cl.getGroup() == boardEntity)
+					continue;
+				obstacles.add(rect);
+			}
+		}
+		for (RectangleArea spine : harnessSpines)
+			if (spine != null)
+				obstacles.add(spine);
+
+		OrthoRouteEngine.routeConnectors(data, obstacles,
+				boardBounds);
+
+		// Copy results back
+		int idx = 0;
+		for (SvekPortConnector pc : connectors) {
+			if (pc.srcPortX == 0 && pc.srcPortY == 0)
+				continue;
+			final OrthoRouteEngine.ConnectorData cd = data.get(idx);
+			if (cd.resultWaypoints != null)
+				pc.waypoints = cd.resultWaypoints;
+			idx++;
+		}
 	}
 
 	// ==================================================================
