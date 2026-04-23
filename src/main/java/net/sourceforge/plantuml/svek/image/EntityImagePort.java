@@ -46,6 +46,7 @@ import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.decoration.symbol.USymbol;
 import net.sourceforge.plantuml.decoration.symbol.USymbols;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.Shadowable;
@@ -98,9 +99,11 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		final Entity parent = (Entity) entity.getParentContainer();
 		if (parent == null || parent.isRoot())
 			return false;
-		return parent.isGroup()
-				&& parent.getGroupType() == GroupType.PACKAGE
-				&& parent.getUSymbol() == USymbols.RECTANGLE;
+		if (parent.isGroup() == false || parent.getGroupType() != GroupType.PACKAGE)
+			return false;
+		final USymbol parentSymbol = parent.getUSymbol();
+		return parentSymbol == USymbols.RECTANGLE
+				|| parentSymbol == USymbols.COMPONENT_RECTANGLE;
 	}
 
 	public static boolean hasInsideLabel(Entity entity) {

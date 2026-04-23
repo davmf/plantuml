@@ -487,6 +487,14 @@ public class Cluster implements Moveable {
 			if (neededHeight < currentHeight)
 				this.rectangleArea = rectangleArea.withMaxY(
 						rectangleArea.getMinY() + neededHeight);
+		} else {
+			final double margin = titleHeight + symbolSize;
+			final double neededHeight = 2 * margin
+					+ (maxInsidePortCount - 1) * spacing;
+			final double currentHeight = rectangleArea.getHeight();
+			if (neededHeight > currentHeight)
+				this.rectangleArea = rectangleArea.withMaxY(
+						rectangleArea.getMinY() + neededHeight);
 		}
 		final double innerGap = symbolSize * 3;
 		final double neededWidth = maxLeftLabelWidth + maxRightLabelWidth
@@ -499,6 +507,11 @@ public class Cluster implements Moveable {
 			this.rectangleArea = rectangleArea
 					.addMinX(delta)
 					.addMaxX(-delta);
+		} else if (hasBoardPorts && minWidth > currentWidth) {
+			final double delta = (minWidth - currentWidth) / 2;
+			this.rectangleArea = rectangleArea
+					.addMinX(-delta)
+					.addMaxX(delta);
 		}
 		if (!insidePortsRepositioned) {
 			repositionInsidePortNodes();
