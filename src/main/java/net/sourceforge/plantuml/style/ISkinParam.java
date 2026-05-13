@@ -114,8 +114,6 @@ public interface ISkinParam extends ISkinSimple {
 
 	public boolean portLabelsInside();
 
-	public boolean portLabelsInside(Stereotype stereotype);
-
 	public boolean useSwimlanes(DiagramType type);
 
 	public double getNodesep();

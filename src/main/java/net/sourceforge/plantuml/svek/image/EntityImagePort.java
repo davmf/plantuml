@@ -67,6 +67,7 @@ import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.Cluster;
@@ -108,7 +109,14 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	public static boolean hasInsideLabel(Entity entity) {
 		if (entity.getLeafType() == LeafType.PIN)
 			return true;
-		return entity.getSkinParam().portLabelsInside(entity.getStereotype());
+		if (isBoardPort(entity))
+			return true;
+		if (entity.getSkinParam().portLabelsInside())
+			return true;
+		final Stereotype stereotype = entity.getStereotype();
+		if (stereotype == null)
+			return false;
+		return stereotype.getMultipleLabels().contains("inside");
 	}
 
 	public static double getInsidePortSpacing() {
@@ -223,7 +231,21 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		double titleShiftY = 0;
 		double edgeShiftX = 0;
 
-		if (isLabelInside()) {
+		if (isBoardPort(getEntity())) {
+			final Side side = getPortSide();
+			if (side == Side.WEST) {
+				x = -dimDesc.getWidth() - LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else if (side == Side.EAST) {
+				x = symbolSize + LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else {
+				x = -(dimDesc.getWidth() - symbolSize) / 2;
+				y = (side == Side.NORTH)
+						? -dimDesc.getHeight() - LABEL_GAP
+						: symbolSize + LABEL_GAP;
+			}
+		} else if (isLabelInside()) {
 			final Side side = getPortSide();
 			if (side == Side.WEST) {
 				x = symbolSize + LABEL_GAP;
@@ -241,20 +263,6 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 			} else {
 				x = -(dimDesc.getWidth() - symbolSize) / 2;
 				y = -dimDesc.getHeight() - LABEL_GAP;
-			}
-		} else if (isBoardPort(getEntity())) {
-			final Side side = getPortSide();
-			if (side == Side.WEST) {
-				x = -dimDesc.getWidth() - LABEL_GAP;
-				y = (symbolSize - dimDesc.getHeight()) / 2;
-			} else if (side == Side.EAST) {
-				x = symbolSize + LABEL_GAP;
-				y = (symbolSize - dimDesc.getHeight()) / 2;
-			} else {
-				x = -(dimDesc.getWidth() - symbolSize) / 2;
-				y = (side == Side.NORTH)
-						? -dimDesc.getHeight() - LABEL_GAP
-						: symbolSize + LABEL_GAP;
 			}
 		} else {
 			x = -(dimDesc.getWidth() - symbolSize) / 2;

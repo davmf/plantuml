@@ -818,21 +818,8 @@ public class SkinParam implements ISkinParam {
 
 	@Override
 	public boolean portLabelsInside() {
-		return portLabelsInside(null);
-	}
-
-	@Override
-	public boolean portLabelsInside(Stereotype stereotype) {
-		if (stereotype != null) {
-			for (String s : stereotype.getMultipleLabels()) {
-				final String v = getValue("componentportlabels<<" + s + ">>");
-				if ("inside".equalsIgnoreCase(v))
-					return true;
-				if ("outside".equalsIgnoreCase(v))
-					return false;
-			}
-		}
-		return valueIs("componentportlabels", "inside");
+		return isTrue("portlabelsinside")
+				|| valueIs("portlabels", "inside");
 	}
 
 	@Override
