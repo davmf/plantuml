@@ -13,10 +13,13 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
+import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
@@ -1083,11 +1086,19 @@ public class SvekPortConnector implements UDrawable {
 		final UGraphic ugLine = ug.apply(color).apply(HColors.none().bg())
 				.apply(UStroke.simple());
 
-		for (int i = 0; i < waypoints.size() - 1; i++)
-			drawLine(ugLine, waypoints.get(i).getX(),
-					waypoints.get(i).getY(),
-					waypoints.get(i + 1).getX(),
-					waypoints.get(i + 1).getY());
+		final DotPath path = buildDotPath(waypoints);
+		final String radiusStr = skinParam.getPragma()
+				.getValue(PragmaKey.EDGE_CORNER_RADIUS);
+		if (radiusStr != null) {
+			try {
+				final double radius = Double.parseDouble(radiusStr);
+				if (radius > 0)
+					path.muteToRoundOrthogonalPaths(radius);
+			} catch (NumberFormatException e) {
+				// Ignore invalid radius values
+			}
+		}
+		ugLine.draw(path);
 
 		// Arrow at destination
 		final XPoint2D last = waypoints.get(waypoints.size() - 1);
@@ -1095,6 +1106,21 @@ public class SvekPortConnector implements UDrawable {
 		final double arrowDir = Math.signum(last.getX() - prev.getX());
 		if (Math.abs(arrowDir) > 0.5)
 			drawHArrow(ugLine, last.getX(), last.getY(), arrowDir);
+	}
+
+	private static DotPath buildDotPath(List<XPoint2D> pts) {
+		final List<XCubicCurve2D> beziers =
+				new ArrayList<XCubicCurve2D>();
+		for (int i = 0; i < pts.size() - 1; i++) {
+			final XPoint2D a = pts.get(i);
+			final XPoint2D b = pts.get(i + 1);
+			beziers.add(new XCubicCurve2D(
+					a.getX(), a.getY(),
+					a.getX(), a.getY(),
+					b.getX(), b.getY(),
+					b.getX(), b.getY()));
+		}
+		return DotPath.fromBeziers(beziers);
 	}
 
 	private void drawLine(UGraphic ug, double x1, double y1,
