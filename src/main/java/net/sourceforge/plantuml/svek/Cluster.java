@@ -598,7 +598,8 @@ public class Cluster implements Moveable {
 	private boolean hasBoardPortNodes() {
 		for (SvekNode node : nodes)
 			if (node.getEntityPosition().isPort()
-					&& EntityImagePort.isBoardPort(node.getEntity()))
+					&& EntityImagePort.isBoardPort(node.getEntity())
+					&& EntityImagePort.hasInsideLabel(node.getEntity()) == false)
 				return true;
 		return false;
 	}
