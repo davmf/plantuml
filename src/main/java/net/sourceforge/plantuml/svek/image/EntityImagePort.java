@@ -101,8 +101,14 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		if (parent.isGroup() == false || parent.getGroupType() != GroupType.PACKAGE)
 			return false;
 		final USymbol parentSymbol = parent.getUSymbol();
-		return parentSymbol == USymbols.RECTANGLE
-				|| parentSymbol == USymbols.COMPONENT_RECTANGLE;
+		if (parentSymbol != USymbols.RECTANGLE
+				&& parentSymbol != USymbols.COMPONENT_RECTANGLE)
+			return false;
+		// Only the outermost rectangle (whose parent is root) is the
+		// "board". Ports on nested rectangle components are not
+		// board ports and must stub outward from their own parent.
+		final Entity grandparent = (Entity) parent.getParentContainer();
+		return grandparent == null || grandparent.isRoot();
 	}
 
 	public static boolean hasInsideLabel(Entity entity) {
