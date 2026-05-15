@@ -85,6 +85,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	private boolean upPosition() {
+		if (parent == null)
+			return false;
 		final XPoint2D clusterCenter = parent.getRectangleArea().getPointCenter();
 		final SvekNode node = bibliotekon.getNode(getEntity());
 		return node.getMinY() < clusterCenter.getY();
@@ -138,6 +140,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 				return Side.EAST;
 		}
 		final SvekNode node = bibliotekon.getNode(getEntity());
+		if (parent == null)
+			return entityPosition.isInput() ? Side.WEST : Side.EAST;
 		return parent.getRectangleArea().getClosestSide(node.getPosition());
 	}
 
@@ -145,6 +149,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		if (getEntity().getLeafType() == LeafType.PIN)
 			return 0;
 		if (isBoardPort(getEntity()))
+			return 0;
+		if (parent == null)
 			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final Side side = getPortSide();
@@ -163,6 +169,8 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		if (getEntity().getLeafType() == LeafType.PIN)
 			return 0;
 		if (isBoardPort(getEntity()))
+			return 0;
+		if (parent == null)
 			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final EnumSet<EntityPosition> positions = entityPosition.isInput()

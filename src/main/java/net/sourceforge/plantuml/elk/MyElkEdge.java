@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.elk;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -77,12 +78,15 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.skin.LineParam;
+import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
@@ -319,31 +323,57 @@ public class MyElkEdge implements UDrawable {
 	private void drawSections(UGraphic ug, final Collection<ElkEdgeSection> sections, MagneticBorder magneticBorder1,
 			MagneticBorder magneticBorder2) {
 		for (ElkEdgeSection section : sections) {
-			final Collection<ElkBendPoint> points = section.getBendPoints();
+			final List<XPoint2D> pts = new ArrayList<XPoint2D>();
 
-			double x1 = section.getStartX();
-			double y1 = section.getStartY();
-
-			final XPoint2D tmpStart = new XPoint2D(x1, y1);
+			final XPoint2D tmpStart = new XPoint2D(section.getStartX(), section.getStartY());
 			final UTranslate force1 = magneticBorder1.getForceAt(ug.getStringBounder(),
 					translate.getTranslated(tmpStart));
-			final XPoint2D start = force1.getTranslated(tmpStart);
-			x1 = start.x;
-			y1 = start.y;
+			pts.add(force1.getTranslated(tmpStart));
 
-			for (ElkBendPoint pt : points) {
-				drawLine(ug, x1, y1, pt.getX(), pt.getY());
-				x1 = pt.getX();
-				y1 = pt.getY();
-			}
+			for (ElkBendPoint pt : section.getBendPoints())
+				pts.add(new XPoint2D(pt.getX(), pt.getY()));
 
 			final XPoint2D tmpEnd = new XPoint2D(section.getEndX(), section.getEndY() + magicY2);
 			final UTranslate force2 = magneticBorder2.getForceAt(ug.getStringBounder(),
 					translate.getTranslated(tmpEnd));
-			final XPoint2D end = force2.getTranslated(tmpEnd);
+			pts.add(force2.getTranslated(tmpEnd));
 
-			drawLine(ug, x1, y1, end.x, end.y);
+			drawPolyline(ug, pts);
 		}
+	}
+
+	private void drawPolyline(UGraphic ug, List<XPoint2D> pts) {
+		if (pts.size() < 2)
+			return;
+
+		final DotPath path = buildDotPath(pts);
+		final String radiusStr = diagram.getPragma()
+				.getValue(PragmaKey.EDGE_CORNER_RADIUS);
+		if (radiusStr != null) {
+			try {
+				final double radius = Double.parseDouble(radiusStr);
+				if (radius > 0)
+					path.muteToRoundOrthogonalPaths(radius);
+			} catch (NumberFormatException e) {
+				// Ignore invalid radius values
+			}
+		}
+		ug.draw(path);
+	}
+
+	private static DotPath buildDotPath(List<XPoint2D> pts) {
+		final List<XCubicCurve2D> beziers =
+				new ArrayList<XCubicCurve2D>();
+		for (int i = 0; i < pts.size() - 1; i++) {
+			final XPoint2D a = pts.get(i);
+			final XPoint2D b = pts.get(i + 1);
+			beziers.add(new XCubicCurve2D(
+					a.getX(), a.getY(),
+					a.getX(), a.getY(),
+					b.getX(), b.getY(),
+					b.getX(), b.getY()));
+		}
+		return DotPath.fromBeziers(beziers);
 	}
 
 	private void drawLine(UGraphic ug, double x1, double y1, double x2, double y2) {
