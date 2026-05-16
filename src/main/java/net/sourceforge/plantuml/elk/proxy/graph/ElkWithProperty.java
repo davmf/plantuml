@@ -31,10 +31,11 @@ public class ElkWithProperty {
 			EnumSet result = null;
 			for (Object foo : (Collection) value) {
 				final ElkObjectProxy elk = (ElkObjectProxy) foo;
+				final Enum real = (Enum) elk.getTrueObject();
 				if (result == null) {
-					result = EnumSet.noneOf((Class) elk.getClass());
+					result = EnumSet.noneOf(real.getDeclaringClass());
 				}
-				result.add(elk);
+				result.add(real);
 			}
 			Reflect.call2(obj, "setProperty", key, result);
 		} else if (value instanceof ElkObjectProxy) {

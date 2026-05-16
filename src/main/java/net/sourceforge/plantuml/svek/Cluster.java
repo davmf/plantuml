@@ -275,6 +275,10 @@ public class Cluster implements Moveable {
 		return rectangleArea;
 	}
 
+	public void setRectangleArea(RectangleArea rect) {
+		this.rectangleArea = rect;
+	}
+
 	public void setTitlePosition(XPoint2D pos) {
 		this.xyTitle = pos;
 	}

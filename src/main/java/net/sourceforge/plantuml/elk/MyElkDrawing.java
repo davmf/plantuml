@@ -49,6 +49,7 @@ import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.symbol.USymbolFolder;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
@@ -93,17 +94,20 @@ class MyElkDrawing implements TextBlock {
 	private final Map<Entity, ElkNode> clusters;
 	private final Map<Link, ElkEdge> edges;
 	private final Map<Entity, ElkNode> nodes;
+	private final Map<Entity, ElkPort> ports;
 
 	private final ClusterManager clusterManager;
 
 	public MyElkDrawing(ClusterManager clusterManager, CucaDiagram diagram, MinMax minMax,
-			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes) {
+			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes,
+			Map<Entity, ElkPort> ports) {
 		this.clusterManager = clusterManager;
 		this.minMax = minMax;
 		this.diagram = diagram;
 		this.clusters = clusters;
 		this.edges = edges;
 		this.nodes = nodes;
+		this.ports = ports;
 	}
 
 	public void drawU(UGraphic ug) {
@@ -140,6 +144,20 @@ class MyElkDrawing implements TextBlock {
 			// Print the node image at right coord
 			image.drawU(ug);
 
+			elkNodes.put(entity, image);
+		}
+		// Ports were placed by ELK on the parent ElkNode's boundary.
+		// Translate the corresponding EntityImagePort to that position.
+		for (Entry<Entity, ElkPort> ent : ports.entrySet()) {
+			final Entity entity = ent.getKey();
+			final XPoint2D corner = CucaDiagramFileMakerElk.getPosition(ent.getValue());
+			final SvekNode svekNode = clusterManager.getBibliotekon().getNode(entity);
+			svekNode.resetMove();
+			svekNode.moveDelta(corner.x, corner.y);
+
+			final IEntityImage image = IEntityImageUtils.translate(printEntityInternal(entity),
+					UTranslate.point(corner));
+			image.drawU(ug);
 			elkNodes.put(entity, image);
 		}
 		return elkNodes;

@@ -47,6 +47,7 @@ import net.atmp.CucaDiagram;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.abel.CucaNote;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
@@ -87,10 +88,16 @@ import net.sourceforge.plantuml.elk.proxy.core.options.Direction;
 import net.sourceforge.plantuml.elk.proxy.core.options.EdgeLabelPlacement;
 import net.sourceforge.plantuml.elk.proxy.core.options.HierarchyHandling;
 import net.sourceforge.plantuml.elk.proxy.core.options.NodeLabelPlacement;
+import net.sourceforge.plantuml.elk.proxy.core.math.KVector;
+import net.sourceforge.plantuml.elk.proxy.core.options.PortConstraints;
+import net.sourceforge.plantuml.elk.proxy.core.options.PortLabelPlacement;
+import net.sourceforge.plantuml.elk.proxy.core.options.PortSide;
+import net.sourceforge.plantuml.elk.proxy.core.options.SizeConstraint;
 import net.sourceforge.plantuml.elk.proxy.core.util.NullElkProgressMonitor;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkLabel;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.elk.proxy.graph.util.ElkGraphUtil;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
@@ -100,6 +107,8 @@ import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.Rankdir;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
@@ -114,12 +123,14 @@ import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignature;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.svek.Cluster;
 import net.sourceforge.plantuml.svek.ClusterHeader;
 import net.sourceforge.plantuml.svek.CucaDiagramFileMaker;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
 import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.SvekNode;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.utils.Position;
 
 /*
@@ -137,6 +148,7 @@ https://rtsys.informatik.uni-kiel.de/~biblio/downloads/theses/thw-bt.pdf
 public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 	private final Map<Entity, ElkNode> nodes = new LinkedHashMap<Entity, ElkNode>();
+	private final Map<Entity, ElkPort> ports = new LinkedHashMap<Entity, ElkPort>();
 	private final Map<Entity, ElkNode> clusters = new LinkedHashMap<Entity, ElkNode>();
 	private final Map<Link, ElkEdge> edges = new LinkedHashMap<Link, ElkEdge>();
 
@@ -291,6 +303,17 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 	}
 
+	// Port coordinates are reported by ELK relative to the parent ElkNode.
+	public static XPoint2D getPosition(ElkPort port) {
+		final ElkNode parent = port.getParent();
+		final double x = port.getX();
+		final double y = port.getY();
+		if (parent == null)
+			return new XPoint2D(x, y);
+		final XPoint2D parentPosition = getPosition(parent);
+		return new XPoint2D(parentPosition.getX() + x, parentPosition.getY() + y);
+	}
+
 	private Collection<Entity> getUnpackagedEntities() {
 		final List<Entity> result = new ArrayList<>();
 		for (Entity ent : diagram.leafs())
@@ -300,12 +323,32 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		return result;
 	}
 
+	// Translate PlantUML's `left to right direction` directive into the
+	// ELK Direction property. ELK uses this to choose layered layout flow.
+	private Object getElkDirection() {
+		if (diagram.getSkinParam().getRankdir() == Rankdir.LEFT_TO_RIGHT)
+			return Direction.RIGHT;
+		return Direction.DOWN;
+	}
+
 	private ElkNode getElkNode(final Entity entity) {
 		ElkNode node = nodes.get(entity);
 		if (node == null)
 			node = clusters.get(entity);
 
 		return node;
+	}
+
+	private ElkEdge createEdgeForEndpoints(Entity e1, Entity e2) {
+		final ElkPort p1 = ports.get(e1);
+		final ElkPort p2 = ports.get(e2);
+		if (p1 != null && p2 != null)
+			return ElkGraphUtil.createSimpleEdge(p1, p2);
+		if (p1 != null)
+			return ElkGraphUtil.createSimpleEdge(p1, getElkNode(e2));
+		if (p2 != null)
+			return ElkGraphUtil.createSimpleEdge(getElkNode(e1), p2);
+		return ElkGraphUtil.createSimpleEdge(getElkNode(e1), getElkNode(e2));
 	}
 
 	private void printAllSubgroups(StringBounder stringBounder, ElkNode cluster, Entity group) {
@@ -320,7 +363,11 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 				// We create the "cluster" in ELK for this group
 				final ElkNode elkCluster = ElkGraphUtil.createNode(cluster);
-				elkCluster.setProperty(CoreOptions.DIRECTION, Direction.DOWN);
+				elkCluster.setProperty(CoreOptions.DIRECTION, getElkDirection());
+				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS, PortConstraints.FIXED_SIDE);
+				elkCluster.setProperty(CoreOptions.NODE_SIZE_CONSTRAINTS,
+						EnumSet.of(SizeConstraint.NODE_LABELS, SizeConstraint.PORTS,
+								SizeConstraint.PORT_LABELS, SizeConstraint.MINIMUM_SIZE));
 
 				final ClusterHeader clusterHeader = new ClusterHeader(g, diagram, stringBounder);
 
@@ -335,10 +382,55 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// We need it anyway to recurse up to the real "root"
 
 				this.clusters.put(g, elkCluster);
+
+				// Also register a Svek Cluster in the bibliotekon so
+				// EntityImagePort can resolve its parent. The
+				// rectangleArea is back-filled from ELK after layout.
+				clusterManager.openCluster(g, clusterHeader);
 				this.printSingleGroup(stringBounder, g);
+				clusterManager.closeCluster();
+
+				// Pre-size the cluster to fit its port labels on each
+				// side. ELK's PORT_LABELS size constraint alone does
+				// not widen a cluster with no body children.
+				sizeClusterForPortLabels(g, elkCluster, stringBounder);
 			}
 		}
 
+	}
+
+	// Widen a cluster so that west-side and east-side inside-port labels
+	// don't collide. ELK's NODE_SIZE_CONSTRAINTS.PORT_LABELS does not
+	// reliably widen a cluster whose only children are ports.
+	private void sizeClusterForPortLabels(Entity group, ElkNode elkCluster,
+			StringBounder stringBounder) {
+		double widestWest = 0;
+		double widestEast = 0;
+		for (Entity leaf : group.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			final IEntityImage img = printEntityInternal(leaf);
+			if (img instanceof EntityImagePort == false)
+				continue;
+			final EntityImagePort portImg = (EntityImagePort) img;
+			final boolean insideLabel = EntityImagePort.hasInsideLabel(leaf);
+			if (insideLabel == false)
+				continue;
+			final double w = portImg.getInsideLabelWidth(stringBounder);
+			if (pos.isInput() && w > widestWest)
+				widestWest = w;
+			else if (pos.isOutput() && w > widestEast)
+				widestEast = w;
+		}
+		if (widestWest == 0 && widestEast == 0)
+			return;
+		final double portSize = 2 * EntityPosition.RADIUS;
+		final double labelGap = 5;
+		final double interior = 30;
+		final double minWidth = widestWest + labelGap + portSize + interior
+				+ portSize + labelGap + widestEast;
+		elkCluster.setProperty(CoreOptions.NODE_SIZE_MINIMUM, new KVector(minWidth, 1));
 	}
 
 	private void printSingleGroup(StringBounder stringBounder, Entity g) {
@@ -376,6 +468,41 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		final SvekNode node = getBibliotekon().createNode(ent, image, stringBounder);
 		clusterManager.addNode(node);
 
+		// Ports are emitted as ElkPort attached to the parent ElkNode
+		// so ELK places them on the cluster boundary. Side is derived
+		// from entityPosition.isInput (WEST) / isOutput (EAST), matching
+		// EntityImagePort.getPortSide for inside-label rendering.
+		final EntityPosition pos = ent.getEntityPosition();
+		if (pos != null && pos.isPort() && image instanceof EntityImagePort) {
+			final EntityImagePort portImage = (EntityImagePort) image;
+			final ElkPort port = ElkGraphUtil.createPort(parent);
+			final double portSize = 2 * EntityPosition.RADIUS;
+			port.setDimensions(portSize, portSize);
+			port.setProperty(CoreOptions.PORT_SIDE,
+					pos.isInput() ? PortSide.WEST : PortSide.EAST);
+			// portLabels inside is the PlantUML default; the <<board>>
+			// stereotype rule (portLabels<<board>> outside) flips this
+			// for board ports. Use EntityImagePort.hasInsideLabel so
+			// ELK matches what the port image will draw.
+			final boolean insideLabel = EntityImagePort.hasInsideLabel(ent);
+			port.setProperty(CoreOptions.PORT_LABELS_PLACEMENT,
+					EnumSet.of(insideLabel ? PortLabelPlacement.INSIDE : PortLabelPlacement.OUTSIDE,
+							PortLabelPlacement.NEXT_TO_PORT_IF_POSSIBLE));
+			// Reserve label space so ELK widens the cluster to fit.
+			// EntityImagePort.calculateDimensionSlow returns just the
+			// glyph dim, so query the desc text width directly.
+			final double labelW = insideLabel
+					? portImage.getInsideLabelWidth(stringBounder)
+					: portImage.getMaxWidthFromLabelForEntryExit(stringBounder);
+			if (labelW > 0) {
+				final ElkLabel portLabel = ElkGraphUtil.createLabel(port);
+				portLabel.setText("X");
+				portLabel.setDimensions(labelW, portSize);
+			}
+			ports.put(ent, port);
+			return;
+		}
+
 		// Here, we try to tell ELK to use this dimension as node dimension
 		final ElkNode elkNode = ElkGraphUtil.createNode(parent);
 		elkNode.setDimensions(dimension.getWidth(), dimension.getHeight());
@@ -408,10 +535,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	}
 
 	private void manageSingleEdge(StringBounder stringBounder, final Link link) {
-		final ElkNode node1 = getElkNode(link.getEntity1());
-		final ElkNode node2 = getElkNode(link.getEntity2());
-
-		final ElkEdge edge = ElkGraphUtil.createSimpleEdge(node1, node2);
+		final ElkEdge edge = createEdgeForEndpoints(link.getEntity1(), link.getEntity2());
 
 		final TextBlock labelLink = getLabel(stringBounder, link);
 		if (labelLink != null) {
@@ -475,8 +599,9 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			throws IOException, InterruptedException {
 
 		final ElkNode root = ElkGraphUtil.createGraph();
-		root.setProperty(CoreOptions.DIRECTION, Direction.DOWN);
+		root.setProperty(CoreOptions.DIRECTION, getElkDirection());
 		root.setProperty(CoreOptions.HIERARCHY_HANDLING, HierarchyHandling.INCLUDE_CHILDREN);
+		root.setProperty(CoreOptions.PORT_CONSTRAINTS, PortConstraints.FIXED_SIDE);
 
 		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(diagram.getSkinParam());
 
@@ -487,10 +612,24 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 		new RecursiveGraphLayoutEngine().layout(root, new NullElkProgressMonitor());
 
-		final MinMax minMax = TextBlockUtils.getMinMax(
-				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes), stringBounder, false);
+		// Back-fill the Svek Cluster.rectangleArea from ELK-computed
+		// bounds so EntityImagePort.getPortSide and friends work.
+		for (Map.Entry<Entity, ElkNode> entry : clusters.entrySet()) {
+			final Cluster cl = getBibliotekon().getCluster(entry.getKey());
+			if (cl == null)
+				continue;
+			final ElkNode elkCluster = entry.getValue();
+			final XPoint2D corner = getPosition(elkCluster);
+			cl.setRectangleArea(new RectangleArea(corner.getX(), corner.getY(),
+					corner.getX() + elkCluster.getWidth(),
+					corner.getY() + elkCluster.getHeight()));
+		}
 
-		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes);
+		final MinMax minMax = TextBlockUtils.getMinMax(
+				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes, ports),
+				stringBounder, false);
+
+		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports);
 	}
 
 }
