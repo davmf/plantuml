@@ -152,6 +152,12 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 			return 0;
 		if (parent == null)
 			return 0;
+		// Under ELK the port has already been positioned on the
+		// cluster boundary; Svek's edge-centre adjustment is not
+		// needed and would shift the glyph away from where ELK
+		// placed it.
+		if (getEntity().getDiagram().isUseElk())
+			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final Side side = getPortSide();
 		final double symbolSize = 2 * EntityPosition.RADIUS;
@@ -171,6 +177,10 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		if (isBoardPort(getEntity()))
 			return 0;
 		if (parent == null)
+			return 0;
+		// Under ELK the port row Y has been chosen by ELK; do not
+		// re-space ports according to Svek's row layout.
+		if (getEntity().getDiagram().isUseElk())
 			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final EnumSet<EntityPosition> positions = entityPosition.isInput()
