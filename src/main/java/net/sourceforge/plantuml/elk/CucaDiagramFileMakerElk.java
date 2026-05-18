@@ -393,17 +393,18 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// Pre-size the cluster to fit its port labels on each
 				// side. ELK's PORT_LABELS size constraint alone does
 				// not widen a cluster with no body children.
-				sizeClusterForPortLabels(g, elkCluster, stringBounder);
+				sizeClusterForPortLabels(g, elkCluster, clusterHeader, stringBounder);
 			}
 		}
 
 	}
 
 	// Widen a cluster so that west-side and east-side inside-port labels
-	// don't collide. ELK's NODE_SIZE_CONSTRAINTS.PORT_LABELS does not
-	// reliably widen a cluster whose only children are ports.
+	// don't collide with each other or with the cluster title.
+	// ELK's NODE_SIZE_CONSTRAINTS.PORT_LABELS does not reliably widen
+	// a cluster whose only children are ports.
 	private void sizeClusterForPortLabels(Entity group, ElkNode elkCluster,
-			StringBounder stringBounder) {
+			ClusterHeader clusterHeader, StringBounder stringBounder) {
 		double widestWest = 0;
 		double widestEast = 0;
 		for (Entity leaf : group.leafs()) {
@@ -423,11 +424,15 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			else if (pos.isOutput() && w > widestEast)
 				widestEast = w;
 		}
-		if (widestWest == 0 && widestEast == 0)
+		final double titleWidth = clusterHeader.getTitleAndAttributeWidth();
+		if (widestWest == 0 && widestEast == 0 && titleWidth == 0)
 			return;
 		final double portSize = 2 * EntityPosition.RADIUS;
 		final double labelGap = 5;
-		final double interior = 30;
+		final double titlePad = 10;
+		// Interior is whichever is wider: a default gap or the cluster
+		// title text plus a little breathing room on each side.
+		final double interior = Math.max(30, titleWidth + 2 * titlePad);
 		final double minWidth = widestWest + labelGap + portSize + interior
 				+ portSize + labelGap + widestEast;
 		elkCluster.setProperty(CoreOptions.NODE_SIZE_MINIMUM, new KVector(minWidth, 1));
