@@ -26,5 +26,7 @@ public class CoreOptions {
 			"PORT_LABELS_PLACEMENT");
 	public static final Object NODE_SIZE_MINIMUM = Reflect.field("org.eclipse.elk.core.options.CoreOptions",
 			"NODE_SIZE_MINIMUM");
+	public static final Object SPACING_PORT_PORT = Reflect.field("org.eclipse.elk.core.options.CoreOptions",
+			"SPACING_PORT_PORT");
 
 }

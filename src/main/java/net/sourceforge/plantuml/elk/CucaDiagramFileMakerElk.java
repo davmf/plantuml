@@ -368,13 +368,20 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				elkCluster.setProperty(CoreOptions.NODE_SIZE_CONSTRAINTS,
 						EnumSet.of(SizeConstraint.NODE_LABELS, SizeConstraint.PORTS,
 								SizeConstraint.PORT_LABELS, SizeConstraint.MINIMUM_SIZE));
-
 				final ClusterHeader clusterHeader = new ClusterHeader(g, diagram, stringBounder);
 
 				final int titleAndAttributeHeight = clusterHeader.getTitleAndAttributeHeight();
 
 				final double topPadding = Math.max(25, titleAndAttributeHeight) + 15;
 				elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(topPadding, 15, 15, 15));
+
+				// For clusters with inside-label ports (nested
+				// components), keep ELK's default JUSTIFIED port
+				// distribution but set SPACING_PORT_PORT so ports
+				// pack tightly. Min height comes from
+				// sizeClusterForPortLabels below.
+				if (hasInsideLabelPort(g))
+					elkCluster.setProperty(CoreOptions.SPACING_PORT_PORT, 10.0);
 
 				// Not sure this is usefull to put a label on a "cluster"
 				final ElkLabel label = ElkGraphUtil.createLabel(elkCluster);
@@ -399,14 +406,32 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 	}
 
-	// Widen a cluster so that west-side and east-side inside-port labels
-	// don't collide with each other or with the cluster title.
-	// ELK's NODE_SIZE_CONSTRAINTS.PORT_LABELS does not reliably widen
-	// a cluster whose only children are ports.
+	private boolean hasInsideLabelPort(Entity group) {
+		for (Entity leaf : group.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			if (EntityImagePort.hasInsideLabel(leaf))
+				return true;
+		}
+		return false;
+	}
+
+	// Widen and height-constrain a cluster so that:
+	//  - west-side and east-side inside-port labels don't collide with
+	//    each other or with the cluster title (width).
+	//  - the cluster is tall enough to host its inside-label ports
+	//    with ~30px row spacing but not stretched beyond that (height).
+	// ELK's NODE_SIZE_CONSTRAINTS.PORT_LABELS does not reliably size
+	// a cluster whose only children are ports, and the default
+	// JUSTIFIED port alignment then spreads ports across the full
+	// cluster height which can make clusters very tall.
 	private void sizeClusterForPortLabels(Entity group, ElkNode elkCluster,
 			ClusterHeader clusterHeader, StringBounder stringBounder) {
 		double widestWest = 0;
 		double widestEast = 0;
+		int countWest = 0;
+		int countEast = 0;
 		for (Entity leaf : group.leafs()) {
 			final EntityPosition pos = leaf.getEntityPosition();
 			if (pos == null || pos.isPort() == false)
@@ -419,10 +444,15 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			if (insideLabel == false)
 				continue;
 			final double w = portImg.getInsideLabelWidth(stringBounder);
-			if (pos.isInput() && w > widestWest)
-				widestWest = w;
-			else if (pos.isOutput() && w > widestEast)
-				widestEast = w;
+			if (pos.isInput()) {
+				if (w > widestWest)
+					widestWest = w;
+				countWest++;
+			} else if (pos.isOutput()) {
+				if (w > widestEast)
+					widestEast = w;
+				countEast++;
+			}
 		}
 		final double titleWidth = clusterHeader.getTitleAndAttributeWidth();
 		if (widestWest == 0 && widestEast == 0 && titleWidth == 0)
@@ -430,12 +460,15 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		final double portSize = 2 * EntityPosition.RADIUS;
 		final double labelGap = 5;
 		final double titlePad = 10;
-		// Interior is whichever is wider: a default gap or the cluster
-		// title text plus a little breathing room on each side.
 		final double interior = Math.max(30, titleWidth + 2 * titlePad);
 		final double minWidth = widestWest + labelGap + portSize + interior
 				+ portSize + labelGap + widestEast;
-		elkCluster.setProperty(CoreOptions.NODE_SIZE_MINIMUM, new KVector(minWidth, 1));
+		// Height: title-and-padding + per-port row * max ports per side.
+		final double topPadding = Math.max(25, clusterHeader.getTitleAndAttributeHeight()) + 15;
+		final double rowHeight = 30;
+		final int maxRows = Math.max(countWest, countEast);
+		final double minHeight = topPadding + maxRows * rowHeight + 15;
+		elkCluster.setProperty(CoreOptions.NODE_SIZE_MINIMUM, new KVector(minWidth, minHeight));
 	}
 
 	private void printSingleGroup(StringBounder stringBounder, Entity g) {
