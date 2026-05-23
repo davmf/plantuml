@@ -210,24 +210,63 @@ public class MyElkEdge implements UDrawable {
 			drawSections(ug, sections, magneticBorder1, magneticBorder2);
 		}
 
-		final UDrawable extremityFactory1 = getDecors(link.getType().getDecor1(), Math.PI / 2, HColors.WHITE);
-		final UDrawable extremityFactory2 = getDecors(link.getType().getDecor2(), -Math.PI / 2, HColors.WHITE);
+		// Compute the head/tail angles from the actual section
+		// geometry so the arrowheads point along the line, the same
+		// way SvekEdge derives them from DotPath.getEndAngle.
+		final ElkEdgeSection s0 = sections.get(0);
+		final double headAngle = endAngleOf(s0);
+		final double tailAngle = startAngleOf(s0) + Math.PI;
+		final UDrawable extremityFactory1 = getDecors(link.getType().getDecor1(), headAngle, HColors.WHITE);
+		final UDrawable extremityFactory2 = getDecors(link.getType().getDecor2(), tailAngle, HColors.WHITE);
 
 		if (extremityFactory1 != null) {
-			final double x = sections.get(0).getEndX();
-			final double y = sections.get(0).getEndY();
+			final double x = s0.getEndX();
+			final double y = s0.getEndY();
 			final UTranslate force = magneticBorder2.getForceAt(ug.getStringBounder(), new XPoint2D(x, y));
 			extremityFactory1.drawU(ug.apply(stroke.onlyThickness()).apply(new UTranslate(x, y).compose(force)));
 		}
 
 		if (extremityFactory2 != null) {
-			final double x = sections.get(0).getStartX();
-			final double y = sections.get(0).getStartY();
+			final double x = s0.getStartX();
+			final double y = s0.getStartY();
 			final UTranslate force = magneticBorder1.getForceAt(ug.getStringBounder(), new XPoint2D(x, y));
 			extremityFactory2.drawU(ug.apply(stroke.onlyThickness()).apply(new UTranslate(x, y).compose(force)));
 		}
 
 		drawLabels(ugOrig);
+	}
+
+	// Angle of the section's final segment heading into the end point.
+	// Returns Math.atan2(dy, dx) so 0 = rightward, PI/2 = downward, PI = leftward.
+	private double endAngleOf(ElkEdgeSection s) {
+		final List<ElkBendPoint> bends = new ArrayList<ElkBendPoint>(s.getBendPoints());
+		final double fromX;
+		final double fromY;
+		if (bends.isEmpty()) {
+			fromX = s.getStartX();
+			fromY = s.getStartY();
+		} else {
+			final ElkBendPoint last = bends.get(bends.size() - 1);
+			fromX = last.getX();
+			fromY = last.getY();
+		}
+		return Math.atan2(s.getEndY() - fromY, s.getEndX() - fromX);
+	}
+
+	// Angle of the section's first segment leaving the start point.
+	private double startAngleOf(ElkEdgeSection s) {
+		final List<ElkBendPoint> bends = new ArrayList<ElkBendPoint>(s.getBendPoints());
+		final double toX;
+		final double toY;
+		if (bends.isEmpty()) {
+			toX = s.getEndX();
+			toY = s.getEndY();
+		} else {
+			final ElkBendPoint first = bends.get(0);
+			toX = first.getX();
+			toY = first.getY();
+		}
+		return Math.atan2(toY - s.getStartY(), toX - s.getStartX());
 	}
 
 	private UDrawable getDecors(LinkDecor decors, double angle, HColor backColor) {
