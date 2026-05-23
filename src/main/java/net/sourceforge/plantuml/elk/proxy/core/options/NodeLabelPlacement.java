@@ -5,7 +5,7 @@ import net.sourceforge.plantuml.elk.proxy.Reflect;
 
 public enum NodeLabelPlacement implements ElkObjectProxy {
 
-	INSIDE, V_CENTER, H_CENTER;
+	INSIDE, OUTSIDE, V_TOP, V_CENTER, V_BOTTOM, H_LEFT, H_CENTER, H_RIGHT;
 
 	@Override
 	public Enum getTrueObject() {

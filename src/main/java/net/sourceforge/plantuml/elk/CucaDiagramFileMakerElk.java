@@ -371,22 +371,34 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				final ClusterHeader clusterHeader = new ClusterHeader(g, diagram, stringBounder);
 
 				final int titleAndAttributeHeight = clusterHeader.getTitleAndAttributeHeight();
+				final int titleAndAttributeWidth = clusterHeader.getTitleAndAttributeWidth();
 
-				final double topPadding = Math.max(25, titleAndAttributeHeight) + 15;
-				elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(topPadding, 15, 15, 15));
-
-				// For clusters with inside-label ports (nested
-				// components), keep ELK's default JUSTIFIED port
-				// distribution but set SPACING_PORT_PORT so ports
-				// pack tightly. Min height comes from
-				// sizeClusterForPortLabels below.
-				if (hasInsideLabelPort(g))
+				// For inside-label-port clusters (e.g. nested
+				// components) we draw the cluster title *above* the
+				// rectangle rather than inside it, so the cluster
+				// body only needs to be wide enough for left/right
+				// port labels. ELK is told to place the label
+				// outside-top so it reserves vertical space above
+				// the cluster, and the cluster's top padding shrinks
+				// to a small breathing-room value.
+				final boolean externalTitle = hasInsideLabelPort(g);
+				if (externalTitle) {
+					elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(15, 15, 15, 15));
 					elkCluster.setProperty(CoreOptions.SPACING_PORT_PORT, 10.0);
+				} else {
+					final double topPadding = Math.max(25, titleAndAttributeHeight) + 15;
+					elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(topPadding, 15, 15, 15));
+				}
 
-				// Not sure this is usefull to put a label on a "cluster"
 				final ElkLabel label = ElkGraphUtil.createLabel(elkCluster);
 				label.setText("C");
-				// We need it anyway to recurse up to the real "root"
+				// Tell ELK the size of the title label so it can
+				// reserve space - inside (default) or outside-top.
+				label.setDimensions(titleAndAttributeWidth, titleAndAttributeHeight);
+				if (externalTitle)
+					label.setProperty(CoreOptions.NODE_LABELS_PLACEMENT,
+							EnumSet.of(NodeLabelPlacement.OUTSIDE, NodeLabelPlacement.V_TOP,
+									NodeLabelPlacement.H_CENTER));
 
 				this.clusters.put(g, elkCluster);
 
@@ -454,20 +466,21 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				countEast++;
 			}
 		}
-		final double titleWidth = clusterHeader.getTitleAndAttributeWidth();
-		if (widestWest == 0 && widestEast == 0 && titleWidth == 0)
+		if (widestWest == 0 && widestEast == 0)
 			return;
 		final double portSize = 2 * EntityPosition.RADIUS;
 		final double labelGap = 5;
-		final double titlePad = 10;
-		final double interior = Math.max(30, titleWidth + 2 * titlePad);
+		// The cluster body only needs to fit the two port-label
+		// columns plus a small interior gap. The cluster title is
+		// rendered above the rectangle (outside the cluster body)
+		// so it no longer constrains horizontal width.
+		final double interior = 30;
 		final double minWidth = widestWest + labelGap + portSize + interior
 				+ portSize + labelGap + widestEast;
-		// Height: title-and-padding + per-port row * max ports per side.
-		final double topPadding = Math.max(25, clusterHeader.getTitleAndAttributeHeight()) + 15;
+		// Height: top padding + per-port row * max ports per side.
 		final double rowHeight = 30;
 		final int maxRows = Math.max(countWest, countEast);
-		final double minHeight = topPadding + maxRows * rowHeight + 15;
+		final double minHeight = 15 + maxRows * rowHeight + 15;
 		elkCluster.setProperty(CoreOptions.NODE_SIZE_MINIMUM, new KVector(minWidth, minHeight));
 	}
 

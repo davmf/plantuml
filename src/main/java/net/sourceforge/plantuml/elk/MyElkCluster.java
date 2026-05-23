@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.elk;
 
 import net.atmp.CucaDiagram;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.annotation.DuplicateCode;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
@@ -51,8 +52,10 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.skin.AlignmentParam;
 import net.sourceforge.plantuml.style.ISkinParam;
@@ -62,6 +65,7 @@ import net.sourceforge.plantuml.svek.Cluster;
 import net.sourceforge.plantuml.svek.ClusterDecoration;
 import net.sourceforge.plantuml.svek.ClusterHeader;
 import net.sourceforge.plantuml.svek.PackageStyle;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 
 public class MyElkCluster {
 
@@ -107,13 +111,37 @@ public class MyElkCluster {
 		final RectangleArea rectangleArea = new RectangleArea(0, 0, elkNode.getWidth(), elkNode.getHeight());
 		final ClusterHeader clusterHeader = new ClusterHeader(group, diagram, ug.getStringBounder());
 
+		// For nested components with inside-label ports, draw the
+		// cluster title *above* the rectangle so the cluster body
+		// only needs to be wide enough for port labels. The
+		// rectangle itself is then drawn without an internal title.
+		final boolean externalTitle = hasInsideLabelPort(group);
+
+		final TextBlock titleForRect = externalTitle
+				? TextBlockUtils.EMPTY_TEXT_BLOCK
+				: clusterHeader.getTitle();
+		final TextBlock stereoForRect = externalTitle
+				? TextBlockUtils.EMPTY_TEXT_BLOCK
+				: clusterHeader.getStereo();
 		final ClusterDecoration decoration = new ClusterDecoration(packageStyle, group.getUSymbol(),
-				clusterHeader.getTitle(), clusterHeader.getStereo(), rectangleArea, stroke);
+				titleForRect, stereoForRect, rectangleArea, stroke);
 
 		final HColor borderColor = HColors.BLACK;
 		decoration.drawU(ug.apply(UTranslate.point(corner)), backColor, borderColor, shadowing, roundCorner,
 				skinParam.getHorizontalAlignment(AlignmentParam.packageTitleAlignment, null, false, null),
 				skinParam.getStereotypeAlignment(), 0);
+
+		if (externalTitle) {
+			final TextBlock title = clusterHeader.getTitle();
+			final XDimension2D titleDim = title.calculateDimension(ug.getStringBounder());
+			// Centre the title horizontally above the cluster, with
+			// a small gap between the title baseline and the cluster
+			// top edge.
+			final double titleGap = 4;
+			final double titleX = corner.getX() + (elkNode.getWidth() - titleDim.getWidth()) / 2;
+			final double titleY = corner.getY() - titleDim.getHeight() - titleGap;
+			title.drawU(ug.apply(new UTranslate(titleX, titleY)));
+		}
 
 //			// Print a simple rectangle right now
 //			ug.apply(HColorUtils.BLACK).apply(UStroke.withThickness(1.5)).apply(new UTranslate(corner)).draw(rect);
@@ -121,6 +149,17 @@ public class MyElkCluster {
 
 	private HColor getBackColor(DiagramType diagramType) {
 		return null;
+	}
+
+	private static boolean hasInsideLabelPort(Entity group) {
+		for (Entity leaf : group.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			if (EntityImagePort.hasInsideLabel(leaf))
+				return true;
+		}
+		return false;
 	}
 
 	@DuplicateCode(reference = "Cluster")
