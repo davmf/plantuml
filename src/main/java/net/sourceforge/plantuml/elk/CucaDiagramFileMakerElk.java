@@ -487,8 +487,10 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		// The cluster body only needs to fit the two port-label
 		// columns plus a small interior gap. The cluster title is
 		// rendered above the rectangle (outside the cluster body)
-		// so it no longer constrains horizontal width.
-		final double interior = 30;
+		// so it no longer constrains horizontal width. Headers reserve
+		// less interior since the body holds nothing but the jumper bar
+		// and pair labels need to sit close together.
+		final double interior = headerCluster ? 10 : 30;
 		final double minWidth = widestWest + labelGap + portSize + interior
 				+ portSize + labelGap + widestEast;
 		// Height: top padding + per-port row * max ports per side.
