@@ -233,8 +233,16 @@ public class SvekHarness implements UDrawable {
 	// medians coincide. Used to bias spine placement toward the destination
 	// side so harness stubs don't cross intervening non-harness verticals or
 	// other harness spines unnecessarily.
+	//
+	// Only applies to single-source harnesses (every link shares the same
+	// entity1). For multi-source harnesses (e.g. MCU GP0..GP7 fanning to
+	// 8 channel chip-selects) biasing toward destinations stretches the
+	// source-side stubs across the whole diagram. Such harnesses fall back
+	// to nearest-clear placement near the natural midpoint.
 	private int destinationDirection() {
 		if (Double.isNaN(cachedSrcX) || Double.isNaN(cachedDestX))
+			return 0;
+		if (hasSingleSource() == false)
 			return 0;
 		final double dx = cachedDestX - cachedSrcX;
 		if (dx > 1)
@@ -242,6 +250,16 @@ public class SvekHarness implements UDrawable {
 		if (dx < -1)
 			return -1;
 		return 0;
+	}
+
+	private boolean hasSingleSource() {
+		if (memberLinks.isEmpty())
+			return false;
+		final Entity first = memberLinks.get(0).getEntity1();
+		for (Link link : memberLinks)
+			if (link.getEntity1() != first)
+				return false;
+		return true;
 	}
 
 	// Allowed spine X range respecting MIN_STUB_LENGTH on both sides.
