@@ -441,6 +441,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		double widestEast = 0;
 		int countWest = 0;
 		int countEast = 0;
+		final boolean headerCluster = group.isHeader();
 		for (Entity leaf : group.leafs()) {
 			final EntityPosition pos = leaf.getEntityPosition();
 			if (pos == null || pos.isPort() == false)
@@ -453,11 +454,27 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			if (insideLabel == false)
 				continue;
 			final double w = portImg.getInsideLabelWidth(stringBounder);
-			if (pos.isInput()) {
+			// For a header, the actual side is determined by declaration
+			// order parity (matching CucaDiagramFileMakerElk.prinEntity),
+			// not by portin/portout. Otherwise every header pin (all
+			// declared portin) would count as WEST and double the cluster
+			// height.
+			final boolean west;
+			if (headerCluster) {
+				final int idx = headerPortIndex(leaf);
+				west = (idx % 2 == 0);
+			} else if (pos.isInput()) {
+				west = true;
+			} else if (pos.isOutput()) {
+				west = false;
+			} else {
+				continue;
+			}
+			if (west) {
 				if (w > widestWest)
 					widestWest = w;
 				countWest++;
-			} else if (pos.isOutput()) {
+			} else {
 				if (w > widestEast)
 					widestEast = w;
 				countEast++;
