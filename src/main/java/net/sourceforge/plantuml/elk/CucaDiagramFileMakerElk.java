@@ -531,6 +531,10 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			port.setDimensions(portSize, portSize);
 			port.setProperty(CoreOptions.PORT_SIDE,
 					pos.isInput() ? PortSide.WEST : PortSide.EAST);
+			// Centre the port glyph on the cluster boundary (half
+			// inside, half outside) rather than ELK's default of
+			// placing it fully outside the cluster.
+			port.setProperty(CoreOptions.PORT_BORDER_OFFSET, -portSize / 2);
 			// portLabels inside is the PlantUML default; the <<board>>
 			// stereotype rule (portLabels<<board>> outside) flips this
 			// for board ports. Use EntityImagePort.hasInsideLabel so

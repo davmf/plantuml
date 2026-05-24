@@ -28,5 +28,7 @@ public class CoreOptions {
 			"NODE_SIZE_MINIMUM");
 	public static final Object SPACING_PORT_PORT = Reflect.field("org.eclipse.elk.core.options.CoreOptions",
 			"SPACING_PORT_PORT");
+	public static final Object PORT_BORDER_OFFSET = Reflect.field("org.eclipse.elk.core.options.CoreOptions",
+			"PORT_BORDER_OFFSET");
 
 }
