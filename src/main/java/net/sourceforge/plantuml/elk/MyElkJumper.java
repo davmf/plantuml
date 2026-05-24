@@ -113,23 +113,22 @@ class MyElkJumper {
 		final UGraphic ugBar = ug2.apply(HColors.GRAY).apply(HColors.LIGHT_GRAY.bg())
 				.apply(UStroke.withThickness(1));
 
-		// Bar segment: full width when neither end has an arrowhead,
-		// shortened when an arrow is drawn at that end so the arrowhead
-		// reads as a distinct shape rather than as a notched bar.
-		double left = barLeft;
-		double right = barRight;
-		if (arrowLeft)
-			left += ARROW_LEN;
-		if (arrowRight)
-			right -= ARROW_LEN;
-		if (right > left) {
-			final URectangle bar = URectangle.build(right - left, BAR_HEIGHT);
-			ugBar.apply(new UTranslate(left, yMid - BAR_HEIGHT / 2)).draw(bar);
+		// Bar always spans pin-to-pin so it visually connects to both glyphs.
+		final URectangle bar = URectangle.build(barRight - barLeft, BAR_HEIGHT);
+		ugBar.apply(new UTranslate(barLeft, yMid - BAR_HEIGHT / 2)).draw(bar);
+
+		// Direction arrowhead sits at the centre of the bar (well away
+		// from the pin number labels at either end). Drawn in black so
+		// it reads clearly over the light grey fill.
+		if (arrowRight || arrowLeft) {
+			final UGraphic ugArrow = ug2.apply(HColors.BLACK).apply(HColors.BLACK.bg())
+					.apply(UStroke.withThickness(1));
+			final double centerX = (barLeft + barRight) / 2;
+			if (arrowRight)
+				drawArrowhead(ugArrow, centerX - ARROW_LEN / 2, yMid, +1);
+			if (arrowLeft)
+				drawArrowhead(ugArrow, centerX + ARROW_LEN / 2, yMid, -1);
 		}
-		if (arrowRight)
-			drawArrowhead(ugBar, right, yMid, +1);
-		if (arrowLeft)
-			drawArrowhead(ugBar, left, yMid, -1);
 	}
 
 	// Triangular arrowhead. dir=+1 points right, dir=-1 points left.
