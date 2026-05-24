@@ -154,6 +154,9 @@ public class MyElkEdge implements UDrawable {
 		if (link.isHidden())
 			return;
 
+		if (link.isPartOfHarness())
+			return;
+
 		ug = ug.apply(translate);
 		UGraphic ugOrig = ug;
 

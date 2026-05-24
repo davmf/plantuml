@@ -6,6 +6,7 @@ import java.util.List;
 
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Harness;
+import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.ColorType;
@@ -19,9 +20,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
-import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.ULine;
@@ -48,16 +47,16 @@ public class SvekHarness implements UDrawable {
 	private static final double LABEL_SCALE = 0.8;
 
 	private final Harness harness;
-	private final List<SvekEdge> memberEdges;
+	private final List<Link> memberLinks;
 	private final ISkinParam skinParam;
 	private final Bibliotekon bibliotekon;
 	private double spineXOffset;
 	private final List<RectangleArea> renderedSpines = new ArrayList<RectangleArea>();
 
-	public SvekHarness(Harness harness, List<SvekEdge> memberEdges, ISkinParam skinParam,
+	public SvekHarness(Harness harness, List<Link> memberLinks, ISkinParam skinParam,
 			Bibliotekon bibliotekon) {
 		this.harness = harness;
-		this.memberEdges = memberEdges;
+		this.memberLinks = memberLinks;
 		this.skinParam = skinParam;
 		this.bibliotekon = bibliotekon;
 	}
@@ -66,38 +65,18 @@ public class SvekHarness implements UDrawable {
 		return Collections.unmodifiableList(renderedSpines);
 	}
 
-	public static void resolveOverlaps(List<SvekHarness> harnesses) {
+	// nonHarnessVerts: pre-computed list of {x, yMin, yMax} segments that
+	// must be avoided. Svek callers harvest these from rendered SvekEdge
+	// paths; ELK callers can pass an empty list (overlap resolution is not
+	// yet wired for ELK).
+	public static void resolveOverlaps(List<SvekHarness> harnesses,
+			List<double[]> nonHarnessVerts) {
 		final List<double[]> spines = new ArrayList<double[]>();
 		for (SvekHarness h : harnesses)
 			spines.add(h.computeNaturalSpineX());
 
-		// Collect vertical segment X positions from non-harness connectors
 		if (harnesses.isEmpty())
 			return;
-		final Bibliotekon bib = harnesses.get(0).bibliotekon;
-		if (bib == null)
-			return;
-		final java.util.Set<SvekEdge> harnessEdges = new java.util.HashSet<SvekEdge>();
-		for (SvekHarness h : harnesses)
-			harnessEdges.addAll(h.memberEdges);
-
-		final List<double[]> nonHarnessVerts = new ArrayList<double[]>();
-		for (SvekEdge edge : bib.allLines()) {
-			if (harnessEdges.contains(edge))
-				continue;
-			if (edge.isHidden())
-				continue;
-			final DotPath path = edge.getRenderedPath();
-			if (path == null)
-				continue;
-			for (XCubicCurve2D seg : path.getBeziers()) {
-				final double sx1 = seg.getX1(), sy1 = seg.getY1();
-				final double sx2 = seg.getX2(), sy2 = seg.getY2();
-				if (Math.abs(sx1 - sx2) < 0.5 && Math.abs(sy1 - sy2) > 1)
-					nonHarnessVerts.add(new double[]{sx1,
-							Math.min(sy1, sy2), Math.max(sy1, sy2)});
-			}
-		}
 
 		// Separate harness spines from non-harness vertical segments
 		for (int i = 0; i < harnesses.size(); i++) {
@@ -197,7 +176,7 @@ public class SvekHarness implements UDrawable {
 			return new double[]{Double.NaN, 0, 0};
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
-		final double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges);
+		final double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges, srcX);
 		double topY = edges.get(0).start.getY();
 		double bottomY = topY;
 		for (EdgeData e : edges) {
@@ -209,16 +188,13 @@ public class SvekHarness implements UDrawable {
 
 	private List<EdgeData> buildEdgeData() {
 		final List<EdgeData> edges = new ArrayList<EdgeData>();
-		for (SvekEdge edge : memberEdges) {
-			final DotPath path = edge.getDotPath();
-			if (path == null)
+		for (Link link : memberLinks) {
+			final XPoint2D startPt = resolveEntityCenter(link.getEntity1());
+			final XPoint2D endPt = resolveEntityCenter(link.getEntity2());
+			if (startPt == null || endPt == null)
 				continue;
-			final XPoint2D startPt = resolveEntityCenter(edge.getLink().getEntity1(),
-					path.getStartPoint());
-			final XPoint2D endPt = resolveEntityCenter(edge.getLink().getEntity2(),
-					path.getEndPoint());
-			edges.add(new EdgeData(startPt, endPt, edge.getLink().getLabel(),
-					edge.getLink().getSourceLabel()));
+			edges.add(new EdgeData(startPt, endPt, link.getLabel(),
+					link.getSourceLabel()));
 		}
 		return edges;
 	}
@@ -245,9 +221,21 @@ public class SvekHarness implements UDrawable {
 		}
 	}
 
+	// Destination stubs prefer the link's own label; if the link has none
+	// (typical for harness members declared without an explicit `: label`),
+	// fall back to the source-label string so every stub still carries the
+	// nested-harness name. Returns null when the link offers neither.
+	private Display destinationStubLabel(EdgeData e) {
+		if (e.hasLabel())
+			return e.label;
+		if (e.hasSourceLabel())
+			return Display.getWithNewlines(skinParam.getPragma(), e.sourceLabel);
+		return null;
+	}
+
 	@Override
 	public void drawU(UGraphic ug) {
-		if (memberEdges.isEmpty())
+		if (memberLinks.isEmpty())
 			return;
 
 		final List<EdgeData> edges = buildEdgeData();
@@ -313,7 +301,7 @@ public class SvekHarness implements UDrawable {
 		// then offset for overlap resolution.
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
-		double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges)
+		double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges, srcX)
 				+ spineXOffset;
 
 		// Spine vertical extent: covers all source and destination ports
@@ -341,7 +329,7 @@ public class SvekHarness implements UDrawable {
 		}
 		if (farEdges.isEmpty() == false && nearEdges.isEmpty() == false) {
 			drawSplitHorizontalFlow(ugLine, edges, nearEdges, farEdges,
-					spineX, obstacles, style);
+					spineX, srcX, obstacles, style);
 			return;
 		}
 
@@ -374,8 +362,9 @@ public class SvekHarness implements UDrawable {
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spineX, endY, tipX, endY);
 			drawHArrow(ugFan, tipX, endY, dir);
-			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label,
+			final Display destLabel = destinationStubLabel(e);
+			if (destLabel != null)
+				drawStubLabel(ugLine, fontConfig, destLabel,
 						spineX, endY, endX, false);
 		}
 
@@ -384,7 +373,7 @@ public class SvekHarness implements UDrawable {
 
 	private void drawSplitHorizontalFlow(UGraphic ugLine,
 			List<EdgeData> allEdges, List<EdgeData> nearEdges,
-			List<EdgeData> farEdges, double spine1X,
+			List<EdgeData> farEdges, double spine1X, double srcX,
 			List<RectangleArea> obstacles, Style style) {
 
 		final FontConfiguration fontConfig = FontConfiguration.create(
@@ -393,9 +382,12 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugTrunk = ugLine.apply(
 				UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Spine2 X: close to the far group, clamped for min stub
+		// Spine2 X: close to the far group, clamped for min stub.
+		// spine2's "source" for clamp purposes is spine1 (the crossbar
+		// joins them), so pass spine1X to keep spine2 on the spine1 side
+		// of every far destination.
 		double spine2X = clampSpineForMinStub(
-				medianX(endPointsOf(farEdges)), farEdges)
+				medianX(endPointsOf(farEdges)), farEdges, spine1X)
 				+ spineXOffset;
 
 		// Spine1 Y extent: source ports + near destinations
@@ -505,8 +497,9 @@ public class SvekHarness implements UDrawable {
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spine1X, endY, tipX, endY);
 			drawHArrow(ugFan, tipX, endY, dir);
-			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label,
+			final Display nearLabel = destinationStubLabel(e);
+			if (nearLabel != null)
+				drawStubLabel(ugLine, fontConfig, nearLabel,
 						spine1X, endY, endX, false);
 		}
 
@@ -518,8 +511,9 @@ public class SvekHarness implements UDrawable {
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spine2X, endY, tipX, endY);
 			drawHArrow(ugFan, tipX, endY, dir);
-			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label,
+			final Display farLabel = destinationStubLabel(e);
+			if (farLabel != null)
+				drawStubLabel(ugLine, fontConfig, farLabel,
 						spine2X, endY, endX, false);
 		}
 
@@ -535,7 +529,7 @@ public class SvekHarness implements UDrawable {
 		// then offset for overlap resolution.
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
-		double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges)
+		double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges, srcX)
 				+ spineXOffset;
 
 		// Spine vertical extent: from topmost to bottommost destination port
@@ -585,8 +579,9 @@ public class SvekHarness implements UDrawable {
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spineX, endY, tipX, endY);
 			drawHArrow(ugFan, tipX, endY, dir);
-			if (e.hasLabel())
-				drawStubLabel(ugLine, fontConfig, e.label,
+			final Display destLabel = destinationStubLabel(e);
+			if (destLabel != null)
+				drawStubLabel(ugLine, fontConfig, destLabel,
 						spineX, endY, endX, false);
 		}
 
@@ -655,10 +650,36 @@ public class SvekHarness implements UDrawable {
 		ug.apply(new UTranslate(x1, y1)).draw(new ULine(lineDx, lineDy));
 	}
 
-	private static double clampSpineForMinStub(double spineX, List<EdgeData> edges) {
-		// Find the nearest destination on each side and ensure the visible stub
-		// (spine to arrow tip at port edge) is at least MIN_STUB_LENGTH long.
+	private static double clampSpineForMinStub(double spineX, List<EdgeData> edges,
+			double sourceX) {
+		// Place the spine MIN_STUB_LENGTH+PORT_RADIUS away from the nearest
+		// destination on each side. When every destination sits to one side
+		// of the source, keep the spine on that same side — otherwise the
+		// stubs would have to cross the destination cluster bodies to reach
+		// the port from inside, and the arrowhead would land on the port's
+		// inside face instead of the outside face.
+		if (edges.isEmpty())
+			return spineX;
 		final double minGap = MIN_STUB_LENGTH + PORT_RADIUS;
+		double minEndX = Double.MAX_VALUE;
+		double maxEndX = -Double.MAX_VALUE;
+		for (EdgeData e : edges) {
+			final double ex = e.end.getX();
+			if (ex < minEndX)
+				minEndX = ex;
+			if (ex > maxEndX)
+				maxEndX = ex;
+		}
+		if (sourceX <= minEndX)
+			// Source is left of every destination — spine on the left so
+			// fan-lines approach each port from outside the cluster.
+			return Math.min(spineX, minEndX - minGap);
+		if (sourceX >= maxEndX)
+			// Symmetric: source right of all destinations.
+			return Math.max(spineX, maxEndX + minGap);
+		// Genuinely mixed (e.g. star fan-out with the spine in the middle).
+		// Use a bidirectional clamp; this can still oscillate in pathological
+		// layouts but matches the historical Svek behaviour.
 		double nearestRight = Double.MAX_VALUE;
 		double nearestLeft = -Double.MAX_VALUE;
 		for (EdgeData e : edges) {
@@ -715,12 +736,12 @@ public class SvekHarness implements UDrawable {
 		}
 	}
 
-	private XPoint2D resolveEntityCenter(Entity entity, XPoint2D fallback) {
+	private XPoint2D resolveEntityCenter(Entity entity) {
 		if (bibliotekon == null)
-			return fallback;
+			return null;
 		final SvekNode node = bibliotekon.getNode(entity);
 		if (node == null)
-			return fallback;
+			return null;
 		final double cx = node.getMinX() + node.getSize().getWidth() / 2;
 		final double cy = node.getMinY() + node.getSize().getHeight() / 2;
 		return new XPoint2D(cx, cy);
@@ -769,9 +790,9 @@ public class SvekHarness implements UDrawable {
 
 		Entity boardEntity = null;
 		final java.util.Set<Entity> endpointComponents = new java.util.HashSet<Entity>();
-		for (SvekEdge edge : memberEdges) {
-			final Entity p1 = edge.getLink().getEntity1().getParentContainer();
-			final Entity p2 = edge.getLink().getEntity2().getParentContainer();
+		for (Link link : memberLinks) {
+			final Entity p1 = link.getEntity1().getParentContainer();
+			final Entity p2 = link.getEntity2().getParentContainer();
 			if (p1 != null)
 				endpointComponents.add(p1);
 			if (p2 != null)

@@ -49,6 +49,7 @@ import net.sourceforge.plantuml.abel.CucaNote;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArrow;
@@ -94,7 +95,9 @@ import net.sourceforge.plantuml.elk.proxy.core.options.PortLabelPlacement;
 import net.sourceforge.plantuml.elk.proxy.core.options.PortSide;
 import net.sourceforge.plantuml.elk.proxy.core.options.SizeConstraint;
 import net.sourceforge.plantuml.elk.proxy.core.util.NullElkProgressMonitor;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkBendPoint;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkEdgeSection;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkLabel;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
@@ -128,6 +131,7 @@ import net.sourceforge.plantuml.svek.ClusterHeader;
 import net.sourceforge.plantuml.svek.CucaDiagramFileMaker;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
 import net.sourceforge.plantuml.svek.IEntityImage;
+import net.sourceforge.plantuml.svek.SvekHarness;
 import net.sourceforge.plantuml.svek.SvekNode;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
 import net.sourceforge.plantuml.svek.image.EntityImagePort;
@@ -686,11 +690,96 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 					corner.getY() + elkCluster.getHeight()));
 		}
 
+		// Back-fill port SvekNode positions so that SvekHarness — which
+		// reads `bibliotekon.getNode(entity)` for endpoint coords during
+		// resolveOverlaps — sees the final ELK-routed positions. The
+		// same back-fill happens again inside MyElkDrawing.drawAllNodes
+		// (idempotent thanks to resetMove() each time).
+		for (Map.Entry<Entity, ElkPort> entry : ports.entrySet()) {
+			final SvekNode svekNode = getBibliotekon().getNode(entry.getKey());
+			if (svekNode == null)
+				continue;
+			final XPoint2D corner = getPosition(entry.getValue());
+			svekNode.resetMove();
+			svekNode.moveDelta(corner.getX(), corner.getY());
+		}
+
+		final List<SvekHarness> harnesses = buildHarnesses();
+
 		final MinMax minMax = TextBlockUtils.getMinMax(
-				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes, ports),
+				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes, ports, harnesses),
 				stringBounder, false);
 
-		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports);
+		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports, harnesses);
+	}
+
+	// Mirror the Svek harness-construction path (SvekResult.drawU): group
+	// every harness-member Link by its Harness instance and wrap each group
+	// in a SvekHarness. The SvekHarness reads port positions from the
+	// Bibliotekon (which MyElkDrawing.drawAllNodes populates from
+	// ELK-computed coordinates), so no ELK-specific port-position provider
+	// is needed. resolveOverlaps is fed non-harness vertical segments
+	// harvested from ELK-routed edge sections (the ELK analogue of Svek's
+	// rendered DotPath beziers).
+	private List<SvekHarness> buildHarnesses() {
+		final Map<Harness, List<Link>> harnessMap = new LinkedHashMap<Harness, List<Link>>();
+		for (Link link : diagram.getLinks()) {
+			final Harness h = link.getHarness();
+			if (h == null)
+				continue;
+			List<Link> list = harnessMap.get(h);
+			if (list == null) {
+				list = new ArrayList<Link>();
+				harnessMap.put(h, list);
+			}
+			list.add(link);
+		}
+		final List<SvekHarness> result = new ArrayList<SvekHarness>();
+		for (Map.Entry<Harness, List<Link>> entry : harnessMap.entrySet())
+			result.add(new SvekHarness(entry.getKey(), entry.getValue(),
+					diagram.getSkinParam(), getBibliotekon()));
+		SvekHarness.resolveOverlaps(result, collectNonHarnessVerticalSegments());
+		return result;
+	}
+
+	// Walk every non-harness, non-hidden ElkEdge's routed sections and
+	// emit {x, yMin, yMax} for every near-vertical segment found in absolute
+	// (post-translate) coordinates. SvekHarness.resolveOverlaps uses these
+	// to push harness spines clear of ordinary connectors.
+	private List<double[]> collectNonHarnessVerticalSegments() {
+		final List<double[]> verts = new ArrayList<double[]>();
+		for (Map.Entry<Link, ElkEdge> entry : edges.entrySet()) {
+			final Link link = entry.getKey();
+			if (link.isInvis() || link.isHidden() || link.isPartOfHarness())
+				continue;
+			final ElkEdge edge = entry.getValue();
+			final XPoint2D translate = getPosition(edge.getContainingNode());
+			for (ElkEdgeSection section : edge.getSections())
+				collectVerticalSegments(section, translate, verts);
+		}
+		return verts;
+	}
+
+	private static void collectVerticalSegments(ElkEdgeSection section,
+			XPoint2D translate, List<double[]> verts) {
+		final List<XPoint2D> pts = new ArrayList<XPoint2D>();
+		pts.add(new XPoint2D(section.getStartX() + translate.getX(),
+				section.getStartY() + translate.getY()));
+		for (ElkBendPoint pt : section.getBendPoints())
+			pts.add(new XPoint2D(pt.getX() + translate.getX(),
+					pt.getY() + translate.getY()));
+		pts.add(new XPoint2D(section.getEndX() + translate.getX(),
+				section.getEndY() + translate.getY()));
+		for (int i = 0; i < pts.size() - 1; i++) {
+			final XPoint2D a = pts.get(i);
+			final XPoint2D b = pts.get(i + 1);
+			final double dx = b.getX() - a.getX();
+			final double dy = b.getY() - a.getY();
+			if (Math.abs(dx) < 0.5 && Math.abs(dy) > 1)
+				verts.add(new double[]{a.getX(),
+						Math.min(a.getY(), b.getY()),
+						Math.max(a.getY(), b.getY())});
+		}
 	}
 
 }

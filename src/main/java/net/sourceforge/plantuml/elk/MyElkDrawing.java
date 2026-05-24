@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.elk;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -79,6 +80,7 @@ import net.sourceforge.plantuml.svek.ClusterManager;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
 import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.IEntityImageUtils;
+import net.sourceforge.plantuml.svek.SvekHarness;
 import net.sourceforge.plantuml.svek.SvekNode;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
 import net.sourceforge.plantuml.utils.Position;
@@ -95,12 +97,13 @@ class MyElkDrawing implements TextBlock {
 	private final Map<Link, ElkEdge> edges;
 	private final Map<Entity, ElkNode> nodes;
 	private final Map<Entity, ElkPort> ports;
+	private final List<SvekHarness> harnesses;
 
 	private final ClusterManager clusterManager;
 
 	public MyElkDrawing(ClusterManager clusterManager, CucaDiagram diagram, MinMax minMax,
 			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes,
-			Map<Entity, ElkPort> ports) {
+			Map<Entity, ElkPort> ports, List<SvekHarness> harnesses) {
 		this.clusterManager = clusterManager;
 		this.minMax = minMax;
 		this.diagram = diagram;
@@ -108,12 +111,24 @@ class MyElkDrawing implements TextBlock {
 		this.edges = edges;
 		this.nodes = nodes;
 		this.ports = ports;
+		this.harnesses = harnesses;
 	}
 
 	public void drawU(UGraphic ug) {
 		final Map<Entity, MyElkCluster> clusters = drawAllClusters(ug);
 		final Map<Entity, IEntityImage> nodes = drawAllNodes(ug);
 		drawAllEdges(ug, clusters, nodes);
+		drawAllHarnesses(ug);
+	}
+
+	// Draw each SvekHarness over the top of the ordinary edge layer.
+	// Harness-member edges themselves are skipped in MyElkEdge.drawU
+	// (mirroring SvekEdge.drawU's isPartOfHarness short-circuit).
+	private void drawAllHarnesses(UGraphic ug) {
+		if (harnesses == null)
+			return;
+		for (SvekHarness harness : harnesses)
+			harness.drawU(ug);
 	}
 
 	private Map<Entity, MyElkCluster> drawAllClusters(UGraphic ug) {

@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Set;
 
 import net.sourceforge.plantuml.abel.Harness;
+import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.annotation.PerformanceIssue;
 import net.sourceforge.plantuml.dot.DotData;
@@ -54,7 +55,9 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UHidden;
 import net.sourceforge.plantuml.svek.image.EntityImagePort;
@@ -104,7 +107,8 @@ public final class SvekResult implements IEntityImage {
 
 		clusterManager.getBibliotekon().clearPlacedSegments();
 		clusterManager.getBibliotekon().clearBlockedShifts();
-		final Map<Harness, List<SvekEdge>> harnessMap = new LinkedHashMap<Harness, List<SvekEdge>>();
+		final Map<Harness, List<Link>> harnessMap = new LinkedHashMap<Harness, List<Link>>();
+		final Set<SvekEdge> harnessEdges = new HashSet<SvekEdge>();
 		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
 			final UGraphic ug2 = svekEdge.isHidden() ? ug.apply(UHidden.HIDDEN) : ug;
 			svekEdge.setSharedIds(ids);
@@ -112,12 +116,13 @@ public final class SvekResult implements IEntityImage {
 
 			final Harness h = svekEdge.getLink().getHarness();
 			if (h != null) {
-				List<SvekEdge> list = harnessMap.get(h);
+				List<Link> list = harnessMap.get(h);
 				if (list == null) {
-					list = new ArrayList<SvekEdge>();
+					list = new ArrayList<Link>();
 					harnessMap.put(h, list);
 				}
-				list.add(svekEdge);
+				list.add(svekEdge.getLink());
+				harnessEdges.add(svekEdge);
 			}
 		}
 
@@ -131,10 +136,11 @@ public final class SvekResult implements IEntityImage {
 		}
 
 		final List<SvekHarness> svekHarnesses = new ArrayList<SvekHarness>();
-		for (Map.Entry<Harness, List<SvekEdge>> entry : harnessMap.entrySet())
+		for (Map.Entry<Harness, List<Link>> entry : harnessMap.entrySet())
 			svekHarnesses.add(new SvekHarness(entry.getKey(), entry.getValue(),
 					dotData.getSkinParam(), clusterManager.getBibliotekon()));
-		SvekHarness.resolveOverlaps(svekHarnesses);
+		SvekHarness.resolveOverlaps(svekHarnesses,
+				collectNonHarnessVerticalSegments(harnessEdges));
 		for (SvekHarness svekHarness : svekHarnesses)
 			svekHarness.drawU(ug);
 
@@ -192,6 +198,31 @@ public final class SvekResult implements IEntityImage {
 		final Style style = StyleSignatureBasic.of(SName.root, SName.document)
 				.getMergedStyle(dotData.getSkinParam().getCurrentStyleBuilder());
 		return style.value(PName.BackGroundColor).asColor(dotData.getSkinParam().getIHtmlColorSet());
+	}
+
+	// Scan every rendered non-harness, non-hidden SvekEdge for its
+	// near-vertical bezier segments. Returns a list of {x, yMin, yMax}
+	// tuples that SvekHarness.resolveOverlaps uses to keep harness spines
+	// from colliding with ordinary connectors.
+	private List<double[]> collectNonHarnessVerticalSegments(Set<SvekEdge> harnessEdges) {
+		final List<double[]> verts = new ArrayList<double[]>();
+		for (SvekEdge edge : clusterManager.getBibliotekon().allLines()) {
+			if (harnessEdges.contains(edge))
+				continue;
+			if (edge.isHidden())
+				continue;
+			final DotPath path = edge.getRenderedPath();
+			if (path == null)
+				continue;
+			for (XCubicCurve2D seg : path.getBeziers()) {
+				final double sx1 = seg.getX1(), sy1 = seg.getY1();
+				final double sx2 = seg.getX2(), sy2 = seg.getY2();
+				if (Math.abs(sx1 - sx2) < 0.5 && Math.abs(sy1 - sy2) > 1)
+					verts.add(new double[]{sx1,
+							Math.min(sy1, sy2), Math.max(sy1, sy2)});
+			}
+		}
+		return verts;
 	}
 
 	private MinMax minMax;
