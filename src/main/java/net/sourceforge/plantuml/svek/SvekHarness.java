@@ -335,19 +335,59 @@ public class SvekHarness implements UDrawable {
 		spineX = SvekPortConnector.findClearVerticalBidirectional(spineX,
 				spineTopY, spineBottomY, obstacles);
 
-		// Check if destinations split into near/far X-groups
-		final double farThreshold = 2 * MIN_STUB_LENGTH;
-		final List<EdgeData> nearEdges = new ArrayList<EdgeData>();
-		final List<EdgeData> farEdges = new ArrayList<EdgeData>();
-		for (EdgeData e : edges) {
-			if (Math.abs(e.end.getX() - spineX) > farThreshold)
-				farEdges.add(e);
-			else
-				nearEdges.add(e);
+		// Split-flow detection: if destinations cluster in two X-bands with a
+		// gap wider than 2*MIN_STUB_LENGTH between them, route as inverted-U
+		// (or U) so far-group stubs don't have to cross near-group cluster
+		// bodies. The near group is the band closer to the source, the far
+		// group is the other.
+		final List<EdgeData> sortedByEndX = new ArrayList<EdgeData>(edges);
+		java.util.Collections.sort(sortedByEndX, new java.util.Comparator<EdgeData>() {
+			@Override
+			public int compare(EdgeData a, EdgeData b) {
+				return Double.compare(a.end.getX(), b.end.getX());
+			}
+		});
+		int splitIdx = -1;
+		double maxGap = 0;
+		for (int i = 1; i < sortedByEndX.size(); i++) {
+			final double gap = sortedByEndX.get(i).end.getX()
+					- sortedByEndX.get(i - 1).end.getX();
+			if (gap > maxGap) {
+				maxGap = gap;
+				splitIdx = i;
+			}
 		}
-		if (farEdges.isEmpty() == false && nearEdges.isEmpty() == false) {
+		final double splitGapThreshold = 2 * MIN_STUB_LENGTH;
+		if (maxGap > splitGapThreshold && splitIdx > 0) {
+			final List<EdgeData> low = new ArrayList<EdgeData>(
+					sortedByEndX.subList(0, splitIdx));
+			final List<EdgeData> high = new ArrayList<EdgeData>(
+					sortedByEndX.subList(splitIdx, sortedByEndX.size()));
+			final double lowMidX = (low.get(0).end.getX()
+					+ low.get(low.size() - 1).end.getX()) / 2;
+			final double highMidX = (high.get(0).end.getX()
+					+ high.get(high.size() - 1).end.getX()) / 2;
+			final List<EdgeData> nearEdges;
+			final List<EdgeData> farEdges;
+			if (Math.abs(lowMidX - srcX) < Math.abs(highMidX - srcX)) {
+				nearEdges = low;
+				farEdges = high;
+			} else {
+				nearEdges = high;
+				farEdges = low;
+			}
+			// Recompute spine1X to sit between source and the near group only,
+			// otherwise the spine inherited from the all-edges clamp may sit
+			// at a "natural" X far from the near group's outside face.
+			final double nearSrcX = medianX(startPointsOf(nearEdges));
+			final double nearDstX = medianX(endPointsOf(nearEdges));
+			double spine1X = clampSpineForMinStub(
+					(nearSrcX + nearDstX) / 2, nearEdges, nearSrcX)
+					+ spineXOffset;
+			spine1X = SvekPortConnector.findClearVerticalBidirectional(
+					spine1X, spineTopY, spineBottomY, obstacles);
 			drawSplitHorizontalFlow(ugLine, edges, nearEdges, farEdges,
-					spineX, srcX, obstacles, style);
+					spine1X, srcX, obstacles, style);
 			return;
 		}
 
