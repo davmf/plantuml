@@ -373,32 +373,21 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				final int titleAndAttributeHeight = clusterHeader.getTitleAndAttributeHeight();
 				final int titleAndAttributeWidth = clusterHeader.getTitleAndAttributeWidth();
 
-				// For inside-label-port clusters (e.g. nested
-				// components) we draw the cluster title *above* the
-				// rectangle rather than inside it, so the cluster
-				// body only needs to be wide enough for left/right
-				// port labels. ELK is told to place the label
-				// outside-top so it reserves vertical space above
-				// the cluster, and the cluster's top padding shrinks
-				// to a small breathing-room value.
-				final boolean externalTitle = hasInsideLabelPort(g);
-				if (externalTitle) {
-					elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(15, 15, 15, 15));
+				// Draw every cluster's title *above* the rectangle
+				// rather than inside it. The cluster body only needs
+				// to be wide enough for left/right port labels. ELK
+				// is told to place the label outside-top so it
+				// reserves vertical space above the cluster.
+				elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(15, 15, 15, 15));
+				if (hasInsideLabelPort(g))
 					elkCluster.setProperty(CoreOptions.SPACING_PORT_PORT, 10.0);
-				} else {
-					final double topPadding = Math.max(25, titleAndAttributeHeight) + 15;
-					elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(topPadding, 15, 15, 15));
-				}
 
 				final ElkLabel label = ElkGraphUtil.createLabel(elkCluster);
 				label.setText("C");
-				// Tell ELK the size of the title label so it can
-				// reserve space - inside (default) or outside-top.
 				label.setDimensions(titleAndAttributeWidth, titleAndAttributeHeight);
-				if (externalTitle)
-					label.setProperty(CoreOptions.NODE_LABELS_PLACEMENT,
-							EnumSet.of(NodeLabelPlacement.OUTSIDE, NodeLabelPlacement.V_TOP,
-									NodeLabelPlacement.H_CENTER));
+				label.setProperty(CoreOptions.NODE_LABELS_PLACEMENT,
+						EnumSet.of(NodeLabelPlacement.OUTSIDE, NodeLabelPlacement.V_TOP,
+								NodeLabelPlacement.H_CENTER));
 
 				this.clusters.put(g, elkCluster);
 
