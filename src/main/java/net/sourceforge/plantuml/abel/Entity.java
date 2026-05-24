@@ -254,6 +254,16 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		this.stereotype = stereotype;
 	}
 
+	// True when this entity carries the <<header>> stereotype. Used by the
+	// ELK backend to render the component as a two-column pin header with
+	// jumper bars across opposite pins.
+	public boolean isHeader() {
+		if (stereotype == null)
+			return false;
+		final String label = stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR);
+		return label != null && label.contains("<<header>>");
+	}
+
 	public String toString() {
 		return quark.toString() + " " + display + "(" + leafType + ")[" + groupType + "] " + getUid();
 	}

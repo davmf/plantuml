@@ -100,6 +100,7 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	private Harness harness;
 	private String sourceLabel;
+	private boolean jumper;
 
 	public LinkStrategy getLinkStrategy() {
 		// return LinkStrategy.LEGACY;
@@ -497,6 +498,17 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	public boolean isPartOfHarness() {
 		return harness != null;
+	}
+
+	// True when this link bridges two paired pins of a <<header>> component.
+	// Set by the layout pass; rendered as a filled jumper bar between the
+	// two pin glyphs rather than as a routed arrow.
+	public void setJumper(boolean jumper) {
+		this.jumper = jumper;
+	}
+
+	public boolean isJumper() {
+		return jumper;
 	}
 
 	public void setSourceLabel(String sourceLabel) {

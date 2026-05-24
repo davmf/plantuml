@@ -98,12 +98,13 @@ class MyElkDrawing implements TextBlock {
 	private final Map<Entity, ElkNode> nodes;
 	private final Map<Entity, ElkPort> ports;
 	private final List<SvekHarness> harnesses;
+	private final List<Link> jumpers;
 
 	private final ClusterManager clusterManager;
 
 	public MyElkDrawing(ClusterManager clusterManager, CucaDiagram diagram, MinMax minMax,
 			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes,
-			Map<Entity, ElkPort> ports, List<SvekHarness> harnesses) {
+			Map<Entity, ElkPort> ports, List<SvekHarness> harnesses, List<Link> jumpers) {
 		this.clusterManager = clusterManager;
 		this.minMax = minMax;
 		this.diagram = diagram;
@@ -112,6 +113,7 @@ class MyElkDrawing implements TextBlock {
 		this.nodes = nodes;
 		this.ports = ports;
 		this.harnesses = harnesses;
+		this.jumpers = jumpers;
 	}
 
 	public void drawU(UGraphic ug) {
@@ -119,6 +121,7 @@ class MyElkDrawing implements TextBlock {
 		final Map<Entity, IEntityImage> nodes = drawAllNodes(ug);
 		drawAllEdges(ug, clusters, nodes);
 		drawAllHarnesses(ug);
+		MyElkJumper.drawAll(ug, jumpers, ports, UTranslate.none());
 	}
 
 	// Draw each SvekHarness over the top of the ordinary edge layer.

@@ -368,7 +368,11 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// We create the "cluster" in ELK for this group
 				final ElkNode elkCluster = ElkGraphUtil.createNode(cluster);
 				elkCluster.setProperty(CoreOptions.DIRECTION, getElkDirection());
-				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS, PortConstraints.FIXED_SIDE);
+				// Header components need FIXED_ORDER so PORT_INDEX is
+				// honoured: paired pins share an index across WEST/EAST
+				// and end up aligned on the same row.
+				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
+						g.isHeader() ? PortConstraints.FIXED_ORDER : PortConstraints.FIXED_SIDE);
 				elkCluster.setProperty(CoreOptions.NODE_SIZE_CONSTRAINTS,
 						EnumSet.of(SizeConstraint.NODE_LABELS, SizeConstraint.PORTS,
 								SizeConstraint.PORT_LABELS, SizeConstraint.MINIMUM_SIZE));
@@ -496,10 +500,72 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	}
 
 	private void manageAllEdges(StringBounder stringBounder) {
-		// Convert all "link" to ELK edge
-		for (final Link link : diagram.getLinks())
+		// Convert all "link" to ELK edge. Skip jumpers — we render them
+		// ourselves as filled bars across the paired pins of a header,
+		// so ELK never needs to route them.
+		for (final Link link : diagram.getLinks()) {
+			if (link.isJumper())
+				continue;
 			this.manageSingleEdge(stringBounder, link);
+		}
+	}
 
+	// Walks every link and flags those that bridge two paired pins of the
+	// same <<header>> component (consecutive declaration-order pins where
+	// the lower index is even). Called before manageAllEdges so jumpered
+	// links are filtered out of the ELK graph.
+	private void detectJumpers() {
+		for (Link link : diagram.getLinks()) {
+			final Entity e1 = link.getEntity1();
+			final Entity e2 = link.getEntity2();
+			if (e1 == null || e2 == null)
+				continue;
+			final Entity parent = e1.getParentContainer();
+			if (parent == null || parent != e2.getParentContainer())
+				continue;
+			if (parent.isHeader() == false)
+				continue;
+			final int i1 = headerPortIndex(e1);
+			final int i2 = headerPortIndex(e2);
+			if (i1 < 0 || i2 < 0)
+				continue;
+			final int lo = Math.min(i1, i2);
+			final int hi = Math.max(i1, i2);
+			if (hi == lo + 1 && lo % 2 == 0)
+				link.setJumper(true);
+		}
+	}
+
+	// Index of `ent` within its parent header's declaration-order port list,
+	// or -1 if `ent` is not a port of a header. Used to determine pairing
+	// (consecutive even-odd indices) and which side (WEST/EAST) each pin
+	// sits on.
+	static int headerPortIndex(Entity ent) {
+		final Entity parent = ent.getParentContainer();
+		if (parent == null || parent.isHeader() == false)
+			return -1;
+		int idx = 0;
+		for (Entity child : parent.leafs()) {
+			final EntityPosition cp = child.getEntityPosition();
+			if (cp == null || cp.isPort() == false)
+				continue;
+			if (child == ent)
+				return idx;
+			idx++;
+		}
+		return -1;
+	}
+
+	// Count of declared ports inside a header component. Used to size the
+	// cluster so each pin pair has a row.
+	static int headerPortCount(Entity header) {
+		int count = 0;
+		for (Entity child : header.leafs()) {
+			final EntityPosition cp = child.getEntityPosition();
+			if (cp != null && cp.isPort())
+				count++;
+		}
+		return count;
 	}
 
 	@DuplicateCode(reference = "CucaDiagramFileMakerSmetana::printEntity")
@@ -522,9 +588,26 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			final ElkPort port = ElkGraphUtil.createPort(parent);
 			final double portSize = 2 * EntityPosition.RADIUS;
 			port.setDimensions(portSize, portSize);
-			final boolean west = pos.isInput();
+			// For pins of a <<header>> component the side and pair-index
+			// are fully determined by declaration order: even-indexed
+			// pins sit on the WEST face, odd-indexed pins on the EAST
+			// face, and PORT_INDEX = pairIdx so the matching WEST/EAST
+			// pair share a row under FIXED_ORDER.
+			final Entity parentEntity = ent.getParentContainer();
+			final boolean headerPin = parentEntity != null && parentEntity.isHeader();
+			final int headerIdx = headerPin ? headerPortIndex(ent) : -1;
+			final boolean west = headerPin ? (headerIdx % 2 == 0) : pos.isInput();
 			port.setProperty(CoreOptions.PORT_SIDE,
 					west ? PortSide.WEST : PortSide.EAST);
+			if (headerPin && headerIdx >= 0) {
+				// ELK with FIXED_ORDER distributes WEST ports bottom-to-top
+				// and EAST ports top-to-bottom, so to align a pair on the
+				// same row we invert the index for the WEST side.
+				final int pairIdx = headerIdx / 2;
+				final int numPairs = (headerPortCount(parentEntity) + 1) / 2;
+				final int portIndex = west ? (numPairs - 1 - pairIdx) : pairIdx;
+				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
+			}
 			// Centre the port glyph on the cluster boundary (half
 			// inside, half outside) rather than ELK's default of
 			// placing it fully outside the cluster.
@@ -538,9 +621,14 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			//   outside-label (e.g. board): label sits outward,
 			//     edge exits inward (WEST anchor=portSize, EAST
 			//     anchor=0)
+			//   header pin: label sits outward but edge ALSO exits
+			//     outward (external wiring comes from outside the
+			//     header; the interior is reserved for the jumper
+			//     bar). So anchor matches the inside-label case.
 			final boolean insideLabelEarly = EntityImagePort.hasInsideLabel(ent);
+			final boolean outwardEdge = insideLabelEarly || headerPin;
 			final double anchorX;
-			if (insideLabelEarly)
+			if (outwardEdge)
 				anchorX = west ? 0 : portSize;
 			else
 				anchorX = west ? portSize : 0;
@@ -673,6 +761,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		this.printAllSubgroups(stringBounder, root, diagram.getRootGroup());
 		this.printEntities(stringBounder, root, getUnpackagedEntities());
 
+		this.detectJumpers();
 		this.manageAllEdges(stringBounder);
 
 		new RecursiveGraphLayoutEngine().layout(root, new NullElkProgressMonitor());
@@ -705,12 +794,24 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		}
 
 		final List<SvekHarness> harnesses = buildHarnesses();
+		final List<Link> jumpers = buildJumpers();
 
 		final MinMax minMax = TextBlockUtils.getMinMax(
-				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes, ports, harnesses),
+				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes, ports, harnesses, jumpers),
 				stringBounder, false);
 
-		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports, harnesses);
+		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports, harnesses, jumpers);
+	}
+
+	// Collect every link previously flagged by detectJumpers so MyElkDrawing
+	// can render them as filled bars across the paired pins. detectJumpers
+	// runs before manageAllEdges, so by this point isJumper() is settled.
+	private List<Link> buildJumpers() {
+		final List<Link> result = new ArrayList<Link>();
+		for (Link link : diagram.getLinks())
+			if (link.isJumper())
+				result.add(link);
+		return result;
 	}
 
 	// Mirror the Svek harness-construction path (SvekResult.drawU): group
