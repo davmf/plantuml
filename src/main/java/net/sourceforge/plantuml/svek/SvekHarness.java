@@ -19,12 +19,15 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
+import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
@@ -69,6 +72,12 @@ public class SvekHarness implements UDrawable {
 	// must be avoided. Svek callers harvest these from rendered SvekEdge
 	// paths; ELK callers can pass an empty list (overlap resolution is not
 	// yet wired for ELK).
+	//
+	// Each harness's spine is iteratively re-placed so it stays at least
+	// PORT_WIDTH away from every non-harness vertical AND from every other
+	// harness's spine whose Y range overlaps. Iterating to convergence
+	// avoids the previous two-pass bug where the inter-harness separation
+	// could push a spine back into a non-harness conflict zone.
 	public static void resolveOverlaps(List<SvekHarness> harnesses,
 			List<double[]> nonHarnessVerts) {
 		final List<double[]> spines = new ArrayList<double[]>();
@@ -78,95 +87,104 @@ public class SvekHarness implements UDrawable {
 		if (harnesses.isEmpty())
 			return;
 
-		// Separate harness spines from non-harness vertical segments
-		for (int i = 0; i < harnesses.size(); i++) {
-			final double[] spine = spines.get(i);
-			if (Double.isNaN(spine[0]))
-				continue;
-			final SvekHarness h = harnesses.get(i);
-			final double naturalX = spine[0];
-			final double topY = spine[1];
-			final double bottomY = spine[2];
-
-			// Collect X positions of conflicting vertical segments
-			// (those whose Y range overlaps the harness spine)
-			final List<Double> conflictXs = new ArrayList<Double>();
-			for (double[] seg : nonHarnessVerts) {
-				final double overlapMin = Math.max(topY, seg[1]);
-				final double overlapMax = Math.min(bottomY, seg[2]);
-				if (overlapMax > overlapMin + 1)
-					conflictXs.add(seg[0]);
-			}
-			if (conflictXs.isEmpty())
-				continue;
-
-			// Check if natural position is already clear
-			boolean clear = true;
-			for (double cx : conflictXs)
-				if (Math.abs(naturalX - cx) < PORT_WIDTH)
-					clear = false;
-			if (clear)
-				continue;
-
-			// Sort conflict positions and find the nearest gap that fits
-			java.util.Collections.sort(conflictXs);
-			double bestX = naturalX;
-			double bestDist = Double.MAX_VALUE;
-
-			// Try below the lowest conflict
-			final double belowCandidate = conflictXs.get(0) - PORT_WIDTH;
-			if (Math.abs(belowCandidate - naturalX) < bestDist) {
-				bestX = belowCandidate;
-				bestDist = Math.abs(belowCandidate - naturalX);
-			}
-			// Try above the highest conflict
-			final double aboveCandidate = conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH;
-			if (Math.abs(aboveCandidate - naturalX) < bestDist) {
-				bestX = aboveCandidate;
-				bestDist = Math.abs(aboveCandidate - naturalX);
-			}
-			// Try gaps between adjacent conflicts
-			for (int g = 0; g < conflictXs.size() - 1; g++) {
-				final double gapCenter = (conflictXs.get(g) + conflictXs.get(g + 1)) / 2;
-				final double gapWidth = conflictXs.get(g + 1) - conflictXs.get(g);
-				if (gapWidth >= PORT_WIDTH * 2
-						&& Math.abs(gapCenter - naturalX) < bestDist) {
-					bestX = gapCenter;
-					bestDist = Math.abs(gapCenter - naturalX);
-				}
-			}
-			// Check if the best position still violates minimum clearance
-			boolean stillConflicting = false;
-			for (double cx : conflictXs) {
-				if (Math.abs(bestX - cx) < PORT_WIDTH) {
-					stillConflicting = true;
-					break;
-				}
-			}
-			if (stillConflicting)
-				Log.error("Harness '"
-						+ h.harness.getLabel()
-						+ "' spine cannot achieve minimum clearance ("
-						+ PORT_WIDTH
-						+ "px) from adjacent connectors. "
-						+ "Consider increasing ranksep to provide more space.");
-			h.spineXOffset = bestX - spine[0];
-		}
-
-		// Separate harness spines from each other (after non-harness separation)
-		for (int i = 0; i < harnesses.size(); i++) {
-			final double xi = spines.get(i)[0];
-			if (Double.isNaN(xi))
-				continue;
-			for (int j = i + 1; j < harnesses.size(); j++) {
-				final double xj = spines.get(j)[0];
-				if (Double.isNaN(xj))
+		final int maxIterations = 8;
+		for (int iter = 0; iter < maxIterations; iter++) {
+			boolean stable = true;
+			for (int i = 0; i < harnesses.size(); i++) {
+				final double[] spine = spines.get(i);
+				if (Double.isNaN(spine[0]))
 					continue;
-				if (Math.abs(xi + harnesses.get(i).spineXOffset
-						- (xj + harnesses.get(j).spineXOffset)) < PORT_WIDTH)
-					harnesses.get(j).spineXOffset =
-							xi + harnesses.get(i).spineXOffset + PORT_WIDTH - xj;
+				final SvekHarness h = harnesses.get(i);
+				final double naturalX = spine[0];
+				final double topY = spine[1];
+				final double bottomY = spine[2];
+
+				// Collect X positions of conflicting vertical segments.
+				// Conflicts are non-harness verts AND every OTHER harness's
+				// spine (using its current offset) whose Y range overlaps.
+				final List<Double> conflictXs = new ArrayList<Double>();
+				for (double[] seg : nonHarnessVerts) {
+					final double overlapMin = Math.max(topY, seg[1]);
+					final double overlapMax = Math.min(bottomY, seg[2]);
+					if (overlapMax > overlapMin + 1)
+						conflictXs.add(seg[0]);
+				}
+				for (int j = 0; j < harnesses.size(); j++) {
+					if (j == i)
+						continue;
+					final double[] other = spines.get(j);
+					if (Double.isNaN(other[0]))
+						continue;
+					final double overlapMin = Math.max(topY, other[1]);
+					final double overlapMax = Math.min(bottomY, other[2]);
+					if (overlapMax > overlapMin + 1)
+						conflictXs.add(other[0] + harnesses.get(j).spineXOffset);
+				}
+
+				final double oldOffset = h.spineXOffset;
+				if (conflictXs.isEmpty()) {
+					if (Math.abs(oldOffset) > 0.5)
+						stable = false;
+					h.spineXOffset = 0;
+					continue;
+				}
+
+				// If naturalX is already clear, keep offset at 0.
+				boolean clear = true;
+				for (double cx : conflictXs)
+					if (Math.abs(naturalX - cx) < PORT_WIDTH)
+						clear = false;
+				if (clear) {
+					if (Math.abs(oldOffset) > 0.5)
+						stable = false;
+					h.spineXOffset = 0;
+					continue;
+				}
+
+				java.util.Collections.sort(conflictXs);
+				double bestX = naturalX;
+				double bestDist = Double.MAX_VALUE;
+
+				final double belowCandidate = conflictXs.get(0) - PORT_WIDTH;
+				if (Math.abs(belowCandidate - naturalX) < bestDist) {
+					bestX = belowCandidate;
+					bestDist = Math.abs(belowCandidate - naturalX);
+				}
+				final double aboveCandidate = conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH;
+				if (Math.abs(aboveCandidate - naturalX) < bestDist) {
+					bestX = aboveCandidate;
+					bestDist = Math.abs(aboveCandidate - naturalX);
+				}
+				for (int g = 0; g < conflictXs.size() - 1; g++) {
+					final double gapCenter = (conflictXs.get(g) + conflictXs.get(g + 1)) / 2;
+					final double gapWidth = conflictXs.get(g + 1) - conflictXs.get(g);
+					if (gapWidth >= PORT_WIDTH * 2
+							&& Math.abs(gapCenter - naturalX) < bestDist) {
+						bestX = gapCenter;
+						bestDist = Math.abs(gapCenter - naturalX);
+					}
+				}
+				boolean stillConflicting = false;
+				for (double cx : conflictXs) {
+					if (Math.abs(bestX - cx) < PORT_WIDTH) {
+						stillConflicting = true;
+						break;
+					}
+				}
+				if (stillConflicting && iter == maxIterations - 1)
+					Log.error("Harness '"
+							+ h.harness.getLabel()
+							+ "' spine cannot achieve minimum clearance ("
+							+ PORT_WIDTH
+							+ "px) from adjacent connectors. "
+							+ "Consider increasing ranksep to provide more space.");
+				final double newOffset = bestX - naturalX;
+				if (Math.abs(newOffset - oldOffset) > 0.5)
+					stable = false;
+				h.spineXOffset = newOffset;
 			}
+			if (stable)
+				break;
 		}
 	}
 
@@ -337,30 +355,40 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugFan = ugLine.apply(fanStroke(style));
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
-		// Source stubs: single horizontal segment from source port edge to spine
+		final double r = cornerRadius();
+
+		// Source stubs: stubs at the spine endpoints share an L-corner with
+		// the spine and get rounded; intermediate stubs are T-junctions and
+		// stay as straight lines.
 		final java.util.Set<Long> labeledSourceY = new java.util.HashSet<Long>();
 		for (EdgeData e : edges) {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
-			drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
+			drawStubWithOptionalCorner(ugFan, srcEdge, e.start.getY(),
+					spineX, e.start.getY(), spineTopY, spineBottomY, r);
 			if (e.hasSourceLabel() && labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
 				drawStubLabel(ugLine, fontConfig,
 						Display.getWithNewlines(skinParam.getPragma(), e.sourceLabel),
 						spineX, e.start.getY(), e.start.getX(), true);
 		}
 
-		// Vertical spine
-		drawLine(ugTrunk, spineX, spineTopY, spineX, spineBottomY);
+		// Vertical spine. Inset by the corner radius at each end so the L-
+		// corners drawn by the endpoint stubs are not over-painted by the
+		// thicker trunk stroke.
+		final double trunkTop = (r > 0 ? spineTopY + r : spineTopY);
+		final double trunkBottom = (r > 0 ? spineBottomY - r : spineBottomY);
+		drawLine(ugTrunk, spineX, trunkTop, spineX, trunkBottom);
 		renderedSpines.add(new RectangleArea(spineX - TRUNK_STROKE_WIDTH,
 				spineTopY, spineX + TRUNK_STROKE_WIDTH, spineBottomY));
 
-		// Destination stubs: horizontal from spine to each destination port
+		// Destination stubs
 		for (EdgeData e : edges) {
 			final double endX = e.end.getX();
 			final double endY = e.end.getY();
 			final double dir = Math.signum(endX - spineX);
 			final double tipX = endX - dir * PORT_RADIUS;
-			drawLine(ugFan, spineX, endY, tipX, endY);
+			drawStubWithOptionalCorner(ugFan, tipX, endY,
+					spineX, endY, spineTopY, spineBottomY, r);
 			drawHArrow(ugFan, tipX, endY, dir);
 			final Display destLabel = destinationStubLabel(e);
 			if (destLabel != null)
@@ -369,6 +397,41 @@ public class SvekHarness implements UDrawable {
 		}
 
 		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
+	}
+
+	// Draw a horizontal stub from (stubFarX, stubY) to (spineX, stubY). When
+	// stubY lies on the spine's top or bottom endpoint the stub is rendered
+	// as an L-polyline that extends `radius` into the spine, letting
+	// drawRoundedPolyline curve the corner. For intermediate (T-junction)
+	// stubs a straight line is drawn.
+	private void drawStubWithOptionalCorner(UGraphic ug, double stubFarX,
+			double stubY, double spineX, double spineMatchY,
+			double spineTopY, double spineBottomY, double radius) {
+		final boolean atTop = Math.abs(stubY - spineTopY) < 1;
+		final boolean atBottom = Math.abs(stubY - spineBottomY) < 1;
+		if (radius > 0 && (atTop || atBottom)) {
+			final double extDir = atTop ? 1 : -1;
+			final List<XPoint2D> pts = new ArrayList<XPoint2D>();
+			pts.add(new XPoint2D(stubFarX, stubY));
+			pts.add(new XPoint2D(spineX, stubY));
+			pts.add(new XPoint2D(spineX, stubY + extDir * radius));
+			drawRoundedPolyline(ug, pts);
+		} else {
+			drawLine(ug, stubFarX, stubY, spineX, stubY);
+		}
+	}
+
+	private double cornerRadius() {
+		final String radiusStr = skinParam.getPragma()
+				.getValue(PragmaKey.EDGE_CORNER_RADIUS);
+		if (radiusStr == null)
+			return 0;
+		try {
+			final double r = Double.parseDouble(radiusStr);
+			return r > 0 ? r : 0;
+		} catch (NumberFormatException e) {
+			return 0;
+		}
 	}
 
 	private void drawSplitHorizontalFlow(UGraphic ugLine,
@@ -469,22 +532,27 @@ public class SvekHarness implements UDrawable {
 						e.start.getX(), true);
 		}
 
-		// Draw spine1 vertical
-		drawLine(ugTrunk, spine1X, spine1Top, spine1X, spine1Bottom);
+		// Trunk: render spine1, crossbar and spine2 as one polyline so the
+		// two corners at the crossbar/spine joins can be rounded by the
+		// edgeCornerRadius pragma. The polyline runs from spine1's far end
+		// (away from the crossbar) through both crossbar corners to spine2's
+		// far end.
+		final double spine1Far = crossbarAtBottom ? spine1Top : spine1Bottom;
+		final double spine2Far = crossbarAtBottom ? spine2Top : spine2Bottom;
+		final List<XPoint2D> trunk = new ArrayList<XPoint2D>();
+		trunk.add(new XPoint2D(spine1X, spine1Far));
+		trunk.add(new XPoint2D(spine1X, crossbarY));
+		trunk.add(new XPoint2D(spine2X, crossbarY));
+		trunk.add(new XPoint2D(spine2X, spine2Far));
+		drawRoundedPolyline(ugTrunk, trunk);
 		renderedSpines.add(new RectangleArea(
 				spine1X - TRUNK_STROKE_WIDTH, spine1Top,
 				spine1X + TRUNK_STROKE_WIDTH, spine1Bottom));
-
-		// Draw horizontal crossbar
-		drawLine(ugTrunk, spine1X, crossbarY, spine2X, crossbarY);
 		renderedSpines.add(new RectangleArea(
 				Math.min(spine1X, spine2X),
 				crossbarY - TRUNK_STROKE_WIDTH,
 				Math.max(spine1X, spine2X),
 				crossbarY + TRUNK_STROKE_WIDTH));
-
-		// Draw spine2 vertical
-		drawLine(ugTrunk, spine2X, spine2Top, spine2X, spine2Bottom);
 		renderedSpines.add(new RectangleArea(
 				spine2X - TRUNK_STROKE_WIDTH, spine2Top,
 				spine2X + TRUNK_STROKE_WIDTH, spine2Bottom));
@@ -656,6 +724,38 @@ public class SvekHarness implements UDrawable {
 	private static UStroke fanStroke(Style style) {
 		final UStroke s = style.getStroke();
 		return s != null ? s : UStroke.simple();
+	}
+
+	// Draw a polyline through the given orthogonal points, applying the
+	// edgeCornerRadius pragma to round each interior corner.  Used for the
+	// trunk and stub geometry where a 90-degree bend occurs — straight
+	// segments could equally be drawn with drawLine, but funnelling all
+	// trunk and L-stub draws through this method keeps the corner-rounding
+	// behaviour identical to MyElkEdge.drawPolyline.
+	private void drawRoundedPolyline(UGraphic ug, List<XPoint2D> pts) {
+		if (pts.size() < 2)
+			return;
+		final List<XCubicCurve2D> beziers = new ArrayList<XCubicCurve2D>();
+		for (int i = 0; i < pts.size() - 1; i++) {
+			final XPoint2D a = pts.get(i);
+			final XPoint2D b = pts.get(i + 1);
+			beziers.add(new XCubicCurve2D(
+					a.getX(), a.getY(), a.getX(), a.getY(),
+					b.getX(), b.getY(), b.getX(), b.getY()));
+		}
+		final DotPath path = DotPath.fromBeziers(beziers);
+		final String radiusStr = skinParam.getPragma()
+				.getValue(PragmaKey.EDGE_CORNER_RADIUS);
+		if (radiusStr != null) {
+			try {
+				final double radius = Double.parseDouble(radiusStr);
+				if (radius > 0)
+					path.muteToRoundOrthogonalPaths(radius);
+			} catch (NumberFormatException e) {
+				// Ignore invalid radius values
+			}
+		}
+		ug.draw(path);
 	}
 
 	private static double clampSpineForMinStub(double spineX, List<EdgeData> edges,
