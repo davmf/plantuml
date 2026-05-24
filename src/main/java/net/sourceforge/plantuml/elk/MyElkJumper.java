@@ -118,16 +118,14 @@ class MyElkJumper {
 		ugBar.apply(new UTranslate(barLeft, yMid - BAR_HEIGHT / 2)).draw(bar);
 
 		// Direction arrowhead sits at the centre of the bar (well away
-		// from the pin number labels at either end). Drawn in black so
-		// it reads clearly over the light grey fill.
+		// from the pin number labels at either end). Same light-grey
+		// shade as the bar so the jumper reads as one piece.
 		if (arrowRight || arrowLeft) {
-			final UGraphic ugArrow = ug2.apply(HColors.BLACK).apply(HColors.BLACK.bg())
-					.apply(UStroke.withThickness(1));
 			final double centerX = (barLeft + barRight) / 2;
 			if (arrowRight)
-				drawArrowhead(ugArrow, centerX - ARROW_LEN / 2, yMid, +1);
+				drawArrowhead(ugBar, centerX - ARROW_LEN / 2, yMid, +1);
 			if (arrowLeft)
-				drawArrowhead(ugArrow, centerX + ARROW_LEN / 2, yMid, -1);
+				drawArrowhead(ugBar, centerX + ARROW_LEN / 2, yMid, -1);
 		}
 	}
 
