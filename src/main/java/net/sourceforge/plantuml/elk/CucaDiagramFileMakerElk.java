@@ -621,14 +621,9 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			//   outside-label (e.g. board): label sits outward,
 			//     edge exits inward (WEST anchor=portSize, EAST
 			//     anchor=0)
-			//   header pin: label sits outward but edge ALSO exits
-			//     outward (external wiring comes from outside the
-			//     header; the interior is reserved for the jumper
-			//     bar). So anchor matches the inside-label case.
 			final boolean insideLabelEarly = EntityImagePort.hasInsideLabel(ent);
-			final boolean outwardEdge = insideLabelEarly || headerPin;
 			final double anchorX;
-			if (outwardEdge)
+			if (insideLabelEarly)
 				anchorX = west ? 0 : portSize;
 			else
 				anchorX = west ? portSize : 0;

@@ -116,12 +116,6 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	public static boolean hasInsideLabel(Entity entity) {
 		if (entity.getLeafType() == LeafType.PIN)
 			return true;
-		// Header pins sit between a black jumper bar (drawn across the
-		// interior) and the cluster boundary. Render their labels OUTSIDE
-		// the cluster so the bar doesn't obscure them.
-		final Entity parent = (Entity) entity.getParentContainer();
-		if (parent != null && parent.isHeader())
-			return false;
 		return entity.getSkinParam().portLabelsInside(entity.getStereotype());
 	}
 
