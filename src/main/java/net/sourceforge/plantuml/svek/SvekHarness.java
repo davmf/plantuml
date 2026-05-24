@@ -55,6 +55,8 @@ public class SvekHarness implements UDrawable {
 	private final Bibliotekon bibliotekon;
 	private double spineXOffset;
 	private List<double[]> nonHarnessVerts;
+	private double cachedSrcX = Double.NaN;
+	private double cachedDestX = Double.NaN;
 	private final List<RectangleArea> renderedSpines = new ArrayList<RectangleArea>();
 
 	public SvekHarness(Harness harness, List<Link> memberLinks, ISkinParam skinParam,
@@ -145,28 +147,45 @@ public class SvekHarness implements UDrawable {
 				}
 
 				java.util.Collections.sort(conflictXs);
-				double bestX = naturalX;
-				double bestDist = Double.MAX_VALUE;
-
-				final double belowCandidate = conflictXs.get(0) - PORT_WIDTH;
-				if (Math.abs(belowCandidate - naturalX) < bestDist) {
-					bestX = belowCandidate;
-					bestDist = Math.abs(belowCandidate - naturalX);
-				}
-				final double aboveCandidate = conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH;
-				if (Math.abs(aboveCandidate - naturalX) < bestDist) {
-					bestX = aboveCandidate;
-					bestDist = Math.abs(aboveCandidate - naturalX);
-				}
+				// Build the list of feasible clear positions: just beyond the
+				// leftmost conflict, just beyond the rightmost, and the
+				// centre of any wide-enough gap between consecutive conflicts.
+				final List<Double> candidates = new ArrayList<Double>();
+				candidates.add(conflictXs.get(0) - PORT_WIDTH);
+				candidates.add(conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH);
 				for (int g = 0; g < conflictXs.size() - 1; g++) {
-					final double gapCenter = (conflictXs.get(g) + conflictXs.get(g + 1)) / 2;
 					final double gapWidth = conflictXs.get(g + 1) - conflictXs.get(g);
-					if (gapWidth >= PORT_WIDTH * 2
-							&& Math.abs(gapCenter - naturalX) < bestDist) {
-						bestX = gapCenter;
-						bestDist = Math.abs(gapCenter - naturalX);
+					if (gapWidth >= PORT_WIDTH * 2)
+						candidates.add((conflictXs.get(g) + conflictXs.get(g + 1)) / 2);
+				}
+				// Prefer the most destination-ward candidate that stays within
+				// the harness's allowed band [minSpineX, maxSpineX]. Falls
+				// back to the nearest candidate when no in-band one exists.
+				final int destDir = h.destinationDirection();
+				final double bandMin = h.minSpineX();
+				final double bandMax = h.maxSpineX();
+				double bestX = naturalX;
+				double bestScore = -Double.MAX_VALUE;
+				double fallbackX = naturalX;
+				double fallbackDist = Double.MAX_VALUE;
+				for (double c : candidates) {
+					final double dist = Math.abs(c - naturalX);
+					if (dist < fallbackDist) {
+						fallbackDist = dist;
+						fallbackX = c;
+					}
+					if (c >= bandMin - 0.5 && c <= bandMax + 0.5) {
+						final double score = (destDir == 0)
+								? -dist
+								: destDir * c;
+						if (score > bestScore) {
+							bestScore = score;
+							bestX = c;
+						}
 					}
 				}
+				if (bestScore == -Double.MAX_VALUE)
+					bestX = fallbackX;
 				boolean stillConflicting = false;
 				for (double cx : conflictXs) {
 					if (Math.abs(bestX - cx) < PORT_WIDTH) {
@@ -197,6 +216,8 @@ public class SvekHarness implements UDrawable {
 			return new double[]{Double.NaN, 0, 0};
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
+		cachedSrcX = srcX;
+		cachedDestX = dstX;
 		final double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges, srcX);
 		double topY = edges.get(0).start.getY();
 		double bottomY = topY;
@@ -205,6 +226,35 @@ public class SvekHarness implements UDrawable {
 			bottomY = Math.max(bottomY, Math.max(e.start.getY(), e.end.getY()));
 		}
 		return new double[]{spineX, topY, bottomY};
+	}
+
+	// Sign of (destX - srcX): +1 when destinations sit to the right of the
+	// source (typical left-to-right flow), -1 when to the left, 0 when the
+	// medians coincide. Used to bias spine placement toward the destination
+	// side so harness stubs don't cross intervening non-harness verticals or
+	// other harness spines unnecessarily.
+	private int destinationDirection() {
+		if (Double.isNaN(cachedSrcX) || Double.isNaN(cachedDestX))
+			return 0;
+		final double dx = cachedDestX - cachedSrcX;
+		if (dx > 1)
+			return 1;
+		if (dx < -1)
+			return -1;
+		return 0;
+	}
+
+	// Allowed spine X range respecting MIN_STUB_LENGTH on both sides.
+	private double minSpineX() {
+		if (Double.isNaN(cachedSrcX) || Double.isNaN(cachedDestX))
+			return -Double.MAX_VALUE;
+		return Math.min(cachedSrcX, cachedDestX) + MIN_STUB_LENGTH + PORT_RADIUS;
+	}
+
+	private double maxSpineX() {
+		if (Double.isNaN(cachedSrcX) || Double.isNaN(cachedDestX))
+			return Double.MAX_VALUE;
+		return Math.max(cachedSrcX, cachedDestX) - MIN_STUB_LENGTH - PORT_RADIUS;
 	}
 
 	private List<EdgeData> buildEdgeData() {
