@@ -54,6 +54,7 @@ public class SvekHarness implements UDrawable {
 	private final ISkinParam skinParam;
 	private final Bibliotekon bibliotekon;
 	private double spineXOffset;
+	private List<double[]> nonHarnessVerts;
 	private final List<RectangleArea> renderedSpines = new ArrayList<RectangleArea>();
 
 	public SvekHarness(Harness harness, List<Link> memberLinks, ISkinParam skinParam,
@@ -81,8 +82,10 @@ public class SvekHarness implements UDrawable {
 	public static void resolveOverlaps(List<SvekHarness> harnesses,
 			List<double[]> nonHarnessVerts) {
 		final List<double[]> spines = new ArrayList<double[]>();
-		for (SvekHarness h : harnesses)
+		for (SvekHarness h : harnesses) {
 			spines.add(h.computeNaturalSpineX());
+			h.nonHarnessVerts = nonHarnessVerts;
+		}
 
 		if (harnesses.isEmpty())
 			return;
@@ -376,16 +379,18 @@ public class SvekHarness implements UDrawable {
 				nearEdges = high;
 				farEdges = low;
 			}
-			// Recompute spine1X to sit between source and the near group only,
-			// otherwise the spine inherited from the all-edges clamp may sit
-			// at a "natural" X far from the near group's outside face.
+			// Recompute spine1X to sit between source and the near group only.
+			// Don't reuse spineXOffset (computed by resolveOverlaps against the
+			// single-flow naturalX): in split flow spine1 and spine2 are at
+			// distinct X positions and need their own per-spine conflict
+			// resolution against non-harness verticals.
 			final double nearSrcX = medianX(startPointsOf(nearEdges));
 			final double nearDstX = medianX(endPointsOf(nearEdges));
 			double spine1X = clampSpineForMinStub(
-					(nearSrcX + nearDstX) / 2, nearEdges, nearSrcX)
-					+ spineXOffset;
+					(nearSrcX + nearDstX) / 2, nearEdges, nearSrcX);
 			spine1X = SvekPortConnector.findClearVerticalBidirectional(
 					spine1X, spineTopY, spineBottomY, obstacles);
+			spine1X = findClearXAgainstVerts(spine1X, spineTopY, spineBottomY);
 			drawSplitHorizontalFlow(ugLine, edges, nearEdges, farEdges,
 					spine1X, srcX, obstacles, style);
 			return;
@@ -461,6 +466,55 @@ public class SvekHarness implements UDrawable {
 		}
 	}
 
+	// Find the closest X to `proposedX` that is at least PORT_WIDTH from
+	// every non-harness vertical segment whose Y range overlaps [topY, bottomY].
+	// Returns proposedX unchanged when there is no conflict, or when the
+	// harness has no non-harness verts wired in (older callers).
+	private double findClearXAgainstVerts(double proposedX, double topY, double bottomY) {
+		if (nonHarnessVerts == null || nonHarnessVerts.isEmpty())
+			return proposedX;
+		final List<Double> conflictXs = new ArrayList<Double>();
+		for (double[] seg : nonHarnessVerts) {
+			final double overlapMin = Math.max(topY, seg[1]);
+			final double overlapMax = Math.min(bottomY, seg[2]);
+			if (overlapMax > overlapMin + 1)
+				conflictXs.add(seg[0]);
+		}
+		if (conflictXs.isEmpty())
+			return proposedX;
+		boolean clear = true;
+		for (double cx : conflictXs)
+			if (Math.abs(proposedX - cx) < PORT_WIDTH) {
+				clear = false;
+				break;
+			}
+		if (clear)
+			return proposedX;
+		java.util.Collections.sort(conflictXs);
+		double bestX = proposedX;
+		double bestDist = Double.MAX_VALUE;
+		final double below = conflictXs.get(0) - PORT_WIDTH;
+		if (Math.abs(below - proposedX) < bestDist) {
+			bestX = below;
+			bestDist = Math.abs(below - proposedX);
+		}
+		final double above = conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH;
+		if (Math.abs(above - proposedX) < bestDist) {
+			bestX = above;
+			bestDist = Math.abs(above - proposedX);
+		}
+		for (int g = 0; g < conflictXs.size() - 1; g++) {
+			final double gapCenter = (conflictXs.get(g) + conflictXs.get(g + 1)) / 2;
+			final double gapWidth = conflictXs.get(g + 1) - conflictXs.get(g);
+			if (gapWidth >= PORT_WIDTH * 2
+					&& Math.abs(gapCenter - proposedX) < bestDist) {
+				bestX = gapCenter;
+				bestDist = Math.abs(gapCenter - proposedX);
+			}
+		}
+		return bestX;
+	}
+
 	private double cornerRadius() {
 		final String radiusStr = skinParam.getPragma()
 				.getValue(PragmaKey.EDGE_CORNER_RADIUS);
@@ -488,10 +542,11 @@ public class SvekHarness implements UDrawable {
 		// Spine2 X: close to the far group, clamped for min stub.
 		// spine2's "source" for clamp purposes is spine1 (the crossbar
 		// joins them), so pass spine1X to keep spine2 on the spine1 side
-		// of every far destination.
+		// of every far destination. spineXOffset (computed for single-flow
+		// naturalX by resolveOverlaps) is irrelevant here; spine2 does its
+		// own conflict resolution further down.
 		double spine2X = clampSpineForMinStub(
-				medianX(endPointsOf(farEdges)), farEdges, spine1X)
-				+ spineXOffset;
+				medianX(endPointsOf(farEdges)), farEdges, spine1X);
 
 		// Spine1 Y extent: source ports + near destinations
 		double spine1Top = allEdges.get(0).start.getY();
@@ -546,9 +601,11 @@ public class SvekHarness implements UDrawable {
 			spine2Top = crossbarY;
 		}
 
-		// Find clear position for spine2 vertical
+		// Find clear position for spine2 vertical against cluster bodies
+		// AND non-harness vertical segments.
 		spine2X = SvekPortConnector.findClearVerticalBidirectional(
 				spine2X, spine2Top, spine2Bottom, obstacles);
+		spine2X = findClearXAgainstVerts(spine2X, spine2Top, spine2Bottom);
 
 		// Source stubs: connect to spine1
 		final java.util.Set<Long> labeledSourceY =
