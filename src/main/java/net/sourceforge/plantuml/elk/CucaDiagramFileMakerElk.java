@@ -529,12 +529,29 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			final ElkPort port = ElkGraphUtil.createPort(parent);
 			final double portSize = 2 * EntityPosition.RADIUS;
 			port.setDimensions(portSize, portSize);
+			final boolean west = pos.isInput();
 			port.setProperty(CoreOptions.PORT_SIDE,
-					pos.isInput() ? PortSide.WEST : PortSide.EAST);
+					west ? PortSide.WEST : PortSide.EAST);
 			// Centre the port glyph on the cluster boundary (half
 			// inside, half outside) rather than ELK's default of
 			// placing it fully outside the cluster.
 			port.setProperty(CoreOptions.PORT_BORDER_OFFSET, -portSize / 2);
+			// Attach the edge to the face of the port glyph that
+			// points away from the side the label sits on, so the
+			// arrow line and the label don't visually overlap on
+			// the same face of the glyph.
+			//   inside-label (e.g. MCU): label sits inward, edge
+			//     exits outward (WEST anchor=0, EAST anchor=portSize)
+			//   outside-label (e.g. board): label sits outward,
+			//     edge exits inward (WEST anchor=portSize, EAST
+			//     anchor=0)
+			final boolean insideLabelEarly = EntityImagePort.hasInsideLabel(ent);
+			final double anchorX;
+			if (insideLabelEarly)
+				anchorX = west ? 0 : portSize;
+			else
+				anchorX = west ? portSize : 0;
+			port.setProperty(CoreOptions.PORT_ANCHOR, new KVector(anchorX, portSize / 2));
 			// portLabels inside is the PlantUML default; the <<board>>
 			// stereotype rule (portLabels<<board>> outside) flips this
 			// for board ports. Use EntityImagePort.hasInsideLabel so

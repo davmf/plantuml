@@ -30,5 +30,7 @@ public class CoreOptions {
 			"SPACING_PORT_PORT");
 	public static final Object PORT_BORDER_OFFSET = Reflect.field("org.eclipse.elk.core.options.CoreOptions",
 			"PORT_BORDER_OFFSET");
+	public static final Object PORT_ANCHOR = Reflect.field("org.eclipse.elk.core.options.CoreOptions",
+			"PORT_ANCHOR");
 
 }
