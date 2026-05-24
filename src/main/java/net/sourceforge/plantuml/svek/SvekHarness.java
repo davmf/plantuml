@@ -788,15 +788,18 @@ public class SvekHarness implements UDrawable {
 		if (bibliotekon == null)
 			return obstacles;
 
+		// Source-side clusters stay excluded so the spine can hug the
+		// source's outer face. Destination clusters ARE obstacles: the
+		// spine clamp keeps the spine MIN_STUB_LENGTH+PORT_RADIUS away
+		// from each destination, and the crossbar (in split flow) must
+		// not pass through a destination cluster body — fan-line stubs
+		// approach the port from outside the cluster via PORT_BORDER_OFFSET.
 		Entity boardEntity = null;
-		final java.util.Set<Entity> endpointComponents = new java.util.HashSet<Entity>();
+		final java.util.Set<Entity> sourceClusters = new java.util.HashSet<Entity>();
 		for (Link link : memberLinks) {
 			final Entity p1 = link.getEntity1().getParentContainer();
-			final Entity p2 = link.getEntity2().getParentContainer();
 			if (p1 != null)
-				endpointComponents.add(p1);
-			if (p2 != null)
-				endpointComponents.add(p2);
+				sourceClusters.add(p1);
 			if (boardEntity == null && p1 != null && p1.getParentContainer() != null)
 				boardEntity = p1.getParentContainer();
 		}
@@ -807,7 +810,7 @@ public class SvekHarness implements UDrawable {
 				continue;
 			if (cl.getGroup() == boardEntity)
 				continue;
-			if (endpointComponents.contains(cl.getGroup()))
+			if (sourceClusters.contains(cl.getGroup()))
 				continue;
 			obstacles.add(rect);
 		}
