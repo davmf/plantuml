@@ -107,7 +107,10 @@ class MyElkJumper {
 			return;
 
 		final UGraphic ug2 = ug.apply(translate);
-		final UGraphic ugBar = ug2.apply(HColors.BLACK).apply(HColors.BLACK.bg())
+		// Bar fill is light grey so pin number labels drawn over it stay
+		// readable; stroke stays dark so the bar's outline reads at a
+		// distance.
+		final UGraphic ugBar = ug2.apply(HColors.GRAY).apply(HColors.LIGHT_GRAY.bg())
 				.apply(UStroke.withThickness(1));
 
 		// Bar segment: full width when neither end has an arrowhead,

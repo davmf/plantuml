@@ -118,10 +118,13 @@ class MyElkDrawing implements TextBlock {
 
 	public void drawU(UGraphic ug) {
 		final Map<Entity, MyElkCluster> clusters = drawAllClusters(ug);
+		// Jumpers draw BEFORE node glyphs/labels so the pin number text
+		// renders on top of the light grey bar. Port glyphs and labels
+		// then paint over the bar at the pins and pin-name positions.
+		MyElkJumper.drawAll(ug, jumpers, ports, UTranslate.none());
 		final Map<Entity, IEntityImage> nodes = drawAllNodes(ug);
 		drawAllEdges(ug, clusters, nodes);
 		drawAllHarnesses(ug);
-		MyElkJumper.drawAll(ug, jumpers, ports, UTranslate.none());
 	}
 
 	// Draw each SvekHarness over the top of the ordinary edge layer.
