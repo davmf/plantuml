@@ -380,8 +380,74 @@ public class MyElkEdge implements UDrawable {
 					translate.getTranslated(tmpEnd));
 			pts.add(force2.getTranslated(tmpEnd));
 
-			drawPolyline(ug, pts);
+			drawPolyline(ug, simplifyMonotoneStaircase(pts));
 		}
+	}
+
+	// Collapse a monotone orthogonal staircase to a single L-corner (3
+	// segments). ELK sometimes routes simple "go right and up" edges through
+	// two or more intermediate columns/rows, yielding 5+ visible segments
+	// when the geometry only requires three. Only triggers when the polyline
+	// is monotone in both X and Y; non-monotone (U-shaped or back-tracking)
+	// paths are left intact because they imply ELK was steering around
+	// obstacles we don't know about.
+	private static List<XPoint2D> simplifyMonotoneStaircase(List<XPoint2D> pts) {
+		if (pts.size() <= 4)
+			return pts;
+		final double EPS = 1.0;
+		int xDir = 0;
+		int yDir = 0;
+		for (int i = 1; i < pts.size(); i++) {
+			final double dx = pts.get(i).getX() - pts.get(i - 1).getX();
+			final double dy = pts.get(i).getY() - pts.get(i - 1).getY();
+			if (Math.abs(dx) > EPS) {
+				final int dir = dx > 0 ? 1 : -1;
+				if (xDir == 0)
+					xDir = dir;
+				else if (xDir != dir)
+					return pts;
+			}
+			if (Math.abs(dy) > EPS) {
+				final int dir = dy > 0 ? 1 : -1;
+				if (yDir == 0)
+					yDir = dir;
+				else if (yDir != dir)
+					return pts;
+			}
+		}
+		if (xDir == 0 || yDir == 0)
+			return pts;
+		final XPoint2D start = pts.get(0);
+		final XPoint2D end = pts.get(pts.size() - 1);
+		final boolean startsHoriz =
+				Math.abs(pts.get(1).getY() - start.getY()) < EPS;
+		double pivotV = start.getX();
+		double pivotVlen = 0;
+		double pivotH = start.getY();
+		double pivotHlen = 0;
+		for (int i = 1; i < pts.size(); i++) {
+			final double dx = pts.get(i).getX() - pts.get(i - 1).getX();
+			final double dy = pts.get(i).getY() - pts.get(i - 1).getY();
+			if (Math.abs(dx) < EPS && Math.abs(dy) > pivotVlen) {
+				pivotVlen = Math.abs(dy);
+				pivotV = pts.get(i).getX();
+			}
+			if (Math.abs(dy) < EPS && Math.abs(dx) > pivotHlen) {
+				pivotHlen = Math.abs(dx);
+				pivotH = pts.get(i).getY();
+			}
+		}
+		final List<XPoint2D> result = new ArrayList<XPoint2D>();
+		result.add(start);
+		if (startsHoriz) {
+			result.add(new XPoint2D(pivotV, start.getY()));
+			result.add(new XPoint2D(pivotV, end.getY()));
+		} else {
+			result.add(new XPoint2D(start.getX(), pivotH));
+			result.add(new XPoint2D(end.getX(), pivotH));
+		}
+		result.add(end);
+		return result;
 	}
 
 	private void drawPolyline(UGraphic ug, List<XPoint2D> pts) {
