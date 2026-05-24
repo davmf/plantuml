@@ -63,10 +63,6 @@ import net.sourceforge.plantuml.klimt.shape.URectangle;
 class MyElkJumper {
 
 	private static final double BAR_HEIGHT = 4.0;
-	// Bar spans only the central portion of the gap between paired pins,
-	// leaving the inside-rendered pin labels (sitting next to each glyph)
-	// visible on either side of the bar.
-	private static final double BAR_LENGTH_RATIO = 0.5;
 	private static final double ARROW_LEN = 6.0;
 	private static final double ARROW_HALF_WIDTH = 4.0;
 	private static final double PORT_RADIUS = EntityPosition.RADIUS;
@@ -102,15 +98,11 @@ class MyElkJumper {
 		final boolean arrowLeft = swap ? forward : backward;
 
 		final double yMid = (leftCenter.getY() + rightCenter.getY()) / 2;
-		// Span only the central BAR_LENGTH_RATIO of the gap between the two
-		// pin glyphs so the inside-rendered pin labels remain visible on
-		// either side of the bar.
-		final double fullLeft = leftCenter.getX() + PORT_RADIUS;
-		final double fullRight = rightCenter.getX() - PORT_RADIUS;
-		final double center = (fullLeft + fullRight) / 2;
-		final double halfLen = (fullRight - fullLeft) * BAR_LENGTH_RATIO / 2;
-		final double barLeft = center - halfLen;
-		final double barRight = center + halfLen;
+		// Bar spans pin-to-pin so it visually connects to both glyphs.
+		// Thickness is small enough that inside-rendered pin labels are
+		// still readable above and below the bar.
+		final double barLeft = leftCenter.getX() + PORT_RADIUS;
+		final double barRight = rightCenter.getX() - PORT_RADIUS;
 		if (barRight <= barLeft)
 			return;
 

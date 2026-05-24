@@ -119,6 +119,25 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		return entity.getSkinParam().portLabelsInside(entity.getStereotype());
 	}
 
+	// 0-based index of `ent` within its parent header's declaration-order
+	// port list, or -1 if `ent` is not a port of a header. Used to decide
+	// which side of the header (WEST or EAST) the port sits on.
+	public static int headerPinIndex(Entity ent) {
+		final Entity parent = (Entity) ent.getParentContainer();
+		if (parent == null || parent.isHeader() == false)
+			return -1;
+		int idx = 0;
+		for (Entity child : parent.leafs()) {
+			final EntityPosition cp = child.getEntityPosition();
+			if (cp == null || cp.isPort() == false)
+				continue;
+			if (child == ent)
+				return idx;
+			idx++;
+		}
+		return -1;
+	}
+
 	public static double getInsidePortSpacing() {
 		return EntityPosition.RADIUS * 2 * 2.5;
 	}
@@ -133,6 +152,14 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 				return Side.SOUTH;
 			return Side.NORTH;
 		}
+		// Header pins ignore portin/portout and instead alternate by
+		// declaration order so paired pins sit on opposing faces. Match
+		// the side CucaDiagramFileMakerElk feeds ELK (even index = WEST,
+		// odd index = EAST) so the inside label lands on the right side
+		// of the glyph.
+		final Entity parentEntity = (Entity) getEntity().getParentContainer();
+		if (parentEntity != null && parentEntity.isHeader())
+			return (headerPinIndex(getEntity()) % 2 == 0) ? Side.WEST : Side.EAST;
 		if (isLabelInside()) {
 			if (entityPosition.isInput())
 				return Side.WEST;
