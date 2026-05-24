@@ -34,7 +34,7 @@ import net.sourceforge.plantuml.utils.Log;
 
 public class SvekHarness implements UDrawable {
 
-	private static final double TRUNK_STROKE_WIDTH = 3.0;
+	private static final double TRUNK_STROKE_WIDTH = 4.5;
 	private static final double FAN_GAP = 20.0;
 	private static final double LABEL_GAP = 3.0;
 	private static final double PORT_RADIUS = 6.0;
@@ -334,7 +334,7 @@ public class SvekHarness implements UDrawable {
 		}
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
-		final UGraphic ugFan = ugLine.apply(UStroke.simple());
+		final UGraphic ugFan = ugLine.apply(fanStroke(style));
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
 		// Source stubs: single horizontal segment from source port edge to spine
@@ -378,7 +378,7 @@ public class SvekHarness implements UDrawable {
 
 		final FontConfiguration fontConfig = FontConfiguration.create(
 				skinParam, style);
-		final UGraphic ugFan = ugLine.apply(UStroke.simple());
+		final UGraphic ugFan = ugLine.apply(fanStroke(style));
 		final UGraphic ugTrunk = ugLine.apply(
 				UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
@@ -551,7 +551,7 @@ public class SvekHarness implements UDrawable {
 				spineTopY, spineBottomY, obstacles);
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
-		final UGraphic ugFan = ugLine.apply(UStroke.simple());
+		final UGraphic ugFan = ugLine.apply(fanStroke(style));
 		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
 
 		// Source stub: horizontal from source port edge to spine
@@ -648,6 +648,14 @@ public class SvekHarness implements UDrawable {
 		if (Math.abs(lineDx) < 0.5 && Math.abs(lineDy) < 0.5)
 			return;
 		ug.apply(new UTranslate(x1, y1)).draw(new ULine(lineDx, lineDy));
+	}
+
+	// Fan-line (stub) stroke matches the arrow style's stroke so harness
+	// stubs are drawn at the same thickness as ordinary single connectors.
+	// Falls back to UStroke.simple() when the style has no stroke set.
+	private static UStroke fanStroke(Style style) {
+		final UStroke s = style.getStroke();
+		return s != null ? s : UStroke.simple();
 	}
 
 	private static double clampSpineForMinStub(double spineX, List<EdgeData> edges,
