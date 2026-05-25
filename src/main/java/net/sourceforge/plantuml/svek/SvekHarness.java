@@ -35,6 +35,7 @@ import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.decoration.symbol.USymbols;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.utils.Log;
@@ -1234,10 +1235,13 @@ public class SvekHarness implements UDrawable {
 				.draw(rect);
 	}
 
-	// Walk up from one of the harness's member endpoints until we find a
-	// group whose resolved BackgroundColor is non-transparent, and return
-	// that colour. Falls back to null when the harness's containing
-	// cluster has no defined fill.
+	// Walk up from one of the harness's member endpoints to find the
+	// enclosing RECTANGLE-typed cluster (e.g. the board / PCBA) and return
+	// its resolved BackgroundColor. Skip component clusters along the way:
+	// trunk and stub labels live in the open area of the surrounding
+	// rectangle, not inside the components themselves, so the patch should
+	// match the rectangle's fill -- not whatever sub-component the label
+	// happens to walk past.
 	private HColor resolveHarnessParentBackColor() {
 		if (memberLinks.isEmpty())
 			return null;
@@ -1247,7 +1251,7 @@ public class SvekHarness implements UDrawable {
 		Object up = startEntity.getParentContainer();
 		while (up instanceof Entity) {
 			final Entity current = (Entity) up;
-			if (current.isGroup()) {
+			if (current.isGroup() && current.getUSymbol() == USymbols.RECTANGLE) {
 				final HColor direct = current.getColors() == null
 						? null
 						: current.getColors().getColor(ColorType.BACK);
