@@ -54,6 +54,13 @@ public class SvekHarness implements UDrawable {
 	private final ISkinParam skinParam;
 	private final Bibliotekon bibliotekon;
 	private double spineXOffset;
+	private double dualSpine1XOffset;
+	private double dualSpine2XOffset;
+	private boolean willUseDualSpine;
+	private double cachedNaturalSpine1X = Double.NaN;
+	private double cachedNaturalSpine2X = Double.NaN;
+	private double cachedSpine1Top, cachedSpine1Bottom;
+	private double cachedSpine2Top, cachedSpine2Bottom;
 	private List<double[]> nonHarnessVerts;
 	private double cachedSrcX = Double.NaN;
 	private double cachedDestX = Double.NaN;
@@ -208,6 +215,133 @@ public class SvekHarness implements UDrawable {
 			if (stable)
 				break;
 		}
+		// After single-flow harnesses have settled, do a parallel pass for
+		// dual-spine harnesses. Each dual-spine harness contributes TWO
+		// spines (source-side and dest-side) and both must stay clear of
+		// non-harness verticals AND of every other harness spine (single
+		// or dual) that overlaps in Y.
+		resolveDualSpineOverlaps(harnesses, nonHarnessVerts);
+	}
+
+	// Iteratively offset each dual-spine harness's spine1 and spine2 so
+	// that they maintain PORT_WIDTH clearance from non-harness verticals,
+	// from single-flow harness spines (using their resolved spineXOffset),
+	// and from every other dual-spine slot.
+	private static void resolveDualSpineOverlaps(List<SvekHarness> harnesses,
+			List<double[]> nonHarnessVerts) {
+		final List<SvekHarness> duals = new ArrayList<SvekHarness>();
+		for (SvekHarness h : harnesses)
+			if (h.willUseDualSpine)
+				duals.add(h);
+		if (duals.isEmpty())
+			return;
+
+		final int n = duals.size() * 2;
+		final double[] currentX = new double[n];
+		final double[] naturalX = new double[n];
+		final double[] topY = new double[n];
+		final double[] botY = new double[n];
+		for (int i = 0; i < duals.size(); i++) {
+			final SvekHarness h = duals.get(i);
+			final int s1 = 2 * i;
+			final int s2 = 2 * i + 1;
+			naturalX[s1] = currentX[s1] = h.cachedNaturalSpine1X;
+			topY[s1] = h.cachedSpine1Top;
+			botY[s1] = h.cachedSpine1Bottom;
+			naturalX[s2] = currentX[s2] = h.cachedNaturalSpine2X;
+			topY[s2] = h.cachedSpine2Top;
+			botY[s2] = h.cachedSpine2Bottom;
+		}
+
+		// Single-flow harness spines as immovable obstacles.
+		final List<double[]> singleFlowSpines = new ArrayList<double[]>();
+		for (SvekHarness h : harnesses) {
+			if (h.willUseDualSpine)
+				continue;
+			final double[] nat = h.computeNaturalSpineX();
+			if (Double.isNaN(nat[0]))
+				continue;
+			singleFlowSpines.add(new double[]{nat[0] + h.spineXOffset, nat[1], nat[2]});
+		}
+
+		final int maxIterations = 8;
+		for (int iter = 0; iter < maxIterations; iter++) {
+			boolean stable = true;
+			for (int i = 0; i < n; i++) {
+				if (Double.isNaN(naturalX[i]))
+					continue;
+				final double myTop = topY[i];
+				final double myBot = botY[i];
+				final List<Double> conflictXs = new ArrayList<Double>();
+				for (double[] seg : nonHarnessVerts) {
+					final double overlapMin = Math.max(myTop, seg[1]);
+					final double overlapMax = Math.min(myBot, seg[2]);
+					if (overlapMax > overlapMin + 1)
+						conflictXs.add(seg[0]);
+				}
+				for (double[] sf : singleFlowSpines) {
+					final double overlapMin = Math.max(myTop, sf[1]);
+					final double overlapMax = Math.min(myBot, sf[2]);
+					if (overlapMax > overlapMin + 1)
+						conflictXs.add(sf[0]);
+				}
+				for (int j = 0; j < n; j++) {
+					if (i == j)
+						continue;
+					if (Double.isNaN(naturalX[j]))
+						continue;
+					final double overlapMin = Math.max(myTop, topY[j]);
+					final double overlapMax = Math.min(myBot, botY[j]);
+					if (overlapMax > overlapMin + 1)
+						conflictXs.add(currentX[j]);
+				}
+
+				boolean clear = true;
+				for (double cx : conflictXs)
+					if (Math.abs(naturalX[i] - cx) < PORT_WIDTH) {
+						clear = false;
+						break;
+					}
+				final double oldX = currentX[i];
+				if (clear) {
+					currentX[i] = naturalX[i];
+				} else {
+					java.util.Collections.sort(conflictXs);
+					double bestX = naturalX[i];
+					double bestDist = Double.MAX_VALUE;
+					final double below = conflictXs.get(0) - PORT_WIDTH;
+					if (Math.abs(below - naturalX[i]) < bestDist) {
+						bestX = below;
+						bestDist = Math.abs(below - naturalX[i]);
+					}
+					final double above = conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH;
+					if (Math.abs(above - naturalX[i]) < bestDist) {
+						bestX = above;
+						bestDist = Math.abs(above - naturalX[i]);
+					}
+					for (int g = 0; g < conflictXs.size() - 1; g++) {
+						final double gapCenter = (conflictXs.get(g) + conflictXs.get(g + 1)) / 2;
+						final double gapWidth = conflictXs.get(g + 1) - conflictXs.get(g);
+						if (gapWidth >= PORT_WIDTH * 2
+								&& Math.abs(gapCenter - naturalX[i]) < bestDist) {
+							bestX = gapCenter;
+							bestDist = Math.abs(gapCenter - naturalX[i]);
+						}
+					}
+					currentX[i] = bestX;
+				}
+				if (Math.abs(currentX[i] - oldX) > 0.5)
+					stable = false;
+			}
+			if (stable)
+				break;
+		}
+
+		for (int i = 0; i < duals.size(); i++) {
+			final SvekHarness h = duals.get(i);
+			h.dualSpine1XOffset = currentX[2 * i] - naturalX[2 * i];
+			h.dualSpine2XOffset = currentX[2 * i + 1] - naturalX[2 * i + 1];
+		}
 	}
 
 	private double[] computeNaturalSpineX() {
@@ -218,6 +352,32 @@ public class SvekHarness implements UDrawable {
 		final double dstX = medianX(endPointsOf(edges));
 		cachedSrcX = srcX;
 		cachedDestX = dstX;
+		// Dual-spine harnesses opt out of single-flow conflict resolution
+		// (Double.NaN return signals "skip") and instead get their two
+		// spines resolved by resolveDualSpineOverlaps after the single-flow
+		// pass settles.
+		if (shouldUseDualSpine(edges, srcX, dstX)) {
+			willUseDualSpine = true;
+			final boolean leftToRight = dstX > srcX;
+			final double offset = MIN_STUB_LENGTH + PORT_RADIUS;
+			cachedNaturalSpine1X = leftToRight ? srcX + offset : srcX - offset;
+			cachedNaturalSpine2X = leftToRight ? dstX - offset : dstX + offset;
+			double s1Top = edges.get(0).start.getY();
+			double s1Bot = s1Top;
+			double s2Top = edges.get(0).end.getY();
+			double s2Bot = s2Top;
+			for (EdgeData e : edges) {
+				s1Top = Math.min(s1Top, e.start.getY());
+				s1Bot = Math.max(s1Bot, e.start.getY());
+				s2Top = Math.min(s2Top, e.end.getY());
+				s2Bot = Math.max(s2Bot, e.end.getY());
+			}
+			cachedSpine1Top = s1Top;
+			cachedSpine1Bottom = s1Bot;
+			cachedSpine2Top = s2Top;
+			cachedSpine2Bottom = s2Bot;
+			return new double[]{Double.NaN, 0, 0};
+		}
 		final double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges, srcX);
 		double topY = edges.get(0).start.getY();
 		double bottomY = topY;
@@ -610,9 +770,10 @@ public class SvekHarness implements UDrawable {
 
 	// Predicate: should this harness use the dual-spine topology?
 	// Triggers when the source-to-destination X distance is too large for
-	// a single spine to keep both stub families short, AND when there are
-	// at least two distinct rows on each side so a vertical spine has
-	// meaningful extent.
+	// a single spine to keep stubs short, AND at least one side has
+	// multiple distinct rows so at least one of the two spines has
+	// meaningful vertical extent. (A harness with a single source and a
+	// single destination is just one edge; not a dual-spine candidate.)
 	private static boolean shouldUseDualSpine(List<EdgeData> edges,
 			double srcX, double dstX) {
 		final double distance = Math.abs(dstX - srcX);
@@ -626,7 +787,7 @@ public class SvekHarness implements UDrawable {
 			sourceYs.add(Double.doubleToLongBits(e.start.getY()));
 			destYs.add(Double.doubleToLongBits(e.end.getY()));
 		}
-		return sourceYs.size() >= 2 && destYs.size() >= 2;
+		return sourceYs.size() >= 2 || destYs.size() >= 2;
 	}
 
 	// Two-spine topology: vertical spine just outside the source column,
@@ -639,10 +800,14 @@ public class SvekHarness implements UDrawable {
 		final double dstX = medianX(endPointsOf(edges));
 		final boolean leftToRight = dstX > srcX;
 
-		// Spines hug their respective column at MIN_STUB_LENGTH offset
+		// Spines hug their respective column at MIN_STUB_LENGTH offset,
+		// adjusted by the offsets computed by resolveDualSpineOverlaps so
+		// neighbouring dual-spine harnesses don't collide on the same X.
 		final double offset = MIN_STUB_LENGTH + PORT_RADIUS;
-		double spine1X = leftToRight ? srcX + offset : srcX - offset;
-		double spine2X = leftToRight ? dstX - offset : dstX + offset;
+		double spine1X = (leftToRight ? srcX + offset : srcX - offset)
+				+ dualSpine1XOffset;
+		double spine2X = (leftToRight ? dstX - offset : dstX + offset)
+				+ dualSpine2XOffset;
 
 		// Per-spine vertical extent: spine1 covers source Y range,
 		// spine2 covers destination Y range.
