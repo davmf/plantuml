@@ -49,6 +49,10 @@ public class SvekHarness implements UDrawable {
 
 	private static final double PORT_WIDTH = 2 * PORT_RADIUS;
 	private static final double MIN_STUB_LENGTH = 5 * PORT_WIDTH;
+	// Stub length used by the dual-spine layout. Larger than the absolute
+	// minimum so per-stub labels (inner harness names like "MISO", "MOSI",
+	// "MCLK") fit between the spine and the port glyph without overlap.
+	private static final double DUAL_SPINE_STUB_LENGTH = 2 * MIN_STUB_LENGTH;
 	private static final double LABEL_SCALE = 0.8;
 
 	private final Harness harness;
@@ -361,7 +365,11 @@ public class SvekHarness implements UDrawable {
 		if (shouldUseDualSpine(edges, srcX, dstX)) {
 			willUseDualSpine = true;
 			final boolean leftToRight = dstX > srcX;
-			final double offset = MIN_STUB_LENGTH + PORT_RADIUS;
+			// Use 2 * MIN_STUB_LENGTH so each stub has room for its
+			// per-stub label between the spine and the port glyph
+			// (~30 px text + margin). MIN_STUB_LENGTH alone leaves
+			// labels overlapping the port glyph.
+			final double offset = DUAL_SPINE_STUB_LENGTH + PORT_RADIUS;
 			cachedNaturalSpine1X = leftToRight ? srcX + offset : srcX - offset;
 			cachedNaturalSpine2X = leftToRight ? dstX - offset : dstX + offset;
 			double s1Top = edges.get(0).start.getY();
@@ -813,8 +821,11 @@ public class SvekHarness implements UDrawable {
 			double srcX, double dstX) {
 		final double distance = Math.abs(dstX - srcX);
 		// Need enough room for two stub bands (one on each side) plus a
-		// horizontal trunk running between them.
-		if (distance < 6 * MIN_STUB_LENGTH + 2 * PORT_RADIUS)
+		// horizontal trunk running between them. Threshold uses
+		// DUAL_SPINE_STUB_LENGTH (the actual stub length) so we don't
+		// trigger dual-spine when there isn't even enough room for two
+		// stubs.
+		if (distance < 2 * DUAL_SPINE_STUB_LENGTH + 2 * PORT_RADIUS + MIN_STUB_LENGTH)
 			return false;
 		final java.util.Set<Long> sourceYs = new java.util.HashSet<Long>();
 		final java.util.Set<Long> destYs = new java.util.HashSet<Long>();
@@ -835,10 +846,11 @@ public class SvekHarness implements UDrawable {
 		final double dstX = medianX(endPointsOf(edges));
 		final boolean leftToRight = dstX > srcX;
 
-		// Spines hug their respective column at MIN_STUB_LENGTH offset,
-		// adjusted by the offsets computed by resolveDualSpineOverlaps so
-		// neighbouring dual-spine harnesses don't collide on the same X.
-		final double offset = MIN_STUB_LENGTH + PORT_RADIUS;
+		// Spines hug their respective column at DUAL_SPINE_STUB_LENGTH
+		// offset (long enough for per-stub labels to fit), adjusted by
+		// the offsets computed by resolveDualSpineOverlaps so neighbouring
+		// dual-spine harnesses don't collide on the same X.
+		final double offset = DUAL_SPINE_STUB_LENGTH + PORT_RADIUS;
 		double spine1X = (leftToRight ? srcX + offset : srcX - offset)
 				+ dualSpine1XOffset;
 		double spine2X = (leftToRight ? dstX - offset : dstX + offset)
