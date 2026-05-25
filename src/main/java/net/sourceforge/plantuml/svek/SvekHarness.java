@@ -372,9 +372,20 @@ public class SvekHarness implements UDrawable {
 				s2Top = Math.min(s2Top, e.end.getY());
 				s2Bot = Math.max(s2Bot, e.end.getY());
 			}
-			cachedSpine1Top = s1Top;
+			// Effective Y range used by conflict resolution. Each spine
+			// actually extends from its source/destination row band to
+			// the trunk Y (which wraps above all stubs by default). We
+			// approximate the wrap-extended range as [allTop - margin,
+			// spine.Bottom] so two spines sharing a natural X but with
+			// different source/dest Ys get detected as overlapping along
+			// the part of their length that runs up to the trunk.
+			final double allTopApprox = Math.min(s1Top, s2Top);
+			final double trunkMarginApprox =
+					Math.max(cornerRadius(), 0) + PORT_RADIUS + PORT_WIDTH;
+			final double effectiveTop = allTopApprox - trunkMarginApprox;
+			cachedSpine1Top = effectiveTop;
 			cachedSpine1Bottom = s1Bot;
-			cachedSpine2Top = s2Top;
+			cachedSpine2Top = effectiveTop;
 			cachedSpine2Bottom = s2Bot;
 			return new double[]{Double.NaN, 0, 0};
 		}
@@ -534,7 +545,11 @@ public class SvekHarness implements UDrawable {
 		else if (srcSpreadX > srcSpreadY * 2)
 			horizontal = false;
 		else
-			horizontal = Math.abs(flowDx) >= Math.abs(flowDy);
+			// Sources and destinations separated by at least a min-stub
+			// in X means the spine should be vertical and stubs horizontal
+			// — that's the drawHorizontalFlow geometry, even when the Y
+			// spread of destinations is larger than the X separation.
+			horizontal = Math.abs(flowDx) >= MIN_STUB_LENGTH;
 
 		if (horizontal)
 			drawHorizontalFlow(ugLine, edges, flowDx >= 0, style);
