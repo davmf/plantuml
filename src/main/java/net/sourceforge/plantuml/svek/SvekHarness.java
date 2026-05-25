@@ -372,21 +372,23 @@ public class SvekHarness implements UDrawable {
 				s2Top = Math.min(s2Top, e.end.getY());
 				s2Bot = Math.max(s2Bot, e.end.getY());
 			}
-			// Effective Y range used by conflict resolution. Each spine
-			// actually extends from its source/destination row band to
-			// the trunk Y (which wraps above all stubs by default). We
-			// approximate the wrap-extended range as [allTop - margin,
-			// spine.Bottom] so two spines sharing a natural X but with
-			// different source/dest Ys get detected as overlapping along
-			// the part of their length that runs up to the trunk.
+			// Effective Y range used by conflict resolution. The drawn
+			// spine extends from the source/destination row band all the
+			// way to the trunk Y, which can wrap either ABOVE the topmost
+			// stub or BELOW the bottommost stub depending on which side
+			// has more clearance. Cover BOTH potential wrap directions so
+			// a spine that ends up wrapping the opposite way to a
+			// sibling at the same X is still detected as overlapping.
 			final double allTopApprox = Math.min(s1Top, s2Top);
+			final double allBottomApprox = Math.max(s1Bot, s2Bot);
 			final double trunkMarginApprox =
 					Math.max(cornerRadius(), 0) + PORT_RADIUS + PORT_WIDTH;
 			final double effectiveTop = allTopApprox - trunkMarginApprox;
+			final double effectiveBottom = allBottomApprox + trunkMarginApprox;
 			cachedSpine1Top = effectiveTop;
-			cachedSpine1Bottom = s1Bot;
+			cachedSpine1Bottom = effectiveBottom;
 			cachedSpine2Top = effectiveTop;
-			cachedSpine2Bottom = s2Bot;
+			cachedSpine2Bottom = effectiveBottom;
 			return new double[]{Double.NaN, 0, 0};
 		}
 		final double spineX = clampSpineForMinStub((srcX + dstX) / 2, edges, srcX);
