@@ -822,18 +822,6 @@ public class SvekHarness implements UDrawable {
 			spine2Bottom = Math.max(spine2Bottom, e.end.getY());
 		}
 
-		// Trunk Y: middle of the overlap between the two spines' Y ranges
-		// so the trunk endpoints land on each spine without extending past
-		// the natural source/destination row band.
-		final double overlapTop = Math.max(spine1Top, spine2Top);
-		final double overlapBottom = Math.min(spine1Bottom, spine2Bottom);
-		double trunkY;
-		if (overlapBottom > overlapTop)
-			trunkY = (overlapTop + overlapBottom) / 2;
-		else
-			trunkY = (Math.min(spine1Top, spine2Top)
-					+ Math.max(spine1Bottom, spine2Bottom)) / 2;
-
 		final List<RectangleArea> obstacles = collectObstacles();
 		spine1X = SvekPortConnector.findClearVerticalBidirectional(
 				spine1X, spine1Top, spine1Bottom, obstacles);
@@ -842,11 +830,30 @@ public class SvekHarness implements UDrawable {
 		spine1X = findClearXAgainstVerts(spine1X, spine1Top, spine1Bottom);
 		spine2X = findClearXAgainstVerts(spine2X, spine2Top, spine2Bottom);
 
-		// Pick a trunk Y that doesn't intersect a cluster body between the
-		// two spines.
+		// Wrap the trunk over the top (or under the bottom) of every stub
+		// so the harness reads as a single continuous bundle with two
+		// ends, not an H with T-junctions. The trunk Y lies just outside
+		// the highest/lowest stub Y; spines extend in one direction only.
+		final double allTop = Math.min(spine1Top, spine2Top);
+		final double allBottom = Math.max(spine1Bottom, spine2Bottom);
+		final double r = cornerRadius();
+		final double trunkMargin = Math.max(r, 0) + PORT_RADIUS + PORT_WIDTH;
 		final double xMin = Math.min(spine1X, spine2X);
 		final double xMax = Math.max(spine1X, spine2X);
-		trunkY = findClearCrossbarY(trunkY, xMin, xMax, obstacles);
+		final double trunkAbove = allTop - trunkMargin;
+		final double trunkBelow = allBottom + trunkMargin;
+		final double clearAbove = findClearCrossbarY(trunkAbove, xMin, xMax,
+				obstacles);
+		final double clearBelow = findClearCrossbarY(trunkBelow, xMin, xMax,
+				obstacles);
+		// Prefer whichever side is closer to its natural placement (less
+		// vertical detour). Tie -> top.
+		final boolean trunkAtTop =
+				Math.abs(clearAbove - trunkAbove) <= Math.abs(clearBelow - trunkBelow);
+		final double trunkY = trunkAtTop ? clearAbove : clearBelow;
+		// End points of the polyline: the spine's far side from the trunk.
+		final double spine1Far = trunkAtTop ? spine1Bottom : spine1Top;
+		final double spine2Far = trunkAtTop ? spine2Bottom : spine2Top;
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(fanStroke(style));
@@ -865,15 +872,24 @@ public class SvekHarness implements UDrawable {
 						spine1X, e.start.getY(), e.start.getX(), true);
 		}
 
-		// Three trunk segments: spine1 vertical, horizontal trunk, spine2 vertical
-		drawLine(ugTrunk, spine1X, spine1Top, spine1X, spine1Bottom);
-		drawLine(ugTrunk, spine1X, trunkY, spine2X, trunkY);
-		drawLine(ugTrunk, spine2X, spine2Top, spine2X, spine2Bottom);
+		// Single continuous polyline: spine1Far -> trunk corner -> trunk
+		// horizontal -> trunk corner -> spine2Far. Corners are rounded by
+		// the edgeCornerRadius pragma.
+		final List<XPoint2D> trunkPts = new ArrayList<XPoint2D>();
+		trunkPts.add(new XPoint2D(spine1X, spine1Far));
+		trunkPts.add(new XPoint2D(spine1X, trunkY));
+		trunkPts.add(new XPoint2D(spine2X, trunkY));
+		trunkPts.add(new XPoint2D(spine2X, spine2Far));
+		drawRoundedPolyline(ugTrunk, trunkPts);
 
-		renderedSpines.add(new RectangleArea(spine1X - TRUNK_STROKE_WIDTH, spine1Top,
-				spine1X + TRUNK_STROKE_WIDTH, spine1Bottom));
-		renderedSpines.add(new RectangleArea(spine2X - TRUNK_STROKE_WIDTH, spine2Top,
-				spine2X + TRUNK_STROKE_WIDTH, spine2Bottom));
+		renderedSpines.add(new RectangleArea(spine1X - TRUNK_STROKE_WIDTH,
+				Math.min(spine1Far, trunkY),
+				spine1X + TRUNK_STROKE_WIDTH,
+				Math.max(spine1Far, trunkY)));
+		renderedSpines.add(new RectangleArea(spine2X - TRUNK_STROKE_WIDTH,
+				Math.min(spine2Far, trunkY),
+				spine2X + TRUNK_STROKE_WIDTH,
+				Math.max(spine2Far, trunkY)));
 		renderedSpines.add(new RectangleArea(xMin, trunkY - TRUNK_STROKE_WIDTH,
 				xMax, trunkY + TRUNK_STROKE_WIDTH));
 
