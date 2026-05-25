@@ -406,6 +406,18 @@ public class SvekHarness implements UDrawable {
 		spineX = SvekPortConnector.findClearVerticalBidirectional(spineX,
 				spineTopY, spineBottomY, obstacles);
 
+		// Dual-spine detection: when the source-to-destination X distance
+		// is large AND there are multiple distinct source and destination
+		// rows, single-spine placement either stretches source stubs (spine
+		// near dest) or dest stubs (spine near source) across the diagram.
+		// A two-spine topology (vertical spine at source side, horizontal
+		// trunk through the middle, vertical spine at dest side) keeps both
+		// stub families short.
+		if (shouldUseDualSpine(edges, srcX, dstX)) {
+			drawDualSpineHorizontalFlow(ugLine, edges, style);
+			return;
+		}
+
 		// Split-flow detection: if destinations cluster in two X-bands with a
 		// gap wider than 2*MIN_STUB_LENGTH between them, route as inverted-U
 		// (or U) so far-group stubs don't have to cross near-group cluster
@@ -594,6 +606,127 @@ public class SvekHarness implements UDrawable {
 		} catch (NumberFormatException e) {
 			return 0;
 		}
+	}
+
+	// Predicate: should this harness use the dual-spine topology?
+	// Triggers when the source-to-destination X distance is too large for
+	// a single spine to keep both stub families short, AND when there are
+	// at least two distinct rows on each side so a vertical spine has
+	// meaningful extent.
+	private static boolean shouldUseDualSpine(List<EdgeData> edges,
+			double srcX, double dstX) {
+		final double distance = Math.abs(dstX - srcX);
+		// Need enough room for two stub bands (one on each side) plus a
+		// horizontal trunk running between them.
+		if (distance < 6 * MIN_STUB_LENGTH + 2 * PORT_RADIUS)
+			return false;
+		final java.util.Set<Long> sourceYs = new java.util.HashSet<Long>();
+		final java.util.Set<Long> destYs = new java.util.HashSet<Long>();
+		for (EdgeData e : edges) {
+			sourceYs.add(Double.doubleToLongBits(e.start.getY()));
+			destYs.add(Double.doubleToLongBits(e.end.getY()));
+		}
+		return sourceYs.size() >= 2 && destYs.size() >= 2;
+	}
+
+	// Two-spine topology: vertical spine just outside the source column,
+	// horizontal trunk through the middle, vertical spine just outside the
+	// destination column. Every source stub is at most ~MIN_STUB_LENGTH and
+	// every destination stub is similarly short.
+	private void drawDualSpineHorizontalFlow(UGraphic ugLine,
+			List<EdgeData> edges, Style style) {
+		final double srcX = medianX(startPointsOf(edges));
+		final double dstX = medianX(endPointsOf(edges));
+		final boolean leftToRight = dstX > srcX;
+
+		// Spines hug their respective column at MIN_STUB_LENGTH offset
+		final double offset = MIN_STUB_LENGTH + PORT_RADIUS;
+		double spine1X = leftToRight ? srcX + offset : srcX - offset;
+		double spine2X = leftToRight ? dstX - offset : dstX + offset;
+
+		// Per-spine vertical extent: spine1 covers source Y range,
+		// spine2 covers destination Y range.
+		double spine1Top = edges.get(0).start.getY();
+		double spine1Bottom = spine1Top;
+		double spine2Top = edges.get(0).end.getY();
+		double spine2Bottom = spine2Top;
+		for (EdgeData e : edges) {
+			spine1Top = Math.min(spine1Top, e.start.getY());
+			spine1Bottom = Math.max(spine1Bottom, e.start.getY());
+			spine2Top = Math.min(spine2Top, e.end.getY());
+			spine2Bottom = Math.max(spine2Bottom, e.end.getY());
+		}
+
+		// Trunk Y: middle of the overlap between the two spines' Y ranges
+		// so the trunk endpoints land on each spine without extending past
+		// the natural source/destination row band.
+		final double overlapTop = Math.max(spine1Top, spine2Top);
+		final double overlapBottom = Math.min(spine1Bottom, spine2Bottom);
+		double trunkY;
+		if (overlapBottom > overlapTop)
+			trunkY = (overlapTop + overlapBottom) / 2;
+		else
+			trunkY = (Math.min(spine1Top, spine2Top)
+					+ Math.max(spine1Bottom, spine2Bottom)) / 2;
+
+		final List<RectangleArea> obstacles = collectObstacles();
+		spine1X = SvekPortConnector.findClearVerticalBidirectional(
+				spine1X, spine1Top, spine1Bottom, obstacles);
+		spine2X = SvekPortConnector.findClearVerticalBidirectional(
+				spine2X, spine2Top, spine2Bottom, obstacles);
+		spine1X = findClearXAgainstVerts(spine1X, spine1Top, spine1Bottom);
+		spine2X = findClearXAgainstVerts(spine2X, spine2Top, spine2Bottom);
+
+		// Pick a trunk Y that doesn't intersect a cluster body between the
+		// two spines.
+		final double xMin = Math.min(spine1X, spine2X);
+		final double xMax = Math.max(spine1X, spine2X);
+		trunkY = findClearCrossbarY(trunkY, xMin, xMax, obstacles);
+
+		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
+		final UGraphic ugFan = ugLine.apply(fanStroke(style));
+		final UGraphic ugTrunk = ugLine.apply(UStroke.withThickness(TRUNK_STROKE_WIDTH));
+
+		// Source stubs to spine1
+		final java.util.Set<Long> labeledSourceY = new java.util.HashSet<Long>();
+		for (EdgeData e : edges) {
+			final double srcDir = Math.signum(spine1X - e.start.getX());
+			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
+			drawLine(ugFan, srcEdge, e.start.getY(), spine1X, e.start.getY());
+			if (e.hasSourceLabel()
+					&& labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
+				drawStubLabel(ugLine, fontConfig,
+						Display.getWithNewlines(skinParam.getPragma(), e.sourceLabel),
+						spine1X, e.start.getY(), e.start.getX(), true);
+		}
+
+		// Three trunk segments: spine1 vertical, horizontal trunk, spine2 vertical
+		drawLine(ugTrunk, spine1X, spine1Top, spine1X, spine1Bottom);
+		drawLine(ugTrunk, spine1X, trunkY, spine2X, trunkY);
+		drawLine(ugTrunk, spine2X, spine2Top, spine2X, spine2Bottom);
+
+		renderedSpines.add(new RectangleArea(spine1X - TRUNK_STROKE_WIDTH, spine1Top,
+				spine1X + TRUNK_STROKE_WIDTH, spine1Bottom));
+		renderedSpines.add(new RectangleArea(spine2X - TRUNK_STROKE_WIDTH, spine2Top,
+				spine2X + TRUNK_STROKE_WIDTH, spine2Bottom));
+		renderedSpines.add(new RectangleArea(xMin, trunkY - TRUNK_STROKE_WIDTH,
+				xMax, trunkY + TRUNK_STROKE_WIDTH));
+
+		// Destination stubs from spine2
+		for (EdgeData e : edges) {
+			final double endX = e.end.getX();
+			final double endY = e.end.getY();
+			final double dir = Math.signum(endX - spine2X);
+			final double tipX = endX - dir * PORT_RADIUS;
+			drawLine(ugFan, spine2X, endY, tipX, endY);
+			drawHArrow(ugFan, tipX, endY, dir);
+			final Display destLabel = destinationStubLabel(e);
+			if (destLabel != null)
+				drawStubLabel(ugLine, fontConfig, destLabel,
+						spine2X, endY, endX, false);
+		}
+
+		drawLabelOnTrunk(ugLine, spine1X, trunkY, spine2X, trunkY, true, style);
 	}
 
 	private void drawSplitHorizontalFlow(UGraphic ugLine,
