@@ -35,6 +35,8 @@ import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.utils.Log;
 
 public class SvekHarness implements UDrawable {
@@ -1208,7 +1210,60 @@ public class SvekHarness implements UDrawable {
 		else
 			labelX = spineX + 5;
 		final double labelY = stubY - textDim.getHeight() - 3;
+		drawLabelBackground(ug, labelX, labelY, textDim);
 		textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
+	}
+
+	// Paint a small patch behind a harness label in the colour of the
+	// cluster that contains the harness's member ports. The harness trunk
+	// and spines draw on top of cluster fills, so a label without a
+	// background would have those lines bleeding through it. Returns
+	// silently when the parent cluster's fill is transparent / unset.
+	private void drawLabelBackground(UGraphic ug, double labelX,
+			double labelY, XDimension2D textDim) {
+		final HColor bg = resolveHarnessParentBackColor();
+		if (bg == null)
+			return;
+		final double padX = 2;
+		final double padY = 1;
+		final URectangle rect = URectangle.build(
+				textDim.getWidth() + 2 * padX,
+				textDim.getHeight() + 2 * padY);
+		ug.apply(bg).apply(bg.bg())
+				.apply(new UTranslate(labelX - padX, labelY - padY))
+				.draw(rect);
+	}
+
+	// Walk up from one of the harness's member endpoints until we find a
+	// group whose resolved BackgroundColor is non-transparent, and return
+	// that colour. Falls back to null when the harness's containing
+	// cluster has no defined fill.
+	private HColor resolveHarnessParentBackColor() {
+		if (memberLinks.isEmpty())
+			return null;
+		final Entity startEntity = memberLinks.get(0).getEntity1();
+		if (startEntity == null)
+			return null;
+		Object up = startEntity.getParentContainer();
+		while (up instanceof Entity) {
+			final Entity current = (Entity) up;
+			if (current.isGroup()) {
+				final HColor direct = current.getColors() == null
+						? null
+						: current.getColors().getColor(ColorType.BACK);
+				final HColor resolved = Cluster.getBackColor(direct,
+						current.getStereotype(),
+						startEntity.getDiagram().getDiagramType().getStyleName(),
+						current.getUSymbol(),
+						skinParam.getCurrentStyleBuilder(),
+						skinParam.getIHtmlColorSet(),
+						current.getGroupType());
+				if (resolved != null && resolved.equals(HColors.transparent()) == false)
+					return resolved;
+			}
+			up = current.getParentContainer();
+		}
+		return null;
 	}
 
 	private static double findClearCrossbarY(double proposedY,
@@ -1372,10 +1427,12 @@ public class SvekHarness implements UDrawable {
 		if (horizontal) {
 			final double labelX = midX - textDim.getWidth() / 2;
 			final double labelY = midY - textDim.getHeight() - 4;
+			drawLabelBackground(ug, labelX, labelY, textDim);
 			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 		} else {
 			final double labelX = midX - textDim.getWidth() - 6;
 			final double labelY = midY - textDim.getHeight() / 2;
+			drawLabelBackground(ug, labelX, labelY, textDim);
 			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 		}
 	}

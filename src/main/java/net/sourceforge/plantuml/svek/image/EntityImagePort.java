@@ -96,34 +96,6 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		return hasInsideLabel(getEntity());
 	}
 
-	// Resolve the immediate parent cluster's effective background colour
-	// so the port label can be drawn over a matching patch. Walks up the
-	// parent chain looking for the first group whose Style yields a
-	// non-transparent background; falls back to null when nothing is set
-	// (caller skips the patch in that case).
-	private HColor resolveParentBackColor() {
-		Entity current = (Entity) getEntity().getParentContainer();
-		while (current != null) {
-			if (current.isGroup()) {
-				final HColor direct = current.getColors() == null
-						? null
-						: current.getColors().getColor(ColorType.BACK);
-				final HColor resolved = Cluster.getBackColor(direct,
-						current.getStereotype(),
-						getEntity().getDiagram().getDiagramType().getStyleName(),
-						current.getUSymbol(),
-						getSkinParam().getCurrentStyleBuilder(),
-						getSkinParam().getIHtmlColorSet(),
-						current.getGroupType());
-				if (resolved != null && resolved.equals(net.sourceforge.plantuml.klimt.color.HColors.transparent()) == false)
-					return resolved;
-			}
-			final Object up = current.getParentContainer();
-			current = (up instanceof Entity) ? (Entity) up : null;
-		}
-		return null;
-	}
-
 	public static boolean isBoardPort(Entity entity) {
 		final Entity parent = (Entity) entity.getParentContainer();
 		if (parent == null || parent.isRoot())
@@ -350,22 +322,6 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		group.put(UGroupType.DATA_UID, getEntity().getUid());
 		group.put(UGroupType.DATA_QUALIFIED_NAME, getEntity().getQuark().getQualifiedName());
 		ug.startGroup(group);
-
-		// Paint a label-background patch behind the port's text in the
-		// colour of the immediate parent cluster. Lets harness lines that
-		// would otherwise run beneath the label still be drawn, while
-		// keeping the label readable on top.
-		final HColor labelBg = resolveParentBackColor();
-		if (labelBg != null) {
-			final double padX = 2;
-			final double padY = 1;
-			final Shadowable bg = URectangle.build(
-					dimDesc.getWidth() + 2 * padX,
-					dimDesc.getHeight() + 2 * padY);
-			ug.apply(labelBg).apply(labelBg.bg())
-					.apply(new UTranslate(x - padX, y - padY))
-					.draw(bg);
-		}
 
 		desc.drawU(ug.apply(new UTranslate(x, y)));
 
