@@ -7,6 +7,8 @@ import java.util.List;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.abel.Link;
+import net.sourceforge.plantuml.decoration.LinkDecor;
+import net.sourceforge.plantuml.decoration.LinkType;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.ColorType;
@@ -455,8 +457,16 @@ public class SvekHarness implements UDrawable {
 			final XPoint2D endPt = resolveEntityCenter(link.getEntity2());
 			if (startPt == null || endPt == null)
 				continue;
+			// Mirror PlantUML's edge-direction syntax in the harness
+			// rendering: `A --> B` draws an arrowhead at B (entity2 / end);
+			// `A <-- B` draws an arrowhead at A (entity1 / start); `A -- B`
+			// draws neither. LinkType.getDecor1() is the entity2-end decor,
+			// getDecor2() is the entity1-end decor.
+			final LinkType type = link.getType();
+			final boolean arrowAtEnd = type.getDecor1() != LinkDecor.NONE;
+			final boolean arrowAtStart = type.getDecor2() != LinkDecor.NONE;
 			edges.add(new EdgeData(startPt, endPt, link.getLabel(),
-					link.getSourceLabel()));
+					link.getSourceLabel(), arrowAtStart, arrowAtEnd));
 		}
 		return edges;
 	}
@@ -466,12 +476,17 @@ public class SvekHarness implements UDrawable {
 		final XPoint2D end;
 		final Display label;
 		final String sourceLabel;
+		final boolean arrowAtStart;
+		final boolean arrowAtEnd;
 
-		EdgeData(XPoint2D start, XPoint2D end, Display label, String sourceLabel) {
+		EdgeData(XPoint2D start, XPoint2D end, Display label, String sourceLabel,
+				boolean arrowAtStart, boolean arrowAtEnd) {
 			this.start = start;
 			this.end = end;
 			this.label = label;
 			this.sourceLabel = sourceLabel;
+			this.arrowAtStart = arrowAtStart;
+			this.arrowAtEnd = arrowAtEnd;
 		}
 
 		boolean hasLabel() {
@@ -668,6 +683,8 @@ public class SvekHarness implements UDrawable {
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			drawStubWithOptionalCorner(ugFan, srcEdge, e.start.getY(),
 					spineX, e.start.getY(), spineTopY, spineBottomY, r);
+			if (e.arrowAtStart)
+				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel() && labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
 				drawStubLabel(ugLine, fontConfig,
 						Display.getWithNewlines(skinParam.getPragma(), e.sourceLabel),
@@ -691,7 +708,8 @@ public class SvekHarness implements UDrawable {
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawStubWithOptionalCorner(ugFan, tipX, endY,
 					spineX, endY, spineTopY, spineBottomY, r);
-			drawHArrow(ugFan, tipX, endY, dir);
+			if (e.arrowAtEnd)
+				drawHArrow(ugFan, tipX, endY, dir);
 			final Display destLabel = destinationStubLabel(e);
 			if (destLabel != null)
 				drawStubLabel(ugLine, fontConfig, destLabel,
@@ -882,6 +900,8 @@ public class SvekHarness implements UDrawable {
 			final double srcDir = Math.signum(spine1X - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			drawLine(ugFan, srcEdge, e.start.getY(), spine1X, e.start.getY());
+			if (e.arrowAtStart)
+				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel()
 					&& labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
 				drawStubLabel(ugLine, fontConfig,
@@ -917,7 +937,8 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spine2X);
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spine2X, endY, tipX, endY);
-			drawHArrow(ugFan, tipX, endY, dir);
+			if (e.arrowAtEnd)
+				drawHArrow(ugFan, tipX, endY, dir);
 			final Display destLabel = destinationStubLabel(e);
 			if (destLabel != null)
 				drawStubLabel(ugLine, fontConfig, destLabel,
@@ -1016,6 +1037,8 @@ public class SvekHarness implements UDrawable {
 					+ srcDir * PORT_RADIUS;
 			drawLine(ugFan, srcEdge, e.start.getY(),
 					spine1X, e.start.getY());
+			if (e.arrowAtStart)
+				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel()
 					&& labeledSourceY.add(
 							Double.doubleToLongBits(
@@ -1060,7 +1083,8 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spine1X);
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spine1X, endY, tipX, endY);
-			drawHArrow(ugFan, tipX, endY, dir);
+			if (e.arrowAtEnd)
+				drawHArrow(ugFan, tipX, endY, dir);
 			final Display nearLabel = destinationStubLabel(e);
 			if (nearLabel != null)
 				drawStubLabel(ugLine, fontConfig, nearLabel,
@@ -1074,7 +1098,8 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spine2X);
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spine2X, endY, tipX, endY);
-			drawHArrow(ugFan, tipX, endY, dir);
+			if (e.arrowAtEnd)
+				drawHArrow(ugFan, tipX, endY, dir);
 			final Display farLabel = destinationStubLabel(e);
 			if (farLabel != null)
 				drawStubLabel(ugLine, fontConfig, farLabel,
@@ -1124,6 +1149,8 @@ public class SvekHarness implements UDrawable {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
+			if (e.arrowAtStart)
+				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel() && labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
 				drawStubLabel(ugLine, fontConfig,
 						Display.getWithNewlines(skinParam.getPragma(), e.sourceLabel),
@@ -1142,7 +1169,8 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spineX);
 			final double tipX = endX - dir * PORT_RADIUS;
 			drawLine(ugFan, spineX, endY, tipX, endY);
-			drawHArrow(ugFan, tipX, endY, dir);
+			if (e.arrowAtEnd)
+				drawHArrow(ugFan, tipX, endY, dir);
 			final Display destLabel = destinationStubLabel(e);
 			if (destLabel != null)
 				drawStubLabel(ugLine, fontConfig, destLabel,
