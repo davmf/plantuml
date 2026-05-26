@@ -160,6 +160,14 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	// Must exceed the largest (groupOrder * STRIDE + indexInGroup) value
 	// in any realistic component (10 000 supports 100 groups × 100 ports).
 	private static final int PORT_GROUP_INDEX_CEILING = 10_000;
+	// Vertical layout for clusters with grouped ports (FIXED_POS):
+	//  - top margin from the cluster's top edge to the first port,
+	//  - pitch between successive ports on a face,
+	//  - placeholder X for EAST ports (ELK adjusts the cluster width to
+	//    fit; the actual right-edge position is recomputed by ELK).
+	private static final double GROUPED_PORT_TOP_MARGIN = 20;
+	private static final double GROUPED_PORT_PITCH = 30;
+	private static final double GROUPED_PORT_EAST_PLACEHOLDER_X = 2000;
 
 	private final Map<Entity, ElkNode> nodes = new LinkedHashMap<Entity, ElkNode>();
 	private final Map<Entity, ElkPort> ports = new LinkedHashMap<Entity, ElkPort>();
@@ -384,10 +392,30 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// is required when this cluster contains ports inside one
 				// or more `group "Name" { ... }` blocks -- PORT_INDEX
 				// drives the per-group ordering on each face.
-				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
-						(g.isHeader() || hasGroupedPorts(g))
-								? PortConstraints.FIXED_ORDER
-								: PortConstraints.FIXED_SIDE);
+				final boolean clusterHasGroups = hasGroupedPorts(g);
+				// Header components use FIXED_ORDER (their stride is small
+				// enough that ELK doesn't reorder). Clusters with grouped
+				// ports need FIXED_POS because ELK's crossing minimizer
+				// otherwise reorders ports along a face to reduce edge
+				// crossings, overriding our PORT_INDEX. FIXED_POS forces
+				// ELK to use the exact Y we compute from
+				// (groupOrder, indexInGroup).
+				final PortConstraints constraints;
+				if (clusterHasGroups)
+					constraints = PortConstraints.FIXED_POS;
+				else if (g.isHeader())
+					constraints = PortConstraints.FIXED_ORDER;
+				else
+					constraints = PortConstraints.FIXED_SIDE;
+				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS, constraints);
+				if (clusterHasGroups) {
+					// Stop the layered algorithm from re-laying out the
+					// children to align with port positions (which would
+					// in turn drag the ports to align with the children),
+					// so our FIXED_POS Y values are actually honoured.
+					elkCluster.setProperty(CoreOptions.HIERARCHY_HANDLING,
+							HierarchyHandling.SEPARATE_CHILDREN);
+				}
 				elkCluster.setProperty(CoreOptions.NODE_SIZE_CONSTRAINTS,
 						EnumSet.of(SizeConstraint.NODE_LABELS, SizeConstraint.PORTS,
 								SizeConstraint.PORT_LABELS, SizeConstraint.MINIMUM_SIZE));
@@ -453,6 +481,77 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				return true;
 		}
 		return false;
+	}
+
+	// PORT_INDEX value for a port in a cluster that contains at least one
+	// `group "..." { ... }` block. Grouped ports get
+	//   groupOrder * PORT_GROUP_STRIDE + indexInGroup
+	// Ungrouped ports trail all groups in declaration order:
+	//   (maxGroupOrder + 1) * PORT_GROUP_STRIDE + ungroupedDeclOrder
+	// This is critical: under FIXED_ORDER ELK gives unset PORT_INDEX a
+	// default of 0, which collides with the first grouped port and causes
+	// arbitrary placement of ungrouped ports.
+	private static int effectiveGroupedPortIndex(Entity cluster, Entity port) {
+		if (port.hasPortGroup())
+			return port.getPortGroupOrder() * PORT_GROUP_STRIDE + port.getPortGroupIndex();
+		int maxGroupOrder = -1;
+		int ungroupedSeen = 0;
+		int myUngroupedIdx = 0;
+		for (Entity child : cluster.leafs()) {
+			final EntityPosition cpos = child.getEntityPosition();
+			if (cpos == null || cpos.isPort() == false)
+				continue;
+			if (child.hasPortGroup()) {
+				if (child.getPortGroupOrder() > maxGroupOrder)
+					maxGroupOrder = child.getPortGroupOrder();
+			} else {
+				if (child == port)
+					myUngroupedIdx = ungroupedSeen;
+				ungroupedSeen++;
+			}
+		}
+		return (maxGroupOrder + 1) * PORT_GROUP_STRIDE + myUngroupedIdx;
+	}
+
+	// 0-based rank of `port` among the ports on the same face (WEST or
+	// EAST) of `cluster`, sorted by effectiveGroupedPortIndex. Used to
+	// compute the port's Y under FIXED_POS so grouped ports keep their
+	// declaration order regardless of edges that would otherwise drive
+	// ELK's crossing minimizer to reorder them.
+	private static int facePortRank(Entity cluster, Entity port, boolean west) {
+		// Build the list of effective indices for ports on this face.
+		final java.util.List<int[]> sideEntries = new java.util.ArrayList<int[]>();
+		final int targetIdx = effectiveGroupedPortIndex(cluster, port);
+		int childCounter = 0;
+		int myCounter = -1;
+		for (Entity child : cluster.leafs()) {
+			final EntityPosition cpos = child.getEntityPosition();
+			if (cpos == null || cpos.isPort() == false)
+				continue;
+			final boolean childWest = cpos.isInput();
+			if (childWest != west)
+				continue;
+			if (child == port)
+				myCounter = childCounter;
+			sideEntries.add(new int[]{
+					effectiveGroupedPortIndex(cluster, child),
+					childCounter});
+			childCounter++;
+		}
+		// Sort by effective index (ascending).
+		java.util.Collections.sort(sideEntries, new java.util.Comparator<int[]>() {
+			@Override
+			public int compare(int[] a, int[] b) {
+				return Integer.compare(a[0], b[0]);
+			}
+		});
+		// Find this port's rank.
+		for (int i = 0; i < sideEntries.size(); i++) {
+			if (sideEntries.get(i)[0] == targetIdx
+					&& sideEntries.get(i)[1] == myCounter)
+				return i;
+		}
+		return 0;
 	}
 
 	// Widen and height-constrain a cluster so that:
@@ -655,22 +754,18 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				final int numPairs = (headerPortCount(parentEntity) + 1) / 2;
 				final int portIndex = west ? (numPairs - 1 - pairIdx) : pairIdx;
 				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
-			} else if (ent.hasPortGroup()) {
-				// `group "Name" { ... }` ordering: ports are sorted by
-				// (groupOrder, indexInGroup) so each group's ports stay
-				// contiguous on their face, in declaration order. The
-				// stride is large enough to leave a gap between groups
-				// that the layout can interpret as inter-group spacing.
-				// ELK's FIXED_ORDER places ports along WEST bottom-to-top
-				// (high index = top) but along EAST top-to-bottom (low
-				// index = top), so we invert the index on the WEST side
-				// to make declared-first always render on top.
-				final int effIdx = ent.getPortGroupOrder() * PORT_GROUP_STRIDE
-						+ ent.getPortGroupIndex();
-				final int portIndex = west
-						? (PORT_GROUP_INDEX_CEILING - effIdx)
-						: effIdx;
-				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
+			} else if (parentEntity != null && hasGroupedPorts(parentEntity)) {
+				// `group "Name" { ... }` ordering. The cluster is set to
+				// FIXED_POS so ELK can't reorder ports for edge-crossing
+				// reduction; we compute each port's Y from its
+				// (groupOrder, indexInGroup) rank within its face. X is
+				// derived from PORT_SIDE: 0 for WEST, a placeholder for
+				// EAST that ELK adjusts to the cluster's actual width.
+				final int rank = facePortRank(parentEntity, ent, west);
+				final double portY = GROUPED_PORT_TOP_MARGIN
+						+ rank * GROUPED_PORT_PITCH;
+				final double portX = west ? 0 : GROUPED_PORT_EAST_PLACEHOLDER_X;
+				port.setLocation(portX, portY);
 			}
 			// Centre the port glyph on the cluster boundary (half
 			// inside, half outside) rather than ELK's default of
