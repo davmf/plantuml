@@ -87,11 +87,12 @@ class MyElkJumper {
 		if (barRight <= barLeft)
 			return;
 
-		// Bar fill is light grey so pin number labels drawn over it stay
-		// readable; stroke is a touch darker so the bar's outline reads
-		// at a distance.
+		// Bar fill is a mid-grey (between LIGHT_GRAY and GRAY) so pin
+		// number labels drawn over it stay readable while the bar reads
+		// as a substantial connector; stroke is one shade darker so the
+		// outline reads at a distance.
 		final UGraphic ugBar = ug.apply(translate)
-				.apply(HColors.GRAY).apply(HColors.LIGHT_GRAY.bg())
+				.apply(HColors.GRAY).apply(HColors.middle(HColors.GRAY, HColors.LIGHT_GRAY).bg())
 				.apply(UStroke.withThickness(1));
 		final URectangle bar = URectangle.build(barRight - barLeft, BAR_HEIGHT);
 		ugBar.apply(new UTranslate(barLeft, yMid - BAR_HEIGHT / 2)).draw(bar);
