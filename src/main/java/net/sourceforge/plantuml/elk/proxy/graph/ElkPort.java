@@ -36,8 +36,4 @@ public class ElkPort extends ElkWithProperty {
 		Reflect.call2(obj, "setDimensions", width, height);
 	}
 
-	public void setLocation(double x, double y) {
-		Reflect.call2(obj, "setLocation", x, y);
-	}
-
 }
