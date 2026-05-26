@@ -244,6 +244,15 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 
 		entity.setDisplay(Display.getWithNewlines(diagram.getPragma(), display));
 
+		// If we're inside a `group "Name" { ... }` block, tag the port
+		// with its group label, group ordinal, and within-group index so
+		// the ELK port-emission code can place it.
+		if (type == LeafType.PORTIN || type == LeafType.PORTOUT) {
+			final net.sourceforge.plantuml.abel.PortGroup pg = diagram.getCurrentPortGroup();
+			if (pg != null)
+				entity.setPortGroup(pg.getLabel(), pg.getGroupOrder(), pg.nextPortIndex());
+		}
+
 		if (stereotype != null)
 			entity.setStereotype(Stereotype.build(stereotype, diagram.getSkinParam().getCircledCharacterRadius(),
 					diagram.getSkinParam().getFont(null, false, FontParam.CIRCLED_CHARACTER),

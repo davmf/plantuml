@@ -62,6 +62,7 @@ import net.sourceforge.plantuml.descdiagram.command.CommandLinkElement;
 import net.sourceforge.plantuml.descdiagram.command.CommandNewpage;
 import net.sourceforge.plantuml.descdiagram.command.CommandPackageWithUSymbol;
 import net.sourceforge.plantuml.descdiagram.command.CommandHarness;
+import net.sourceforge.plantuml.descdiagram.command.CommandPortGroupOpen;
 import net.sourceforge.plantuml.descdiagram.command.CommandTogether;
 import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.objectdiagram.command.CommandCreateJson;
@@ -97,6 +98,7 @@ public class DescriptionDiagramFactory extends PSystemCommandFactory {
 		cmds.add(new CommandPackageWithUSymbol());
 		cmds.add(new CommandTogether());
 		cmds.add(new CommandHarness());
+		cmds.add(new CommandPortGroupOpen());
 
 		cmds.add(new CommandEndPackage());
 		final CommandFactoryNote factoryNoteCommand = CommandFactoryNote.ME;

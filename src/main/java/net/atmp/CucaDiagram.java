@@ -40,8 +40,10 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,6 +61,7 @@ import net.sourceforge.plantuml.abel.EntityGender;
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.abel.Harness;
+import net.sourceforge.plantuml.abel.PortGroup;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.Together;
@@ -131,9 +134,38 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 	private List<Bag> stacks = new ArrayList<>();
 
 	private Harness currentHarness;
+	// Running count of port groups declared per parent entity so each new
+	// `group "Name" { ... }` block in the same component gets a unique
+	// declaration-order ordinal.
+	private final Map<Entity, Integer> portGroupCounts = new HashMap<>();
 
 	public Harness getCurrentHarness() {
 		return currentHarness;
+	}
+
+	// The PortGroup at the top of the scope stack, if any. Used by
+	// CommandCreateElementFull to tag a freshly-created port with its
+	// group's order and within-group index.
+	public PortGroup getCurrentPortGroup() {
+		for (int i = stacks.size() - 1; i >= 0; i--) {
+			final Bag b = stacks.get(i);
+			if (b instanceof PortGroup)
+				return (PortGroup) b;
+			if (b instanceof Entity)
+				return null; // a nested non-portgroup scope cuts off the lookup
+		}
+		return null;
+	}
+
+	public CommandExecutionResult gotoPortGroup(String label) {
+		final Entity parent = getCurrentGroup();
+		if (parent == null || parent.isRoot())
+			return CommandExecutionResult.error("`group` can only be used inside a component");
+		final int order = portGroupCounts.getOrDefault(parent, 0);
+		portGroupCounts.put(parent, order + 1);
+		final PortGroup pg = new PortGroup(label, order);
+		stacks.add(pg);
+		return CommandExecutionResult.ok();
 	}
 
 	private boolean visibilityModifierPresent;

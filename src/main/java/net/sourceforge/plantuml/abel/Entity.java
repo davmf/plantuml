@@ -103,6 +103,14 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 
 	private LeafType leafType;
 	private Stereotype stereotype;
+
+	// Port-group tag applied when a port is created inside a `group "..." {
+	// ... }` block. -1 means the port is not part of any group. The pair
+	// (portGroupOrder, portGroupIndex) sorts ports on the parent's face:
+	// declaration-order group ordinal first, then within-group index.
+	private int portGroupOrder = -1;
+	private int portGroupIndex = -1;
+	private String portGroupLabel = null;
 	private Stereostyles stereostyles = Stereostyles.NONE;
 	private String generic;
 
@@ -262,6 +270,28 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 			return false;
 		final String label = stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR);
 		return label != null && label.contains("<<header>>");
+	}
+
+	public void setPortGroup(String label, int groupOrder, int indexInGroup) {
+		this.portGroupLabel = label;
+		this.portGroupOrder = groupOrder;
+		this.portGroupIndex = indexInGroup;
+	}
+
+	public boolean hasPortGroup() {
+		return portGroupOrder >= 0;
+	}
+
+	public int getPortGroupOrder() {
+		return portGroupOrder;
+	}
+
+	public int getPortGroupIndex() {
+		return portGroupIndex;
+	}
+
+	public String getPortGroupLabel() {
+		return portGroupLabel;
 	}
 
 	public String toString() {

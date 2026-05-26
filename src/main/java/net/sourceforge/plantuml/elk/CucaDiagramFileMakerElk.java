@@ -151,6 +151,16 @@ https://rtsys.informatik.uni-kiel.de/~biblio/downloads/theses/thw-bt.pdf
 @DuplicateCode(reference = "SvekEdge, CucaDiagramFileMakerElk, CucaDiagramFileMakerSmetana")
 public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
+	// PORT_INDEX stride between port groups on the same component face.
+	// Picked large enough to never collide with within-group indices
+	// (so a group can hold up to 100 ports), and large enough that the
+	// gap between groups translates to noticeable ELK spacing.
+	private static final int PORT_GROUP_STRIDE = 100;
+	// Safe upper bound used to invert PORT_INDEX for grouped WEST ports.
+	// Must exceed the largest (groupOrder * STRIDE + indexInGroup) value
+	// in any realistic component (10 000 supports 100 groups × 100 ports).
+	private static final int PORT_GROUP_INDEX_CEILING = 10_000;
+
 	private final Map<Entity, ElkNode> nodes = new LinkedHashMap<Entity, ElkNode>();
 	private final Map<Entity, ElkPort> ports = new LinkedHashMap<Entity, ElkPort>();
 	private final Map<Entity, ElkNode> clusters = new LinkedHashMap<Entity, ElkNode>();
@@ -370,9 +380,14 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				elkCluster.setProperty(CoreOptions.DIRECTION, getElkDirection());
 				// Header components need FIXED_ORDER so PORT_INDEX is
 				// honoured: paired pins share an index across WEST/EAST
-				// and end up aligned on the same row.
+				// and end up aligned on the same row. The same constraint
+				// is required when this cluster contains ports inside one
+				// or more `group "Name" { ... }` blocks -- PORT_INDEX
+				// drives the per-group ordering on each face.
 				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
-						g.isHeader() ? PortConstraints.FIXED_ORDER : PortConstraints.FIXED_SIDE);
+						(g.isHeader() || hasGroupedPorts(g))
+								? PortConstraints.FIXED_ORDER
+								: PortConstraints.FIXED_SIDE);
 				elkCluster.setProperty(CoreOptions.NODE_SIZE_CONSTRAINTS,
 						EnumSet.of(SizeConstraint.NODE_LABELS, SizeConstraint.PORTS,
 								SizeConstraint.PORT_LABELS, SizeConstraint.MINIMUM_SIZE));
@@ -421,6 +436,20 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			if (pos == null || pos.isPort() == false)
 				continue;
 			if (EntityImagePort.hasInsideLabel(leaf))
+				return true;
+		}
+		return false;
+	}
+
+	// True if any of `group`'s ports was declared inside a `group "Name"
+	// { ... }` block. Drives the cluster's PORT_CONSTRAINTS choice
+	// (FIXED_ORDER required so per-port PORT_INDEX is honoured).
+	private static boolean hasGroupedPorts(Entity group) {
+		for (Entity leaf : group.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			if (leaf.hasPortGroup())
 				return true;
 		}
 		return false;
@@ -625,6 +654,22 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				final int pairIdx = headerIdx / 2;
 				final int numPairs = (headerPortCount(parentEntity) + 1) / 2;
 				final int portIndex = west ? (numPairs - 1 - pairIdx) : pairIdx;
+				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
+			} else if (ent.hasPortGroup()) {
+				// `group "Name" { ... }` ordering: ports are sorted by
+				// (groupOrder, indexInGroup) so each group's ports stay
+				// contiguous on their face, in declaration order. The
+				// stride is large enough to leave a gap between groups
+				// that the layout can interpret as inter-group spacing.
+				// ELK's FIXED_ORDER places ports along WEST bottom-to-top
+				// (high index = top) but along EAST top-to-bottom (low
+				// index = top), so we invert the index on the WEST side
+				// to make declared-first always render on top.
+				final int effIdx = ent.getPortGroupOrder() * PORT_GROUP_STRIDE
+						+ ent.getPortGroupIndex();
+				final int portIndex = west
+						? (PORT_GROUP_INDEX_CEILING - effIdx)
+						: effIdx;
 				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
 			}
 			// Centre the port glyph on the cluster boundary (half
