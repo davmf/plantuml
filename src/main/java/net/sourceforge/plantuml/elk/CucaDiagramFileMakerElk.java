@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,7 @@ import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArrow;
+import net.sourceforge.plantuml.abel.Together;
 import net.sourceforge.plantuml.annotation.DuplicateCode;
 import net.sourceforge.plantuml.core.DiagramType;
 
@@ -102,6 +104,9 @@ import net.sourceforge.plantuml.elk.proxy.graph.ElkLabel;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.elk.proxy.graph.util.ElkGraphUtil;
+import net.sourceforge.plantuml.elk.proxy.layered.options.LayerConstraint;
+import net.sourceforge.plantuml.elk.proxy.layered.options.LayeredOptions;
+import net.sourceforge.plantuml.elk.proxy.layered.options.NodePlacementStrategy;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -440,6 +445,104 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			}
 		}
 
+	}
+
+	// Walk the group tree and, for every parent that contains two-or-more
+	// siblings sharing a Together, pin each member to the same edge of the
+	// layered graph (FIRST or LAST) so they share a column. Direction is
+	// inferred from port flow: a member exposing only portout pins is a
+	// source (FIRST); only portin pins is a sink (LAST). Mixed members get
+	// no constraint -- ELK's natural layout already handles them.
+	private void applyTogetherPositionHints(ElkNode root) {
+		applyTogetherPositionHintsAt(root, diagram.getRootGroup());
+	}
+
+	private void applyTogetherPositionHintsAt(ElkNode parentNode, Entity parentGroup) {
+		final IdentityHashMap<Together, List<Entity>> bySet =
+				new IdentityHashMap<Together, List<Entity>>();
+		for (Entity g : diagram.getChildrenGroups(parentGroup)) {
+			if (g.isRemoved())
+				continue;
+			final Together t = g.getTogether();
+			if (t == null)
+				continue;
+			List<Entity> bucket = bySet.get(t);
+			if (bucket == null) {
+				bucket = new ArrayList<Entity>();
+				bySet.put(t, bucket);
+			}
+			bucket.add(g);
+		}
+		boolean applied = false;
+		for (List<Entity> members : bySet.values()) {
+			if (members.size() < 2)
+				continue;
+			final LayerConstraint constraint = inferLayerConstraint(members);
+			if (constraint == null)
+				continue;
+			for (Entity member : members) {
+				final ElkNode elkMember = clusters.get(member);
+				if (elkMember == null)
+					continue;
+				elkMember.setProperty(LayeredOptions.LAYERING_LAYER_CONSTRAINT,
+						constraint);
+			}
+			applied = true;
+		}
+		if (applied) {
+			// BKNodePlacer (the default) crashes on certain LayerConstraint
+			// combinations -- linear segments is the next-fastest placer
+			// and is robust against this.
+			parentNode.setProperty(LayeredOptions.NODE_PLACEMENT_STRATEGY,
+					NodePlacementStrategy.LINEAR_SEGMENTS);
+		}
+		for (Entity g : diagram.getChildrenGroups(parentGroup)) {
+			if (g.isRemoved())
+				continue;
+			final ElkNode childNode = clusters.get(g);
+			if (childNode != null)
+				applyTogetherPositionHintsAt(childNode, g);
+		}
+	}
+
+	// Returns FIRST if every member is a pure source (only portout pins),
+	// LAST if every member is a pure sink (only portin pins), else null.
+	private LayerConstraint inferLayerConstraint(List<Entity> members) {
+		int allOut = 0;
+		int allIn = 0;
+		for (Entity member : members) {
+			final int role = portFlowRole(member);
+			if (role > 0)
+				allOut++;
+			else if (role < 0)
+				allIn++;
+		}
+		if (allOut == members.size())
+			return LayerConstraint.FIRST;
+		if (allIn == members.size())
+			return LayerConstraint.LAST;
+		return null;
+	}
+
+	// +1: member only exposes portout pins, -1: only portin pins, 0: mixed
+	// or no ports.
+	private int portFlowRole(Entity member) {
+		int ins = 0;
+		int outs = 0;
+		for (Entity leaf : member.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			if (pos.isInput())
+				ins++;
+			else if (pos.isOutput())
+				outs++;
+		}
+		if (outs > 0 && ins == 0)
+			return 1;
+		if (ins > 0 && outs == 0)
+			return -1;
+		return 0;
 	}
 
 	private boolean hasInsideLabelPort(Entity group) {
@@ -857,6 +960,11 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 		this.printAllSubgroups(stringBounder, root, diagram.getRootGroup());
 		this.printEntities(stringBounder, root, getUnpackagedEntities());
+
+		// `together { ... }` blocks: pin members of a uniformly-source or
+		// uniformly-sink Together to the first or last layer, so each
+		// Together lines up in a single column.
+		this.applyTogetherPositionHints(root);
 
 		this.detectJumpers();
 		this.manageAllEdges(stringBounder);
