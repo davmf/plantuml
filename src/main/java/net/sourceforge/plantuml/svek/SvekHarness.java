@@ -35,7 +35,6 @@ import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.decoration.symbol.USymbols;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.utils.Log;
@@ -1217,16 +1216,12 @@ public class SvekHarness implements UDrawable {
 		textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
 	}
 
-	// Paint a small patch behind a harness label in the colour of the
-	// cluster that contains the harness's member ports. The harness trunk
-	// and spines draw on top of cluster fills, so a label without a
-	// background would have those lines bleeding through it. Returns
-	// silently when the parent cluster's fill is transparent / unset.
+	// Paint a small white patch behind a harness label so the trunk and
+	// spine lines (which are drawn underneath) don't bleed through the
+	// text.
 	private void drawLabelBackground(UGraphic ug, double labelX,
 			double labelY, XDimension2D textDim) {
-		final HColor bg = resolveHarnessParentBackColor();
-		if (bg == null)
-			return;
+		final HColor bg = HColors.WHITE;
 		final double padX = 2;
 		final double padY = 1;
 		final URectangle rect = URectangle.build(
@@ -1235,41 +1230,6 @@ public class SvekHarness implements UDrawable {
 		ug.apply(bg).apply(bg.bg())
 				.apply(new UTranslate(labelX - padX, labelY - padY))
 				.draw(rect);
-	}
-
-	// Walk up from one of the harness's member endpoints to find the
-	// enclosing RECTANGLE-typed cluster (e.g. the board / PCBA) and return
-	// its resolved BackgroundColor. Skip component clusters along the way:
-	// trunk and stub labels live in the open area of the surrounding
-	// rectangle, not inside the components themselves, so the patch should
-	// match the rectangle's fill -- not whatever sub-component the label
-	// happens to walk past.
-	private HColor resolveHarnessParentBackColor() {
-		if (memberLinks.isEmpty())
-			return null;
-		final Entity startEntity = memberLinks.get(0).getEntity1();
-		if (startEntity == null)
-			return null;
-		Object up = startEntity.getParentContainer();
-		while (up instanceof Entity) {
-			final Entity current = (Entity) up;
-			if (current.isGroup() && current.getUSymbol() == USymbols.RECTANGLE) {
-				final HColor direct = current.getColors() == null
-						? null
-						: current.getColors().getColor(ColorType.BACK);
-				final HColor resolved = Cluster.getBackColor(direct,
-						current.getStereotype(),
-						startEntity.getDiagram().getDiagramType().getStyleName(),
-						current.getUSymbol(),
-						skinParam.getCurrentStyleBuilder(),
-						skinParam.getIHtmlColorSet(),
-						current.getGroupType());
-				if (resolved != null && resolved.equals(HColors.transparent()) == false)
-					return resolved;
-			}
-			up = current.getParentContainer();
-		}
-		return null;
 	}
 
 	private static double findClearCrossbarY(double proposedY,
