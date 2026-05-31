@@ -35,6 +35,8 @@
  */
 package net.sourceforge.plantuml.abel;
 
+import net.sourceforge.plantuml.klimt.color.Colors;
+
 // Scope marker pushed onto CucaDiagram.stacks when a `group "Name" { ... }`
 // block opens inside a component. Ports created while a PortGroup is on the
 // stack record (groupOrder, intraGroupOrder) so the layout backend can keep
@@ -47,6 +49,9 @@ public class PortGroup implements Bag {
 	private final int groupOrder;
 	// Running count of ports added to this group so far.
 	private int portCount;
+	// Optional colour applied to every port in the group (its glyph fill
+	// and its label text). Set via `group "Name" #Color { ... }`.
+	private Colors colors;
 
 	public PortGroup(String label, int groupOrder) {
 		this.label = label;
@@ -63,5 +68,13 @@ public class PortGroup implements Bag {
 
 	public int nextPortIndex() {
 		return portCount++;
+	}
+
+	public void setColors(Colors colors) {
+		this.colors = colors;
+	}
+
+	public Colors getColors() {
+		return colors;
 	}
 }

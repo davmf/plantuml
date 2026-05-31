@@ -274,6 +274,22 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 		if (lineColor != null)
 			colors = colors.add(ColorType.LINE, lineColor);
 
+		// Inherit colour from an enclosing `group "Name" #Color { ... }`
+		// when the port itself has no explicit BACK colour. Mirror the
+		// BACK colour into TEXT so EntityImagePort tints the label too.
+		if (type == LeafType.PORTIN || type == LeafType.PORTOUT) {
+			final net.sourceforge.plantuml.abel.PortGroup pg = diagram.getCurrentPortGroup();
+			if (pg != null && pg.getColors() != null) {
+				final HColor groupColor = pg.getColors().getColor(ColorType.BACK);
+				if (groupColor != null) {
+					if (colors.getColor(ColorType.BACK) == null)
+						colors = colors.add(ColorType.BACK, groupColor);
+					if (colors.getColor(ColorType.TEXT) == null)
+						colors = colors.add(ColorType.TEXT, groupColor);
+				}
+			}
+		}
+
 		entity.setColors(colors);
 
 		return CommandExecutionResult.ok();

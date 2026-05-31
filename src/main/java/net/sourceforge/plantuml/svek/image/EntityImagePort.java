@@ -56,8 +56,11 @@ import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
@@ -263,10 +266,22 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		ug.draw(rect);
 	}
 
+	// Like getDesc() but, if the entity has a Colors.TEXT (set when the
+	// port lives inside a `group "Name" #Color { ... }` block), tint the
+	// label text with that colour.
+	private TextBlock getDescColored() {
+		final HColor textColor = getEntity().getColors().getColor(ColorType.TEXT);
+		if (textColor == null)
+			return getDesc();
+		final FontConfiguration fc = FontConfiguration.create(getSkinParam(), getStyle())
+				.changeColor(textColor);
+		return getEntity().getDisplay().create(fc, HorizontalAlignment.CENTER, getSkinParam());
+	}
+
 	private static final double LABEL_GAP = 5;
 
 	final public void drawU(UGraphic ug) {
-		final TextBlock desc = getDesc();
+		final TextBlock desc = getDescColored();
 		final XDimension2D dimDesc = desc.calculateDimension(ug.getStringBounder());
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		double x;
