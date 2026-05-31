@@ -74,6 +74,7 @@ public class SvekHarness implements UDrawable {
 	private double cachedSrcX = Double.NaN;
 	private double cachedDestX = Double.NaN;
 	private final List<RectangleArea> renderedSpines = new ArrayList<RectangleArea>();
+	private HColor harnessColor;
 
 	public SvekHarness(Harness harness, List<Link> memberLinks, ISkinParam skinParam,
 			Bibliotekon bibliotekon) {
@@ -542,6 +543,7 @@ public class SvekHarness implements UDrawable {
 			if (direct != null)
 				color = direct;
 		}
+		this.harnessColor = color;
 		final UGraphic ugLine = ug.apply(color)
 				.apply(HColors.none().bg());
 
@@ -1418,7 +1420,9 @@ public class SvekHarness implements UDrawable {
 		if (label == null || label.isEmpty())
 			return;
 
-		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
+		FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
+		if (harnessColor != null)
+			fontConfig = fontConfig.changeColor(harnessColor);
 		final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
 				.create(fontConfig, HorizontalAlignment.CENTER, skinParam);
 
