@@ -477,9 +477,27 @@ public class SvekHarness implements UDrawable {
 			final boolean arrowAtEnd = type.getDecor1() != LinkDecor.NONE;
 			final boolean arrowAtStart = type.getDecor2() != LinkDecor.NONE;
 			edges.add(new EdgeData(startPt, endPt, link.getLabel(),
-					link.getSourceLabel(), arrowAtStart, arrowAtEnd));
+					link.getSourceLabel(), arrowAtStart, arrowAtEnd,
+					parentClusterRect(link.getEntity1()),
+					parentClusterRect(link.getEntity2())));
 		}
 		return edges;
+	}
+
+	// Bounding rect of the cluster that contains the given port, or null if
+	// the port is unparented / the cluster has no rect yet. Used by stub
+	// drawing to detect when a straight stub would tunnel through its own
+	// owning component.
+	private RectangleArea parentClusterRect(Entity portEntity) {
+		if (bibliotekon == null || portEntity == null)
+			return null;
+		final Entity parent = portEntity.getParentContainer();
+		if (parent == null)
+			return null;
+		final Cluster cl = bibliotekon.getCluster(parent);
+		if (cl == null)
+			return null;
+		return cl.getRectangleArea();
 	}
 
 	private static final class EdgeData {
@@ -489,15 +507,23 @@ public class SvekHarness implements UDrawable {
 		final String sourceLabel;
 		final boolean arrowAtStart;
 		final boolean arrowAtEnd;
+		// Owning cluster bounds for the start/end port (may be null when
+		// the port is unparented). When non-null, a stub leaving this port
+		// must not pass through this rectangle's body.
+		final RectangleArea startCluster;
+		final RectangleArea endCluster;
 
 		EdgeData(XPoint2D start, XPoint2D end, Display label, String sourceLabel,
-				boolean arrowAtStart, boolean arrowAtEnd) {
+				boolean arrowAtStart, boolean arrowAtEnd,
+				RectangleArea startCluster, RectangleArea endCluster) {
 			this.start = start;
 			this.end = end;
 			this.label = label;
 			this.sourceLabel = sourceLabel;
 			this.arrowAtStart = arrowAtStart;
 			this.arrowAtEnd = arrowAtEnd;
+			this.startCluster = startCluster;
+			this.endCluster = endCluster;
 		}
 
 		boolean hasLabel() {
@@ -693,8 +719,13 @@ public class SvekHarness implements UDrawable {
 		for (EdgeData e : edges) {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
-			drawStubWithOptionalCorner(ugFan, srcEdge, e.start.getY(),
-					spineX, e.start.getY(), spineTopY, spineBottomY, r);
+			if (stubCrossesOwnCluster(e.start.getX(), spineX, e.startCluster)) {
+				drawStubDetour(ugFan, srcEdge, e.start.getY(),
+						spineX, e.startCluster, r);
+			} else {
+				drawStubWithOptionalCorner(ugFan, srcEdge, e.start.getY(),
+						spineX, e.start.getY(), spineTopY, spineBottomY, r);
+			}
 			if (e.arrowAtStart)
 				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel() && labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
@@ -718,8 +749,12 @@ public class SvekHarness implements UDrawable {
 			final double endY = e.end.getY();
 			final double dir = Math.signum(endX - spineX);
 			final double tipX = endX - dir * PORT_RADIUS;
-			drawStubWithOptionalCorner(ugFan, tipX, endY,
-					spineX, endY, spineTopY, spineBottomY, r);
+			if (stubCrossesOwnCluster(endX, spineX, e.endCluster)) {
+				drawStubDetour(ugFan, tipX, endY, spineX, e.endCluster, r);
+			} else {
+				drawStubWithOptionalCorner(ugFan, tipX, endY,
+						spineX, endY, spineTopY, spineBottomY, r);
+			}
 			if (e.arrowAtEnd)
 				drawHArrow(ugFan, tipX, endY, dir);
 			final Display destLabel = destinationStubLabel(e);
@@ -729,6 +764,57 @@ public class SvekHarness implements UDrawable {
 		}
 
 		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
+	}
+
+	// True when a horizontal stub at stubY from a port at portX to the
+	// spine at spineX would cross the port's own owning-cluster body. The
+	// cluster body always overlaps the port row in Y (the port sits on the
+	// cluster edge), so the only thing to check is whether the spine sits
+	// on the opposite side of the cluster from the port. In other words:
+	// the cluster spans some X interval [minX, maxX]; the port is at one
+	// end; the stub crosses the body iff the spine is past the far end.
+	private static boolean stubCrossesOwnCluster(double portX, double spineX,
+			RectangleArea cluster) {
+		if (cluster == null)
+			return false;
+		final double minX = cluster.getMinX();
+		final double maxX = cluster.getMaxX();
+		// Pick the cluster side the port is on (whichever face it's nearer
+		// to) and check whether the spine sits past the OPPOSITE side.
+		final boolean portOnLeft = Math.abs(portX - minX) <= Math.abs(portX - maxX);
+		if (portOnLeft)
+			return spineX > maxX;
+		return spineX < minX;
+	}
+
+	// Draw a horizontal stub that would otherwise tunnel through its own
+	// owning cluster. Routes outward from the port first by stubExtension,
+	// then vertically over the cluster top/bottom (whichever is closer to
+	// the port row), then horizontally to the spine X, then vertically back
+	// to the spine row, where the spine continues the geometry. The choice
+	// of going over vs. under the cluster minimises the detour length.
+	private void drawStubDetour(UGraphic ug, double portX, double portY,
+			double spineX, RectangleArea cluster, double radius) {
+		final double minX = cluster.getMinX();
+		final double maxX = cluster.getMaxX();
+		final double minY = cluster.getMinY();
+		final double maxY = cluster.getMaxY();
+		final boolean portOnLeft = Math.abs(portX - minX) <= Math.abs(portX - maxX);
+		// Step outward from the port's outer face by half the min-stub
+		// length so the kink isn't right at the port glyph.
+		final double dirOut = portOnLeft ? -1 : 1;
+		final double outX = portX + dirOut * (MIN_STUB_LENGTH / 2);
+		// Pick the cluster edge (top or bottom) closer to the port row.
+		final double margin = MIN_STUB_LENGTH / 2;
+		final boolean goUp = (portY - minY) <= (maxY - portY);
+		final double detourY = goUp ? (minY - margin) : (maxY + margin);
+		final List<XPoint2D> pts = new ArrayList<XPoint2D>();
+		pts.add(new XPoint2D(portX, portY));
+		pts.add(new XPoint2D(outX, portY));
+		pts.add(new XPoint2D(outX, detourY));
+		pts.add(new XPoint2D(spineX, detourY));
+		pts.add(new XPoint2D(spineX, portY));
+		drawRoundedPolyline(ug, pts);
 	}
 
 	// Draw a horizontal stub from (stubFarX, stubY) to (spineX, stubY). When
@@ -912,10 +998,15 @@ public class SvekHarness implements UDrawable {
 
 		// Source stubs to spine1
 		final java.util.Set<Long> labeledSourceY = new java.util.HashSet<Long>();
+		final double r2 = cornerRadius();
 		for (EdgeData e : edges) {
 			final double srcDir = Math.signum(spine1X - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
-			drawLine(ugFan, srcEdge, e.start.getY(), spine1X, e.start.getY());
+			if (stubCrossesOwnCluster(e.start.getX(), spine1X, e.startCluster))
+				drawStubDetour(ugFan, srcEdge, e.start.getY(),
+						spine1X, e.startCluster, r2);
+			else
+				drawLine(ugFan, srcEdge, e.start.getY(), spine1X, e.start.getY());
 			if (e.arrowAtStart)
 				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel()
@@ -952,7 +1043,10 @@ public class SvekHarness implements UDrawable {
 			final double endY = e.end.getY();
 			final double dir = Math.signum(endX - spine2X);
 			final double tipX = endX - dir * PORT_RADIUS;
-			drawLine(ugFan, spine2X, endY, tipX, endY);
+			if (stubCrossesOwnCluster(endX, spine2X, e.endCluster))
+				drawStubDetour(ugFan, tipX, endY, spine2X, e.endCluster, r2);
+			else
+				drawLine(ugFan, spine2X, endY, tipX, endY);
 			if (e.arrowAtEnd)
 				drawHArrow(ugFan, tipX, endY, dir);
 			final Display destLabel = destinationStubLabel(e);
@@ -1046,13 +1140,18 @@ public class SvekHarness implements UDrawable {
 		// Source stubs: connect to spine1
 		final java.util.Set<Long> labeledSourceY =
 				new java.util.HashSet<Long>();
+		final double r3 = cornerRadius();
 		for (EdgeData e : allEdges) {
 			final double srcDir = Math.signum(
 					spine1X - e.start.getX());
 			final double srcEdge = e.start.getX()
 					+ srcDir * PORT_RADIUS;
-			drawLine(ugFan, srcEdge, e.start.getY(),
-					spine1X, e.start.getY());
+			if (stubCrossesOwnCluster(e.start.getX(), spine1X, e.startCluster))
+				drawStubDetour(ugFan, srcEdge, e.start.getY(),
+						spine1X, e.startCluster, r3);
+			else
+				drawLine(ugFan, srcEdge, e.start.getY(),
+						spine1X, e.start.getY());
 			if (e.arrowAtStart)
 				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel()
@@ -1098,7 +1197,10 @@ public class SvekHarness implements UDrawable {
 			final double endY = e.end.getY();
 			final double dir = Math.signum(endX - spine1X);
 			final double tipX = endX - dir * PORT_RADIUS;
-			drawLine(ugFan, spine1X, endY, tipX, endY);
+			if (stubCrossesOwnCluster(endX, spine1X, e.endCluster))
+				drawStubDetour(ugFan, tipX, endY, spine1X, e.endCluster, r3);
+			else
+				drawLine(ugFan, spine1X, endY, tipX, endY);
 			if (e.arrowAtEnd)
 				drawHArrow(ugFan, tipX, endY, dir);
 			final Display nearLabel = destinationStubLabel(e);
@@ -1113,7 +1215,10 @@ public class SvekHarness implements UDrawable {
 			final double endY = e.end.getY();
 			final double dir = Math.signum(endX - spine2X);
 			final double tipX = endX - dir * PORT_RADIUS;
-			drawLine(ugFan, spine2X, endY, tipX, endY);
+			if (stubCrossesOwnCluster(endX, spine2X, e.endCluster))
+				drawStubDetour(ugFan, tipX, endY, spine2X, e.endCluster, r3);
+			else
+				drawLine(ugFan, spine2X, endY, tipX, endY);
 			if (e.arrowAtEnd)
 				drawHArrow(ugFan, tipX, endY, dir);
 			final Display farLabel = destinationStubLabel(e);
@@ -1161,10 +1266,15 @@ public class SvekHarness implements UDrawable {
 
 		// Source stub: horizontal from source port edge to spine
 		final java.util.Set<Long> labeledSourceY = new java.util.HashSet<Long>();
+		final double r4 = cornerRadius();
 		for (EdgeData e : edges) {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
-			drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
+			if (stubCrossesOwnCluster(e.start.getX(), spineX, e.startCluster))
+				drawStubDetour(ugFan, srcEdge, e.start.getY(),
+						spineX, e.startCluster, r4);
+			else
+				drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
 			if (e.arrowAtStart)
 				drawHArrow(ugFan, srcEdge, e.start.getY(), -srcDir);
 			if (e.hasSourceLabel() && labeledSourceY.add(Double.doubleToLongBits(e.start.getY())))
@@ -1184,7 +1294,10 @@ public class SvekHarness implements UDrawable {
 			final double endY = e.end.getY();
 			final double dir = Math.signum(endX - spineX);
 			final double tipX = endX - dir * PORT_RADIUS;
-			drawLine(ugFan, spineX, endY, tipX, endY);
+			if (stubCrossesOwnCluster(endX, spineX, e.endCluster))
+				drawStubDetour(ugFan, tipX, endY, spineX, e.endCluster, r4);
+			else
+				drawLine(ugFan, spineX, endY, tipX, endY);
 			if (e.arrowAtEnd)
 				drawHArrow(ugFan, tipX, endY, dir);
 			final Display destLabel = destinationStubLabel(e);
