@@ -706,9 +706,13 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	// Walks every link and flags those that bridge two paired pins of the
 	// same <<header>> component (consecutive declaration-order pins where
 	// the lower index is even). Called before manageAllEdges so jumpered
-	// links are filtered out of the ELK graph.
+	// links are filtered out of the ELK graph. Skips invisible/hidden
+	// layout-only links injected by Magma's single-strategy pass; those
+	// connect standalone leaves for ordering and are not user edges.
 	private void detectJumpers() {
 		for (Link link : diagram.getLinks()) {
+			if (link.isInvis() || link.isHidden())
+				continue;
 			final Entity e1 = link.getEntity1();
 			final Entity e2 = link.getEntity2();
 			if (e1 == null || e2 == null)
