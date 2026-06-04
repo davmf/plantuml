@@ -422,6 +422,25 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				if (hasInsideLabelPort(g))
 					elkCluster.setProperty(CoreOptions.SPACING_PORT_PORT, 10.0);
 
+				// Spacing properties are per-parent in ELK — setting them
+				// on the root only affects top-level children. Propagate
+				// ranksep/nodesep onto clusters that host a real
+				// sub-layout (i.e. contain at least one sub-cluster) so
+				// the spacing applies inside nested rectangles like the
+				// board. Skip port-only clusters: ports sit on cluster
+				// edges, not as separate ELK layers, and applying
+				// between-layers spacing there would balloon the cluster.
+				if (hasSubClusters(g)) {
+					applySpacingTo(elkCluster);
+					// Spacing must be combined with SEPARATE_CHILDREN so
+					// ranksep applies only to this cluster's direct child
+					// layout. Without it, INCLUDE_CHILDREN from the root
+					// flattens the hierarchy and the spacing balloons by
+					// the count of nested ports.
+					elkCluster.setProperty(CoreOptions.HIERARCHY_HANDLING,
+							HierarchyHandling.SEPARATE_CHILDREN);
+				}
+
 				final ElkLabel label = ElkGraphUtil.createLabel(elkCluster);
 				label.setText("C");
 				label.setDimensions(titleAndAttributeWidth, titleAndAttributeHeight);
@@ -543,6 +562,38 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		if (ins > 0 && outs == 0)
 			return -1;
 		return 0;
+	}
+
+	// True when `g` contains at least one child group (a sub-cluster).
+	// Used to decide whether to apply ranksep/nodesep spacing on this
+	// cluster: clusters with only ports (no sub-clusters) don't host a
+	// horizontal/vertical layer layout and shouldn't carry between-
+	// layers spacing.
+	private boolean hasSubClusters(Entity g) {
+		for (Entity child : diagram.getChildrenGroups(g)) {
+			if (child.isRemoved() == false)
+				return true;
+		}
+		return false;
+	}
+
+	// Apply skinparam ranksep/nodesep to one ElkNode parent. ELK reads
+	// spacing properties per-parent, so the same set must land on every
+	// cluster that hosts a layout (root and each subcluster) — not just
+	// the root, which only affects top-level children. For LR/RL flow
+	// the layered "between layers" value is the horizontal gap between
+	// columns (=ranksep); for TB/BT it's vertical between rows. The
+	// property names are identical regardless of direction.
+	private void applySpacingTo(ElkNode node) {
+		final double ranksep = diagram.getSkinParam().getRanksep();
+		final double nodesep = diagram.getSkinParam().getNodesep();
+		if (ranksep > 0) {
+			node.setProperty(LayeredOptions.SPACING_NODE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+			node.setProperty(LayeredOptions.SPACING_EDGE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+			node.setProperty(LayeredOptions.SPACING_EDGE_EDGE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+		}
+		if (nodesep > 0)
+			node.setProperty(CoreOptions.SPACING_NODE_NODE, Double.valueOf(nodesep));
 	}
 
 	private boolean hasInsideLabelPort(Entity group) {
@@ -960,22 +1011,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		root.setProperty(CoreOptions.HIERARCHY_HANDLING, HierarchyHandling.INCLUDE_CHILDREN);
 		root.setProperty(CoreOptions.PORT_CONSTRAINTS, PortConstraints.FIXED_SIDE);
 
-		// Honour `skinparam ranksep N` and `skinparam nodesep N`. For LR
-		// (and RL) flow the layered "between layers" spacing is the
-		// horizontal gap between columns (=ranksep), and the regular
-		// node-node spacing is the gap within a column (=nodesep). For
-		// TB (and BT) it's the other way around — but the layered
-		// algorithm uses the same property names regardless of
-		// direction, so the mapping is identical.
-		final double ranksep = diagram.getSkinParam().getRanksep();
-		final double nodesep = diagram.getSkinParam().getNodesep();
-		if (ranksep > 0) {
-			root.setProperty(LayeredOptions.SPACING_NODE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
-			root.setProperty(LayeredOptions.SPACING_EDGE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
-			root.setProperty(LayeredOptions.SPACING_EDGE_EDGE_BETWEEN_LAYERS, Double.valueOf(ranksep));
-		}
-		if (nodesep > 0)
-			root.setProperty(CoreOptions.SPACING_NODE_NODE, Double.valueOf(nodesep));
+		applySpacingTo(root);
 
 		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(diagram.getSkinParam());
 
