@@ -74,6 +74,16 @@ public class SvekHarness implements UDrawable {
 	private double cachedDestX = Double.NaN;
 	private final List<RectangleArea> renderedSpines = new ArrayList<RectangleArea>();
 	private HColor harnessColor;
+	// Label draws (trunk labels and stub labels) collected during drawU and
+	// replayed by drawDeferredLabels so labels paint AFTER every harness
+	// line and every connector. Avoids labels being clobbered by spines or
+	// connectors drawn later. Each entry takes the final top-level UGraphic
+	// at replay time, NOT the line-coloured ugLine in use during drawU.
+	private interface LabelDraw {
+		void draw(UGraphic ug);
+	}
+
+	private final List<LabelDraw> deferredLabelDraws = new ArrayList<LabelDraw>();
 
 	public SvekHarness(Harness harness, List<Link> memberLinks, ISkinParam skinParam,
 			Bibliotekon bibliotekon) {
@@ -1362,8 +1372,10 @@ public class SvekHarness implements UDrawable {
 	private void drawStubLabel(UGraphic ug, FontConfiguration fontConfig,
 			Display label, double spineX, double stubY, double portX,
 			boolean rightJustify) {
-		final FontConfiguration smallFont = fontConfig.changeSize(
+		FontConfiguration smallFont = fontConfig.changeSize(
 				(float) (fontConfig.getFont().getSize2D() * LABEL_SCALE));
+		if (harnessColor != null)
+			smallFont = smallFont.changeColor(harnessColor);
 		final TextBlock textBlock = label.create(smallFont,
 				HorizontalAlignment.LEFT, skinParam);
 		final StringBounder stringBounder = ug.getStringBounder();
@@ -1375,8 +1387,21 @@ public class SvekHarness implements UDrawable {
 		else
 			labelX = spineX + 5;
 		final double labelY = stubY - textDim.getHeight() - 3;
-		drawLabelBackground(ug, labelX, labelY, textDim);
-		textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
+		deferredLabelDraws.add(new LabelDraw() {
+			@Override
+			public void draw(UGraphic top) {
+				drawLabelBackground(top, labelX, labelY, textDim);
+				textBlock.drawU(top.apply(new UTranslate(labelX, labelY)));
+			}
+		});
+	}
+
+	// Replay every label-draw queued during drawU. Called once all harness
+	// lines and all connectors have been drawn, so labels paint on top.
+	public void drawDeferredLabels(UGraphic ug) {
+		for (LabelDraw d : deferredLabelDraws)
+			d.draw(ug);
+		deferredLabelDraws.clear();
 	}
 
 	// Paint a small white patch behind a harness label so the trunk and
@@ -1555,17 +1580,22 @@ public class SvekHarness implements UDrawable {
 		final double midX = (srcX + dstX) / 2;
 		final double midY = (srcY + dstY) / 2;
 
+		final double labelX;
+		final double labelY;
 		if (horizontal) {
-			final double labelX = midX - textDim.getWidth() / 2;
-			final double labelY = midY - textDim.getHeight() - 4;
-			drawLabelBackground(ug, labelX, labelY, textDim);
-			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
+			labelX = midX - textDim.getWidth() / 2;
+			labelY = midY - textDim.getHeight() - 4;
 		} else {
-			final double labelX = midX - textDim.getWidth() - 6;
-			final double labelY = midY - textDim.getHeight() / 2;
-			drawLabelBackground(ug, labelX, labelY, textDim);
-			textBlock.drawU(ug.apply(new UTranslate(labelX, labelY)));
+			labelX = midX - textDim.getWidth() - 6;
+			labelY = midY - textDim.getHeight() / 2;
 		}
+		deferredLabelDraws.add(new LabelDraw() {
+			@Override
+			public void draw(UGraphic top) {
+				drawLabelBackground(top, labelX, labelY, textDim);
+				textBlock.drawU(top.apply(new UTranslate(labelX, labelY)));
+			}
+		});
 	}
 
 	private XPoint2D resolveEntityCenter(Entity entity) {

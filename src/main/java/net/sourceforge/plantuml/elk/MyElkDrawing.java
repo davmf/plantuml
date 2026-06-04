@@ -125,6 +125,9 @@ class MyElkDrawing implements TextBlock {
 		final Map<Entity, IEntityImage> nodes = drawAllNodes(ug);
 		drawAllEdges(ug, clusters, nodes);
 		drawAllHarnesses(ug);
+		// Replay every harness's deferred labels last, so trunk and stub
+		// labels paint on top of every harness line AND every connector.
+		drawAllHarnessLabels(ug);
 	}
 
 	// Draw each SvekHarness over the top of the ordinary edge layer.
@@ -135,6 +138,13 @@ class MyElkDrawing implements TextBlock {
 			return;
 		for (SvekHarness harness : harnesses)
 			harness.drawU(ug);
+	}
+
+	private void drawAllHarnessLabels(UGraphic ug) {
+		if (harnesses == null)
+			return;
+		for (SvekHarness harness : harnesses)
+			harness.drawDeferredLabels(ug);
 	}
 
 	private Map<Entity, MyElkCluster> drawAllClusters(UGraphic ug) {
