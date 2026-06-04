@@ -730,17 +730,24 @@ public class SvekHarness implements UDrawable {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(e.start.getX(), spineX, e.startCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(e.start.getX(), spineX,
+							e.start.getY(), e.startCluster, obstacles);
 			if (detour) {
 				drawStubDetour(ugFan, e.start.getX(), e.start.getY(),
 						spineX, e.startCluster, r);
+			} else if (externalBlocker != null) {
+				drawStubAroundExternal(ugFan, e.start.getX(), e.start.getY(),
+						spineX, externalBlocker, r);
 			} else {
 				drawStubWithOptionalCorner(ugFan, srcEdge, e.start.getY(),
 						spineX, e.start.getY(), spineTopY, spineBottomY, r);
 			}
 			if (e.arrowAtStart) {
-				// When detouring the stub enters the port on its OUTSIDE
-				// face; the arrow tip sits there and points inward (the
-				// opposite X direction from spine-side stubs).
+				// When detouring around our OWN cluster the stub enters
+				// the port on its OUTSIDE face — the side opposite the
+				// spine. External-obstacle detours and plain stubs enter
+				// from the natural spine-facing outside face.
 				final double arrowTipX = detour
 						? e.start.getX() - srcDir * PORT_RADIUS
 						: srcEdge;
@@ -769,8 +776,14 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spineX);
 			final double tipX = endX - dir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(endX, spineX, e.endCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(endX, spineX, endY,
+							e.endCluster, obstacles);
 			if (detour) {
 				drawStubDetour(ugFan, endX, endY, spineX, e.endCluster, r);
+			} else if (externalBlocker != null) {
+				drawStubAroundExternal(ugFan, endX, endY,
+						spineX, externalBlocker, r);
 			} else {
 				drawStubWithOptionalCorner(ugFan, tipX, endY,
 						spineX, endY, spineTopY, spineBottomY, r);
@@ -808,6 +821,75 @@ public class SvekHarness implements UDrawable {
 		if (portOnLeft)
 			return spineX > maxX;
 		return spineX < minX;
+	}
+
+	// First non-own obstacle whose body would be tunnelled by a straight
+	// horizontal stub from (portCenterX, portY) to (spineX, portY).
+	// Returns null when no other component sits in the way. Used to
+	// detect when an UNRELATED cluster between port and spine must be
+	// routed around.
+	private static RectangleArea firstExternalObstacle(double portCenterX,
+			double spineX, double portY, RectangleArea ownCluster,
+			List<RectangleArea> obstacles) {
+		if (obstacles == null)
+			return null;
+		final double xLow = Math.min(portCenterX, spineX);
+		final double xHigh = Math.max(portCenterX, spineX);
+		RectangleArea best = null;
+		double bestDist = Double.MAX_VALUE;
+		for (RectangleArea ob : obstacles) {
+			if (ob == ownCluster)
+				continue;
+			if (portY < ob.getMinY() || portY > ob.getMaxY())
+				continue;
+			if (ob.getMaxX() < xLow || ob.getMinX() > xHigh)
+				continue;
+			// Pick the obstacle closest to the port so we detour around
+			// the nearest blocker first; remaining blockers (if any) are
+			// handled in a future routing pass.
+			final double dist = Math.min(
+					Math.abs(portCenterX - ob.getMinX()),
+					Math.abs(portCenterX - ob.getMaxX()));
+			if (dist < bestDist) {
+				bestDist = dist;
+				best = ob;
+			}
+		}
+		return best;
+	}
+
+	// Draw a horizontal stub that would otherwise tunnel through an
+	// UNRELATED component sitting between the port and the spine. The
+	// port's natural outside face already points toward the spine; route
+	// outward from there to the obstacle's near edge, climb above or
+	// below the obstacle (whichever side is closer to the port row),
+	// cross past the obstacle's far edge, then drop back to the port row
+	// and continue to the spine.
+	private void drawStubAroundExternal(UGraphic ug, double portCenterX,
+			double portY, double spineX, RectangleArea obstacle,
+			double radius) {
+		final double dirToSpine = Math.signum(spineX - portCenterX);
+		final double tipX = portCenterX + dirToSpine * PORT_RADIUS;
+		final double obNearX = (dirToSpine > 0)
+				? obstacle.getMinX() : obstacle.getMaxX();
+		final double obFarX = (dirToSpine > 0)
+				? obstacle.getMaxX() : obstacle.getMinX();
+		final double margin = MIN_STUB_LENGTH / 2;
+		final boolean goUp = (portY - obstacle.getMinY())
+				<= (obstacle.getMaxY() - portY);
+		final double detourY = goUp
+				? (obstacle.getMinY() - margin)
+				: (obstacle.getMaxY() + margin);
+		final double preObsX = obNearX - dirToSpine * margin;
+		final double postObsX = obFarX + dirToSpine * margin;
+		final List<XPoint2D> pts = new ArrayList<XPoint2D>();
+		pts.add(new XPoint2D(tipX, portY));
+		pts.add(new XPoint2D(preObsX, portY));
+		pts.add(new XPoint2D(preObsX, detourY));
+		pts.add(new XPoint2D(postObsX, detourY));
+		pts.add(new XPoint2D(postObsX, portY));
+		pts.add(new XPoint2D(spineX, portY));
+		drawRoundedPolyline(ug, pts);
 	}
 
 	// Draw a horizontal stub that would otherwise tunnel through its own
@@ -986,21 +1068,31 @@ public class SvekHarness implements UDrawable {
 		}
 
 		final List<RectangleArea> obstacles = collectObstacles();
+		// Spine X must be clear for the FULL vertical extent of the
+		// rendered spine line, including the trunk extension above the
+		// topmost source or below the bottommost source. Use the union
+		// of source and destination Y ranges plus a generous margin so
+		// the eventual trunkY (computed below) falls inside the cleared
+		// range.
+		final double allTopRough = Math.min(spine1Top, spine2Top);
+		final double allBottomRough = Math.max(spine1Bottom, spine2Bottom);
+		final double r = cornerRadius();
+		final double trunkMargin = Math.max(r, 0) + PORT_RADIUS + PORT_WIDTH;
+		final double clearTop = allTopRough - trunkMargin;
+		final double clearBottom = allBottomRough + trunkMargin;
 		spine1X = SvekPortConnector.findClearVerticalBidirectional(
-				spine1X, spine1Top, spine1Bottom, obstacles);
+				spine1X, clearTop, clearBottom, obstacles);
 		spine2X = SvekPortConnector.findClearVerticalBidirectional(
-				spine2X, spine2Top, spine2Bottom, obstacles);
-		spine1X = findClearXAgainstVerts(spine1X, spine1Top, spine1Bottom);
-		spine2X = findClearXAgainstVerts(spine2X, spine2Top, spine2Bottom);
+				spine2X, clearTop, clearBottom, obstacles);
+		spine1X = findClearXAgainstVerts(spine1X, clearTop, clearBottom);
+		spine2X = findClearXAgainstVerts(spine2X, clearTop, clearBottom);
 
 		// Wrap the trunk over the top (or under the bottom) of every stub
 		// so the harness reads as a single continuous bundle with two
 		// ends, not an H with T-junctions. The trunk Y lies just outside
 		// the highest/lowest stub Y; spines extend in one direction only.
-		final double allTop = Math.min(spine1Top, spine2Top);
-		final double allBottom = Math.max(spine1Bottom, spine2Bottom);
-		final double r = cornerRadius();
-		final double trunkMargin = Math.max(r, 0) + PORT_RADIUS + PORT_WIDTH;
+		final double allTop = allTopRough;
+		final double allBottom = allBottomRough;
 		final double xMin = Math.min(spine1X, spine2X);
 		final double xMax = Math.max(spine1X, spine2X);
 		final double trunkAbove = allTop - trunkMargin;
@@ -1029,9 +1121,15 @@ public class SvekHarness implements UDrawable {
 			final double srcDir = Math.signum(spine1X - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(e.start.getX(), spine1X, e.startCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(e.start.getX(), spine1X,
+							e.start.getY(), e.startCluster, obstacles);
 			if (detour)
 				drawStubDetour(ugFan, e.start.getX(), e.start.getY(),
 						spine1X, e.startCluster, r2);
+			else if (externalBlocker != null)
+				drawStubAroundExternal(ugFan, e.start.getX(), e.start.getY(),
+						spine1X, externalBlocker, r2);
 			else
 				drawLine(ugFan, srcEdge, e.start.getY(), spine1X, e.start.getY());
 			if (e.arrowAtStart) {
@@ -1076,8 +1174,14 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spine2X);
 			final double tipX = endX - dir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(endX, spine2X, e.endCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(endX, spine2X, endY,
+							e.endCluster, obstacles);
 			if (detour)
 				drawStubDetour(ugFan, endX, endY, spine2X, e.endCluster, r2);
+			else if (externalBlocker != null)
+				drawStubAroundExternal(ugFan, endX, endY,
+						spine2X, externalBlocker, r2);
 			else
 				drawLine(ugFan, spine2X, endY, tipX, endY);
 			if (e.arrowAtEnd) {
@@ -1168,7 +1272,13 @@ public class SvekHarness implements UDrawable {
 		}
 
 		// Find clear position for spine2 vertical against cluster bodies
-		// AND non-harness vertical segments.
+		// AND non-harness vertical segments. Re-clear spine1X too — its
+		// initial clearance in drawHorizontalFlow used the un-extended
+		// Y range; now that spine1 has been stretched to crossbarY an
+		// obstacle in the extension could block the line.
+		spine1X = SvekPortConnector.findClearVerticalBidirectional(
+				spine1X, spine1Top, spine1Bottom, obstacles);
+		spine1X = findClearXAgainstVerts(spine1X, spine1Top, spine1Bottom);
 		spine2X = SvekPortConnector.findClearVerticalBidirectional(
 				spine2X, spine2Top, spine2Bottom, obstacles);
 		spine2X = findClearXAgainstVerts(spine2X, spine2Top, spine2Bottom);
@@ -1183,9 +1293,15 @@ public class SvekHarness implements UDrawable {
 			final double srcEdge = e.start.getX()
 					+ srcDir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(e.start.getX(), spine1X, e.startCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(e.start.getX(), spine1X,
+							e.start.getY(), e.startCluster, obstacles);
 			if (detour)
 				drawStubDetour(ugFan, e.start.getX(), e.start.getY(),
 						spine1X, e.startCluster, r3);
+			else if (externalBlocker != null)
+				drawStubAroundExternal(ugFan, e.start.getX(), e.start.getY(),
+						spine1X, externalBlocker, r3);
 			else
 				drawLine(ugFan, srcEdge, e.start.getY(),
 						spine1X, e.start.getY());
@@ -1240,8 +1356,14 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spine1X);
 			final double tipX = endX - dir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(endX, spine1X, e.endCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(endX, spine1X, endY,
+							e.endCluster, obstacles);
 			if (detour)
 				drawStubDetour(ugFan, endX, endY, spine1X, e.endCluster, r3);
+			else if (externalBlocker != null)
+				drawStubAroundExternal(ugFan, endX, endY,
+						spine1X, externalBlocker, r3);
 			else
 				drawLine(ugFan, spine1X, endY, tipX, endY);
 			if (e.arrowAtEnd) {
@@ -1262,8 +1384,14 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spine2X);
 			final double tipX = endX - dir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(endX, spine2X, e.endCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(endX, spine2X, endY,
+							e.endCluster, obstacles);
 			if (detour)
 				drawStubDetour(ugFan, endX, endY, spine2X, e.endCluster, r3);
+			else if (externalBlocker != null)
+				drawStubAroundExternal(ugFan, endX, endY,
+						spine2X, externalBlocker, r3);
 			else
 				drawLine(ugFan, spine2X, endY, tipX, endY);
 			if (e.arrowAtEnd) {
@@ -1321,9 +1449,15 @@ public class SvekHarness implements UDrawable {
 			final double srcDir = Math.signum(spineX - e.start.getX());
 			final double srcEdge = e.start.getX() + srcDir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(e.start.getX(), spineX, e.startCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(e.start.getX(), spineX,
+							e.start.getY(), e.startCluster, obstacles);
 			if (detour)
 				drawStubDetour(ugFan, e.start.getX(), e.start.getY(),
 						spineX, e.startCluster, r4);
+			else if (externalBlocker != null)
+				drawStubAroundExternal(ugFan, e.start.getX(), e.start.getY(),
+						spineX, externalBlocker, r4);
 			else
 				drawLine(ugFan, srcEdge, e.start.getY(), spineX, e.start.getY());
 			if (e.arrowAtStart) {
@@ -1351,8 +1485,14 @@ public class SvekHarness implements UDrawable {
 			final double dir = Math.signum(endX - spineX);
 			final double tipX = endX - dir * PORT_RADIUS;
 			final boolean detour = stubCrossesOwnCluster(endX, spineX, e.endCluster);
+			final RectangleArea externalBlocker = detour ? null
+					: firstExternalObstacle(endX, spineX, endY,
+							e.endCluster, obstacles);
 			if (detour)
 				drawStubDetour(ugFan, endX, endY, spineX, e.endCluster, r4);
+			else if (externalBlocker != null)
+				drawStubAroundExternal(ugFan, endX, endY,
+						spineX, externalBlocker, r4);
 			else
 				drawLine(ugFan, spineX, endY, tipX, endY);
 			if (e.arrowAtEnd) {
