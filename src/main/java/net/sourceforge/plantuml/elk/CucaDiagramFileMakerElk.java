@@ -960,6 +960,23 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		root.setProperty(CoreOptions.HIERARCHY_HANDLING, HierarchyHandling.INCLUDE_CHILDREN);
 		root.setProperty(CoreOptions.PORT_CONSTRAINTS, PortConstraints.FIXED_SIDE);
 
+		// Honour `skinparam ranksep N` and `skinparam nodesep N`. For LR
+		// (and RL) flow the layered "between layers" spacing is the
+		// horizontal gap between columns (=ranksep), and the regular
+		// node-node spacing is the gap within a column (=nodesep). For
+		// TB (and BT) it's the other way around — but the layered
+		// algorithm uses the same property names regardless of
+		// direction, so the mapping is identical.
+		final double ranksep = diagram.getSkinParam().getRanksep();
+		final double nodesep = diagram.getSkinParam().getNodesep();
+		if (ranksep > 0) {
+			root.setProperty(LayeredOptions.SPACING_NODE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+			root.setProperty(LayeredOptions.SPACING_EDGE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+			root.setProperty(LayeredOptions.SPACING_EDGE_EDGE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+		}
+		if (nodesep > 0)
+			root.setProperty(CoreOptions.SPACING_NODE_NODE, Double.valueOf(nodesep));
+
 		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(diagram.getSkinParam());
 
 		this.printAllSubgroups(stringBounder, root, diagram.getRootGroup());
