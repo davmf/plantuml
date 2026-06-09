@@ -8,10 +8,19 @@ import net.sourceforge.plantuml.klimt.color.Colors;
 
 public class Harness implements Bag {
 
+	// Topology of the rendered bundle. AUTO lets SvekHarness choose between a
+	// single spine and a dual-spine U based on geometry; the others force it.
+	// U keeps the connecting trunk under the bottom of the stubs; CAP (an
+	// inverted U) runs the trunk over the top.
+	public enum Shape {
+		AUTO, SINGLE, U, CAP
+	}
+
 	private final String label;
 	private final Harness parent;
 	private final List<Link> links = new ArrayList<Link>();
 	private Colors colors = Colors.empty();
+	private Shape shape = Shape.AUTO;
 
 	public Harness(String label) {
 		this(label, null);
@@ -55,6 +64,14 @@ public class Harness implements Bag {
 
 	public void setColors(Colors colors) {
 		this.colors = colors;
+	}
+
+	public Shape getShape() {
+		return shape;
+	}
+
+	public void setShape(Shape shape) {
+		this.shape = shape;
 	}
 
 }

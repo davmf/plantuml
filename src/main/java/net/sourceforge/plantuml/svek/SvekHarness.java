@@ -603,8 +603,13 @@ public class SvekHarness implements UDrawable {
 					Math.abs(p.getY() - startMedian.getY()));
 		}
 
+		// A forced U/CAP is a horizontal dual-spine topology, so it always
+		// takes the horizontal-flow path regardless of source spread.
+		final Harness.Shape shape = harness.getShape();
 		final boolean horizontal;
-		if (srcSpreadY > srcSpreadX * 2)
+		if (shape == Harness.Shape.U || shape == Harness.Shape.CAP)
+			horizontal = true;
+		else if (srcSpreadY > srcSpreadX * 2)
 			horizontal = true;
 		else if (srcSpreadX > srcSpreadY * 2)
 			horizontal = false;
@@ -652,7 +657,9 @@ public class SvekHarness implements UDrawable {
 		// A two-spine topology (vertical spine at source side, horizontal
 		// trunk through the middle, vertical spine at dest side) keeps both
 		// stub families short.
-		if (shouldUseDualSpine(edges, srcX, dstX)) {
+		final Harness.Shape shape = harness.getShape();
+		final boolean forceDual = shape == Harness.Shape.U || shape == Harness.Shape.CAP;
+		if (forceDual || (shape == Harness.Shape.AUTO && shouldUseDualSpine(edges, srcX, dstX))) {
 			drawDualSpineHorizontalFlow(ugLine, edges, style);
 			return;
 		}
@@ -680,7 +687,7 @@ public class SvekHarness implements UDrawable {
 			}
 		}
 		final double splitGapThreshold = 2 * MIN_STUB_LENGTH;
-		if (maxGap > splitGapThreshold && splitIdx > 0) {
+		if (shape == Harness.Shape.AUTO && maxGap > splitGapThreshold && splitIdx > 0) {
 			final List<EdgeData> low = new ArrayList<EdgeData>(
 					sortedByEndX.subList(0, splitIdx));
 			final List<EdgeData> high = new ArrayList<EdgeData>(
@@ -1131,10 +1138,17 @@ public class SvekHarness implements UDrawable {
 				obstacles);
 		final double clearBelow = findClearCrossbarY(trunkBelow, xMin, xMax,
 				obstacles);
-		// Prefer whichever side is closer to its natural placement (less
-		// vertical detour). Tie -> top.
-		final boolean trunkAtTop =
-				Math.abs(clearAbove - trunkAbove) <= Math.abs(clearBelow - trunkBelow);
+		// CAP (inverted U) forces the trunk over the top; U forces it under
+		// the bottom. AUTO prefers whichever side is closer to its natural
+		// placement (less vertical detour). Tie -> top.
+		final Harness.Shape shape = harness.getShape();
+		final boolean trunkAtTop;
+		if (shape == Harness.Shape.CAP)
+			trunkAtTop = true;
+		else if (shape == Harness.Shape.U)
+			trunkAtTop = false;
+		else
+			trunkAtTop = Math.abs(clearAbove - trunkAbove) <= Math.abs(clearBelow - trunkBelow);
 		final double trunkY = trunkAtTop ? clearAbove : clearBelow;
 		// End points of the polyline: the spine's far side from the trunk.
 		final double spine1Far = trunkAtTop ? spine1Bottom : spine1Top;
