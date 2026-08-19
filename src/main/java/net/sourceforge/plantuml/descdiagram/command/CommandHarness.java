@@ -46,9 +46,9 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 		// Resolve the optional [key=value,...] clause before mutating diagram
 		// state, so an invalid directive fails the command cleanly.
 		final String props = arg.get("PROPS", 0);
-		final Harness.Shape shape = parseShape(props);
-		if (shape == null)
-			return CommandExecutionResult.error("Unknown harness directive: [" + props + "]");
+		final Directives directives = parseDirectives(props);
+		if (directives == null)
+			return CommandExecutionResult.error("Unknown or invalid harness directive: [" + props + "]");
 
 		final CommandExecutionResult result = diagram.gotoHarness(label);
 		if (result.isOk()) {
@@ -58,20 +58,38 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 						diagram.getSkinParam().getIHtmlColorSet());
 				if (colors != null)
 					harness.setColors(colors);
-				harness.setShape(shape);
+				harness.setShape(directives.shape);
+				harness.setAlign(directives.align);
+				if (directives.lane != null)
+					harness.setLane(directives.lane.intValue());
 			}
 		}
 		return result;
 	}
 
-	// Parse the bracketed directive list. Returns the resolved shape (AUTO when
-	// no clause is present), or null when the clause is malformed or names an
-	// unknown key/value.
-	private static Harness.Shape parseShape(String props) {
-		if (props == null || props.trim().isEmpty())
-			return Harness.Shape.AUTO;
+	// Resolved directive values from the bracketed clause.
+	private static final class Directives {
+		private final Harness.Shape shape;
+		private final Harness.Align align;
+		private final Integer lane;
 
+		Directives(Harness.Shape shape, Harness.Align align, Integer lane) {
+			this.shape = shape;
+			this.align = align;
+			this.lane = lane;
+		}
+	}
+
+	// Parse the bracketed directive list. Returns the resolved directives
+	// (defaults when no clause is present), or null when the clause is
+	// malformed or names an unknown key/value.
+	private static Directives parseDirectives(String props) {
 		Harness.Shape shape = Harness.Shape.AUTO;
+		Harness.Align align = Harness.Align.AUTO;
+		Integer lane = null;
+		if (props == null || props.trim().isEmpty())
+			return new Directives(shape, align, lane);
+
 		for (final String token : props.split(",")) {
 			final String trimmed = token.trim();
 			if (trimmed.isEmpty())
@@ -86,12 +104,21 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 				if (parsed == null)
 					return null;
 				shape = parsed;
+			} else if (key.equalsIgnoreCase("align")) {
+				final Harness.Align parsed = alignValue(value);
+				if (parsed == null)
+					return null;
+				align = parsed;
+			} else if (key.equalsIgnoreCase("lane")) {
+				final Integer parsed = laneValue(value);
+				if (parsed == null)
+					return null;
+				lane = parsed;
 			} else {
-				// Reserved for future placement directives (lane, align, ...).
 				return null;
 			}
 		}
-		return shape;
+		return new Directives(shape, align, lane);
 	}
 
 	private static Harness.Shape shapeValue(String value) {
@@ -104,5 +131,25 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 		if (value.equalsIgnoreCase("cap") || value.equalsIgnoreCase("invertedu"))
 			return Harness.Shape.CAP;
 		return null;
+	}
+
+	private static Harness.Align alignValue(String value) {
+		if (value.equalsIgnoreCase("auto"))
+			return Harness.Align.AUTO;
+		if (value.equalsIgnoreCase("src") || value.equalsIgnoreCase("source"))
+			return Harness.Align.SRC;
+		if (value.equalsIgnoreCase("mid") || value.equalsIgnoreCase("middle"))
+			return Harness.Align.MID;
+		if (value.equalsIgnoreCase("dst") || value.equalsIgnoreCase("dest"))
+			return Harness.Align.DST;
+		return null;
+	}
+
+	private static Integer laneValue(String value) {
+		try {
+			return Integer.valueOf(value);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 }
