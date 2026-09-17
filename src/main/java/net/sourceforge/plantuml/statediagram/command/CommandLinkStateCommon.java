@@ -42,6 +42,7 @@ import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArg;
 import net.sourceforge.plantuml.annotation.Explain;
+import net.sourceforge.plantuml.classdiagram.command.CommandCreateClassMultilines;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -54,6 +55,7 @@ import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.statediagram.StateDiagram;
+import net.sourceforge.plantuml.stereo.Stereotag;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.stereo.StereotypePattern;
 import net.sourceforge.plantuml.utils.Direction;
@@ -119,6 +121,10 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 		if (arg.get("STEREOTYPE", 0) != null)
 			sb.append(", stereotype ").append(arg.get("STEREOTYPE", 0));
 
+		final String tags = arg.getLazzy("TAGS", 0);
+		if (tags != null && tags.isEmpty() == false)
+			sb.append(", tagged ").append(tags);
+
 		return sb.toString();
 	}
 
@@ -161,9 +167,6 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
 		final String tags = arg.getLazzy("TAGS", 0);
-		if (tags != null && tags.isEmpty() == false)
-			return CommandExecutionResult.error(
-					"Tags cannot be attached directly to a transition; tag the state(s) at its endpoints instead.");
 
 		final String ent1 = arg.get("ENT1", 0);
 		final String ent2 = arg.get("ENT2", 0);
@@ -200,7 +203,8 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 		// transition node
 		if (useNodeStyle && label != null && !Display.isNull(label) && !label.toString().trim().isEmpty()) {
 			// Create intermediate transition node for the label
-			return createTransitionWithIntermediateNode(diagram, location, cl1, cl2, label, linkType, length, dir, arg);
+			return createTransitionWithIntermediateNode(diagram, location, cl1, cl2, label, linkType, length, dir, arg,
+					tags);
 		} else {
 			// Original direct link behavior for unlabeled transitions or when node style is
 			// not requested
@@ -215,10 +219,19 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 				final Stereotype stereotype = Stereotype.build(arg.get("STEREOTYPE", 0));
 				link.setStereotype(stereotype);
 			}
+			addTags(link, tags);
 			diagram.addLink(link);
 
 			return CommandExecutionResult.ok();
 		}
+	}
+
+	private static void addTags(Link link, String tags) {
+		if (tags == null)
+			return;
+
+		for (String tag : tags.split("[ ]+"))
+			link.addStereotag(new Stereotag(tag.substring(1)));
 	}
 
 	private Direction getDirection(RegexResult arg) {
@@ -331,8 +344,8 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 	}
 
 	private CommandExecutionResult createTransitionWithIntermediateNode(StateDiagram diagram, LineLocation location,
-			Entity source, Entity target, Display label, LinkType linkType, int length, Direction dir, RegexResult arg)
-			throws NoSuchColorException {
+			Entity source, Entity target, Display label, LinkType linkType, int length, Direction dir, RegexResult arg,
+			String tags) throws NoSuchColorException {
 
 		// Generate unique ID for the transition node
 		final String transitionNodeId = generateTransitionNodeId(source, target, label);
@@ -344,6 +357,12 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 
 		// Set transition node stereotype to make it visually distinct
 		transitionNode.setStereotype(Stereotype.build("<<transition>>"));
+
+		// The label node carries the transition's own tag too, so hide/remove by
+		// that tag drops the label along with its two synthetic links, the same
+		// way an untagged label is dropped when a real endpoint disappears (see
+		// CucaDiagram.isOrphanedTransitionLabel).
+		CommandCreateClassMultilines.addTags(transitionNode, tags);
 
 		// STEP 1: Create first link: source -> transition node (no arrow decoration on
 		// intermediate link)

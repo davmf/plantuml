@@ -35,7 +35,10 @@
  */
 package net.sourceforge.plantuml.cucadiagram;
 
+import java.util.Set;
+
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.plasma.Plasma;
 import net.sourceforge.plantuml.stereo.Stereotag;
 import net.sourceforge.plantuml.stereo.Stereotype;
@@ -55,7 +58,7 @@ public class HideOrShow {
 			throw new IllegalArgumentException();
 
 		if (what.startsWith("$"))
-			return isApplyableTag(leaf, what.substring(1));
+			return isApplyableTag(leaf.stereotags(), what.substring(1));
 
 		if (what.startsWith("<<") && what.endsWith(">>"))
 			return isApplyableStereotype(leaf.getStereotype(), what.substring(2, what.length() - 2).trim());
@@ -71,6 +74,16 @@ public class HideOrShow {
 	private boolean isApplyable(Stereotype stereotype) {
 		if (what.startsWith("<<") && what.endsWith(">>"))
 			return isApplyableStereotype(stereotype, what.substring(2, what.length() - 2).trim());
+		return false;
+	}
+
+	// A transition's own tag (e.g. `A --> B $tag`) is the only thing that can
+	// make hide/show/remove/restore match a Link directly: unlike an Entity, a
+	// Link has no stereotype-based or name-based selector of its own.
+	private boolean isApplyable(Link link) {
+		if (what.startsWith("$"))
+			return isApplyableTag(link.stereotags(), what.substring(1));
+
 		return false;
 	}
 
@@ -96,8 +109,8 @@ public class HideOrShow {
 		return false;
 	}
 
-	private boolean isApplyableTag(Entity leaf, String pattern) {
-		for (Stereotag tag : leaf.stereotags())
+	private boolean isApplyableTag(Set<Stereotag> tags, String pattern) {
+		for (Stereotag tag : tags)
 			if (match(tag.getName(), pattern))
 				return true;
 
@@ -135,6 +148,13 @@ public class HideOrShow {
 
 	public boolean apply(boolean hidden, Stereotype stereotype) {
 		if (isApplyable(stereotype))
+			return !show;
+
+		return hidden;
+	}
+
+	public boolean apply(boolean hidden, Link link) {
+		if (isApplyable(link))
 			return !show;
 
 		return hidden;

@@ -839,6 +839,22 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 
 	}
 
+	public boolean isHidden(Link link) {
+		boolean hidden = false;
+		for (HideOrShow hide : this.hides2)
+			hidden = hide.apply(hidden, link);
+
+		return hidden;
+	}
+
+	public boolean isRemoved(Link link) {
+		boolean result = false;
+		for (HideOrShow hide : this.removed)
+			result = hide.apply(result, link);
+
+		return result;
+	}
+
 	public boolean isRemovedIgnoreUnlinked(Entity leaf) {
 		boolean result = false;
 		for (HideOrShow hide : this.removed)

@@ -35,7 +35,10 @@
  */
 package net.sourceforge.plantuml.abel;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import net.atmp.CucaDiagram;
 import net.sourceforge.plantuml.cli.GlobalConfig;
@@ -55,6 +58,7 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UComment;
 import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
+import net.sourceforge.plantuml.stereo.Stereotag;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.StyleBuilder;
@@ -92,8 +96,9 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 	private String sametail;
 	private final StyleBuilder styleBuilder;
 	private Stereotype stereotype;
+	private Set<Stereotag> tags = new LinkedHashSet<>();
 	private final CucaDiagram cucaDiagram;
-	
+
 	private final LineLocation location;
 
 	private Url url;
@@ -456,7 +461,15 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 	}
 
 	public boolean isHidden() {
-		return hidden || cl1.isHidden() || cl2.isHidden();
+		return hidden || cucaDiagram.isHidden(this) || cl1.isHidden() || cl2.isHidden();
+	}
+
+	public void addStereotag(Stereotag tag) {
+		this.tags.add(tag);
+	}
+
+	public Set<Stereotag> stereotags() {
+		return Collections.unmodifiableSet(tags);
 	}
 
 	public boolean sameConnections(Link other) {
@@ -492,6 +505,9 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 	public boolean isRemoved() {
 		final Stereotype stereotype = getStereotype();
 		if (stereotype != null && cucaDiagram.isStereotypeRemoved(stereotype))
+			return true;
+
+		if (cucaDiagram.isRemoved(this))
 			return true;
 
 		return cl1.isRemoved() || cl2.isRemoved();
