@@ -160,6 +160,11 @@ abstract class CommandLinkStateCommon extends SingleLineCommand2<StateDiagram> {
 	@Override
 	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
+		final String tags = arg.getLazzy("TAGS", 0);
+		if (tags != null && tags.isEmpty() == false)
+			return CommandExecutionResult.error(
+					"Tags cannot be attached directly to a transition; tag the state(s) at its endpoints instead.");
+
 		final String ent1 = arg.get("ENT1", 0);
 		final String ent2 = arg.get("ENT2", 0);
 
