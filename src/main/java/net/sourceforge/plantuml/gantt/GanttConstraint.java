@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.gantt;
 
+
 import net.sourceforge.plantuml.decoration.LinkDecor;
 import net.sourceforge.plantuml.decoration.LinkType;
 import net.sourceforge.plantuml.decoration.WithLinkType;
@@ -48,10 +49,10 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class GanttConstraint extends WithLinkType {
 
@@ -94,12 +95,12 @@ public class GanttConstraint extends WithLinkType {
 		return source.toString() + " --> " + dest.toString();
 	}
 
-	final public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.ganttDiagram, SName.arrow);
+	final public StyleQuery getStyleSignature() {
+		return StyleQueries.GANTTDIAG_ARROW;
 	}
 
 	public UDrawable getUDrawable(TimeScale timeScale, TaskDrawRegistryData toTaskDraw) {
-		Style style = getStyleSignature().getMergedStyle(styleBuilder).eventuallyOverride(PName.LineColor,
+		Style style = styleBuilder.getMergedStyle(getStyleSignature()).eventuallyOverride(PName.LineColor,
 				getSpecificColor());
 		style = style.eventuallyOverride(getType().getStroke3(style.getStroke()));
 		return new GanttArrow(colorSet, style, timeScale, source, dest, toTaskDraw, styleBuilder);

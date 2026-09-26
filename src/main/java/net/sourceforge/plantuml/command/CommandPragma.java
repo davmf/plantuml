@@ -35,6 +35,8 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.StringTokenizer;
 
 import net.sourceforge.plantuml.StringUtils;
@@ -50,6 +52,8 @@ import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("!");
 
 	public static final CommandPragma ME = new CommandPragma();
 
@@ -110,6 +114,12 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 			}
 		} else {
 			system.getPragma().define(name, value);
+
+			// Honored in every build: the browser (TeaVM) build uses it to lay out
+			// class/component/deployment/state/usecase diagrams without viz-global.js.
+			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("smetana"))
+				system.setUseSmetana(true);
+
 			if (!TeaVM.isTeaVM()) {
 				if (name.equalsIgnoreCase("graphviz_dot") && value.equalsIgnoreCase("jdot"))
 					return CommandExecutionResult.error(
@@ -118,9 +128,6 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 				if (name.equalsIgnoreCase("graphviz_dot"))
 					return CommandExecutionResult.error("This directive has been renamed to '!pragma layout " + value
 							+ "'. Please update your diagram.");
-
-				if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("smetana"))
-					system.setUseSmetana(true);
 
 				if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("elk"))
 					system.setUseElk(true);
@@ -131,6 +138,11 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 
 		}
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

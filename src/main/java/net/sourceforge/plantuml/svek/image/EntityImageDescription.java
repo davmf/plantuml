@@ -74,8 +74,8 @@ import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.Margins;
@@ -108,9 +108,8 @@ public class EntityImageDescription extends AbstractEntityImage {
 	private final USymbol symbol;
 
 	@Override
-	public StyleSignature getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), symbol.getSNames());
-
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ELEMENT.add(getStyleName()).addSNames(symbol.getSNames());
 	}
 
 	public EntityImageDescription(Entity entity, PortionShower portionShower, Collection<Link> links,
@@ -140,24 +139,22 @@ public class EntityImageDescription extends AbstractEntityImage {
 
 		final Colors colors = entity.getColors();
 
-		final StyleSignatureBasic signatureTitle;
+		final StyleQuery queryTitle;
 		if (symbol instanceof USymbolActorBusiness)
-			signatureTitle = StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), SName.actor,
-					SName.business, SName.title);
+			queryTitle = StyleQueries.ACTOR_BUSINESS_TITLE.add(getStyleName());
 		else
-			signatureTitle = StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), symbol.getSNames(),
-					SName.title);
+			queryTitle = StyleQueries.ELEMENT.add(getStyleName()).addSNames(symbol.getSNames())
+					.add(SName.title);
 
 		final Stereotype stereotype = entity.getStereotype();
-		final Style styleTitle = signatureTitle.withTOBECHANGED(stereotype)
-				.getMergedStyle(getEntity().getCurrentStyleBuilder()).eventuallyOverride(colors);
+		final Style styleTitle = getEntity().getCurrentStyleBuilder()
+				.getMergedStyle(queryTitle.withStereotype(stereotype)).eventuallyOverride(colors);
 
-		final Style styleStereo = StyleSignatureBasic
-				.of(SName.root, SName.element, getStyleName(), symbol.getSNames(), SName.stereotype)
-				.forStereotypeItself(stereotype).getMergedStyle(getEntity().getCurrentStyleBuilder());
+		final Style styleStereo = getEntity().getCurrentStyleBuilder().getMergedStyle(StyleQueries.STEREOTYPE
+				.add(getStyleName()).addSNames(symbol.getSNames()).forStereotypeItself(stereotype));
 
-		final Style style = getStyleSignature().withTOBECHANGED(stereotype)
-				.getMergedStyle(getEntity().getCurrentStyleBuilder()).eventuallyOverride(colors);
+		final Style style = getEntity().getCurrentStyleBuilder()
+				.getMergedStyle(getStyleQuery().withStereotype(stereotype)).eventuallyOverride(colors);
 
 		final HColor forecolor = styleTitle.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
 

@@ -55,7 +55,6 @@ import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.core.TextBlockExporter;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.security.SecurityProfile;
 import net.sourceforge.plantuml.security.SecurityUtils;
 
 public class PSystemDot extends DirectOsDiagram {
@@ -75,7 +74,7 @@ public class PSystemDot extends DirectOsDiagram {
 	final protected ImageData exportDiagramNow(OutputStream os, int num, FileFormatOption fileFormat)
 			throws IOException {
 
-		if (SecurityUtils.getSecurityProfile().allowDotSvg() && fileFormat.getFileFormat() == FileFormat.SVG) {
+		if (!SecurityUtils.getSecurityProfile().allowDotSvg() && fileFormat.getFileFormat() == FileFormat.SVG) {
 			final String svg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 					+ "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n"
 					+ "<a xlink:href=\"https://github.com/plantuml/plantuml/issues/2495\">\n"

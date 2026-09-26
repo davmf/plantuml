@@ -84,6 +84,7 @@ import net.sourceforge.plantuml.text.Guillemet;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.utils.Position;
 
 final public class Entity implements SpecificBackcolorable, Hideable, Removeable, LineConfigurable, Bag {
@@ -131,7 +132,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	private VisibilityModifier visibility;
 	private Neighborhood neighborhood;
 	private Colors colors = Colors.empty();
-	private final Map<String, Display> tips = new LinkedHashMap<String, Display>();
+	private final Map<String, Tip> tips = new LinkedHashMap<String, Tip>();
 
 	//
 	public void addNote(Display note, Position position, Colors colors) {
@@ -144,9 +145,9 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	//
 	public List<CucaNote> getNotes(Position position) {
 		if (position == Position.TOP)
-			return Collections.unmodifiableList(notesTop);
+			return MyCollections.unmodifiableList(notesTop);
 		if (position == Position.BOTTOM)
-			return Collections.unmodifiableList(notesBottom);
+			return MyCollections.unmodifiableList(notesBottom);
 		throw new IllegalArgumentException();
 	}
 
@@ -155,7 +156,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	}
 
 	public Set<Stereotag> stereotags() {
-		return Collections.unmodifiableSet(tags);
+		return MyCollections.unmodifiableSet(tags);
 	}
 
 	// Back to Entity
@@ -508,12 +509,12 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		return neighborhood;
 	}
 
-	public void putTip(String member, Display display) {
-		tips.put(member, display);
+	public void putTip(String member, Display display, Colors colors, Stereotype stereotype) {
+		tips.put(member, new Tip(display, colors, stereotype));
 	}
 
-	public Map<String, Display> getTips() {
-		return Collections.unmodifiableMap(tips);
+	public Map<String, Tip> getTips() {
+		return MyCollections.unmodifiableMap(tips);
 	}
 
 	public Colors getColors() {
@@ -532,7 +533,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 
 	public Collection<String> getPortShortNames() {
 		checkNotGroup();
-		return Collections.unmodifiableCollection(portShortNames);
+		return MyCollections.unmodifiableCollection(portShortNames);
 	}
 
 	public void addPortShortName(String portShortName) {
@@ -590,7 +591,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		final List<Kal> result = kals.get(position);
 		if (result == null)
 			return Collections.emptyList();
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public CucaDiagram getDiagram() {
@@ -653,7 +654,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 			if (data != null && data.isGroup() == false)
 				result.add(data);
 		}
-		return Collections.unmodifiableCollection(result);
+		return MyCollections.unmodifiableCollection(result);
 	}
 
 	public Collection<Entity> groups() {
@@ -663,7 +664,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 			if (data != null && data.isGroup())
 				result.add(data);
 		}
-		return Collections.unmodifiableCollection(result);
+		return MyCollections.unmodifiableCollection(result);
 	}
 
 	public int countChildren() {

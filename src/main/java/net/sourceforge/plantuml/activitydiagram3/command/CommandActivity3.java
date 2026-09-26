@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
 import net.sourceforge.plantuml.annotation.Explain;
@@ -59,12 +62,15 @@ import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandActivity3 extends SingleLineCommand2<ActivityDiagram3> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("#", ":", "<");
+
 	public CommandActivity3() {
 		super(getRegexConcat());
 	}
 
 	static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandActivity3.class.getName(), RegexLeaf.start(), //
+				color().getRegex(), //
 				StereotypePattern.optionalIGNORED(), //
 				new RegexLeaf(":"), //
 				new RegexLeaf(1, "LABEL", "(.*?)"), //
@@ -127,17 +133,24 @@ public class CommandActivity3 extends SingleLineCommand2<ActivityDiagram3> {
 
 		final Stereogroup stereogroup = Stereogroup.build(arg);
 
+		final String label = arg.get("LABEL", 0);
 		if (arg.get("IGNORED", 0) != null)
-			diagram.addWarning(new Warning("You must use stereotype at the end of the line after the ';'"));
+			diagram.addWarning(new Warning("The stereotype " + arg.get("IGNORED", 0)
+					+ " before the ':' is ignored: write ':" + label + "; " + arg.get("IGNORED", 0) + "' instead"));
 
 		if (arg.get("COLOR", 0) != null)
-			diagram.addWarning(new Warning("This syntax is deprecated, you must add <<" + arg.get("COLOR", 0)
-					+ ">> at the end of the line, after the ';'"));
+			diagram.addWarning(new Warning("This syntax is deprecated and the color is ignored: write ':" + label
+					+ "; <<" + arg.get("COLOR", 0) + ">>' instead of '" + arg.get("COLOR", 0) + ":" + label + ";'"));
 
 		final BoxStyle style = stereogroup.getBoxStyle();
 
-		final Display display = Display.getWithNewlines2(diagram.getPragma(), arg.get("LABEL", 0));
+		final Display display = Display.getWithNewlines2(diagram.getPragma(), label);
 		return diagram.addActivity(display, style, url, stereogroup);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

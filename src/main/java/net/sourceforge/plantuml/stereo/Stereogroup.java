@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.stereo;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -52,12 +53,15 @@ import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.style.AutomaticCounterBasic;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.parser.StyleParser;
+import net.sourceforge.plantuml.style.StyleLoader;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.parser.StyleParsingException;
+import net.sourceforge.plantuml.utils.BlocLines;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class Stereogroup {
 
@@ -141,16 +145,16 @@ public class Stereogroup {
 		while (matcher.find())
 			result.add(matcher.group(1).trim());
 
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public Style mute(Style style, HColorSet colorSet) throws NoSuchColorException {
 		return style.eventuallyOverride(getInnerColors(colorSet));
 	}
 
-	public HColor getHColor(StyleSignature styleSignature, PName pname, StyleBuilder styleBuilder, HColorSet colorSet)
+	public HColor getHColor(StyleQuery styleQuery, PName pname, StyleBuilder styleBuilder, HColorSet colorSet)
 			throws NoSuchColorException {
-		final Style style = styleSignature.withTOBECHANGED(this).getMergedStyle(styleBuilder);
+		final Style style = styleBuilder.getMergedStyle(styleQuery.withStereotype(buildStereotype()));
 		final Colors colors = getInnerColors(colorSet);
 		return colors.getColor(style, pname, colorSet);
 	}
@@ -186,8 +190,19 @@ public class Stereogroup {
 				colors = colors.mergeWith(new Colors(label, colorSet, ColorType.BACK));
 			} else if (label.contains(":") && label.contains(";")) {
 				try {
-					final Style style = new StyleParser().parseSingleLine(label);
-					colors = colors.applyStyle(style, colorSet);
+					// label is a bare "Prop:value;Prop:value;" list, with no selector of its
+					// own -- the legacy character-level tokenizer's own parseSingleLine() could
+					// read that directly, at its Context's still-empty root, and hand back a
+					// Style with an empty signature. RawStyleParser has no such root-level
+					// property syntax (parsePropertyDeclaration always requires an open block),
+					// so it is wrapped in a throwaway selector here purely to give it one; the
+					// resulting Style's signature is never looked at below, only its property
+					// values are (see Colors#applyStyle), exactly as before.
+					final Collection<Style> styles = StyleLoader.parseStyleText(
+							BlocLines.singleString("inlineStereogroupColors {" + label + "}"),
+							new AutomaticCounterBasic());
+					if (styles.isEmpty() == false)
+						colors = colors.applyStyle(styles.iterator().next(), colorSet);
 				} catch (StyleParsingException e) {
 					// Ignore for now...
 				}

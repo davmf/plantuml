@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.jsondiagram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.core.DiagramType;
@@ -64,8 +63,9 @@ import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.yaml.Highlighted;
 
 //See TextBlockMap
@@ -136,20 +136,18 @@ public class TextBlockJson extends TextBlockMemoized {
 	}
 
 	private Style getStyleToUse(boolean header, Highlighted highlighted) {
-		final StyleSignature signature;
+		final StyleQuery query;
 		if (header && highlighted != null)
-			signature = StyleSignatureBasic
-					.of(SName.root, SName.element, diagramType, SName.header, SName.node, SName.highlight)
-					.withTOBECHANGED(highlighted.getStereotype());
+			query = StyleQueries.NODE_HEADER_HIGHLIGHT.add(diagramType)
+					.withStereotype(highlighted.getStereotype());
 		else if (highlighted != null)
-			signature = StyleSignatureBasic.of(SName.root, SName.element, diagramType, SName.node, SName.highlight)
-					.withTOBECHANGED(highlighted.getStereotype());
+			query = StyleQueries.NODE_HIGHLIGHT.add(diagramType).withStereotype(highlighted.getStereotype());
 		else if (header)
-			signature = StyleSignatureBasic.of(SName.root, SName.element, diagramType, SName.header, SName.node);
+			query = StyleQueries.NODE_HEADER.add(diagramType);
 		else
-			signature = StyleSignatureBasic.of(SName.root, SName.element, diagramType, SName.node);
+			query = StyleQueries.NODE.add(diagramType);
 
-		return signature.getMergedStyle(styleBuilder);
+		return styleBuilder.getMergedStyle(query);
 	}
 
 	private Highlighted isHighlighted(String key, List<Highlighted> highlighted) {
@@ -212,7 +210,7 @@ public class TextBlockJson extends TextBlockMemoized {
 				else
 					result.add(null);
 
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public List<String> keys() {
@@ -230,7 +228,7 @@ public class TextBlockJson extends TextBlockMemoized {
 				i++;
 			}
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	@Override
@@ -266,8 +264,7 @@ public class TextBlockJson extends TextBlockMemoized {
 		final double widthColB = getWidthColB(stringBounder);
 
 		double y = 0;
-		final Style styleNode = StyleSignatureBasic.of(SName.root, SName.element, diagramType, SName.node)
-				.getMergedStyle(styleBuilder);
+		final Style styleNode = styleBuilder.getMergedStyle(StyleQueries.NODE.add(diagramType));
 		final UGraphic ugNode = styleNode.applyStrokeAndLineColor(ug, skinParam.getIHtmlColorSet());
 		for (Line line : lines) {
 			final double heightOfRow = line.getHeightOfRow(stringBounder);
@@ -283,8 +280,8 @@ public class TextBlockJson extends TextBlockMemoized {
 		final HColor backColor = styleNode.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
 		ugNode.apply(backColor.bg()).apply(backColor).draw(fullNodeRectangle);
 
-		final Style styleSeparator = styleNode.getSignature().addSName(SName.separator)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style styleSeparator = skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.NODE_SEPARATOR.add(diagramType));
 		final UGraphic ugSeparator = styleSeparator.applyStrokeAndLineColor(ug, skinParam.getIHtmlColorSet());
 
 		y = 0;
@@ -293,9 +290,8 @@ public class TextBlockJson extends TextBlockMemoized {
 			final double heightOfRow = line.getHeightOfRow(stringBounder);
 			if (line.highlighted != null) {
 				final URectangle back = URectangle.build(trueWidth - 2, heightOfRow).rounded(4);
-				final Style styleNodeHighlight = StyleSignatureBasic
-						.of(SName.root, SName.element, diagramType, SName.node, SName.highlight)
-						.withTOBECHANGED(line.highlighted.getStereotype()).getMergedStyle(styleBuilder);
+				final Style styleNodeHighlight = styleBuilder.getMergedStyle(StyleQueries.NODE_HIGHLIGHT
+						.add(diagramType).withStereotype(line.highlighted.getStereotype()));
 				final HColor cellBackColor = styleNodeHighlight.value(PName.BackGroundColor)
 						.asColor(skinParam.getIHtmlColorSet());
 				ugline.apply(cellBackColor).apply(cellBackColor.bg()).apply(new UTranslate(1.5, 0)).draw(back);

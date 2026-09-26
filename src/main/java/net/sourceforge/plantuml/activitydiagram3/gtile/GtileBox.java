@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.gtile;
 
+
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileGeometry;
@@ -63,9 +64,9 @@ import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class GtileBox extends AbstractGtile {
 
@@ -86,12 +87,12 @@ public class GtileBox extends AbstractGtile {
 	private final HColor backColor;
 	private final Style style;
 
-	static public StyleSignatureBasic getDefaultStyleDefinitionActivity() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity);
+	static public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY;
 	}
 
-	static public StyleSignatureBasic getDefaultStyleDefinitionArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	static public StyleQuery getDefaultStyleDefinitionArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 	final public LinkRendering getInLinkRendering() {
@@ -113,9 +114,8 @@ public class GtileBox extends AbstractGtile {
 
 	public static GtileBox create(StringBounder stringBounder, ISkinParam skinParam, Display label, Swimlane swimlane,
 			BoxStyle boxStyle, Stereotype stereotype) {
-		final Style style = getDefaultStyleDefinitionActivity().withTOBECHANGED(stereotype)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
-		final Style styleArrow = getDefaultStyleDefinitionArrow().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleQuery().withStereotype(stereotype));
+		final Style styleArrow = skinParam.getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow());
 
 		return new GtileBox(stringBounder, skinParam, label, swimlane, boxStyle, style, styleArrow);
 	}

@@ -44,6 +44,7 @@ import java.util.Map;
 
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.asciiverse.InfinitePlan;
@@ -69,9 +70,8 @@ import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.NoStyleAvailableException;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.Direction;
 
@@ -191,7 +191,7 @@ public class WBSDiagram extends TitledDiagram implements TextBlock {
 			first = type;
 			return 0;
 		}
-		type = type.replace('\t', ' ');
+		type = StringUtils.replaceChar(type, '\t', ' ');
 		if (type.contains(" ") == false)
 			return type.length() - 1;
 
@@ -244,8 +244,8 @@ public class WBSDiagram extends TitledDiagram implements TextBlock {
 		HColor color = colors.getColor(ColorType.LINE);
 
 		if (color == null) {
-			final Style style = StyleSignatureBasic.of(SName.root, SName.element, SName.wbsDiagram, SName.arrow)
-					.withTOBECHANGED(stereotype).getMergedStyle(getCurrentStyleBuilder());
+			final Style style = getCurrentStyleBuilder().getMergedStyle(StyleQueries.WBSDIAG_ARROW
+					.withStereotype(stereotype));
 
 			color = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
 		}

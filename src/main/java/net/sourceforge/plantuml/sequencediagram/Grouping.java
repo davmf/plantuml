@@ -35,12 +35,14 @@
  */
 package net.sourceforge.plantuml.sequencediagram;
 
+
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.style.MergeStrategy;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.WithStyle;
 
 public abstract class Grouping extends AbstractEvent implements Event, WithStyle {
@@ -55,12 +57,44 @@ public abstract class Grouping extends AbstractEvent implements Event, WithStyle
 	final private Style style;
 	final private Style styleHeader;
 
-	public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.group);
+	@Override
+	public StyleQuery getStyleQuery() {
+		if (type == GroupingType.START_PARTITION)
+			return StyleQueries.SEQUENCEDIAG_PARTITION;
+		return StyleQueries.SEQUENCEDIAG_GROUP;
 	}
 
-	private StyleSignatureBasic getHeaderStyleDefinition() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.groupHeader);
+	final private StyleQuery getHeaderStyleDefinition() {
+		if (type == GroupingType.START_PARTITION)
+			return StyleQueries.SEQUENCEDIAG_PARTITION_HEADER;
+		return StyleQueries.SEQUENCEDIAG_GROUPHEADER;
+	}
+
+	// The nested counterpart of the legacy flat "groupHeader" above, added for
+	// consistency with the dedicated "partition { header {...} }" selector
+	// (#2679): `sequenceDiagram { group { header {...} } }`. Not meaningful for
+	// a partition, which already has its own nested header signature via
+	// getHeaderStyleDefinition(). Kept as a plain override layered on top of
+	// the flat style (see computeStyleHeader()) rather than a replacement, so
+	// every existing diagram styling `groupHeader` directly keeps working
+	// unchanged: only diagrams that opt into the new nested form are affected.
+	final private StyleQuery getNestedHeaderStyleDefinition() {
+		return StyleQueries.SEQUENCEDIAG_GROUP_HEADER;
+	}
+
+	private Style computeStyleHeader(StyleBuilder styleBuilder) {
+		final Style flat = styleBuilder.getMergedStyle(getHeaderStyleDefinition());
+		if (type == GroupingType.START_PARTITION)
+			return flat;
+
+		// "style" (this.style, already assigned above in the constructor) is the
+		// plain "group" style -- the exact ancestor "nested" cascades from, so
+		// mergeNestedChildOver() can isolate what header{} itself actually sets.
+		final Style nested = styleBuilder.getMergedStyle(getNestedHeaderStyleDefinition());
+		if (flat == null)
+			return nested;
+
+		return flat.mergeNestedChildOver(nested, style, MergeStrategy.OVERWRITE_EXISTING_VALUE);
 	}
 
 	public Style[] getUsedStyles() {
@@ -76,8 +110,8 @@ public abstract class Grouping extends AbstractEvent implements Event, WithStyle
 		this.comment = comment;
 		this.type = type;
 		this.backColorElement = backColorElement;
-		this.style = getStyleSignature().getMergedStyle(styleBuilder);
-		this.styleHeader = getHeaderStyleDefinition().getMergedStyle(styleBuilder);
+		this.style = styleBuilder.getMergedStyle(getStyleQuery());
+		this.styleHeader = computeStyleHeader(styleBuilder);
 	}
 
 	@Override

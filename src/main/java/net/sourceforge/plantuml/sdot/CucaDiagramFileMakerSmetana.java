@@ -51,8 +51,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import h.ST_Agedge_s;
 import h.ST_Agnode_s;
@@ -97,14 +95,16 @@ import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.Cluster;
 import net.sourceforge.plantuml.svek.ClusterHeader;
 import net.sourceforge.plantuml.svek.CucaDiagramFileMaker;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
 import net.sourceforge.plantuml.svek.IEntityImage;
+import net.sourceforge.plantuml.svek.RoleLabels;
 import net.sourceforge.plantuml.svek.SvekNode;
+import net.sourceforge.plantuml.svek.SvekUtils;
 import net.sourceforge.plantuml.svek.image.EntityImageNote;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
 import net.sourceforge.plantuml.utils.Position;
@@ -469,6 +469,16 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 		if (false) SMETANA_TRACE("CucaDiagramFileMakerSmetana",
 				"exportEntity: entity=" + leaf.getName() + " nodeUid=" + node.getUid());
 		agsafeset(zz, agnode, new CString("shape"), new CString("box"), new CString(""));
+		// Without an explicit empty label, Smetana (like dot) pads the node to fit its
+		// default label ("\N", the node name), so a node smaller than about 16x24 px
+		// is enlarged around its center while the image is drawn at the enlarged
+		// node's top-left corner. For the 4x4 association point (issue #2903) this
+		// left the point 6 px left of and 10 px above the edges that target the node
+		// center. Only the association point is handled here: applying it to every
+		// node also shrinks every other small node (start/end, bars...) and moves
+		// 26 existing Vega references, which is a separate change.
+		if (leaf.getLeafType() == LeafType.POINT_FOR_ASSOCIATION)
+			agsafeset(zz, agnode, new CString("label"), new CString(""), new CString(""));
 		final XDimension2D dim = getDim(node);
 		final String width = "" + dim.getWidth();
 		final String height = "" + dim.getHeight();
@@ -502,7 +512,13 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 		return result;
 	}
 
-	private static final Lock lock = new ReentrantLock();
+	// A plain monitor rather than a ReentrantLock: the smetana port keeps its
+	// state in Globals, so layout runs are serialized process-wide. No fairness
+	// or interruptibility is used, so synchronized is equivalent on the JVM, and
+	// unlike java.util.concurrent.locks it is available in the TeaVM classlib,
+	// which the browser build needs now that "!pragma layout smetana" reaches
+	// this class there.
+	private static final Object lock = new Object();
 
 	@Override
 	public TextBlock getTextBlock(List<String> dotStrings, FileFormatOption fileFormatOption)
@@ -549,16 +565,13 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 			}
 		}
 
-		lock.lock();
-		try {
+		synchronized (lock) {
 			final Globals zz = Globals.open();
 			try {
 				return getTextBlockInternal(stringBounder, zz);
 			} finally {
 				Globals.close();
 			}
-		} finally {
-			lock.unlock();
 		}
 	}
 
@@ -584,6 +597,17 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 		// affects horizontal separation: the vertical gap between stacked top-level
 		// clusters is driven by ranksep, because clust_ht forces CL_OFFSET at the root.
 		agsafeset(zz, g, new CString("margin"), new CString("16"), new CString(""));
+
+		// Honor an explicit "skinparam nodesep/ranksep" (issue #2903). Only explicit
+		// values are forwarded: when they are not set, Smetana keeps its own
+		// defaults (unlike the dot pipeline, which derives a minimum of 35/60 px),
+		// so that existing diagrams are not moved.
+		if (diagram.getSkinParam().getNodesep() != 0)
+			agsafeset(zz, g, new CString("nodesep"),
+					new CString(SvekUtils.pixelToInches(diagram.getSkinParam().getNodesep())), new CString(""));
+		if (diagram.getSkinParam().getRanksep() != 0)
+			agsafeset(zz, g, new CString("ranksep"),
+					new CString(SvekUtils.pixelToInches(diagram.getSkinParam().getRanksep())), new CString(""));
 
 		exportEntities(zz, g, getUnpackagedEntities());
 		exportGroups(zz, g, root);
@@ -680,15 +704,15 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 	}
 
 	private Style getStyle() {
-		return StyleSignatureBasic.of(SName.root, SName.element, diagram.getDiagramType().getStyleName(), SName.arrow)
-				.getMergedStyle(diagram.getSkinParam().getCurrentStyleBuilder());
+		return diagram.getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.ARROW.add(diagram.getDiagramType().getStyleName()));
 	}
 
 	// Duplication from SvekEdge
-	final public StyleSignature getDefaultStyleDefinitionArrow(Stereotype stereotype, SName styleName) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, styleName, SName.arrow);
+	private StyleQuery getDefaultStyleDefinitionArrow(Stereotype stereotype, SName styleName) {
+		StyleQuery result = StyleQueries.ARROW.add(styleName);
 		if (stereotype != null)
-			result = result.withTOBECHANGED(stereotype);
+			result = result.withStereotype(stereotype);
 
 		return result;
 	}
@@ -696,8 +720,8 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 	private FontConfiguration getFontForLink(Link link, final ISkinParam skinParam) {
 		final SName styleName = skinParam.getDiagramType().getStyleName();
 
-		final Style style = getDefaultStyleDefinitionArrow(link.getStereotype(), styleName)
-				.getMergedStyle(link.getStyleBuilder());
+		final Style style = link.getStyleBuilder()
+				.getMergedStyle(getDefaultStyleDefinitionArrow(link.getStereotype(), styleName));
 		return style.getFontConfiguration(skinParam.getIHtmlColorSet());
 	}
 
@@ -753,8 +777,8 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 			// block = StringWithArrow.addSeveralMagicArrows(link.getLabel(), this, font,
 			// alignment, skinParam);
 			// else
-			final Style arrowStyle = getDefaultStyleDefinitionArrow(link.getStereotype(),
-					skinParam.getDiagramType().getStyleName()).getMergedStyle(link.getStyleBuilder());
+			final Style arrowStyle = link.getStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow(
+					link.getStereotype(), skinParam.getDiagramType().getStyleName()));
 			final LineBreakStrategy styleWidth = arrowStyle.wrapWidth();
 			final LineBreakStrategy wrapWidth = styleWidth.getMaxWidth() > 0 ? styleWidth : skinParam.maxMessageSize();
 			block = link.getLabel().create0(font, alignment, skinParam, wrapWidth, CreoleMode.SIMPLE_LINE, null, null);
@@ -812,8 +836,7 @@ public class CucaDiagramFileMakerSmetana extends CucaDiagramFileMaker {
 		ISkinParam skinParam = diagram.getSkinParam();
 		final Style style = getStyle();
 		final FontConfiguration labelFont = style.getFontConfiguration(skinParam.getIHtmlColorSet());
-		final TextBlock label = Display.getWithNewlines(diagram.getPragma(), role).create(labelFont,
-				skinParam.getDefaultTextAlignment(HorizontalAlignment.CENTER), skinParam);
+		final TextBlock label = RoleLabels.create(role, diagram.getPragma(), labelFont, skinParam);
 		if (TextBlockUtils.isEmpty(label, stringBounder))
 			return label;
 

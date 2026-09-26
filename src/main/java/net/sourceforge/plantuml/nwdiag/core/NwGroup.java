@@ -34,7 +34,6 @@
  */
 package net.sourceforge.plantuml.nwdiag.core;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -52,10 +51,11 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.nwdiag.next.NBox;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class NwGroup implements NStackable {
 
@@ -120,7 +120,7 @@ public class NwGroup implements NStackable {
 	}
 
 	public final Set<String> names() {
-		return Collections.unmodifiableSet(names);
+		return MyCollections.unmodifiableSet(names);
 	}
 
 	public boolean contains(NServer server) {
@@ -136,13 +136,13 @@ public class NwGroup implements NStackable {
 		return blockDim.getHeight();
 	}
 
-	private StyleSignatureBasic getStyleDefinition() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.nwdiagDiagram, SName.group);
+	private StyleQuery getStyleDefinition() {
+		return StyleQueries.NWDIAG_GROUP;
 	}
 
 	public void drawGroup(UGraphic ug, MinMax size, ISkinParam skinParam) {
 		final StyleBuilder styleBuilder = skinParam.getCurrentStyleBuilder();
-		final Style style = getStyleDefinition().getMergedStyle(styleBuilder);
+		final Style style = styleBuilder.getMergedStyle(getStyleDefinition());
 		final TextBlock block = buildHeaderName(skinParam);
 		if (block != null) {
 			final XDimension2D blockDim = block.calculateDimension(ug.getStringBounder());
@@ -167,7 +167,7 @@ public class NwGroup implements NStackable {
 			return null;
 
 		final StyleBuilder styleBuilder = skinParam.getCurrentStyleBuilder();
-		final Style style = getStyleDefinition().getMergedStyle(styleBuilder);
+		final Style style = styleBuilder.getMergedStyle(getStyleDefinition());
 		return Display.getWithNewlines(skinParam.getPragma(), getDescription())
 				.create(style.getFontConfiguration(skinParam.getIHtmlColorSet()), HorizontalAlignment.LEFT, skinParam);
 	}

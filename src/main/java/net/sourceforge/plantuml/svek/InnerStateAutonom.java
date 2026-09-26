@@ -45,7 +45,6 @@ import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
-import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
@@ -114,15 +113,16 @@ public final class InnerStateAutonom extends TextBlockMemoized implements IEntit
 		this.southBackcolor = this.northBackcolor;
 
 		if (this.northBackcolor == null) {
-			this.northBackcolor = EntityImageStateCommon.STYLE.addSName(SName.name)
-					.withTOBECHANGED(group.getStereotype()).getMergedStyle(styleBuilder).value(PName.BackGroundColor)
-					.asColor(colorSet);
-			this.centerBackColor = EntityImageStateCommon.STYLE.addSName(SName.description)
-					.withTOBECHANGED(group.getStereotype()).getMergedStyle(styleBuilder).value(PName.BackGroundColor)
-					.asColor(colorSet);
-			this.southBackcolor = EntityImageStateCommon.STYLE.addSName(SName.body)
-					.withTOBECHANGED(group.getStereotype()).getMergedStyle(styleBuilder).value(PName.BackGroundColor)
-					.asColor(colorSet);
+			this.northBackcolor = styleBuilder
+					.getMergedStyle(
+							EntityImageStateCommon.STYLE.add(SName.name).withStereotype(group.getStereotype()))
+					.value(PName.BackGroundColor).asColor(colorSet);
+			this.centerBackColor = styleBuilder.getMergedStyle(EntityImageStateCommon.STYLE.add(SName.description)
+					.withStereotype(group.getStereotype())).value(PName.BackGroundColor).asColor(colorSet);
+			this.southBackcolor = styleBuilder
+					.getMergedStyle(
+							EntityImageStateCommon.STYLE.add(SName.body).withStereotype(group.getStereotype()))
+					.value(PName.BackGroundColor).asColor(colorSet);
 		}
 
 	}

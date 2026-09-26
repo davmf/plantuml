@@ -58,26 +58,33 @@ import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.style.value.Specificity;
+import net.sourceforge.plantuml.style.value.Value;
+import net.sourceforge.plantuml.style.value.ValueColor;
+import net.sourceforge.plantuml.style.value.ValueImpl;
+import net.sourceforge.plantuml.style.value.ValueNull;
 
 public class Style {
 
-	private final Map<PName, Value> map;
-	private final StyleSignatureBasic signature;
+	public static final String STAR = "*";
 
-	public Style(StyleSignatureBasic signature, Map<PName, Value> map) {
+	private final Map<PName, Value> map;
+	private final StyleQuery query;
+
+	public Style(StyleQuery query, Map<PName, Value> map) {
 		this.map = map;
-		this.signature = signature;
+		this.query = query;
 	}
 
-	public Style deltaPriority(int delta) {
-		if (signature.isStarred() == false)
+	public Style withAncestorRank(int rank) {
+		if (query.getLevelConstraint().isStar() == false)
 			throw new UnsupportedOperationException();
 
 		final EnumMap<PName, Value> copy = new EnumMap<PName, Value>(PName.class);
 		for (Entry<PName, Value> ent : this.map.entrySet())
-			copy.put(ent.getKey(), ((ValueImpl) ent.getValue()).addPriority(delta));
+			copy.put(ent.getKey(), ((ValueImpl) ent.getValue()).withAncestorRank(rank));
 
-		return new Style(this.signature, copy);
+		return new Style(this.query, copy);
 
 	}
 
@@ -85,7 +92,7 @@ public class Style {
 		if (map.size() == 0)
 			return;
 
-		System.err.println(signature + " {");
+		System.err.println(query + " {");
 		for (Entry<PName, Value> ent : map.entrySet())
 			System.err.println("  " + ent.getKey() + ": " + ent.getValue().asString());
 
@@ -95,7 +102,7 @@ public class Style {
 
 	@Override
 	public String toString() {
-		return signature + " " + map;
+		return query + " " + map;
 	}
 
 	public Value value(PName name) {
@@ -125,13 +132,51 @@ public class Style {
 		final EnumMap<PName, Value> both = new EnumMap<PName, Value>(this.map);
 		for (Entry<PName, Value> ent : other.map.entrySet()) {
 			final Value previous = this.map.get(ent.getKey());
-			if (previous != null && previous.getPriority() > StyleLoader.DELTA_PRIORITY_FOR_STEREOTYPE
+			if (previous != null && previous.getSpecificity().hasStereotype()
 					&& strategy == MergeStrategy.KEEP_EXISTING_VALUE_OF_STEREOTYPE)
 				continue;
 			final PName key = ent.getKey();
 			both.put(key, ((ValueImpl) ent.getValue()).mergeWith(previous));
 		}
-		return new Style(this.signature.mergeWith(other.getSignature()), both);
+		return new Style(this.query.mergeWith(other.getQuery()), both);
+	}
+
+	/**
+	 * Layers a nested child selector's style (e.g. "group.header") on top of
+	 * this legacy/sibling style (e.g. flat "groupHeader"), WITHOUT letting
+	 * properties that "nested" only carries because they cascaded down from
+	 * its own parent selector (e.g. plain "group") overwrite this style's own
+	 * values.
+	 *
+	 * <p>
+	 * A style resolved for a nested signature such as [.., group, header]
+	 * inherits, via the normal style cascade, every rule that already applies
+	 * to its parent [.., group] -- that parent's own resolved style is exactly
+	 * that same cascade minus the (possibly absent) rule declared at the
+	 * nested path itself. So for any property the user never actually set
+	 * inside a "header { }" block, "nested"'s value is guaranteed identical to
+	 * "nestedParent"'s -- only a property genuinely declared at the nested
+	 * level can differ. Filtering on that difference isolates exactly the
+	 * header-specific overrides before merging them onto this style, so a
+	 * property this style already defines independently (like a legacy
+	 * "groupHeader" border thickness) is left alone unless "header {}" itself
+	 * says otherwise.
+	 */
+	public Style mergeNestedChildOver(Style nested, Style nestedParent, MergeStrategy strategy) {
+		if (nested == null)
+			return this;
+
+		final EnumMap<PName, Value> divergentOnly = new EnumMap<PName, Value>(PName.class);
+		for (Entry<PName, Value> ent : nested.map.entrySet()) {
+			final Value ancestorValue = nestedParent == null ? null : nestedParent.map.get(ent.getKey());
+			if (ancestorValue == null || ancestorValue.asString().equals(ent.getValue().asString()) == false)
+				divergentOnly.put(ent.getKey(), ent.getValue());
+		}
+
+		if (divergentOnly.isEmpty())
+			return this;
+
+		return this.mergeWith(new Style(nested.query, divergentOnly), strategy);
 	}
 
 	public Style eventuallyOverride(PName param, HColor color) {
@@ -140,8 +185,8 @@ public class Style {
 
 		final EnumMap<PName, Value> result = new EnumMap<PName, Value>(this.map);
 		final Value old = result.get(param);
-		result.put(param, new ValueColor(color, old.getPriority()));
-		return new Style(this.signature, result);
+		result.put(param, new ValueColor(color, old.getSpecificity()));
+		return new Style(this.query, result);
 	}
 
 	public Style eventuallyOverride(PName param, double value) {
@@ -150,8 +195,8 @@ public class Style {
 
 	public Style eventuallyOverride(PName param, String value) {
 		final EnumMap<PName, Value> result = new EnumMap<PName, Value>(this.map);
-		result.put(param, ValueImpl.regular(value, Integer.MAX_VALUE));
-		return new Style(this.signature, result);
+		result.put(param, ValueImpl.regular(value, Specificity.forcedOverride()));
+		return new Style(this.query, result);
 	}
 
 	public Style eventuallyOverride(Colors colors) {
@@ -184,8 +229,8 @@ public class Style {
 		return result;
 	}
 
-	public StyleSignatureBasic getSignature() {
-		return signature;
+	public StyleQuery getQuery() {
+		return query;
 	}
 
 	/**
@@ -202,7 +247,7 @@ public class Style {
 	 */
 	public UFont getUFont() {
 		final String fontName = value(PName.FontName).asString();
-		int size = value(PName.FontSize).asInt(true);
+		int size = value(PName.FontSize).asIntButMinusOneIfError();
 		if (size == -1)
 			size = 14;
 
@@ -323,7 +368,7 @@ public class Style {
 		final HColor backgroundColor = this.value(PName.BackGroundColor).asColor(set);
 		final HColor lineColor = this.value(PName.LineColor).asColor(set);
 		final UStroke stroke = this.getStroke();
-		final int cornersize = this.value(PName.RoundCorner).asInt(false);
+		final int cornersize = this.value(PName.RoundCorner).asInt();
 		final ClockwiseTopRightBottomLeft margin = this.getMargin();
 		final ClockwiseTopRightBottomLeft padding = this.getPadding();
 		final TextBlock result = TextBlockUtils.bordered(textBlock, stroke, lineColor, backgroundColor, cornersize,

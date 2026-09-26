@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.sequencediagram;
 
+
 import net.sourceforge.plantuml.activitydiagram3.ftile.Snake;
 import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -46,9 +47,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.sequencediagram.teoz.CommonTile;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class LinkAnchor {
 
@@ -95,9 +96,8 @@ public class LinkAnchor {
 		final double ymin = Math.min(y1, y2);
 		final double ymax = Math.max(y1, y2);
 
-		final StyleSignatureBasic signature = StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram,
-				SName.arrow);
-		final Style style = signature.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final StyleQuery signature = StyleQueries.SEQUENCEDIAG_ARROW;
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(signature);
 
 		final HColor color = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 		final FontConfiguration fontConfiguration = FontConfiguration.create(skinParam, style);

@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.regex.IRegex;
@@ -46,6 +49,9 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandSkinParam extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"skinparam", "skinparamlocked");
 
 	public static final CommandSkinParam ME = new CommandSkinParam();
 
@@ -90,13 +96,15 @@ public class CommandSkinParam extends SingleLineCommand2<TitledDiagram> {
 		try {
 			final String name = arg.get("NAME", 0);
 			if ("handwritten".equalsIgnoreCase(name))
-				diagram.addWarning(new Warning("Please use '!option handwritten true' to enable handwritten "));
+				diagram.addWarning(new Warning("'skinparam handwritten' is deprecated: write '!option handwritten "
+						+ arg.get("VALUE", 0) + "' instead"));
 
 			if ("ParticipantPadding".equalsIgnoreCase(name))
-				diagram.addWarning(new Warning("Please use CSS style instead of skinparam ParticipantPadding"));
+				diagram.addWarning(new Warning("'skinparam ParticipantPadding' is ignored: use a style instead",
+						"<style>", "participant {", "  Padding " + arg.get("VALUE", 0), "}", "</style>"));
 
-			if ("padding".equalsIgnoreCase(name))
-				diagram.addWarning(new Warning("Please use CSS style instead of skinparam padding"));
+//			if ("padding".equalsIgnoreCase(name))
+//				diagram.addWarning(new Warning("Please use CSS style instead of skinparam padding"));
 
 			diagram.setParam(name, arg.get("VALUE", 0));
 			diagram.setSkinParamUsed(true);
@@ -107,6 +115,11 @@ public class CommandSkinParam extends SingleLineCommand2<TitledDiagram> {
 			return CommandExecutionResult.error("General failure: no style available.");
 		}
 
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

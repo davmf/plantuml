@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import net.sourceforge.plantuml.klimt.font.UFontFace;
+import net.sourceforge.plantuml.style.value.Specificity;
+import net.sourceforge.plantuml.style.value.ValueImpl;
+import net.sourceforge.plantuml.style.value.ValueNull;
 
 /**
  * Unit tests for {@link ValueImpl#asFontFace()} and
@@ -16,7 +19,7 @@ import net.sourceforge.plantuml.klimt.font.UFontFace;
 class ValueImplFontFaceTest {
 
 	private static ValueImpl value(String s) {
-		return ValueImpl.regular(s, 0);
+		return ValueImpl.regular(s, Specificity.atOrder(0));
 	}
 
 	// -----------------------------------------------------------------------

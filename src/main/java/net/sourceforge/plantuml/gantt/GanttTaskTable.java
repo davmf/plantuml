@@ -58,9 +58,8 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.sprite.SpriteContainerEmpty;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 
 /**
  * Draws, on the left side of a Gantt diagram, a textual table giving for each
@@ -195,8 +194,8 @@ public final class GanttTaskTable {
 	}
 
 	private Style getStyle() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.ganttDiagram, SName.timeline)
-				.getMergedStyle(timelineStyle.getSkinParam().getCurrentStyleBuilder());
+		return timelineStyle.getSkinParam().getCurrentStyleBuilder().getMergedStyle(
+				StyleQueries.GANTTDIAG_TIMELINE);
 	}
 
 	private FontConfiguration getFontConfiguration() {

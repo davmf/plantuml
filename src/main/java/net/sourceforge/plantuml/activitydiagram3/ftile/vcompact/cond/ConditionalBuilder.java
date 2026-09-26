@@ -67,9 +67,9 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.ConditionEndStyle;
 import net.sourceforge.plantuml.svek.ConditionStyle;
 import net.sourceforge.plantuml.url.Url;
@@ -98,12 +98,12 @@ public class ConditionalBuilder {
 	private final Collection<PositionedNote> notes;
 	private final Style styleDiamond;
 
-	private StyleSignatureBasic getStyleSignatureDiamond() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
+	private StyleQuery getStyleSignatureDiamond() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY_DIAMOND;
 	}
 
-	private StyleSignatureBasic getStyleSignatureArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	private StyleQuery getStyleSignatureArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 	public ConditionalBuilder(Swimlane swimlane, HColor backColor, FtileFactory ftileFactory,
@@ -243,7 +243,7 @@ public class ConditionalBuilder {
 				.createSheet(labelTest);
 		final SheetBlock1 sheetBlock1 = new SheetBlock1(sheet, diamondLineBreak, skinParam.getPadding());
 
-		final UStroke thickness = getStyleSignatureDiamond().getMergedStyle(skinParam.getCurrentStyleBuilder())
+		final UStroke thickness = skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleSignatureDiamond())
 				.getStroke();
 		final TextBlock tbTest = new SheetBlock2(sheetBlock1, Hexagon.asStencil(sheetBlock1), thickness);
 

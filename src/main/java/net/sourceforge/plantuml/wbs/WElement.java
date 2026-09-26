@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.wbs;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.annotation.DuplicateCode;
@@ -52,11 +51,12 @@ import net.sourceforge.plantuml.skin.SkinParamColors;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.MergeStrategy;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.utils.Direction;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 final public class WElement {
 
@@ -73,31 +73,23 @@ final public class WElement {
 	private XDimension2D dimension;
 
 	@DuplicateCode(reference = "Idea")
-	private StyleSignatureBasic getDefaultStyleDefinitionNode(int level) {
+	private StyleQuery getDefaultStyleDefinitionNode(int level) {
 		if (level == 0)
 			if (shape == IdeaShape.NONE)
-				return StyleSignatureBasic
-						.of(SName.root, SName.element, SName.wbsDiagram, SName.node, SName.rootNode, SName.boxless)
-						.addStereotype(stereotype).addLevel(level);
+				return StyleQueries.WBSDIAG_NODE_ROOT_BOXLESS.withStereotype(stereotype).addLevel(level);
 			else
-				return StyleSignatureBasic.of(SName.root, SName.element, SName.wbsDiagram, SName.node, SName.rootNode)
-						.addStereotype(stereotype).addLevel(level);
+				return StyleQueries.WBSDIAG_NODE_ROOT.withStereotype(stereotype).addLevel(level);
 
 		if (shape == IdeaShape.NONE && isLeaf())
-			return StyleSignatureBasic
-					.of(SName.root, SName.element, SName.wbsDiagram, SName.node, SName.leafNode, SName.boxless)
-					.addStereotype(stereotype).addLevel(level);
+			return StyleQueries.WBSDIAG_NODE_LEAF_BOXLESS.withStereotype(stereotype).addLevel(level);
 
 		if (isLeaf())
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.wbsDiagram, SName.node, SName.leafNode)
-					.addStereotype(stereotype).addLevel(level);
+			return StyleQueries.WBSDIAG_NODE_LEAF.withStereotype(stereotype).addLevel(level);
 
 		if (shape == IdeaShape.NONE)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.wbsDiagram, SName.node, SName.boxless)
-					.addStereotype(stereotype).addLevel(level);
+			return StyleQueries.WBSDIAG_NODE_BOXLESS.withStereotype(stereotype).addLevel(level);
 
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.wbsDiagram, SName.node).addStereotype(stereotype)
-				.addLevel(level);
+		return StyleQueries.WBSDIAG_NODE.withStereotype(stereotype).addLevel(level);
 	}
 
 	public ISkinParam withBackColor(ISkinParam skinParam) {
@@ -107,15 +99,20 @@ final public class WElement {
 		return new SkinParamColors(skinParam, Colors.empty().add(ColorType.BACK, backColor));
 	}
 
-	public static final int STEP_BY_PARENT = 1000_1000;
-
+	/**
+	 * Resolves this element's style, cascading down from ancestors' starred ("{@code * }")
+	 * declarations. A nearer ancestor's matching declaration always beats a farther ancestor's --
+	 * see {@link net.sourceforge.plantuml.style.value.Specificity}'s own javadoc for why each cascade
+	 * step is simply one strictly-decreasing rank (0 at this element's own level) rather than a
+	 * magnitude-multiplied constant.
+	 */
 	public Style getStyle() {
-		int deltaPriority = STEP_BY_PARENT * 1000;
-		Style result = styleBuilder.getMergedStyleSpecial(getDefaultStyleDefinitionNode(level), deltaPriority);
+		int ancestorRank = 0;
+		Style result = styleBuilder.getMergedStyleSpecial(getDefaultStyleDefinitionNode(level), ancestorRank);
 		for (WElement up = parent; up != null; up = up.parent) {
-			final StyleSignatureBasic ss = up.getDefaultStyleDefinitionNode(level).addStar();
-			deltaPriority -= STEP_BY_PARENT;
-			final Style styleParent = styleBuilder.getMergedStyleSpecial(ss, deltaPriority);
+			final StyleQuery ss = up.getDefaultStyleDefinitionNode(level).addStar();
+			ancestorRank--;
+			final Style styleParent = styleBuilder.getMergedStyleSpecial(ss, ancestorRank);
 			result = result.mergeWith(styleParent, MergeStrategy.OVERWRITE_EXISTING_VALUE);
 		}
 		return result;
@@ -169,8 +166,8 @@ final public class WElement {
 
 	public Collection<WElement> getChildren(Direction direction) {
 		if (direction == Direction.LEFT)
-			return Collections.unmodifiableList(childrenLeft);
-		return Collections.unmodifiableList(childrenRight);
+			return MyCollections.unmodifiableList(childrenLeft);
+		return MyCollections.unmodifiableList(childrenRight);
 	}
 
 	public WElement getParent() {

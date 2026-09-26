@@ -36,7 +36,10 @@
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -89,12 +92,41 @@ public class NoteTile extends AbstractTile implements Tile {
 		// getContactPointRelative below), mirroring how the legacy TileParallel
 		// aligned notes against message arrows by their respective
 		// contact points.
+		//
+		// EXCEPT when this note's own footprint was already claimed by an
+		// earlier note in the same "&" run (e.g. "note over A & note over A"):
+		// contact-point alignment centers both on the very same line, which,
+		// since they occupy the same side of the same participant, means the
+		// same X footprint too -- i.e. they would be drawn directly on top of
+		// one another. In that case fall back to createPropagating(): it
+		// stacks this note below everything drawn so far in the run (like a
+		// LifeEventTile passing through the run without joining the alignment
+		// itself) while still forwarding the run's contact/origin, so a LATER
+		// sibling on a genuinely different footprint still aligns against the
+		// original line (see issue #2883's follow-up: notes on different
+		// participants were fixed there, same-participant notes were an
+		// explicit out-of-scope limitation, closed here).
+		//
+		// The footprint key is (participant, position), not just the
+		// participant: "note left of U" and "note right of U" both resolve to
+		// livingSpace1 == U, but extend away from U in opposite directions and
+		// never actually overlap -- only two notes on the very same side (or
+		// both plain OVER) do.
 		final double contactRelative = getContactPointRelative();
 		final double height = getPreferredHeight();
-		if (note.isParallel())
-			this.yGauge = YGauge.createParallel(currentY, contactRelative, height);
-		else
-			this.yGauge = YGauge.createWithContact(currentY, contactRelative, height);
+		final Object footprint = Arrays.asList(livingSpace1, note.getPosition());
+		final Set<Object> anchorsInRun = currentY.getNoteAnchorsInRun();
+		if (note.isParallel() && anchorsInRun != null && anchorsInRun.contains(footprint)) {
+			this.yGauge = YGauge.createPropagating(currentY, height).withNoteAnchorsInRun(anchorsInRun);
+		} else if (note.isParallel()) {
+			final Set<Object> grown = anchorsInRun == null ? new HashSet<Object>() : new HashSet<>(anchorsInRun);
+			grown.add(footprint);
+			this.yGauge = YGauge.createParallel(currentY, contactRelative, height).withNoteAnchorsInRun(grown);
+		} else {
+			final Set<Object> fresh = new HashSet<>();
+			fresh.add(footprint);
+			this.yGauge = YGauge.createWithContact(currentY, contactRelative, height).withNoteAnchorsInRun(fresh);
+		}
 	}
 
 	@Override
@@ -102,10 +134,16 @@ public class NoteTile extends AbstractTile implements Tile {
 		return yGauge;
 	}
 
+	// The component only depends on the tile's fixed data, not on the string
+	// bounder, but it was rebuilt on every call from every layout phase
+	private Component cachedComponent;
+
 	private Component getComponent(StringBounder stringBounder) {
-		final Component comp = skin.createComponentNote(note.getUsedStyles(), getNoteComponentType(note.getNoteStyle()),
-				note.getSkinParamBackcolored(skinParam), note.getDisplay(), note.getColors(), note.getPosition());
-		return comp;
+		if (cachedComponent == null)
+			cachedComponent = skin.createComponentNote(note.getUsedStyles(),
+					getNoteComponentType(note.getNoteStyle()), note.getSkinParamBackcolored(skinParam),
+					note.getDisplay(), note.getColors(), note.getPosition());
+		return cachedComponent;
 	}
 
 	protected static ComponentType getNoteComponentType(NoteStyle noteStyle) {
@@ -250,6 +288,21 @@ public class NoteTile extends AbstractTile implements Tile {
 		result.add(getX(getStringBounder()).addFixed(getUsedWidth(getStringBounder())));
 		if (note.getPosition() == NotePosition.OVER_SEVERAL)
 			result.add(livingSpace2.getPosD(getStringBounder()));
+
+		return result;
+	}
+
+	// Left-side mirror of getStableMaxX(): the left edges this note is built
+	// on, each safe to hand to Real.ensureBiggerThan() for the same reason --
+	// getMinX() itself composes a RealUtils.min() under OVER_SEVERAL, which
+	// caches its resolved value the first time it is read (see the note on
+	// GroupingTile.ensureFollowingParticipantClearsFrame()), so that case is
+	// split back into its two plain halves here too.
+	List<Real> getStableMinX() {
+		final List<Real> result = new ArrayList<>();
+		result.add(getX(getStringBounder()));
+		if (note.getPosition() == NotePosition.OVER_SEVERAL)
+			result.add(livingSpace1.getPosB(getStringBounder()));
 
 		return result;
 	}

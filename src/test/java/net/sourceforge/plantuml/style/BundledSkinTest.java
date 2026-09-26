@@ -40,7 +40,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -140,7 +139,7 @@ class BundledSkinTest {
 	void bundledSkinLoads(String filename) throws Exception {
 		final StyleBuilder builder = StyleLoader.loadSkin(filename);
 		assertNotNull(builder);
-		assertNotNull(builder.getMergedStyle(StyleSignatureBasic.of(SName.root)));
+		assertNotNull(builder.getMergedStyle(StyleQuery.of3(SName.root)));
 	}
 
 	// -----------------------------------------------------------------------

@@ -45,7 +45,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +54,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import net.sourceforge.plantuml.FileUtils;
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.json.Json;
 import net.sourceforge.plantuml.json.JsonValue;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
@@ -64,8 +64,8 @@ import net.sourceforge.plantuml.preproc.spm.SpmChannel;
 import net.sourceforge.plantuml.svg.parser.ISvgSpriteParser;
 import net.sourceforge.plantuml.svg.parser.SvgSpriteParserFactory;
 import net.sourceforge.plantuml.teavm.TeaVM;
-import net.sourceforge.plantuml.teavm.browser.BrowserLog;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class Stdlib {
 
@@ -281,7 +281,7 @@ public class Stdlib {
 //		final List<String> result = new ArrayList<>();
 //		final DataInputStream dataStream = getDataStream();
 //		if (dataStream == null)
-//			return Collections.unmodifiableList(result);
+//			return MyCollections.unmodifiableList(result);
 //
 //		dataStream.readUTF();
 //		final InputStream spriteStream = getSpriteStream();
@@ -289,7 +289,7 @@ public class Stdlib {
 //			while (true) {
 //				final String filename = dataStream.readUTF();
 //				if (filename.equals(SEPARATOR))
-//					return Collections.unmodifiableList(result);
+//					return MyCollections.unmodifiableList(result);
 //
 //				while (true) {
 //					final String s = dataStream.readUTF();
@@ -351,7 +351,7 @@ public class Stdlib {
 	}
 
 	public Map<String, String> getMetadata() {
-		return Collections.unmodifiableMap(info);
+		return MyCollections.unmodifiableMap(info);
 
 	}
 
@@ -436,7 +436,7 @@ public class Stdlib {
 	}
 
 	public InputStream newInputStream(Path path) throws IOException {
-		final String pathString = path.toString().toLowerCase().replace(".puml", "").replace('\\', '/');
+		final String pathString = StringUtils.replaceChar(path.toString().toLowerCase().replace(".puml", ""), '\\', '/');
 		final byte[] data = loadPumlResource(pathString);
 		return new ByteArrayInputStream(data);
 	}

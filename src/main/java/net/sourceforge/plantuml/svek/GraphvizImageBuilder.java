@@ -80,8 +80,8 @@ import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.image.EntityImageClass;
 import net.sourceforge.plantuml.svek.image.EntityImageNote;
 import net.sourceforge.plantuml.teavm.TeaVM;
@@ -113,19 +113,18 @@ public final class GraphvizImageBuilder {
 
 	}
 
-	final public StyleSignature getDefaultStyleDefinitionArrow(Stereotype stereotype) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, styleName, SName.arrow);
+	final public StyleQuery getDefaultStyleDefinitionArrow(Stereotype stereotype) {
+		StyleQuery result = StyleQueries.ARROW.add(styleName);
 		if (stereotype != null)
-			result = result.withTOBECHANGED(stereotype);
+			result = result.withStereotype(stereotype);
 
 		return result;
 	}
 
-	final public StyleSignature getStyleArrowCardinality(Stereotype stereotype) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, styleName, SName.arrow,
-				SName.cardinality);
+	final public StyleQuery getStyleArrowCardinality(Stereotype stereotype) {
+		StyleQuery result = StyleQueries.ARROW_CARDINALITY.add(styleName);
 		if (stereotype != null)
-			result = result.withTOBECHANGED(stereotype);
+			result = result.withStereotype(stereotype);
 
 		return result;
 	}
@@ -201,8 +200,8 @@ public final class GraphvizImageBuilder {
 
 	// Duplicate SvekResult / GeneralImageBuilder
 	private HColor getBackcolor() {
-		final Style style = StyleSignatureBasic.of(SName.root, SName.document)
-				.getMergedStyle(dotData.getSkinParam().getCurrentStyleBuilder());
+		final Style style = dotData.getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.DOCUMENT);
 		return style.value(PName.BackGroundColor).asColor(dotData.getSkinParam().getIHtmlColorSet());
 	}
 
@@ -230,12 +229,24 @@ public final class GraphvizImageBuilder {
 			if (link.isRemoved())
 				continue;
 
+			if (link.getRole1() != null || link.getRole2() != null)
+				SvekEdge.reserveRoomForRoles(link, dotData.getSkinParam(), stringBounder,
+						link.getStyleBuilder().getMergedStyle(getStyleArrowCardinality(link.getStereotype()))
+								.getFontConfiguration(dotData.getSkinParam().getIHtmlColorSet()));
+		}
+
+		for (Link link : dotData.getLinks()) {
+			if (link.isRemoved())
+				continue;
+
 			try {
 				final ISkinParam skinParam = dotData.getSkinParam();
-				final FontConfiguration labelFont = getDefaultStyleDefinitionArrow(link.getStereotype())
-						.getMergedStyle(link.getStyleBuilder()).getFontConfiguration(skinParam.getIHtmlColorSet());
-				final FontConfiguration cardinalityFont = getStyleArrowCardinality(link.getStereotype())
-						.getMergedStyle(link.getStyleBuilder()).getFontConfiguration(skinParam.getIHtmlColorSet());
+				final FontConfiguration labelFont = link.getStyleBuilder()
+						.getMergedStyle(getDefaultStyleDefinitionArrow(link.getStereotype()))
+						.getFontConfiguration(skinParam.getIHtmlColorSet());
+				final FontConfiguration cardinalityFont = link.getStyleBuilder()
+						.getMergedStyle(getStyleArrowCardinality(link.getStereotype()))
+						.getFontConfiguration(skinParam.getIHtmlColorSet());
 
 				final SvekEdge line = new SvekEdge(link, skinParam, stringBounder, labelFont, cardinalityFont,
 						dotStringFactory.getBibliotekon(), pragma, dotStringFactory.getGraphvizVersion());

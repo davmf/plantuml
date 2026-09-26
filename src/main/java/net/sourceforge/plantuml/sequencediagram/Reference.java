@@ -36,18 +36,20 @@
 package net.sourceforge.plantuml.sequencediagram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import net.sourceforge.plantuml.StringUtils;
 
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.style.MergeStrategy;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.warning.Warning;
 
 public class Reference extends AbstractEvent implements EventWithNote {
@@ -62,12 +64,37 @@ public class Reference extends AbstractEvent implements EventWithNote {
 	final private Style style;
 	final private Style styleHeader;
 
-	public StyleSignatureBasic getDefaultStyleDefinition() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.reference);
+	private StyleQuery getDefaultStyleDefinition() {
+		return StyleQueries.SEQUENCEDIAG_REFERENCE;
 	}
 
-	private StyleSignatureBasic getHeaderStyleDefinition() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.referenceHeader);
+	private StyleQuery getHeaderStyleDefinition() {
+		return StyleQueries.SEQUENCEDIAG_REFERENCEHEADER;
+	}
+
+	// The nested counterpart of the legacy flat "referenceHeader" above, added
+	// for consistency with the dedicated "partition { header {...} }" selector
+	// (#2679): `sequenceDiagram { reference { header {...} } }`. Kept as a
+	// plain override layered on top of the flat style (see
+	// computeStyleHeader()) rather than a replacement, so every existing
+	// diagram styling `referenceHeader` directly keeps working unchanged: only
+	// diagrams that opt into the new nested form are affected.
+	private StyleQuery getNestedHeaderStyleDefinition() {
+		return StyleQueries.SEQUENCEDIAG_REFERENCE_HEADER;
+	}
+
+	private Style computeStyleHeader(StyleBuilder styleBuilder) {
+		final Style flat = styleBuilder.getMergedStyle(getHeaderStyleDefinition());
+		// "style" (this.style, already assigned above in the constructor) is the
+		// plain "reference" style -- the exact ancestor "nested" cascades from,
+		// so mergeNestedChildOver() can isolate what header{} itself actually
+		// sets (see Style.mergeNestedChildOver()'s javadoc for why this
+		// filtering is needed at all).
+		final Style nested = styleBuilder.getMergedStyle(getNestedHeaderStyleDefinition());
+		if (flat == null)
+			return nested;
+
+		return flat.mergeNestedChildOver(nested, style, MergeStrategy.OVERWRITE_EXISTING_VALUE);
 	}
 
 	public Style[] getUsedStyles() {
@@ -82,8 +109,8 @@ public class Reference extends AbstractEvent implements EventWithNote {
 		this.strings = strings;
 		this.backColorGeneral = backColorGeneral;
 		this.backColorElement = backColorElement;
-		this.style = getDefaultStyleDefinition().getMergedStyle(styleBuilder);
-		this.styleHeader = getHeaderStyleDefinition().getMergedStyle(styleBuilder);
+		this.style = styleBuilder.getMergedStyle(getDefaultStyleDefinition());
+		this.styleHeader = computeStyleHeader(styleBuilder);
 	}
 
 	static private List<Participant> uniq(List<Participant> all) {
@@ -91,7 +118,7 @@ public class Reference extends AbstractEvent implements EventWithNote {
 		for (Participant p : all)
 			if (result.contains(p) == false)
 				result.add(p);
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public List<Participant> getParticipant() {
@@ -139,7 +166,8 @@ public class Reference extends AbstractEvent implements EventWithNote {
 	@Override
 	public final Warning addNote(Note note) {
 		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT)
-			return new Warning("This position is ignored: " + note.getPosition());
+			return new Warning("'note " + StringUtils.goLowerCase(note.getPosition().name())
+					+ "' is not supported on a 'ref': this note is ignored. Use 'note left' or 'note right'");
 
 		this.noteOnMessages.add(note);
 		return null;

@@ -50,7 +50,7 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public abstract class AbstractComponent implements Component {
 
@@ -58,7 +58,8 @@ public abstract class AbstractComponent implements Component {
 		throw new UnsupportedOperationException();
 	}
 
-	public StyleSignatureBasic getStyleSignature() {
+	@Override
+	public StyleQuery getStyleQuery() {
 		throw new UnsupportedOperationException();
 	}
 
@@ -107,11 +108,11 @@ public abstract class AbstractComponent implements Component {
 	}
 
 	protected final double getRoundCorner() {
-		return style.value(PName.RoundCorner).asInt(false);
+		return style.value(PName.RoundCorner).asInt();
 	}
 
 	protected final double getDiagonalCorner() {
-		return style.value(PName.DiagonalCorner).asInt(false);
+		return style.value(PName.DiagonalCorner).asInt();
 	}	
 
 	protected final UStroke getStroke() {

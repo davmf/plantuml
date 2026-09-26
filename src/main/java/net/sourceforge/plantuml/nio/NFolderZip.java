@@ -40,6 +40,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
+import net.sourceforge.plantuml.StringUtils;
 
 /**
  * A virtual folder representing a location inside a ZIP archive.
@@ -72,6 +76,27 @@ public final class NFolderZip implements NFolder {
 		return new InputFileZip(zipFile, entry);
 	}
 
+	/**
+	 * Tells whether the given path designates an existing file (not a directory)
+	 * inside the archive. Unlike {@link #getInputFile(Path)}, which always returns
+	 * an {@link InputFile} that fails when read, this is a plain existence check,
+	 * usable when the archive is only one of several places to search.
+	 */
+	public boolean contains(Path nameOrPath) throws IOException {
+		Objects.requireNonNull(nameOrPath);
+		final String entry = toZipEntryName(nameOrPath);
+		if (entry.isEmpty() || zipFile.canRead() == false)
+			return false;
+
+		try (ZipFile zf = new ZipFile(zipFile)) {
+			final ZipEntry ze = zf.getEntry(entry);
+			return ze != null && ze.isDirectory() == false;
+		} catch (ZipException e) {
+			// Not a valid archive
+			return false;
+		}
+	}
+
 	@Override
 	public NFolder getSubfolder(Path nameOrPath) throws IOException {
 		Objects.requireNonNull(nameOrPath);
@@ -82,7 +107,7 @@ public final class NFolderZip implements NFolder {
 
 	@Override
 	public String toString() {
-		final String prefix = pathInsideZip.toString().replace('\\', '/');
+		final String prefix = StringUtils.replaceChar(pathInsideZip.toString(), '\\', '/');
 		return zipFile.getName() + "!" + prefix;
 	}
 
@@ -92,7 +117,7 @@ public final class NFolderZip implements NFolder {
 	 */
 	private String toZipEntryName(Path child) {
 		final Path resolved = child.isAbsolute() ? child.normalize() : pathInsideZip.resolve(child).normalize();
-		String s = resolved.toString().replace('\\', '/');
+		String s = StringUtils.replaceChar(resolved.toString(), '\\', '/');
 		while (s.startsWith("/"))
 			s = s.substring(1);
 

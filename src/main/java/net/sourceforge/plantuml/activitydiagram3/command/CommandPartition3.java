@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.FtileGroup;
@@ -63,6 +66,9 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandPartition3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"card", "group", "package", "partition", "rectangle");
 
 	public CommandPartition3() {
 		super(getRegexConcat());
@@ -153,13 +159,12 @@ public class CommandPartition3 extends SingleLineCommand2<ActivityDiagram3> {
 
 		final boolean hasBracket = arg.get("BRACKET", 0).length() > 0;
 		if (hasBracket == false)
-			diagram.addWarning(
-					new Warning("You should use a bracket ({) when defining your container '" + type + "' " + name));
+			diagram.addWarning(new Warning("Missing '{': write '" + rebuildWithBracket(arg) + "' and close it with '}'"));
 
 		// Warning : titleColor unused in FTileGroupW
 
-		final Style stylePartition = FtileGroup.getStyleSignature(symbol).withTOBECHANGED(stereotype)
-				.getMergedStyle(diagram.getSkinParam().getCurrentStyleBuilder());
+		final Style stylePartition = diagram.getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(FtileGroup.getStyleQuery(symbol).withStereotype(stereotype));
 		HColor backColor = colors.getColor(ColorType.BACK);
 		if (backColor == null)
 			backColor = stylePartition.value(PName.BackGroundColor).asColor(diagram.getSkinParam().getIHtmlColorSet());
@@ -167,6 +172,23 @@ public class CommandPartition3 extends SingleLineCommand2<ActivityDiagram3> {
 		diagram.startGroup(Display.getWithNewlines(diagram.getPragma(), name), backColor, symbol, stylePartition);
 
 		return CommandExecutionResult.ok();
+	}
+
+	private static String rebuildWithBracket(RegexResult arg) {
+		final StringBuilder sb = new StringBuilder(arg.get("TYPE", 0));
+		if (arg.get("BACK1", 0) != null)
+			sb.append(" ").append(arg.get("BACK1", 0));
+		sb.append(" ").append(arg.get("NAME", 0));
+		if (arg.get("BACK2", 0) != null)
+			sb.append(" ").append(arg.get("BACK2", 0));
+		if (arg.get("STEREO", 0) != null)
+			sb.append(" ").append(arg.get("STEREO", 0));
+		return sb.append(" {").toString();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

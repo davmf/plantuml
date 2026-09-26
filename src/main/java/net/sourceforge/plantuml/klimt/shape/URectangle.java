@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.klimt.UShapeKind;
 import net.sourceforge.plantuml.klimt.AbstractShadowable;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UClip;
@@ -78,6 +79,8 @@ public class URectangle extends AbstractShadowable implements UShapeSized, UShap
 	}
 
 	public URectangle rounded(double round) {
+		if (round == 0 && rx == 0 && ry == 0)
+			return this;
 		return new URectangle(width, height, round, round, comment, ignoreForCompressionOnX, ignoreForCompressionOnY,
 				codeLine);
 	}
@@ -212,6 +215,11 @@ public class URectangle extends AbstractShadowable implements UShapeSized, UShap
 			return ignoreForCompressionOnY;
 
 		throw new IllegalArgumentException();
+	}
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.RECTANGLE;
 	}
 
 }

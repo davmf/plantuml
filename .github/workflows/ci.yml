@@ -1,9 +1,9 @@
 name: CI
 
 on:
+  # Note: the `create` event does not support filters (it fires for every
+  # branch or tag creation); .github/scripts/workflow-config.sh checks ref_type.
   create:
-    tags:
-      - '*'
   pull_request:
     types: [ opened, synchronize, reopened ]
     branches: [ master ]
@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up JDK 8 (Temurin)
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '8'
@@ -58,7 +58,7 @@ jobs:
             echo "::error::Unexpected exit code (expected 16, got $CODE)"
             exit 1
           fi
-        
+
       - name: Upload plantuml.jar
         if: always()
         uses: actions/upload-artifact@v7
@@ -66,8 +66,8 @@ jobs:
           name: plantuml-jdk8-jar
           path: plantuml.jar
           if-no-files-found: error
-          retention-days: 30 
-                 
+          retention-days: 30
+
       - name: Run sample diagram test (ASCII)
         run: |
           echo "Alice -> Bob : it works!" | java -jar plantuml.jar -pipe -ttxt
@@ -112,7 +112,7 @@ jobs:
 
       - name: Set up java
         if: needs.workflow_config.outputs.do_test_linux == 'true'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ matrix.java_version }}
           distribution: temurin
@@ -155,7 +155,7 @@ jobs:
           retention-days: 30
 
       - name: Add Gradle title to Summary
-        run: echo "## Gradle" >> $GITHUB_STEP_SUMMARY
+        run: echo "## Gradle" >> "$GITHUB_STEP_SUMMARY"
 
   build_artifacts:
     needs: [ workflow_config ]
@@ -166,7 +166,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v7
       - name: Set up java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: 21
           distribution: temurin
@@ -205,7 +205,7 @@ jobs:
       - name: Get release version
         id: version
         run: |
-          echo "release_version=$(gradle properties -q | grep "version:" | awk '{print $2}')" >> $GITHUB_OUTPUT
+          echo "release_version=$(gradle properties -q | grep "version:" | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - name: Cache libs
         uses: actions/cache/save@v6
         with:
@@ -250,7 +250,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: 21
           distribution: temurin
@@ -301,7 +301,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: 21
           distribution: temurin
@@ -546,6 +546,8 @@ jobs:
         run: |
           # Build the multi-arch manifest for each image name (Docker Hub + GHCR).
           for image in "${{ github.repository }}" "ghcr.io/${{ github.repository }}"; do
+            # Word splitting of the two $(...) below is intended
+            # shellcheck disable=SC2046
             docker buildx imagetools create \
               $(jq -cr '.tags | map(select(startswith("'"$image"'")) | "-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
               $(printf "${image}@sha256:%s " *)
@@ -567,6 +569,12 @@ jobs:
     needs: [ workflow_config, jdk8 ]
     if: needs.workflow_config.outputs.do_release == 'true'
     uses: ./.github/workflows/native-image-release.yml
+    secrets: inherit
+
+  build_for_sonar:
+    needs: [ workflow_config ]
+    if: needs.workflow_config.outputs.do_release == 'true'
+    uses: ./.github/workflows/build-for-sonar.yml
     secrets: inherit
 
   trigger_plantuml_eclipse_release:

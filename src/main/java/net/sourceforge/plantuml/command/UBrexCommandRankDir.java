@@ -34,6 +34,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 import com.plantuml.ubrex.builder.UBrexConcat;
 import com.plantuml.ubrex.builder.UBrexLeaf;
@@ -48,6 +51,8 @@ import net.sourceforge.plantuml.skin.SkinParam;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class UBrexCommandRankDir extends UBrexSingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("left", "top");
 
 	public UBrexCommandRankDir() {
 		super(getRegexConcat());
@@ -72,10 +77,21 @@ public class UBrexCommandRankDir extends UBrexSingleLineCommand2<TitledDiagram> 
 
 	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
-		final String s = StringUtils.goUpperCase(arg.get("DIRECTION", 0)).replace(' ', '_');
+		final String s = StringUtils.replaceChar(StringUtils.goUpperCase(arg.get("DIRECTION", 0)), ' ', '_');
 		((SkinParam) diagram.getSkinParam()).setRankdir(Rankdir.valueOf(s));
 		// diagram.setRankdir(Rankdir.valueOf(s));
 		return CommandExecutionResult.ok();
+	}
+
+	// Declared by hand: FirstTokens only reads regex patterns, and this one is a UBrex expression.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FIRST_TOKENS;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

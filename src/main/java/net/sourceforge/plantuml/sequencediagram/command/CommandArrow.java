@@ -36,9 +36,11 @@
 package net.sourceforge.plantuml.sequencediagram.command;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringTokenizer;
+import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.annotation.Explain;
@@ -51,6 +53,7 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -72,8 +75,11 @@ import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class CommandArrow extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Pattern AMPERSAND = Pattern.compile("&");
 
 	static final String ANCHOR = "(\\{([%pLN_]+)\\}[%s]+)?";
 
@@ -83,6 +89,11 @@ public class CommandArrow extends SingleLineCommand2<SequenceDiagram> {
 
 	public static String getColorOrStylePattern() {
 		return "(?:\\[(" + CommandLinkElement.LINE_STYLE + ")\\])?";
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 	static IRegex getRegexConcat() {
@@ -137,7 +148,7 @@ public class CommandArrow extends SingleLineCommand2<SequenceDiagram> {
 		final String multicast = arg2.get("MULTICAST", 0);
 		if (multicast != null) {
 			final List<Participant> result = new ArrayList<>();
-			for (String s : multicast.split("&")) {
+			for (String s : AMPERSAND.split(multicast)) {
 				s = s.trim();
 				if (s.length() == 0)
 					continue;
@@ -147,7 +158,7 @@ public class CommandArrow extends SingleLineCommand2<SequenceDiagram> {
 					result.add(participant);
 
 			}
-			return Collections.unmodifiableList(result);
+			return MyCollections.unmodifiableList(result);
 		}
 		return Collections.emptyList();
 	}

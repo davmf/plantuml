@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -49,6 +52,9 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandFooter extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"center", "centerfooter", "footer", "left", "leftfooter", "right", "rightfooter");
 
 	public static final CommandFooter ME = new CommandFooter();
 
@@ -95,7 +101,7 @@ public class CommandFooter extends SingleLineCommand2<TitledDiagram> {
 		final String align = arg.get("POSITION", 0);
 		HorizontalAlignment ha = HorizontalAlignment.fromString(align, HorizontalAlignment.CENTER);
 		if (align == null)
-			ha = FontParam.FOOTER.getStyleDefinition(null).getMergedStyle(diagram.getCurrentStyleBuilder())
+			ha = diagram.getCurrentStyleBuilder().getMergedStyle(FontParam.FOOTER.getStyleDefinition(null))
 					.getHorizontalAlignment();
 
 		final Display s = Display.getWithNewlines(diagram.getPragma(), arg.getLazzy("LABEL", 0));
@@ -103,4 +109,10 @@ public class CommandFooter extends SingleLineCommand2<TitledDiagram> {
 
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

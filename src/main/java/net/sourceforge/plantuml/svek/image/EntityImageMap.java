@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.LeafType;
@@ -64,10 +65,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.ShapeType;
@@ -134,18 +134,18 @@ public class EntityImageMap extends AbstractEntityImage implements Stencil, With
 	}
 
 	@Override
-	public StyleSignature getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.objectDiagram, SName.map);
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.OBJECTDIAG_MAP;
 	}
 
 	private Style getStyle() {
-		return getStyleSignature().withTOBECHANGED(getEntity().getStereotype())
-				.getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		return getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(getStyleQuery().withStereotype(getEntity().getStereotype()));
 	}
 
 	private Style getStyleHeader() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.objectDiagram, SName.map, SName.header)
-				.withTOBECHANGED(getEntity().getStereotype()).getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		return getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.OBJECTDIAG_MAP_HEADER.withStereotype(getEntity().getStereotype()));
 	}
 
 	final public void drawU(UGraphic ug) {

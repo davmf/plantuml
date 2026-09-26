@@ -1,0 +1,198 @@
+'use strict';
+// Render-performance benchmark for the PlantUML browser (TeaVM) engine.
+//
+// usage: node bench.js target=<dir-or-js> [reference=<dir-or-js>] [options]
+//   engine spec     name=path   path is a directory containing plantuml.js (viz-global.js served
+//                               too when present) or a path to the engine .js file itself
+//   --reps N        renders per diagram per block (default 6; rep 0 of each block is cold, discarded)
+//   --blocks N      passes over the corpus (default 2); engines alternate per rep within a diagram
+//   --corpus S      only diagrams whose relative path contains S
+//   --maxsvg N      maxSvgSize render option passed to every engine (default 98304; engines that
+//                   predate the option ignore it and may truncate tall output, which is detected
+//                   and marked per row)
+//   --out DIR       output directory (default results): results.json, summary.md
+//
+// Methodology (do not change casually, band history depends on it): all engines render in ONE
+// browser instance (one page per engine) so per-run host speed cancels in the target/reference
+// ratio; warm medians pooled across blocks; small/ files aggregate into a single row.
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { parseNamedEnginesAndOptions } = require('../lib/browser-cli');
+const { createMountedServer, startServer } = require('../lib/browser-http');
+const { createModulePageHtml, loadPlaywright, makeRenderer, makeRenderModuleBody, maybeScriptTag, openReadyPage } = require('../lib/browser-page');
+
+const pw = loadPlaywright();
+
+const HERE = __dirname;
+const parsed = parseNamedEnginesAndOptions(process.argv, { reps: 6, blocks: 2, corpus: '', maxsvg: 98304, out: 'results' });
+const engines = parsed.engines; // {name, dir, file}
+const opt = parsed.options;
+opt.reps = Number(opt.reps); opt.blocks = Number(opt.blocks); opt.maxsvg = Number(opt.maxsvg);
+if (engines.length < 1 || engines.length > 2 || engines[0].name !== 'target') {
+  console.error('need target=<path> and optionally reference=<path>'); process.exit(2);
+}
+
+const corpusDir = path.join(HERE, 'corpus');
+const allFiles = [];
+(function walk(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) walk(p);
+    else if (e.name.endsWith('.puml')) allFiles.push(path.relative(corpusDir, p).replace(/\\/g, '/'));
+  }
+})(corpusDir);
+allFiles.sort();
+const files = allFiles.filter(f => f.includes(opt.corpus));
+if (files.length === 0) { console.error('corpus filter matched nothing'); process.exit(2); }
+
+function pageHtml(engine) {
+  return createModulePageHtml({
+    headHtml: '<script>window.__t0=performance.now();</script>',
+    bodyHtml: maybeScriptTag(engine.dir, 'viz-global.js', `/${engine.name}/viz-global.js`),
+    modulePath: `/${engine.name}/${engine.file}`,
+    moduleBody: makeRenderModuleBody({ maxSvgSize: opt.maxsvg }) + `
+window.__importMs=Math.round(performance.now()-window.__t0);`,
+  });
+}
+
+const routes = {};
+for (const engine of engines)
+  routes[`/page/${engine.name}`] = { contentType: 'text/html', body: pageHtml(engine) };
+const server = createMountedServer({
+  routes,
+  mounts: engines.map(engine => ({ prefix: `/${engine.name}/`, dir: engine.dir })),
+});
+
+function median(v) { const s = [...v].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; }
+function iqr(v) { const s = [...v].sort((a, b) => a - b); return s.length ? [s[Math.floor(s.length / 4)], s[Math.floor(3 * s.length / 4)]] : [null, null]; }
+function graph(target, ref) {
+  const hdr = '\n```mermaid\n---\nconfig:\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#0000FF, #FF0000"\n---\nxychart\n  title "target VS ref"\n  y-axis ms\n  ';
+  const ftr = '\n```\n\n';
+  return(hdr + 'x-axis "# test"\n  line target [' + target.join(', ') + ']\n  line ref [' + ref.join(', ') + ']' + ftr);
+}
+
+(async () => {
+  const port = await startServer(server);
+  const browser = await pw.chromium.launch({ headless: true });
+  const reps = []; // {engine, diagram, block, rep, ms, err, bytes, sha, truncated}
+  const engineInfo = {};
+
+  const pages = {};
+  const renderers = {};
+  for (const e of engines) {
+    const ready = await openReadyPage(browser, `http://127.0.0.1:${port}/page/${e.name}`, {
+      onConsole: null,
+      trackErrors: false,
+    });
+    ready.page.on('pageerror', err => console.error('PAGEERROR', e.name, err.message));
+    pages[e.name] = ready.page;
+    renderers[e.name] = makeRenderer(ready.page, {
+      timeoutMs: 180000,
+      includeTiming: true,
+      includeHash: true,
+      includeTruncation: true,
+      maxTextLength: 120,
+    });
+    engineInfo[e.name] = {
+      path: path.join(e.dir, e.file),
+      sizeBytes: fs.statSync(path.join(e.dir, e.file)).size,
+      importMs: await ready.page.evaluate('window.__importMs'),
+    };
+  }
+
+  const sources = {};
+  for (const f of files) sources[f] = fs.readFileSync(path.join(corpusDir, f), 'utf8').replace(/\r\n/g, '\n').split('\n');
+
+  // Engines alternate per rep (T,R then R,T) so paired samples are adjacent in time: linear AND
+  // convex drift over the session (JIT tiering, thermal) hits both engines equally and cancels in
+  // the ratio. Engine-level blocks measured a consistent +5..10% bias on an A/A run; this removed it.
+  for (let block = 0; block < opt.blocks; block++) {
+    for (const f of files) {
+      for (let rep = 0; rep < opt.reps; rep++) {
+        const order = (rep + block) % 2 === 0 ? engines : [...engines].reverse();
+        for (const e of order) {
+          const r = await renderers[e.name](sources[f]);
+          reps.push({ engine: e.name, diagram: f, block, rep, ...r });
+        }
+      }
+    }
+  }
+
+  const browserVersion = browser.version();
+  await browser.close(); server.close();
+
+  // Aggregate: per (engine, logical row). small/ files fold into one row.
+  const rowOf = f => f.startsWith('small/') ? 'small-30' : f.replace(/\.puml$/, '');
+  const rows = [...new Set(files.map(rowOf))];
+  const agg = {}; // row -> engine -> {ms, sha, truncated, bytes}
+  for (const row of rows) {
+    agg[row] = {};
+    for (const e of engines) {
+      const mine = reps.filter(r => r.engine === e.name && rowOf(r.diagram) === row && r.rep > 0 && !r.err);
+      const errs = reps.filter(r => r.engine === e.name && rowOf(r.diagram) === row && r.err);
+      let med, lo, hi;
+      if (row === 'small-30') {
+        // sum of per-file pooled medians = total warm cost of the set
+        const perFile = [...new Set(mine.map(r => r.diagram))].map(d => median(mine.filter(r => r.diagram === d).map(r => r.ms)));
+        med = perFile.reduce((a, b) => a + b, 0); lo = hi = null;
+      } else {
+        const v = mine.map(r => r.ms);
+        med = median(v); [lo, hi] = iqr(v);
+      }
+      agg[row][e.name] = {
+        medianMs: med, iqr: [lo, hi],
+        sha8: mine.length && row !== 'small-30' ? mine[mine.length - 1].sha.slice(0, 16) : null,
+        truncated: mine.some(r => r.truncated),
+        err: errs.length ? errs[0].err : null,
+        svgBytes: row !== 'small-30' && mine.length ? mine[mine.length - 1].bytes : null,
+      };
+    }
+  }
+
+  let bands = {};
+  try { bands = JSON.parse(fs.readFileSync(path.join(HERE, 'expected-bands.json'), 'utf8')); } catch (e) { /* optional */ }
+
+  const hasRef = engines.length === 2;
+  const lines = [];
+  const lines_target = [];
+  const lines_ref = [];
+  lines.push('| # | diagram | target ms (IQR) | ' + (hasRef ? 'reference ms (IQR) | ratio | icon | band | ' : '') + 'output |');
+  lines.push('|:---:|---|---|' + (hasRef ? '---|---|:---:|---|' : '') + '---|');
+  let i = 0;
+  for (const row of rows) {
+    i += 1;
+    const t = agg[row].target, r = hasRef ? agg[row].reference : null;
+    const fmt = x => x.err ? (x.err.includes('too large') ? 'size-limited (no maxSvgSize)' : 'ERROR')
+      : (x.medianMs === null ? '-' : `${x.medianMs}${x.iqr[0] !== null ? ` (${x.iqr[0]}-${x.iqr[1]})` : ''}${x.truncated ? ' (truncated)' : ''}`);
+    let ratio = '', band = '', output = '';
+    if (hasRef && !t.err && !r.err && t.medianMs && r.medianMs) {
+      const q = t.medianMs / r.medianMs;
+      ratio = q.toFixed(2);
+      const b = bands[row];
+      if (t.truncated || r.truncated) band = '🚧 | n/a (truncated)';
+      else if (b) band = Math.abs(q - b.ratio) <= b.tol ? '= | OK'
+        : (q > b.ratio ? `🐌 | SLOWER than band by ${((q - b.ratio - b.tol) * 100).toFixed(0)}pp` : `💨 | faster than band by ${((b.ratio - b.tol - q) * 100).toFixed(0)}pp`);
+      else band = '⛔ | no band';
+    }
+    if (t.sha8) {
+      output = '`' + t.sha8 + '`';
+      if (hasRef && r.sha8) output += t.sha8 === r.sha8 ? ' = ref' : ' != ref';
+    }
+    lines.push(`| ${i} | ${row} | ${fmt(t)} | ` + (hasRef ? `${fmt(r)} | ${ratio} | ${band} | ` : '') + `${output} |`);
+    lines_target.push(t.medianMs);
+    lines_ref.push(hasRef ? r.medianMs : 0);
+  }
+  lines.push('');
+  for (const e of engines)
+    lines.push(`- ${e.name}: ${(engineInfo[e.name].sizeBytes / 1048576).toFixed(2)} MB, module import ${engineInfo[e.name].importMs} ms (${engineInfo[e.name].path})`);
+  lines.push(`- reps ${opt.reps} x blocks ${opt.blocks} (rep 0 per block discarded), maxSvgSize ${opt.maxsvg}`);
+  lines.push(`- ${os.cpus()[0].model} (${os.cpus().length} cores), node ${process.versions.node}, chromium ${browserVersion}`);
+
+  const outDir = path.resolve(opt.out);
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'results.json'), JSON.stringify({ opt, engines: engineInfo, reps, env: { cpu: os.cpus()[0].model, cores: os.cpus().length, node: process.versions.node, chromium: browserVersion, platform: os.platform() } }, null, 1));
+  fs.writeFileSync(path.join(outDir, 'summary.md'), graph(lines_target, lines_ref) + lines.join('\n') + '\n');
+  console.log(lines.join('\n'));
+  process.exit(0); // non-blocking by design: results are informational
+})().catch(e => { console.error('FATAL', e && e.stack || e); process.exit(1); });

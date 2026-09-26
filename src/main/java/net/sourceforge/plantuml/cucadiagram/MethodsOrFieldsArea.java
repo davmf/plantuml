@@ -43,7 +43,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import net.sourceforge.plantuml.EmbeddedDiagram;
-import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -357,7 +356,7 @@ public class MethodsOrFieldsArea extends TextBlockMemoized implements WithPorts 
 				}
 			};
 		}
-		final Style style = modifier.getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(modifier.getStyleSignature());
 		final HColor borderColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 		final boolean isField = modifier.isField();
 		final HColor backColor = isField ? null

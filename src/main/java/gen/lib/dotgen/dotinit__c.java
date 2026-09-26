@@ -124,7 +124,6 @@ import h.ST_Agraph_s;
 import h.ST_aspect_t;
 import h.ST_pack_info;
 import h.ST_rank_t;
-import smetana.core.CArray;
 import smetana.core.CFunction;
 import smetana.core.CFunctionAbstract;
 import smetana.core.CString;
@@ -607,6 +606,8 @@ private static void dumpLayoutState(Globals zz, ST_Agraph_s g, String phase) {
 }
 
 private static void dumpClusters(Globals zz, ST_Agraph_s g, String indent) {
+    if (!smetana.core.debug.SmetanaDebug.TRACE_ON)
+	return;
     for (int c = 1; c <= GD_n_cluster(g); c++) {
 	final ST_Agraph_s clust = GD_clust(g).get_(c);
 	if (false) SMETANA_TRACE("dotinit__c", indent + "cluster " + safeName(zz, clust)

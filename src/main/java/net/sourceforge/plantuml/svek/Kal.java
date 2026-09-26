@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.klimt.UStroke;
@@ -52,9 +53,8 @@ import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.utils.Direction;
 
 public class Kal implements UDrawable {
@@ -90,11 +90,9 @@ public class Kal implements UDrawable {
 		this.entity = entity;
 		this.link = link;
 		this.skinParam = skinParam;
-		this.style = StyleSignatureBasic
-				.of(SName.root, SName.element, SName.classDiagram, SName.class_, SName.qualified) //
-				.withTOBECHANGED(entity.getStereotype()) //
-				.with(entity.getStereostyles()) //
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		this.style = skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.CLASSDIAG_CLASS_QUALIFIED //
+				.withStereotype(entity.getStereotype()) //
+				.withStereostyles(entity.getStereostyles()));
 
 		final FontConfiguration font = style.getFontConfiguration(skinParam.getIHtmlColorSet());
 

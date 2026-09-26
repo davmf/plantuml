@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
@@ -58,8 +61,11 @@ import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandIf2 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("#", "[", "if");
 
 	public CommandIf2() {
 		super(getRegexConcat());
@@ -112,13 +118,14 @@ public class CommandIf2 extends SingleLineCommand2<ActivityDiagram3> {
 		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
 			sb.append(", with a URL link");
 
-		// Both the stereotype right after 'if' and the leading color are
-		// parsed but silently ignored by executeArg.
+		// The stereotype right after 'if' is parsed but silently ignored by
+		// executeArg; the leading color is ignored with a deprecation warning.
 		if (arg.get("IGNORED", 0) != null)
 			sb.append(" (the stereotype after 'if' is ignored: write it after the ';')");
 
 		if (arg.get("COLOR", 0) != null)
-			sb.append(" (the leading color is currently ignored: use a stereotype instead)");
+			sb.append(" (deprecated and ignored color syntax: write <<").append(arg.get("COLOR", 0))
+					.append(">> at the end of the line)");
 
 		return sb.toString();
 	}
@@ -126,8 +133,9 @@ public class CommandIf2 extends SingleLineCommand2<ActivityDiagram3> {
 	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
-//		final String s = arg.get("COLOR", 0);
-//		final HColor color = s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s);
+		if (arg.get("COLOR", 0) != null)
+			diagram.addWarning(new Warning("This syntax is deprecated, you must add <<" + arg.get("COLOR", 0)
+					+ ">> at the end of the line"));
 
 		String test = arg.get("TEST", 0);
 		if (test.length() == 0)
@@ -152,6 +160,11 @@ public class CommandIf2 extends SingleLineCommand2<ActivityDiagram3> {
 				Display.getWithNewlines(diagram.getPragma(), arg.get("WHEN", 0)), color, url, stereotype);
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

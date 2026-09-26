@@ -87,15 +87,14 @@ import smetana.core.size_t;
 
 public class dttree__c {
 
+// The C goto labels (do_search, has_root, no_root) are translated as a flag
+// plus a labeled block: a forward goto is exactly "break hasNoRoot". Earlier
+// translations threw RuntimeException subclasses instead, which constructed
+// an exception per dictionary operation.
 
 
 
-static class no_root extends RuntimeException {}
-static class has_root extends RuntimeException {}
-static class do_search extends RuntimeException {}
-static class dt_delete extends RuntimeException {}
-static class dt_insert extends RuntimeException {}
-static class dt_next extends RuntimeException {}
+
 
 
 
@@ -103,6 +102,11 @@ public static CFunction dttree = new CFunctionAbstract("dttree") {
 	
 	public Object exe(Globals zz, Object... args) {
 		return dttree(zz, (ST_dt_s)args[0], (__ptr__)args[1], (Integer)args[2]);
+	}
+
+	@Override
+	public Object exeSearch(Globals zz, Object a0, Object a1, int type) {
+		return dttree(zz, (ST_dt_s)a0, (__ptr__)a1, type);
 	}};
 
 @Reviewed(when = "11/11/2020")
@@ -169,7 +173,8 @@ try {
 	/* note that link.right is LEFT tree and link.left is RIGHT tree */
 	l = r = link;
 	/* allow apps to delete an object "actually" in the dictionary */
-	try {
+	int outcome = 0; // 1 = has_root, 2 = no_root
+	hasNoRoot: {
 	if(dt.meth.type == DT_OBAG && ((type&(DT_DELETE|DT_DETACH))!=0) ) {
 		throw new UnsupportedOperationException();
 //	{	key = (void*)(sz < 0 ? *((char**)((char*)(obj)+ky)) : ((char*)(obj)+ky));
@@ -185,11 +190,11 @@ try {
 //			}
 //		}
 	}
-	try {
+	boolean doSearch = false;
 	if(((type&(DT_MATCH|DT_SEARCH|DT_INSERT|DT_ATTACH))!=0))
 		{	key = ((type&DT_MATCH)!=0) ? obj : _DTKEY(obj, ky);
 		if(root!=null)
-			throw new do_search();
+			doSearch = true;
 	}
 	else if((type&DT_RENEW)!=0) {
 		throw new UnsupportedOperationException();
@@ -201,9 +206,9 @@ try {
 	}
 	else if(root!=null && (_DTOBJ(root, lk) != obj))
 	{	key = _DTKEY(obj, ky);
-		throw new do_search();
+		doSearch = true;
 	}
-	} catch (do_search do_search) {
+	if (doSearch) {
 //		do_search:
 		if(dt.meth.type == DT_OSET &&
 		   (minp = dt.data.minp) != 0 && (type&(DT_MATCH|DT_SEARCH))!=0)
@@ -320,7 +325,7 @@ try {
 		
 		if((type&(DT_SEARCH|DT_MATCH))!=0)
 		{ /*has_root:*/
-		throw new has_root();
+		{ outcome = 1; break hasNoRoot; }
 		}
 		else if((type&DT_NEXT)!=0)
 		{	root._left = link.right;
@@ -333,9 +338,9 @@ try {
 					root = t;
 				}
 				link._left = root.right;
-				throw new has_root();
+				{ outcome = 1; break hasNoRoot; }
 			}
-			else	throw new no_root();
+			else	{ outcome = 2; break hasNoRoot; }
 		}
 		else if((type&DT_PREV)!=0) {
 		throw new UnsupportedOperationException();
@@ -361,11 +366,11 @@ try {
 			//dt.memoryf.exe(dt, root, null, disc);
 			if((dt.data.size -= 1) < 0)
 			UNSUPPORTED("//				dt->data->size = -1;");
-			throw new no_root();
+			{ outcome = 2; break hasNoRoot; }
 		}
 		else if((type&(DT_INSERT|DT_ATTACH))!=0)
 		{	if((dt.meth.type&DT_OSET)!=0)
-				throw new has_root();
+				{ outcome = 1; break hasNoRoot; }
 			else
 			{   root._left = null;
 				root.right = link._left;
@@ -391,7 +396,7 @@ try {
 				if(root!=null)
 				{	if(dt.data.size >= 0)
 						dt.data.size += 1;
-				throw new has_root();
+				{ outcome = 1; break hasNoRoot; }
 				}
 				else	throw new UnsupportedOperationException("goto no_root");
 			}
@@ -428,16 +433,16 @@ try {
 					root = t;
 				}
 				link._left = root.right;
-				throw new has_root();
+				{ outcome = 1; break hasNoRoot; }
 			}
-			else	throw new no_root();
+			else	{ outcome = 2; break hasNoRoot; }
 		
 		}
 		else if((type&DT_PREV)!=0)
 			throw new UnsupportedOperationException("goto dt_prev");
 		else if((type&(DT_SEARCH|DT_MATCH))!=0)
 		{
-			throw new no_root();
+			{ outcome = 2; break hasNoRoot; }
 		}
 		else if((type&(DT_INSERT|DT_ATTACH))!=0)
 		{ /*dt_insert: DUPLICATION*/
@@ -461,7 +466,7 @@ try {
 			if(root!=null)
 			{	if(dt.data.size >= 0)
 					dt.data.size += 1;
-			throw new has_root();
+			{ outcome = 1; break hasNoRoot; }
 			}
 			else	throw new UnsupportedOperationException("goto no_root");
 		}
@@ -477,7 +482,8 @@ try {
 		// throw new UnsupportedOperationException();
 	}
 //	return ((void*)0);
-	} catch (has_root has_root) {
+	}
+	if (outcome == 1) {
 		root._left = link.right;
 		root.right = link._left;
 		if((dt.meth.type&DT_OBAG)!=0 && (type&(DT_SEARCH|DT_MATCH))!=0 )
@@ -497,7 +503,7 @@ try {
 		}
 		dt.data.here = root;
 		return _DTOBJ(root, lk);
-	} catch (no_root no_root) {
+	} else if (outcome == 2) {
 			while((t = r._left)!=null)
 				r = t;
 			r._left = link.right;
@@ -535,7 +541,7 @@ private static int _DTCMP(Globals zz, ST_dt_s dt, Object k1, Object k2, ST_dtdis
 			}
 			throw new UnsupportedOperationException("memcmp(key,k,sz))");
 		}
-		return (Integer) cmpf.exe(zz, dt, k1, k2, dc);
+		return cmpf.exeCmpInt(zz, dt, k1, k2, dc);
 	}
 
 
@@ -549,6 +555,11 @@ private static Object _DTOBJ(ST_dtlink_s root, FieldOffset lk) {
 
 
 private static Object _DTKEY(__ptr__ obj, FieldOffset ky) {
+	// Zero offset means the object itself is the key (every struct's
+	// getTheField returns this for sign 0); skips a virtual dispatch on
+	// the hottest dictionary path.
+	if (ky == null || ky.getSign() == 0)
+		return obj;
 	return obj.getTheField(ky);
 }
 

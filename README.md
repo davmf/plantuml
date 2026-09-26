@@ -1,4 +1,3 @@
-[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fplantuml.svg)](https://mcptoplist.com/server/glama%2Fplantuml)
 
 > [!TIP]
 > 🧩 **New!** Render PlantUML diagrams directly inside GitHub with [our official browser extension](https://github.com/plantuml/plantuml-for-github) &mdash; No server. No tokens. No tracking. Zero permissions but clipboard.
@@ -10,7 +9,7 @@
 > [!TIP]
 > 🤖 **New!** Give your AI assistant the power to render and check PlantUML diagrams with [`@plantuml/mcp-js`](https://www.npmjs.com/package/@plantuml/mcp-js) &mdash; a pure Node.js [MCP](https://modelcontextprotocol.io/) server. No Java. No server. Just `npx @plantuml/mcp-js`.
 >
-> [![npm version](https://img.shields.io/npm/v/@plantuml/mcp-js?logo=npm&color=cb3837)](https://www.npmjs.com/package/@plantuml/mcp-js) [![npm downloads](https://img.shields.io/npm/dm/@plantuml/mcp-js?logo=npm&color=cb3837)](https://www.npmjs.com/package/@plantuml/mcp-js)
+> [![npm version](https://img.shields.io/npm/v/@plantuml/mcp-js?logo=npm&color=cb3837)](https://www.npmjs.com/package/@plantuml/mcp-js) [![npm downloads](https://img.shields.io/npm/dm/@plantuml/mcp-js?logo=npm&color=cb3837)](https://www.npmjs.com/package/@plantuml/mcp-js) [![MCP Toplist](https://mcptoplist.com/badge/glama%2Fplantuml.svg)](https://mcptoplist.com/server/glama%2Fplantuml)
 
 
 # 🌱 PlantUML
@@ -135,6 +134,8 @@ For a live example of client-side rendering, see the [JavaScript PlantUML Demo](
 ## 🧱 Contributing
 
 PlantUML is an open-source project, and we welcome contributions of all kinds. Whether you're helping us fix bugs, improve the docs, or spread the word, we appreciate your support. See our [contributing guide](CONTRIBUTING.md) for more information on how to get started.
+
+The language guide on [plantuml.com](https://plantuml.com) is updated through [alphadoc](http://alphadoc.plantuml.com/). Edit a page there (pick a language and wiki syntax), save, and maintainers publish it after review. Details are in [CONTRIBUTING.md](CONTRIBUTING.md#updating-the-plantuml-guide-alphadoc).
 
 For comprehensive and detailed documentation on using PlantUML, refer to the [official Javadoc, available here](https://plantuml.github.io/plantuml/javadoc). Please note that this documentation is a work in progress and may not be complete. 
 

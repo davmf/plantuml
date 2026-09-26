@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command.note;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
@@ -74,6 +77,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.utils.Position;
 
 public final class CommandFactoryTipOnEntity implements SingleMultiFactoryCommand<AbstractEntityDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("note");
 
 	private final String key = "a";
 
@@ -137,6 +142,11 @@ public final class CommandFactoryTipOnEntity implements SingleMultiFactoryComman
 	public Command<AbstractEntityDiagram> createMultiLine(final boolean withBracket) {
 		return new CommandMultilines2<AbstractEntityDiagram>(getRegexConcatMultiLine(withBracket),
 				MultilinesStrategy.KEEP_STARTING_QUOTE, Trim.BOTH, withBracket ? END_WITH_BRACKET : END) {
+
+			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
 
 			@Override
 			@Explain
@@ -229,7 +239,6 @@ public final class CommandFactoryTipOnEntity implements SingleMultiFactoryComman
 
 			diagram.addLink(link);
 		}
-		tips.putTip(member, display);
 
 		Colors colors = color().getColor(line0, diagram.getSkinParam().getIHtmlColorSet());
 
@@ -240,10 +249,14 @@ public final class CommandFactoryTipOnEntity implements SingleMultiFactoryComman
 			colors = colors.applyStereotypeForNote(stereotype, diagram.getSkinParam(), ColorParam.noteBackground,
 					ColorParam.noteBorder);
 		}
-		if (stereotypeString != null)
-			tips.setStereotype(stereotype);
 
-		tips.setColors(colors);
+		// Several "note ... of Class::member" on the same side of the same
+		// class share one Entity (see the identTip lookup above), so the
+		// color/stereotype of THIS tip must travel with its own member entry
+		// rather than be stamped on that shared Entity: doing the latter
+		// makes the last tip parsed override the color of every earlier tip
+		// on the same side of the same class (issue #2814).
+		tips.putTip(member, display, colors, stereotype);
 
 		return CommandExecutionResult.ok();
 	}

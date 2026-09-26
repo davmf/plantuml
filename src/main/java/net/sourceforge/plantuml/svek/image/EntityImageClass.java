@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.LineConfigurable;
@@ -57,10 +58,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UComment;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Kal;
 import net.sourceforge.plantuml.svek.Margins;
@@ -159,22 +159,20 @@ public class EntityImageClass extends AbstractEntityImage implements Stencil, Wi
 	}
 
 	@Override
-	public StyleSignature getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.classDiagram, SName.class_);
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.CLASSDIAG_CLASS;
 	}
 
 	private Style getStyle() {
-		return getStyleSignature() //
-				.withTOBECHANGED(getEntity().getStereotype()) //
-				.with(getEntity().getStereostyles()) //
-				.getMergedStyle(getEntity().getCurrentStyleBuilder());
+		return getEntity().getCurrentStyleBuilder().getMergedStyle(getStyleQuery() //
+				.withStereotype(getEntity().getStereotype()) //
+				.withStereostyles(getEntity().getStereostyles()));
 	}
 
 	private Style getStyleHeader() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.classDiagram, SName.class_, SName.header) //
-				.withTOBECHANGED(getEntity().getStereotype()) //
-				.with(getEntity().getStereostyles()) //
-				.getMergedStyle(getEntity().getCurrentStyleBuilder());
+		return getEntity().getCurrentStyleBuilder().getMergedStyle(StyleQueries.CLASSDIAG_CLASS_HEADER //
+				.withStereotype(getEntity().getStereotype()) //
+				.withStereostyles(getEntity().getStereostyles()));
 	}
 
 	private void drawInternal(UGraphic ug) {

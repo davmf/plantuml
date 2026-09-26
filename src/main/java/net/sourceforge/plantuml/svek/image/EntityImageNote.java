@@ -70,10 +70,9 @@ import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.svek.SvekEdge;
@@ -99,7 +98,7 @@ public class EntityImageNote extends AbstractEntityImage implements Stencil {
 
 		final Display strings = entity.getDisplay();
 
-		this.style = getStyleSignature().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		this.style = getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
 		if (entity.getColors().getColor(ColorType.BACK) == null)
 			this.noteBackgroundColor = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
 		else
@@ -185,9 +184,8 @@ public class EntityImageNote extends AbstractEntityImage implements Stencil {
 	}
 
 	@Override
-	public StyleSignature getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), SName.note)
-				.withTOBECHANGED(getStereo());
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.NOTE.add(getStyleName()).withStereotype(getStereo());
 	}
 
 	final public void drawU(UGraphic ug) {

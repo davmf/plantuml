@@ -41,7 +41,6 @@ import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -74,6 +73,7 @@ import net.sourceforge.plantuml.klimt.shape.UText;
 import net.sourceforge.plantuml.png.PngIO;
 import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureVisible {
 
@@ -88,7 +88,7 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 	private Set<Url> allUrls = new HashSet<>();
 
 	public final Set<Url> getAllUrlsEncountered() {
-		return Collections.unmodifiableSet(allUrls);
+		return MyCollections.unmodifiableSet(allUrls);
 	}
 
 	@Override
@@ -115,7 +115,6 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 		this.allUrls = other.allUrls;
 		this.antiAliasing = other.antiAliasing;
 		this.format = other.format;
-		register(dpiFactor);
 	}
 
 	public UGraphicG2d(HColor defaultBackground, ColorMapper colorMapper, StringBounder stringBounder, Graphics2D g2d,
@@ -187,9 +186,12 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 		urls.remove(urls.size() - 1);
 	}
 
-	public void ensureVisible(double x, double y) {
+	public void ensureVisible(double x, double y, UClip clip) {
+		// urls is shared by reference with every copy of this UGraphic (see the copy
+		// constructor), so it is the same list whichever instance a driver happens to hold; the
+		// clip is not, which is why it arrives as an argument.
 		for (Url u : urls)
-			if (u != null && (getClip() == null || getClip().isInside(x, y)))
+			if (u != null && (clip == null || clip.isInside(x, y)))
 				u.ensureVisible(x, y);
 
 	}

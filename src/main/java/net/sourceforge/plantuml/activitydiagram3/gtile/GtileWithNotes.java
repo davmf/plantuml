@@ -59,9 +59,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.image.Opale;
 import net.sourceforge.plantuml.utils.MathUtils;
 
@@ -74,8 +74,8 @@ public class GtileWithNotes extends AbstractGtile {
 
 	private final double suppSpace = 20;
 
-	public StyleSignatureBasic getDefaultStyleDefinition() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.note);
+	public StyleQuery getDefaultStyleDefinition() {
+		return StyleQueries.ACTIVITYDIAG_NOTE;
 	}
 
 	@Override
@@ -106,7 +106,7 @@ public class GtileWithNotes extends AbstractGtile {
 			if (note.getColors() != null)
 				skinParam2 = note.getColors().mute(skinParam2);
 
-			final Style style = getDefaultStyleDefinition().getMergedStyle(skinParam.getCurrentStyleBuilder())
+			final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinition())
 					.eventuallyOverride(note.getColors());
 			final HColor noteBackgroundColor = style.value(PName.BackGroundColor).asColor(getIHtmlColorSet());
 			final HColor borderColor = style.value(PName.LineColor).asColor(getIHtmlColorSet());

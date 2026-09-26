@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -93,11 +94,27 @@ public class LiveBoxes {
 		return getLevelAtInternal(event, mode);
 	}
 
-	private int getLevelAtInternal(Event event, EventsHistoryMode mode) {
-		int level = 0; // p.getInitialLife();
-		// System.err.println("--->EventsHistory for " + p + " " + event);
-		for (Iterator<Event> it = events.iterator(); it.hasNext();) {
-			final Event current = it.next();
+	// The level at an event is a prefix computation over the event list: computing
+	// it from scratch for every event made layout quadratic in the number of
+	// events. One linear pass fills these caches; the per-event lookahead below
+	// stays as it was, starting from the event's own position.
+	// eventInfo[event] = { index of event in events, activation level right after it }.
+	private Map<Event, int[]> eventInfo;
+	// nextLife[i] = index of the first LifeEvent at position >= i that the
+	// message lookahead can reach: Notes and AbstractMessages are passed through
+	// (exactly like the original iterator walk), any other event type is a
+	// boundary that stops the walk (-1).
+	private int[] nextLife;
+	private int levelCacheSize = -1;
+
+	private void ensureLevelCache() {
+		if (eventInfo != null && levelCacheSize == events.size())
+			return;
+		eventInfo = new IdentityHashMap<Event, int[]>();
+		levelCacheSize = events.size();
+		int level = 0;
+		for (int i = 0; i < events.size(); i++) {
+			final Event current = events.get(i);
 			if (current instanceof LifeEvent) {
 				final LifeEvent le = (LifeEvent) current;
 				if (le.getParticipant() == p && le.isActivate())
@@ -107,96 +124,111 @@ public class LiveBoxes {
 					level = Math.max(0, level - 1);
 
 			}
-			if (event == current) {
-				if (current instanceof AbstractMessage) {
-					boolean seenActivate = false;
-					boolean seenDeactivate = false;
-					while (it.hasNext()) {
-						final Event next = nextButSkippingNotes(it);
-						if (!(next instanceof LifeEvent || next instanceof AbstractMessage))
-							break;
-						if (!(next instanceof LifeEvent))
-							continue;
+			if (eventInfo.containsKey(current) == false)
+				eventInfo.put(current, new int[] { i, level });
+		}
+		nextLife = new int[events.size() + 1];
+		nextLife[events.size()] = -1;
+		for (int i = events.size() - 1; i >= 0; i--) {
+			final Event e = events.get(i);
+			if (e instanceof LifeEvent)
+				nextLife[i] = i;
+			else if (e instanceof Note || e instanceof AbstractMessage)
+				nextLife[i] = nextLife[i + 1];
+			else
+				nextLife[i] = -1;
+		}
+	}
 
-						final LifeEvent le = (LifeEvent) next;
-						final AbstractMessage msg = (AbstractMessage) current;
+	private int getLevelAtInternal(Event event, EventsHistoryMode mode) {
+		ensureLevelCache();
+		final int[] info = eventInfo.get(event);
+		if (info == null)
+			throw new IllegalArgumentException();
 
-						final boolean sameMessage = msg == le.getMessage()
-								|| (le.getMessage() != null && le.getMessage().isParallelWith(msg));
-						if (!sameMessage)
-							continue;
+		final int index = info[0];
+		int level = info[1];
+		final Event current = event;
+		if (current instanceof AbstractMessage) {
+			boolean seenActivate = false;
+			boolean seenDeactivate = false;
+			for (int k = nextLife[index + 1]; k != -1; k = nextLife[k + 1]) {
+				final LifeEvent le = (LifeEvent) events.get(k);
+				final AbstractMessage msg = (AbstractMessage) current;
 
-						if (mode != EventsHistoryMode.IGNORE_FUTURE_ACTIVATE && le.isActivate() && msg.dealWith(p)
-								&& le.getParticipant() == p) {
-							seenActivate = true;
-							if (seenDeactivate)
-								break;
-							level++;
-						}
+				final boolean sameMessage = msg == le.getMessage()
+						|| (le.getMessage() != null && le.getMessage().isParallelWith(msg));
+				if (!sameMessage)
+					continue;
 
-						if (mode == EventsHistoryMode.CONSIDER_FUTURE_DEACTIVATE && le.isDeactivateOrDestroy()
-								&& msg.dealWith(p) && le.getParticipant() == p) {
-							seenDeactivate = true;
-							if (seenActivate)
-								break;
-							level = Math.max(0, level - 1);
-						}
-
-						// System.err.println("Warning, this is message " + current + " next=" + next);
-					}
-
+				if (mode != EventsHistoryMode.IGNORE_FUTURE_ACTIVATE && le.isActivate() && msg.dealWith(p)
+						&& le.getParticipant() == p) {
+					seenActivate = true;
+					if (seenDeactivate)
+						break;
+					level++;
 				}
-				if (current instanceof Note) {
-					// An activate or deactivate attached to a previous message applies
-					// retroactively at the message position, that is above this note:
-					// the note placement must take it into account
-					while (it.hasNext()) {
-						final Event next = nextButSkippingNotes(it);
-						if (next instanceof LifeEvent == false)
-							break;
 
-						final LifeEvent le = (LifeEvent) next;
-						if (le.getParticipant() != p || le.getMessage() == null)
-							continue;
-
-						if (mode != EventsHistoryMode.IGNORE_FUTURE_ACTIVATE && le.isActivate())
-							level++;
-
-						if (mode == EventsHistoryMode.CONSIDER_FUTURE_DEACTIVATE && le.isDeactivateOrDestroy())
-							level = Math.max(0, level - 1);
-					}
+				if (mode == EventsHistoryMode.CONSIDER_FUTURE_DEACTIVATE && le.isDeactivateOrDestroy()
+						&& msg.dealWith(p) && le.getParticipant() == p) {
+					seenDeactivate = true;
+					if (seenActivate)
+						break;
+					level = Math.max(0, level - 1);
 				}
-				if (level < 0)
-					return 0;
 
-				// System.err.println("<-result1 is " + level);
-				return level;
+				// System.err.println("Warning, this is message " + current + " next=" + next);
+			}
+
+		}
+		if (current instanceof Note) {
+			// An activate or deactivate attached to a previous message applies
+			// retroactively at the message position, that is above this note:
+			// the note placement must take it into account
+			final Iterator<Event> it = events.listIterator(index + 1);
+			while (it.hasNext()) {
+				final Event next = nextButSkippingNotes(it);
+				if (next instanceof LifeEvent == false)
+					break;
+
+				final LifeEvent le = (LifeEvent) next;
+				if (le.getParticipant() != p || le.getMessage() == null)
+					continue;
+
+				if (mode != EventsHistoryMode.IGNORE_FUTURE_ACTIVATE && le.isActivate())
+					level++;
+
+				if (mode == EventsHistoryMode.CONSIDER_FUTURE_DEACTIVATE && le.isDeactivateOrDestroy())
+					level = Math.max(0, level - 1);
 			}
 		}
-		throw new IllegalArgumentException();
-		// return level;
+		if (level < 0)
+			return 0;
+
+		// System.err.println("<-result1 is " + level);
+		return level;
 	}
 
 	private boolean isNextEventADestroy(Event event) {
-		for (Iterator<Event> it = events.iterator(); it.hasNext();) {
-			final Event current = it.next();
-			if (event != current)
-				continue;
-
-			if (current instanceof Message) {
-				// Several life events may follow the message (for example a
-				// deactivate then a destroy): the destroy is not always the
-				// first one
-				Event next = nextButSkippingNotes(it);
-				while (next instanceof LifeEvent) {
-					final LifeEvent le = (LifeEvent) next;
-					if (le.isDestroy(p))
-						return true;
-
-					next = nextButSkippingNotes(it);
-				}
-			}
+		// Scanning the list from the start to locate the event made getStairs
+		// quadratic in the number of events; the eventInfo index finds it in O(1)
+		// and the short local walk below is unchanged.
+		ensureLevelCache();
+		final int[] info = eventInfo.get(event);
+		if (info == null || event instanceof Message == false)
 			return false;
+
+		// Several life events may follow the message (for example a
+		// deactivate then a destroy): the destroy is not always the
+		// first one
+		for (int k = info[0] + 1; k < events.size(); k++) {
+			final Event next = events.get(k);
+			if (next instanceof Note)
+				continue;
+			if (next instanceof LifeEvent == false)
+				return false;
+			if (((LifeEvent) next).isDestroy(p))
+				return true;
 		}
 		return false;
 	}
@@ -208,22 +240,21 @@ public class LiveBoxes {
 				return le.getSpecificColors();
 
 		}
-		for (Iterator<Event> it = events.iterator(); it.hasNext();) {
-			final Event current = it.next();
-			if (event != current)
-				continue;
-
-			if (current instanceof Message || current instanceof MessageExo) {
-				Event next = nextButSkippingNotes(it);
-				while (next instanceof LifeEvent && ((LifeEvent) next).getMessage() == current) {
-					final LifeEvent le = (LifeEvent) next;
-					if (le.isActivate() && le.getParticipant() == p)
-						return le.getSpecificColors();
-
-					next = nextButSkippingNotes(it);
-				}
-			}
+		// Same O(1) lookup as isNextEventADestroy instead of a full list scan.
+		ensureLevelCache();
+		final int[] info = eventInfo.get(event);
+		if (info == null || (event instanceof Message == false && event instanceof MessageExo == false))
 			return null;
+
+		for (int k = info[0] + 1; k < events.size(); k++) {
+			final Event next = events.get(k);
+			if (next instanceof Note)
+				continue;
+			if (next instanceof LifeEvent == false || ((LifeEvent) next).getMessage() != event)
+				return null;
+			final LifeEvent le = (LifeEvent) next;
+			if (le.isActivate() && le.getParticipant() == p)
+				return le.getSpecificColors();
 		}
 		return null;
 	}
@@ -287,7 +318,8 @@ public class LiveBoxes {
 			}
 
 			if (position != null) {
-				if (TeaVM.a()) assert position <= totalHeight : "position=" + position + " totalHeight=" + totalHeight;
+				if (TeaVM.a())
+					assert position <= totalHeight : "position=" + position + " totalHeight=" + totalHeight;
 				indent = getLevelAt(event, EventsHistoryMode.CONSIDER_FUTURE_DEACTIVATE);
 				final Fashion activateColor = getActivateColor(event);
 				StyleBuilder styleBuilder = null;

@@ -60,13 +60,13 @@ import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.descdiagram.command.StringWithArrow;
 import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.dot.GraphvizVersion;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.ColorType;
-import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
@@ -101,11 +101,10 @@ import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.extremity.Extremity;
 import net.sourceforge.plantuml.svek.extremity.ExtremityArrow;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
@@ -288,8 +287,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		} else {
 			final HorizontalAlignment alignment = getMessageTextAlignment(diagramType(), skinParam);
 			final boolean hasSeveralGuideLines = link.getLabel().hasSeveralGuideLines();
-			final Style arrowStyle = getDefaultStyleDefinition(link.getStereotype())
-					.getMergedStyle(skinParam.getCurrentStyleBuilder());
+			final Style arrowStyle = skinParam.getCurrentStyleBuilder()
+					.getMergedStyle(getDefaultStyleDefinition(link.getStereotype()));
 			final LineBreakStrategy styleWidth = arrowStyle.wrapWidth();
 			final LineBreakStrategy wrapWidth = styleWidth.getMaxWidth() > 0
 					? styleWidth
@@ -343,20 +342,46 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		if (link.getRole1() == null)
 			startTailRoleText = null;
 		else
-			startTailRoleText = Display.getWithNewlines(skinParam.getPragma(), link.getRole1()).create(cardinalityFont,
-					HorizontalAlignment.CENTER, skinParam);
+			startTailRoleText = RoleLabels.create(link.getRole1(), skinParam.getPragma(), cardinalityFont, skinParam);
 
 		if (link.getRole2() == null)
 			endHeadRoleText = null;
 		else
-			endHeadRoleText = Display.getWithNewlines(skinParam.getPragma(), link.getRole2()).create(cardinalityFont,
-					HorizontalAlignment.CENTER, skinParam);
+			endHeadRoleText = RoleLabels.create(link.getRole2(), skinParam.getPragma(), cardinalityFont, skinParam);
 
 		if (link.getType().getMiddleDecor() == LinkMiddleDecor.NONE)
 			this.labelShield = 0;
 		else
 			this.labelShield = 7;
 
+	}
+
+	/**
+	 * Graphviz only knows about the size of the quantifier (see appendLine()), but
+	 * the role is drawn on the other side of the line: whatever the Graphviz
+	 * version, make room for it around the entities, or it lands on the
+	 * neighbouring nodes and labels.
+	 * 
+	 * This must be called for all the links <b>before</b> the first SvekEdge is
+	 * built: building an edge computes (and caches) the shield of its two nodes.
+	 */
+	public static void reserveRoomForRoles(Link link, ISkinParam skinParam, StringBounder stringBounder,
+			FontConfiguration cardinalityFont) {
+		if (TeaVM.isTeaVM())
+			return;
+
+		if (link.getRole1() != null)
+			link.getEntity1().ensureMargins(marginsForRole(link.getRole1(), skinParam, stringBounder, cardinalityFont));
+
+		if (link.getRole2() != null)
+			link.getEntity2().ensureMargins(marginsForRole(link.getRole2(), skinParam, stringBounder, cardinalityFont));
+	}
+
+	private static Margins marginsForRole(String role, ISkinParam skinParam, StringBounder stringBounder,
+			FontConfiguration cardinalityFont) {
+		final TextBlock block = RoleLabels.create(role, skinParam.getPragma(), cardinalityFont, skinParam);
+		final double width = Math.ceil(block.calculateDimension(stringBounder).getWidth()) + 2;
+		return new Margins(width, width, 0, 0);
 	}
 
 	private Kal kal1;
@@ -901,11 +926,10 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	}
 
-	private StyleSignature getDefaultStyleDefinition(Stereotype stereotype) {
-		final StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, diagramType().getStyleName(),
-				SName.arrow);
+	private StyleQuery getDefaultStyleDefinition(Stereotype stereotype) {
+		final StyleQuery result = StyleQueries.ARROW.add(diagramType().getStyleName());
 
-		return result.withTOBECHANGED(stereotype);
+		return result.withStereotype(stereotype);
 	}
 
 	private Set<String> ids;
@@ -959,7 +983,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		y += dy;
 
 		final StyleBuilder currentStyleBuilder = this.getCurrentStyleBuilder();
-		final Style styleLine = getDefaultStyleDefinition(this.getStereotype()).getMergedStyle(currentStyleBuilder);
+		final Style styleLine = currentStyleBuilder.getMergedStyle(getDefaultStyleDefinition(this.getStereotype()));
 		final UStroke suggestedStroke = styleLine.getStroke();
 		final Rainbow rainbow = Rainbow.build(styleLine, this.skinParam.getIHtmlColorSet());
 
@@ -1047,7 +1071,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				this.startTailText.drawU(ug.apply(new UTranslate(labelX, labelY)));
 				if (this.startTailRoleText != null)
 					drawRoleLabel(ug, this.startTailRoleText, this.startTailText, this.startTailLabelXY.getPosition(),
-							dotPath.getStartPoint(), dotPath.getEndPoint(), x, y);
+							dotPath.getStartPoint(), dotPath.getEndPoint(), dotPath.sample(), x, y);
 			} else if (this.startTailRoleText != null) {
 				this.startTailRoleText.drawU(ug.apply(new UTranslate(labelX, labelY)));
 			}
@@ -1060,7 +1084,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 				this.endHeadText.drawU(ug.apply(new UTranslate(labelX, labelY)));
 				if (this.endHeadRoleText != null)
 					drawRoleLabel(ug, this.endHeadRoleText, this.endHeadText, this.endHeadLabelXY.getPosition(),
-							dotPath.getEndPoint(), dotPath.getStartPoint(), x, y);
+							dotPath.getEndPoint(), dotPath.getStartPoint(), dotPath.sample(), x, y);
 			} else if (this.endHeadRoleText != null) {
 				this.endHeadRoleText.drawU(ug.apply(new UTranslate(labelX, labelY)));
 			}
@@ -1114,43 +1138,23 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 	 * horizontal lines, the role is placed on the other side of the line's Y.
 	 */
 	private void drawRoleLabel(UGraphic ug, TextBlock role, TextBlock quantifier, XPoint2D quantifierPos,
-			XPoint2D thisEndpoint, XPoint2D otherEndpoint, double x, double y) {
-		final XDimension2D qDim = quantifier.calculateDimension(stringBounder);
-		final XDimension2D rDim = role.calculateDimension(stringBounder);
+			XPoint2D thisEndpoint, XPoint2D otherEndpoint, Set<XPoint2D> pathSamples, double x, double y) {
+		final XPoint2D pos = RoleLabels.getPosition(quantifier.calculateDimension(stringBounder),
+				role.calculateDimension(stringBounder), quantifierPos, thisEndpoint, otherEndpoint, pathSamples,
+				getNodeAreas());
+		role.drawU(ug.apply(new UTranslate(x + pos.getX(), y + pos.getY())));
+	}
 
-		final double dirX = otherEndpoint.getX() - thisEndpoint.getX();
-		final double dirY = otherEndpoint.getY() - thisEndpoint.getY();
+	/**
+	 * The areas of the two nodes of the link, in the coordinates of the path.
+	 */
+	private List<RectangleArea> getNodeAreas() {
+		final List<RectangleArea> result = new ArrayList<>();
+		for (SvekNode node : new SvekNode[] { getSvekNode1(), getSvekNode2() })
+			if (node != null)
+				result.add(node.getRectangleArea().move(-dx, -dy));
 
-		if (Math.abs(dirX) + Math.abs(dirY) < 0.001) {
-			role.drawU(ug.apply(new UTranslate(x + quantifierPos.getX(), y + quantifierPos.getY() + qDim.getHeight())));
-			return;
-		}
-
-		final double gap = 2;
-		final double roleX;
-		final double roleY;
-
-		if (Math.abs(dirY) >= Math.abs(dirX)) {
-			// Mostly vertical: mirror across line X
-			final double qCenterX = quantifierPos.getX() + qDim.getWidth() / 2;
-			final double lineX = thisEndpoint.getX();
-			if (qCenterX < lineX)
-				roleX = lineX + gap;
-			else
-				roleX = lineX - rDim.getWidth() - gap;
-			roleY = quantifierPos.getY();
-		} else {
-			// Mostly horizontal: mirror across line Y
-			final double qCenterY = quantifierPos.getY() + qDim.getHeight() / 2;
-			final double lineY = thisEndpoint.getY();
-			if (qCenterY < lineY)
-				roleY = lineY + gap;
-			else
-				roleY = lineY - rDim.getHeight() - gap;
-			roleX = quantifierPos.getX();
-		}
-
-		role.drawU(ug.apply(new UTranslate(x + roleX, y + roleY)));
+		return result;
 	}
 
 	public void computeKal() {

@@ -58,10 +58,10 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class FtileBoxEmoji extends AbstractFtile {
 
@@ -72,12 +72,12 @@ public class FtileBoxEmoji extends AbstractFtile {
 	private final LinkRendering inRendering;
 	private final Swimlane swimlane;
 
-	static public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity);
+	static public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY;
 	}
-
-	static public StyleSignatureBasic getStyleSignatureArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	
+	static public StyleQuery getStyleSignatureArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 	@Override
@@ -105,8 +105,8 @@ public class FtileBoxEmoji extends AbstractFtile {
 		if (styleBuilder == null)
 			styleBuilder = skinParam.getCurrentStyleBuilder();
 
-		final Style style = getStyleSignature().withTOBECHANGED(stereotype).getMergedStyle(styleBuilder);
-		final Style styleArrow = getStyleSignatureArrow().getMergedStyle(styleBuilder);
+		final Style style = styleBuilder.getMergedStyle(getStyleQuery().withStereotype(stereotype));
+		final Style styleArrow = styleBuilder.getMergedStyle(getStyleSignatureArrow());
 		return new FtileBoxEmoji(skinParam, label, swimlane, style, styleArrow);
 	}
 

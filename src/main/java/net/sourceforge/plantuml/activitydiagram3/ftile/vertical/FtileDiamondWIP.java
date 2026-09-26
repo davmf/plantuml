@@ -45,9 +45,9 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.Swimlane;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.Styleable;
 
 abstract class FtileDiamondWIP extends AbstractFtile implements Styleable {
@@ -72,12 +72,13 @@ abstract class FtileDiamondWIP extends AbstractFtile implements Styleable {
 
 	}
 
-	final public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY_DIAMOND;
 	}
 
 	final public Style getStyle() {
-		return getStyleSignature().getMergedStyle(skinParam().getCurrentStyleBuilder());
+		return skinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
 	}
 
 	@Override
@@ -88,7 +89,7 @@ abstract class FtileDiamondWIP extends AbstractFtile implements Styleable {
 	protected FtileDiamondWIP(TextBlock label, ISkinParam skinParam, HColor backColor, HColor borderColor,
 			Swimlane swimlane, TextBlock north, TextBlock south, TextBlock east, TextBlock west) {
 		super(skinParam);
-		final Style style = getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = getStyle();
 		this.borderColor = borderColor;
 		this.backColor = backColor;
 		this.shadowing = style.getShadowing();

@@ -1,0 +1,185 @@
+'use strict';
+// Functional check that !theme works in the PlantUML browser (TeaVM) engine.
+//
+// usage: node check-themes.js target=<dir-or-js>
+//   target   a directory containing plantuml.js (viz-global.js and themes.js are served from
+//            there too when present), or a path to the engine .js file itself
+//
+// Every case renders in headless Chromium against the real built engine, with themes.js served
+// over http exactly as it is in the npm package. Every check runs; the exit code is non-zero if
+// any failed, so it can gate a build. There are no golden files: the expected output for a theme is derived
+// from that theme's own text, read out of the served themes.js.
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const { createCheckReporter, isErrorImage } = require('../lib/browser-check');
+const { parseTargetArg } = require('../lib/browser-cli');
+const { createMountedServer, startServer } = require('../lib/browser-http');
+const { createModulePageHtml, loadPlaywright, makeRenderModuleBody, maybeScriptTag, openRenderer } = require('../lib/browser-page');
+
+const scriptName = path.basename(__filename, '.js');
+const { dir, file } = parseTargetArg(process.argv, `node ${scriptName}.js target=<dir-or-js>`);
+const pw = loadPlaywright();
+
+const themesJsPath = path.join(dir, 'themes.js');
+if (!fs.existsSync(themesJsPath)) {
+  console.error('themes.js not found next to the engine in ' + dir);
+  console.error('It is produced by ThemesJsGenerator and copied by the npmPackage task.');
+  process.exit(2);
+}
+// The themes the engine will actually serve, read from the same file the browser loads.
+const THEMES = (() => {
+  const g = {};
+  // themes.js resolves its global as globalThis, then self; bind both to a local
+  // object so the parse cannot touch this process's real globals.
+  new Function('globalThis', 'self', fs.readFileSync(themesJsPath, 'utf8'))(g, g);
+  return g.PLANTUML_THEMES;
+})();
+const NAMES = Object.keys(THEMES).sort();
+
+const pageHtml = createModulePageHtml({
+  modulePath: `/${file}`,
+  bodyHtml: maybeScriptTag(dir, 'viz-global.js', '/viz-global.js'),
+  moduleBody: makeRenderModuleBody({ maxSvgSize: 98304 }),
+});
+
+const server = createMountedServer({
+  routes: {
+    '/index.html': { contentType: 'text/html', body: pageHtml },
+  },
+  mounts: [{ prefix: '/', dir }],
+});
+
+// The embedded source differs whenever the source text does, so it is excluded from comparisons.
+const shape = svg => svg.replace(/<\?plantuml-src[^?]*\?>/g, '');
+const hash = svg => crypto.createHash('sha256').update(shape(svg)).digest('hex');
+// A theme file starts with a YAML header; the body alone is what !theme executes.
+const themeBody = name => THEMES[name].replace(/^---\n[\s\S]*?\n---\n/, '');
+
+const { check, finish } = createCheckReporter();
+
+const body = ['Alice -> Bob: hello', 'Bob --> Alice: hi', 'note right: a note'];
+const diagram = (...head) => ['@startuml', ...head, ...body, '@enduml'];
+
+(async () => {
+  const port = await startServer(server);
+  const browser = await pw.chromium.launch({ headless: true });
+
+  async function openThemedRenderer({ blockThemesJs = false, preregister = false } = {}) {
+    const consoleMessages = [];
+    const renderOnPage = await openRenderer(browser, `http://127.0.0.1:${port}/index.html`, {
+      trackErrors: false,
+      onConsole: m => consoleMessages.push({ type: m.type(), text: m.text() }),
+      beforeGoto: async page => {
+        if (blockThemesJs) await page.route('**/themes.js', r => r.abort());
+        if (preregister)
+          await page.addInitScript(`globalThis.PLANTUML_THEMES = ${JSON.stringify(THEMES)};`);
+      },
+    }, { timeoutMs: 60000 });
+    const render = async lines => {
+      const r = await renderOnPage(lines);
+      if (r.err || !r.svg) throw new Error('render produced no svg: ' + r.err);
+      return r.svg;
+    };
+    render.page = renderOnPage.page;
+    render.errors = renderOnPage.errors;
+    render.consoleMessages = consoleMessages;
+    return render;
+  }
+
+  const render = await openThemedRenderer();
+
+  console.log(`engine : ${path.join(dir, file)}`);
+  console.log(`themes : ${NAMES.length} in themes.js\n`);
+
+  // 1. The control still renders, so later differences are attributable to the theme.
+  const control = await render(diagram());
+  check('control diagram renders', !isErrorImage(control));
+
+  // 2. A theme must actually change the output. This is the regression guard for the original
+  //    bug, where !theme was accepted and silently ignored.
+  const amiga = await render(diagram('!theme amiga'));
+  check('`!theme amiga` changes the output', hash(amiga) !== hash(control),
+    'identical to the unthemed diagram: the directive was ignored');
+
+  // 3. ...and change it to that theme's own colours.
+  check('`!theme amiga` applies the amiga palette', amiga.includes('#0B58A8'),
+    'expected the theme background #0B58A8 in the svg');
+
+  // 4. Strongest check: loading a theme by name must equal pasting that theme's body inline.
+  //    Both sides come from the same engine, so only the loading path differs.
+  const inlined = await render(diagram(...themeBody('amiga').split('\n')));
+  check('`!theme amiga` == the same theme inlined by hand', hash(amiga) === hash(inlined),
+    'the theme loaded, but produced different output than executing its body directly');
+
+  // 5. An unknown name must be reported, not ignored.
+  const bogus = await render(diagram('!theme zzz-does-not-exist'));
+  check('unknown theme name reports an error', isErrorImage(bogus),
+    'rendered a normal diagram, so a typo in a theme name would pass unnoticed');
+
+  // 6. The YAML header of the loaded theme must reach %get_current_theme().
+  const meta = await render(['@startuml', '!theme amiga', '!$m = %get_current_theme()',
+    'Alice -> Bob: $m.display_name', '@enduml']);
+  check('`%get_current_theme()` returns the loaded theme metadata',
+    meta.includes('Amiga Workbench 1.x'), 'expected display_name from the theme YAML header');
+
+  // 7. %get_all_theme() must not advertise more themes than the engine can load.
+  const all = await render(['@startuml', '!$a = %get_all_theme()',
+    'Alice -> Bob: count=%size($a)', '@enduml']);
+  check(`\`%get_all_theme()\` agrees with \`themes.js\` (${NAMES.length})`,
+    all.includes(`count=${NAMES.length}`),
+    'the engine lists a different number of themes than it ships');
+
+  // 8. Every bundled theme loads and takes effect. "Takes effect" means the drawing differs
+  //    from the unthemed one, which is exactly what a silently ignored directive cannot do.
+  //    A theme whose body is empty (_none_ is deliberately so) is expected to match instead.
+  //    Two themes drawing alike is not checked: spacelab and spacelab-white differ only in
+  //    $BGCOLOR, which a sequence diagram does not show.
+  const controlHash = hash(control);
+  const broken = [], inert = [], unexpected = [];
+  for (const name of NAMES) {
+    const svg = await render(diagram(`!theme ${name}`));
+    if (isErrorImage(svg)) { broken.push(name); continue; }
+    const empty = themeBody(name).trim() === '';
+    const same = hash(svg) === controlHash;
+    if (!empty && same) inert.push(name);
+    if (empty && !same) unexpected.push(name);
+  }
+  check(`all ${NAMES.length} bundled themes render`, broken.length === 0,
+    'failed to render: ' + broken.join(', '));
+  check(`all ${NAMES.length} bundled themes change the drawing`, inert.length === 0,
+    'rendered identically to the unthemed diagram, so these were ignored: ' + inert.join(', '));
+  check('empty themes leave the drawing unchanged', unexpected.length === 0,
+    'has an empty body but changed the output: ' + unexpected.join(', '));
+
+  // 9. A host that registers PLANTUML_THEMES itself must not need themes.js to be fetchable.
+  //    This is what lets themes work inside a Web Worker, where the script loader has no
+  //    document to append a script tag to.
+  const preregistered = await openThemedRenderer({ blockThemesJs: true, preregister: true });
+  const amigaPre = await preregistered(diagram('!theme amiga'));
+  check('pre-registered PLANTUML_THEMES works without fetching `themes.js`',
+    amigaPre.includes('#0B58A8') && hash(amigaPre) === hash(amiga),
+    'did not match the themes.js-loaded rendering of the same theme');
+
+  // 10. Without themes.js and without pre-registration the theme cannot apply. The diagram
+  //     is published content viewed by someone who cannot fix the deployment, so it must
+  //     keep rendering, unthemed, exactly as it did when !theme was ignored; the missing
+  //     file is reported as a console warning, which is where the page author looks. An
+  //     unknown theme name with themes.js present stays an error (checked above): only
+  //     the missing-file case degrades.
+  const noThemes = await openThemedRenderer({ blockThemesJs: true });
+  const amigaMissing = await noThemes(diagram('!theme amiga'));
+  check('missing `themes.js` still renders the diagram, unthemed',
+    !isErrorImage(amigaMissing) && hash(amigaMissing) === controlHash,
+    isErrorImage(amigaMissing)
+      ? 'rendered an error image, which would break published pages that upgrade the engine without deploying themes.js'
+      : 'rendered something other than the plain unthemed diagram');
+  check('missing `themes.js` warns on the console',
+    noThemes.consoleMessages.some(m => m.type === 'warning' && m.text.includes('themes.js')),
+    'no console warning mentions themes.js, so the page author gets no signal');
+
+  await browser.close();
+  server.close();
+
+  finish(scriptName, { leadingBlankLine: true });
+})().catch(e => { console.error(e); process.exit(1); });

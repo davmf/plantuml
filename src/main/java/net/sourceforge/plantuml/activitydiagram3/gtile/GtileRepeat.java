@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.activitydiagram3.gtile;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.activitydiagram3.ftile.Swimlane;
@@ -48,8 +47,9 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class GtileRepeat extends GtileTopDown3 {
 
@@ -81,16 +81,8 @@ public class GtileRepeat extends GtileTopDown3 {
 		return Gtiles.withNorthMargin(tmp, 20);
 	}
 
-	final public StyleSignatureBasic getDefaultStyleDefinitionActivity() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity);
-	}
-
-	final static public StyleSignatureBasic getDefaultStyleDefinitionDiamond() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
-	}
-
-	final public StyleSignatureBasic getDefaultStyleDefinitionArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	final static public StyleQuery getDefaultStyleDefinitionDiamond() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY_DIAMOND;
 	}
 
 	@Override
@@ -128,7 +120,7 @@ public class GtileRepeat extends GtileTopDown3 {
 		}
 
 		// final List<GConnection> result = Arrays.asList(arrow1, arrow2, arrow3);
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 }

@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -46,6 +49,9 @@ import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMultilinesHeader extends CommandMultilines<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"center", "centerheader", "header", "left", "leftheader", "right", "rightheader");
 
 	public static final CommandMultilinesHeader ME = new CommandMultilinesHeader();
 
@@ -96,13 +102,18 @@ public class CommandMultilinesHeader extends CommandMultilines<TitledDiagram> {
 		if (strings.size() > 0) {
 			HorizontalAlignment ha = HorizontalAlignment.fromString(align, HorizontalAlignment.RIGHT);
 			if (align == null)
-				ha = FontParam.HEADER.getStyleDefinition(null)
-						.getMergedStyle(diagram.getSkinParam().getCurrentStyleBuilder()).getHorizontalAlignment();
+				ha = diagram.getSkinParam().getCurrentStyleBuilder()
+						.getMergedStyle(FontParam.HEADER.getStyleDefinition(null)).getHorizontalAlignment();
 
 			diagram.updateHeader(location, strings, ha);
 			return CommandExecutionResult.ok();
 		}
 		return CommandExecutionResult.error("Empty header");
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

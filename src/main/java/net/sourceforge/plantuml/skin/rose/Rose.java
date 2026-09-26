@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.skin.rose;
 
+
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.color.Colors;
@@ -51,14 +52,13 @@ import net.sourceforge.plantuml.skin.ColorParam;
 import net.sourceforge.plantuml.skin.Component;
 import net.sourceforge.plantuml.skin.ComponentType;
 import net.sourceforge.plantuml.skin.LineParam;
-import net.sourceforge.plantuml.skin.PaddingParam;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class Rose {
 
@@ -297,9 +297,8 @@ public class Rose {
 
 		final ArrowDirection arrowDirection = config.getArrowDirection();
 
-		final StyleSignatureBasic signature = StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram,
-				SName.arrow);
-		final Style textStyle = signature.getMergedStyle(param.getCurrentStyleBuilder());
+		final StyleQuery signature = StyleQueries.SEQUENCEDIAG_ARROW;
+		final Style textStyle = param.getCurrentStyleBuilder().getMergedStyle(signature);
 		final String value = textStyle.value(PName.HorizontalAlignment).asString();
 		HorizontalAlignment messageHorizontalAlignment = textStyle.getHorizontalAlignment();
 

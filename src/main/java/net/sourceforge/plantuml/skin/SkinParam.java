@@ -40,7 +40,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -93,12 +92,10 @@ import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.LengthAdjust;
 import net.sourceforge.plantuml.style.NoStyleAvailableException;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleLoader;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
-import net.sourceforge.plantuml.style.parser.StyleParser;
+import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.style.parser.StyleParsingException;
 import net.sourceforge.plantuml.svek.ConditionEndStyle;
 import net.sourceforge.plantuml.svek.ConditionStyle;
@@ -108,6 +105,7 @@ import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.Guillemet;
 import net.sourceforge.plantuml.tikz.TikzFontDistortion;
 import net.sourceforge.plantuml.utils.BlocLines;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class SkinParam implements ISkinParam {
 
@@ -176,8 +174,10 @@ public class SkinParam implements ISkinParam {
 		this.skin = newSkin;
 	}
 
-	// This must never return null: many callers use the result without any check, so
-	// returning null would only turn a style issue into an unrelated NullPointerException.
+	// This must never return null: many callers use the result without any check,
+	// so
+	// returning null would only turn a style issue into an unrelated
+	// NullPointerException.
 	private StyleBuilder getCurrentStyleBuilderInternal() {
 		try {
 			return StyleLoader.loadSkin(this.getDefaultSkin());
@@ -219,7 +219,7 @@ public class SkinParam implements ISkinParam {
 
 	@Override
 	public Map<String, String> values() {
-		return Collections.unmodifiableMap(params);
+		return MyCollections.unmodifiableMap(params);
 	}
 
 	public void setParam(String key, String value) {
@@ -239,7 +239,7 @@ public class SkinParam implements ISkinParam {
 			final StyleBuilder styleBuilder = this.getCurrentStyleBuilder();
 			try {
 				final BlocLines lines = BlocLines.load(internalIs, null);
-				this.muteStyle(new StyleParser(styleBuilder).parse(lines));
+				this.muteStyle(StyleLoader.parseStyleText(lines, styleBuilder));
 
 			} catch (StyleParsingException e) {
 				Logme.error(e);
@@ -296,7 +296,7 @@ public class SkinParam implements ISkinParam {
 		if (result.size() == 0)
 			result.add(key);
 
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	@Override
@@ -314,19 +314,26 @@ public class SkinParam implements ISkinParam {
 		if (result != null)
 			return result;
 
-		final Style style = getCurrentStyleBuilder().getMergedStyle(StyleSignatureBasic.of(SName.root, SName.document));
+		final Style style = getCurrentStyleBuilder().getMergedStyle(StyleQueries.DOCUMENT);
 		return style.value(PName.BackGroundColor).asColor(getIHtmlColorSet());
 	}
 
+	private final Map<String, String> cacheKeyValue = new HashMap<>();
+
 	@Override
 	public String getValue(String key) {
+		if (cacheKeyValue.containsKey(key))
+			return cacheKeyValue.get(key);
 		applyPendingStyleMigration();
 		for (String key2 : cleanForKey(key)) {
 			final String result = params.get(key2);
-			if (result != null)
+			if (result != null) {
+				cacheKeyValue.put(key, result);
 				return result;
+			}
 
 		}
+		cacheKeyValue.put(key, null);
 		return null;
 	}
 
@@ -630,7 +637,7 @@ public class SkinParam implements ISkinParam {
 			final String h = capitalize(p.name());
 			result.add(h);
 		}
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	private static String capitalize(String name) {
@@ -791,7 +798,7 @@ public class SkinParam implements ISkinParam {
 
 	@Override
 	public Collection<String> getAllSpriteNames() {
-		return Collections.unmodifiableCollection(new TreeSet<>(sprites.keySet()));
+		return MyCollections.unmodifiableCollection(new TreeSet<>(sprites.keySet()));
 	}
 
 	public void addSprite(String name, Sprite sprite) {
@@ -906,8 +913,22 @@ public class SkinParam implements ISkinParam {
 		return null;
 	}
 
+	private final Map<String, UStroke> cacheThickness = new HashMap<>();
+
 	@Override
 	public UStroke getThickness(LineParam param, Stereotype stereotype) {
+		// Called for every drawn element; the key building, parsing and
+		// LinkStyle churn below showed up in profiles, same idea as cacheKeyValue
+		final String key = stereotype == null ? param.name()
+				: param.name() + '\0' + stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR);
+		if (cacheThickness.containsKey(key))
+			return cacheThickness.get(key);
+		final UStroke result = getThicknessSlow(param, stereotype);
+		cacheThickness.put(key, result);
+		return result;
+	}
+
+	private UStroke getThicknessSlow(LineParam param, Stereotype stereotype) {
 		LinkStyle style = null;
 		if (stereotype != null) {
 			checkStereotype(stereotype);

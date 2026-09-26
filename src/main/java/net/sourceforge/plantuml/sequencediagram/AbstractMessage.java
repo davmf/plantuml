@@ -40,16 +40,16 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import net.sourceforge.plantuml.StringUtils;
 
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.WithStyle;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.LineLocation;
@@ -65,16 +65,16 @@ public abstract class AbstractMessage extends AbstractEvent implements EventWith
 	}
 
 	final public Style[] getUsedStyles() {
-		Style style = getStyleSignature().getMergedStyle(styleBuilder);
+		Style style = styleBuilder.getMergedStyle(getStyleQuery());
 		if (style != null && arrowConfiguration.getColor() != null)
 			style = style.eventuallyOverride(PName.LineColor, arrowConfiguration.getColor());
 
 		return new Style[] { style };
 	}
 
-	public StyleSignature getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.arrow)
-				.withTOBECHANGED(stereotype);
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.SEQUENCEDIAG_ARROW.withStereotype(stereotype);
 	}
 
 	private final Display label;
@@ -219,7 +219,8 @@ public abstract class AbstractMessage extends AbstractEvent implements EventWith
 	public final Warning addNote(Note note) {
 		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT
 				&& note.getPosition() != NotePosition.BOTTOM && note.getPosition() != NotePosition.TOP)
-			return new Warning("This position is ignored: " + note.getPosition());
+			return new Warning("'note " + StringUtils.goLowerCase(note.getPosition().name())
+					+ "' is not supported on a message: this note is ignored. Use left, right, top or bottom");
 
 		note = note.withPosition(overrideNotePosition(note.getPosition()));
 		this.noteOnMessages.add(note);

@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command.note.sequence;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.annotation.Explain;
@@ -69,8 +72,13 @@ import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.warning.Warning;
 
 public final class FactorySequenceNoteCommand implements SingleMultiFactoryCommand<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"&", "/", "hnote", "hnoteleft", "hnoteover", "hnoteright", "note", "noteleft",
+			"noteover", "noteright", "rnote", "rnoteleft", "rnoteover", "rnoteright");
 	// ::remove folder when __HAXE__
 
 	private IRegex getRegexConcatMultiLine() {
@@ -121,6 +129,11 @@ public final class FactorySequenceNoteCommand implements SingleMultiFactoryComma
 				MultilinesStrategy.KEEP_STARTING_QUOTE, Trim.BOTH, END) {
 
 			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
+
+			@Override
 			@Explain
 			protected String explainNow(BlocLines lines) {
 				// Mirror executeNow: the first line carries the declaration, the
@@ -152,6 +165,11 @@ public final class FactorySequenceNoteCommand implements SingleMultiFactoryComma
 
 	public Command<SequenceDiagram> createSingleLine() {
 		return new SingleLineCommand2<SequenceDiagram>(getRegexConcatSingleLine()) {
+
+			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
 
 			@Override
 			@Explain
@@ -249,6 +267,20 @@ public final class FactorySequenceNoteCommand implements SingleMultiFactoryComma
 			if (parallel) {
 				note.goParallel();
 			}
+			// The leading '/' (VMERGE) is a pre-Teoz relic (present since this
+			// command's creation in 2013, over a year before the Teoz engine
+			// itself existed): it glues this note to the previous one at the
+			// display/model level, regardless of engine. '&' (PARALLEL, added
+			// to notes in 2019) is the Teoz-native way to place notes on the
+			// same row, and since it now stacks same-participant notes instead
+			// of overlapping them (see NoteTile), it covers the same "notes at
+			// the same time step" need without the older, engine-agnostic
+			// merge trick. Warn so existing diagrams keep working unchanged
+			// while pointing authors at the newer syntax.
+			if (tryMerge)
+				diagram.addWarning(new Warning(
+						"The leading '/' note-merge syntax is deprecated; use '&' to place notes on the same row instead."));
+
 			diagram.addNote(note, tryMerge);
 		}
 		return CommandExecutionResult.ok();

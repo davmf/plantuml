@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.teavm;
 
-import net.sourceforge.plantuml.klimt.ClipContainer;
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.UPath;
@@ -47,15 +47,9 @@ import net.sourceforge.plantuml.klimt.geom.USegmentType;
 public class DriverPathTeaVM implements UDriver<UPath, SvgGraphicsTeaVM> {
 	// ::remove file when JAVA8
 
-	private final ClipContainer clipContainer;
-
-	public DriverPathTeaVM(ClipContainer clipContainer) {
-		this.clipContainer = clipContainer;
-	}
-
 	@Override
 	public void draw(UPath path, double x, double y, ColorMapper mapper, UParam param, SvgGraphicsTeaVM svg) {
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null && clip.isInside(x, y, path) == false)
 			return;
 
@@ -95,9 +89,6 @@ public class DriverPathTeaVM implements UDriver<UPath, SvgGraphicsTeaVM> {
 	}
 
 	private String format(double value) {
-		if (value == (int) value)
-			return String.valueOf((int) value);
-
-		return String.format("%.2f", value).replace(',', '.');
+		return StringUtils.formatDecimal(value, 2);
 	}
 }

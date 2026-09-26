@@ -56,9 +56,8 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 
 public class TimingRuler {
 
@@ -184,13 +183,11 @@ public class TimingRuler {
 	}
 
 	private Style getStyleTimegrid() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram, SName.timegrid)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.TIMINGDIAG_TIMEGRID);
 	}
 
 	private Style getStyleTimeline() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram, SName.timeline)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.TIMINGDIAG_TIMELINE);
 	}
 
 	private TextBlock getTimeTextBlock(long time) {

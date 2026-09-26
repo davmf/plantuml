@@ -65,6 +65,19 @@ public class GraphVizjsTeaVMEngine {
 	 * @param dotSource the graph description in DOT format
 	 * @return the rendered SVG as a string
 	 */
+	/**
+	 * True when the Viz.js bridge (viz-global.js) is NOT loaded on the page,
+	 * so the caller should fall back to the Smetana layout engine. Logs a
+	 * one-time console note the first time the fallback is taken.
+	 */
+	@JSBody(script = "var missing = typeof Viz === 'undefined' || !Viz || typeof Viz.instance !== 'function';" +
+			"if (missing && !window.__plantumlSmetanaFallbackNoted) {" +
+			"  window.__plantumlSmetanaFallbackNoted = true;" +
+			"  console.info('PlantUML: viz-global.js is not loaded, falling back to the Smetana layout engine');" +
+			"}" +
+			"return missing;")
+	public static native boolean vizMissingFallback();
+
 	@Async
 	public static native String renderDotToSvg(String dotSource);
 
@@ -80,7 +93,11 @@ public class GraphVizjsTeaVMEngine {
 	 * JavaScript bridge that calls Viz.instance() and renders the DOT source.
 	 * Uses Viz.js API: Viz.instance().then(viz => viz.renderString(dot, options))
 	 */
-	@JSBody(params = { "dotSource", "onSuccess", "onError" }, script = 
+	@JSBody(params = { "dotSource", "onSuccess", "onError" }, script =
+		"if (typeof Viz === 'undefined' || !Viz || typeof Viz.instance !== 'function') {" +
+		"  onError('Viz is not loaded: this diagram type needs the Graphviz layout engine (viz-global.js). Load viz-global.js before rendering.');" +
+		"  return;" +
+		"}" +
 		"Viz.instance().then(function(viz) {" +
 		"  try {" +
 		"    var svg = viz.renderString(dotSource, { format: 'svg', engine: 'dot' });" +
@@ -113,7 +130,11 @@ public class GraphVizjsTeaVMEngine {
 	/**
 	 * JavaScript bridge for engine-specific rendering.
 	 */
-	@JSBody(params = { "dotSource", "engine", "onSuccess", "onError" }, script = 
+	@JSBody(params = { "dotSource", "engine", "onSuccess", "onError" }, script =
+		"if (typeof Viz === 'undefined' || !Viz || typeof Viz.instance !== 'function') {" +
+		"  onError('Viz is not loaded: this diagram type needs the Graphviz layout engine (viz-global.js). Load viz-global.js before rendering.');" +
+		"  return;" +
+		"}" +
 		"Viz.instance().then(function(viz) {" +
 		"  try {" +
 		"    var svg = viz.renderString(dotSource, { format: 'svg', engine: engine });" +

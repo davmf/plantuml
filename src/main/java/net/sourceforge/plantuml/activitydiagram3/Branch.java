@@ -61,9 +61,9 @@ import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class Branch {
 
@@ -82,8 +82,8 @@ public class Branch {
 	private Ftile ftile;
 	private Gtile gtile;
 
-	public StyleSignatureBasic getDefaultStyleDefinitionArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	public StyleQuery getDefaultStyleDefinitionArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 //	public StyleSignatureBasic getDefaultStyleDefinitionDiamond() {
@@ -249,7 +249,7 @@ public class Branch {
 		if (display == null)
 			return TextBlockUtils.EMPTY_TEXT_BLOCK;
 
-		final Style style = getDefaultStyleDefinitionArrow().getMergedStyle(skinParam().getCurrentStyleBuilder());
+		final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow());
 		final LineBreakStrategy lineBreak = style.wrapWidth();
 		final FontConfiguration fcArrow = style.getFontConfiguration(skinParam().getIHtmlColorSet());
 

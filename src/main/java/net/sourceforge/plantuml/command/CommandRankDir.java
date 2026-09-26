@@ -34,6 +34,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.annotation.Explain;
@@ -46,6 +49,8 @@ import net.sourceforge.plantuml.skin.SkinParam;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandRankDir extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("left", "top");
 
 	public CommandRankDir() {
 		super(getRegexConcat());
@@ -70,10 +75,15 @@ public class CommandRankDir extends SingleLineCommand2<TitledDiagram> {
 
 	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
-		final String s = StringUtils.goUpperCase(arg.get("DIRECTION", 0)).replace(' ', '_');
+		final String s = StringUtils.replaceChar(StringUtils.goUpperCase(arg.get("DIRECTION", 0)), ' ', '_');
 		((SkinParam) diagram.getSkinParam()).setRankdir(Rankdir.valueOf(s));
 		// diagram.setRankdir(Rankdir.valueOf(s));
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -36,9 +36,9 @@
 package net.sourceforge.plantuml.klimt.creole.legacy;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.jaws.Jaws;
@@ -53,8 +53,11 @@ import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.utils.CharHidder;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class CreoleStripeSimpleParser {
+
+	private static final Pattern BLOCK_NEWLINE = Pattern.compile("" + Jaws.BLOCK_E1_NEWLINE);
 
 	final private String line;
 	final private StripeStyle style;
@@ -161,13 +164,13 @@ public class CreoleStripeSimpleParser {
 
 	public List<Stripe> createStripes(CreoleContext context, HorizontalAlignment align) {
 		final List<Stripe> result = new ArrayList<>();
-		for (String singleLine : line.split("" + Jaws.BLOCK_E1_NEWLINE)) {
+		for (String singleLine : BLOCK_NEWLINE.split(line)) {
 			final StripeSimple stripe = new StripeSimple(fontConfiguration, style, context, skinParam, modeSimpleLine);
 			stripe.setCellAlignment(align);
 			stripe.analyzeAndAdd(singleLine);
 			result.add(stripe);
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 }

@@ -49,8 +49,8 @@ import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.symbol.USymbolFolder;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
-import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -72,8 +72,9 @@ import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.svek.RoleLabels;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.ClusterManager;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
@@ -207,16 +208,16 @@ class MyElkDrawing implements TextBlock {
 	private FontConfiguration getFontForLink(Link link, final ISkinParam skinParam) {
 		final SName styleName = skinParam.getDiagramType().getStyleName();
 
-		final Style style = getDefaultStyleDefinitionArrow(link.getStereotype(), styleName)
-				.getMergedStyle(link.getStyleBuilder());
+		final Style style = link.getStyleBuilder()
+				.getMergedStyle(getDefaultStyleDefinitionArrow(link.getStereotype(), styleName));
 		return style.getFontConfiguration(skinParam.getIHtmlColorSet());
 	}
 
 	// Duplication from SvekEdge
-	final public StyleSignature getDefaultStyleDefinitionArrow(Stereotype stereotype, SName styleName) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, styleName, SName.arrow);
+	private StyleQuery getDefaultStyleDefinitionArrow(Stereotype stereotype, SName styleName) {
+		StyleQuery result = StyleQueries.ARROW.add(styleName);
 		if (stereotype != null)
-			result = result.withTOBECHANGED(stereotype);
+			result = result.withStereotype(stereotype);
 
 		return result;
 	}
@@ -269,8 +270,8 @@ class MyElkDrawing implements TextBlock {
 			// block = StringWithArrow.addSeveralMagicArrows(link.getLabel(), this, font,
 			// alignment, skinParam);
 			// else
-			final Style arrowStyle = getDefaultStyleDefinitionArrow(link.getStereotype(),
-					skinParam.getDiagramType().getStyleName()).getMergedStyle(link.getStyleBuilder());
+			final Style arrowStyle = link.getStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow(
+					link.getStereotype(), skinParam.getDiagramType().getStyleName()));
 			final LineBreakStrategy styleWidth = arrowStyle.wrapWidth();
 			final LineBreakStrategy wrapWidth = styleWidth.getMaxWidth() > 0
 					? styleWidth
@@ -328,8 +329,7 @@ class MyElkDrawing implements TextBlock {
 
 		final ISkinParam skinParam = diagram.getSkinParam();
 		final FontConfiguration labelFont = FontConfiguration.create(skinParam, FontParam.ARROW, null);
-		final TextBlock label = Display.getWithNewlines(diagram.getPragma(), role).create(labelFont,
-				skinParam.getDefaultTextAlignment(HorizontalAlignment.CENTER), skinParam);
+		final TextBlock label = RoleLabels.create(role, diagram.getPragma(), labelFont, skinParam);
 		if (TextBlockUtils.isEmpty(label, stringBounder))
 			return null;
 

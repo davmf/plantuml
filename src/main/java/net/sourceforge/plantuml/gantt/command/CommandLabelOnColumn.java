@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.gantt.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -48,6 +51,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandLabelOnColumn extends SingleLineCommand2<GanttDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("label", "labels");
 
 	public CommandLabelOnColumn() {
 		super(getRegexConcat());
@@ -83,8 +88,14 @@ public class CommandLabelOnColumn extends SingleLineCommand2<GanttDiagram> {
 //				: HorizontalAlignment.LEFT;
 //		final LabelStrategy strategy = new LabelStrategy(position, alignment);
 //		diagram.setLabelStrategy(strategy);
-		diagram.addWarning(new Warning("This command is deprecated"));
+		diagram.addWarning(new Warning("'labels on " + arg.get("POSITION", 0)
+				+ " column' is no longer supported: this line is ignored"));
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

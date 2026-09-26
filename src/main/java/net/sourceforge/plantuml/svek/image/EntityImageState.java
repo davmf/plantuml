@@ -86,11 +86,11 @@ public class EntityImageState extends EntityImageStateCommon {
 		final Display list = Display.create(entity.getBodier().getRawBody());
 
 		final StyleBuilder styleBuilder = getSkinParam().getCurrentStyleBuilder();
-		this.style = STYLE.withTOBECHANGED(getEntity().getStereotype()).getMergedStyle(styleBuilder);
-		this.styleName = STYLE.addSName(SName.name).withTOBECHANGED(getEntity().getStereotype())
-				.getMergedStyle(styleBuilder);
-		this.styleDescription = STYLE.addSName(SName.description).withTOBECHANGED(getEntity().getStereotype())
-				.getMergedStyle(styleBuilder);
+		this.style = styleBuilder.getMergedStyle(STYLE.withStereotype(getEntity().getStereotype()));
+		this.styleName = styleBuilder
+				.getMergedStyle(STYLE.add(SName.name).withStereotype(getEntity().getStereotype()));
+		this.styleDescription = styleBuilder
+				.getMergedStyle(STYLE.add(SName.description).withStereotype(getEntity().getStereotype()));
 
 		final FontConfiguration fieldsFontConfiguration = styleDescription
 				.getFontConfiguration(getSkinParam().getIHtmlColorSet());

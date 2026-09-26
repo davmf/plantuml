@@ -55,9 +55,9 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public abstract class AbstractParallelFtilesBuilder {
 
@@ -70,12 +70,12 @@ public abstract class AbstractParallelFtilesBuilder {
 	protected final List<Ftile> list99 = new ArrayList<>();
 	protected final Colors colors;
 
-	public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity);
+	public StyleQuery getStyleSignature() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY;
 	}
 
-	final public StyleSignatureBasic getStyleSignatureArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	final public StyleQuery getStyleSignatureArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 	public AbstractParallelFtilesBuilder(ISkinParam skinParam, StringBounder stringBounder, List<Ftile> all,
@@ -189,7 +189,7 @@ public abstract class AbstractParallelFtilesBuilder {
 		if (Display.isNull(display))
 			return null;
 
-		final Style style = getStyleSignatureArrow().getMergedStyle(skinParam().getCurrentStyleBuilder());
+		final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getStyleSignatureArrow());
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(skinParam().getIHtmlColorSet());
 
 		return display.create7(fontConfiguration, HorizontalAlignment.LEFT, skinParam(), CreoleMode.SIMPLE_LINE);

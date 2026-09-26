@@ -35,9 +35,11 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
-import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.command.CommandCreateClassMultilines;
@@ -67,6 +69,8 @@ import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateState extends SingleLineCommand2<StateDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("state");
 
 	public CommandCreateState() {
 		super(getRegexConcat());
@@ -141,7 +145,7 @@ public class CommandCreateState extends SingleLineCommand2<StateDiagram> {
 			sb.append(", stereotyped ").append(arg.get("STEREOGROUP", 0));
 			final LeafType type = stereogroup.getLeafType();
 			if (type != null)
-				sb.append(" (pseudo-state type: ").append(StringUtils.goLowerCase(type.name()).replace('_', ' '))
+				sb.append(" (pseudo-state type: ").append(StringUtils.replaceChar(StringUtils.goLowerCase(type.name()), '_', ' '))
 						.append(")");
 		}
 
@@ -239,6 +243,11 @@ public class CommandCreateState extends SingleLineCommand2<StateDiagram> {
 
 		}
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -49,7 +49,6 @@ import net.sourceforge.plantuml.klimt.creole.atom.AtomImg;
 import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
-import net.sourceforge.plantuml.teavm.browser.BrowserLog;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BoyerMoore;
 import net.sourceforge.plantuml.utils.SignatureUtils;
@@ -129,6 +128,7 @@ final public class UmlSource {
 	 * @param checkEndingBackslash <code>true</code> if an ending backslash means
 	 *                             that a line has to be collapsed with the
 	 *                             following one.
+	 * @param rawSource            the original lines before processing
 	 */
 	public static UmlSource createWithRaw(List<StringLocated> source, boolean checkEndingBackslash,
 			List<StringLocated> rawSource) {
@@ -184,7 +184,7 @@ final public class UmlSource {
 	}
 
 //	public Iterator<StringLocated> iteratorRaw() {
-//		return Collections.unmodifiableCollection(rawSource).iterator();
+//		return MyCollections.unmodifiableCollection(rawSource).iterator();
 //	}
 
 	/**

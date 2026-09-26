@@ -276,6 +276,7 @@ tasks.register("npmPackage") {
 			"viz-global.js",
 			"emoji.js",
 			"openiconic.js",
+			"themes.js",
 			"main.js",
 			"main.css",
 			"favicon.svg",
@@ -322,6 +323,7 @@ tasks.register("npmPackage") {
 			    "./viz-global.js": "./viz-global.js",
 			    "./emoji.js": "./emoji.js",
 			    "./openiconic.js": "./openiconic.js",
+			    "./themes.js": "./themes.js",
 			    "./package.json": "./package.json"
 			  },
 			  "files": [
@@ -329,6 +331,7 @@ tasks.register("npmPackage") {
 			    "viz-global.js",
 			    "emoji.js",
 			    "openiconic.js",
+			    "themes.js",
 			    "main.js",
 			    "main.css",
 			    "favicon.svg",
@@ -419,13 +422,32 @@ tasks.register("npmPackage") {
 
 			- `plantuml.js` -- the engine
 			- `viz-global.js` -- Graphviz / Viz.js layout engine (required)
+			- `themes.js` -- the bundled `!theme` definitions, fetched on demand from the
+			  same directory as the page; serve it next to the engine, or register
+			  `globalThis.PLANTUML_THEMES` yourself, e.g. inside a Web Worker. Without it,
+			  `!theme` renders the diagram unthemed and warns on the console; an unknown
+			  theme name in a loaded themes.js still reports "Cannot load theme"
 			- demo pages: `index.html` (playground), `index-basic.html`,
 			  `index-basic-dark.html`, `index-collection.html`, and two GitHub
 			  integration proofs of concept
 
 			Heavy optional sprite libraries (IBM, tupadr3, material, AWS...) are **not**
-			bundled here to keep the package small; load them from the project site if
-			you need them.
+			bundled here to keep the package small. To use them (and the rest of the
+			standard library: `!include <C4/C4_Context>`, azure, kubernetes, ...), point
+			the engine at wherever the bundles are hosted before rendering; they are
+			fetched lazily, one bundle per library, only when a diagram includes it:
+
+			```html
+			<script>
+			  window.PLANTUML_STDLIB_BASE = "https://plantuml.github.io/plantuml/js-plantuml/";
+			</script>
+			```
+
+			(Note the trailing slash: the value is a plain URL prefix.) For production,
+			self-host the bundles your diagrams use and point the base at your own
+			assets. Hosts that cannot load scripts at all (Web Workers, browser
+			extensions) set a `PLANTUML_STDLIB_LOADER` callback instead -- see
+			[GITHUB_INTEGRATION.md](./GITHUB_INTEGRATION.md).
 
 			## License
 

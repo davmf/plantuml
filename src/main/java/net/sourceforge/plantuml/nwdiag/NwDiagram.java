@@ -75,7 +75,8 @@ import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class NwDiagram extends TitledDiagram {
 
@@ -316,8 +317,8 @@ public class NwDiagram extends TitledDiagram {
 		};
 	}
 
-	private StyleSignatureBasic getStyleDefinitionNetwork(SName sname) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.nwdiagDiagram, sname);
+	private StyleQuery getStyleDefinitionNetwork(SName sname) {
+		return StyleQueries.NWDIAG.add(sname);
 	}
 
 	private TextBlock toTextBlockForNetworkName(String name, String s) {
@@ -325,7 +326,7 @@ public class NwDiagram extends TitledDiagram {
 			name += "" + Jaws.BLOCK_E1_NEWLINE + s;
 
 		final StyleBuilder styleBuilder = getSkinParam().getCurrentStyleBuilder();
-		final Style style = getStyleDefinitionNetwork(SName.network).getMergedStyle(styleBuilder);
+		final Style style = styleBuilder.getMergedStyle(getStyleDefinitionNetwork(SName.network));
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(getSkinParam().getIHtmlColorSet());
 		return Display.getWithNewlines(getPragma(), name).create(fontConfiguration, HorizontalAlignment.RIGHT,
 				new SpriteContainerEmpty());

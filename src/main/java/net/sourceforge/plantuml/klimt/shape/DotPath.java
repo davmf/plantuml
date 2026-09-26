@@ -36,6 +36,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.klimt.UShapeKind;
 import java.awt.Graphics2D;
 import java.awt.geom.CubicCurve2D;
 import java.awt.geom.GeneralPath;
@@ -50,6 +51,7 @@ import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.geom.BezierUtils;
+import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.geom.EnsureVisible;
 import net.sourceforge.plantuml.klimt.geom.MinFinder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
@@ -61,6 +63,7 @@ import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XLine2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class DotPath implements UShape, Moveable {
 
@@ -133,7 +136,7 @@ public class DotPath implements UShape, Moveable {
 		for (XCubicCurve2D bez : beziers)
 			sample(bez, result);
 
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	private static void sample(XCubicCurve2D bez, Set<XPoint2D> result) {
@@ -347,10 +350,10 @@ public class DotPath implements UShape, Moveable {
 		g2d.draw(p);
 	}
 
-	public void manageEnsureVisible(double x, double y, EnsureVisible visible) {
+	public void manageEnsureVisible(double x, double y, EnsureVisible visible, UClip clip) {
 		for (XCubicCurve2D bez : beziers) {
-			visible.ensureVisible(x + bez.x1, y + bez.y1);
-			visible.ensureVisible(x + bez.x2, y + bez.y2);
+			visible.ensureVisible(x + bez.x1, y + bez.y1, clip);
+			visible.ensureVisible(x + bez.x2, y + bez.y2, clip);
 		}
 
 	}
@@ -412,7 +415,7 @@ public class DotPath implements UShape, Moveable {
 	}
 
 	public final List<XCubicCurve2D> getBeziers() {
-		return Collections.unmodifiableList(beziers);
+		return MyCollections.unmodifiableList(beziers);
 	}
 
 	public DotPath simulateCompound(RectangleArea head, RectangleArea tail) {
@@ -700,6 +703,11 @@ public class DotPath implements UShape, Moveable {
 				return false;
 		}
 		return true;
+	}
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.DOT_PATH;
 	}
 
 }

@@ -1,12 +1,35 @@
 import { render } from "./plantuml.js";
+import { decodePlantUml, encodePlantUml } from "./plantuml-codec.js";
+import { createZoomController } from "./zoom.js";
 
 const editor = document.getElementById("editor");
+const defaultSource = editor.value;
+const HASH_DEBOUNCE_MS = 300;
 let dark = false;
+let hashDebounceTimer = null;
+let toastTimer = null;
+const livePreviews = {
+	svg: {format: "SVG", previewWindow: null, button: null, ready: false},
+	png: {format: "PNG", previewWindow: null, button: null, ready: false}
+};
 
+restoreEditorFromHash();
 renderer();
 resize();
 controls();
 contextMenu();
+urlSharing();
+zoomControls();
+
+function zoomControls() {
+	createZoomController({
+		viewport: document.getElementById("out"),
+		zoomOut: document.getElementById("zoom-out"),
+		zoomReset: document.getElementById("zoom-reset"),
+		zoomIn: document.getElementById("zoom-in"),
+		panToggle: document.getElementById("pan-tool")
+	});
+}
 
 function renderer() {
 	const loading = document.getElementById("loading");
@@ -25,6 +48,183 @@ function renderer() {
 function renderNow() {
 	const lines = editor.value.split(/\r\n|\r|\n/);
 	render(lines, "out", {dark: dark});
+	updateLivePreviews();
+}
+
+function restoreEditorFromHash(useDefaultWhenEmpty = false) {
+	const fragment = window.location.hash.slice(1);
+	if (!fragment) {
+		if (useDefaultWhenEmpty) {
+			editor.value = defaultSource;
+		}
+		return true;
+	}
+
+	try {
+		editor.value = decodePlantUml(fragment);
+		return true;
+	} catch (err) {
+		console.warn("Could not decode the PlantUML URL fragment:", err);
+		return false;
+	}
+}
+
+function replaceHashFromEditor() {
+	clearTimeout(hashDebounceTimer);
+	const fragment = editor.value ? `#${encodePlantUml(editor.value)}` : "";
+	const url = `${window.location.pathname}${window.location.search}${fragment}`;
+	window.history.replaceState(window.history.state, "", url);
+}
+
+function urlSharing() {
+	editor.addEventListener("input", () => {
+		clearTimeout(hashDebounceTimer);
+		hashDebounceTimer = setTimeout(replaceHashFromEditor, HASH_DEBOUNCE_MS);
+	});
+
+	window.addEventListener("hashchange", () => {
+		clearTimeout(hashDebounceTimer);
+		if (restoreEditorFromHash(true)) {
+			renderNow();
+		}
+	});
+
+	const share = document.getElementById("share");
+	share.addEventListener("click", () => {
+		replaceHashFromEditor();
+		copyText(window.location.href).then(
+			() => {
+				showControlResult(share, "success", 300);
+				showToast("Copied");
+			},
+			reason => {
+				console.error("Copy shareable link failed:", reason);
+				showControlResult(share, "error", 3000);
+				showToast("Copy failed", true);
+			}
+		);
+	});
+}
+
+function showControlResult(button, result, duration) {
+	button.classList.add(result);
+	setTimeout(() => button.classList.remove(result), duration);
+}
+
+function showToast(message, isError = false) {
+	const toast = document.getElementById("toast");
+	clearTimeout(toastTimer);
+	toast.textContent = message;
+	toast.classList.toggle("error", isError);
+	toast.classList.add("visible");
+	toastTimer = setTimeout(() => toast.classList.remove("visible"), 1600);
+}
+
+async function copyText(content) {
+	try {
+		if (navigator.clipboard?.writeText) {
+			await navigator.clipboard.writeText(content);
+			return;
+		}
+	} catch (err) {
+		console.warn("Clipboard API unavailable; using selection fallback:", err);
+	}
+
+	const textarea = document.createElement("textarea");
+	textarea.value = content;
+	textarea.setAttribute("readonly", "");
+	textarea.style.position = "fixed";
+	textarea.style.opacity = "0";
+	document.body.appendChild(textarea);
+	textarea.select();
+	const copied = document.execCommand("copy");
+	textarea.remove();
+	if (!copied) {
+		throw new Error("The browser denied clipboard access");
+	}
+}
+
+function isLivePreviewOpen(state) {
+	if (state.previewWindow == null) {
+		return false;
+	}
+	if (state.previewWindow.closed) {
+		releaseLivePreview(state);
+		return false;
+	}
+	return true;
+}
+
+function releaseLivePreview(state) {
+	state.button?.classList.remove("active");
+	state.button = null;
+	state.ready = false;
+	state.previewWindow = null;
+}
+
+function getLivePreviewUrl(state) {
+	const url = new URL("preview/", window.location.href);
+	url.searchParams.set("format", state.format.toLowerCase());
+	url.searchParams.set("theme", dark ? "dark" : "light");
+	if (editor.value) {
+		url.hash = encodePlantUml(editor.value);
+	}
+	return url;
+}
+
+function updateLivePreviewLocation(state) {
+	if (!isLivePreviewOpen(state) || !state.ready) {
+		return;
+	}
+	try {
+		const url = getLivePreviewUrl(state);
+		if (state.previewWindow.location.href !== url.href) {
+			state.previewWindow.history.replaceState(null, "", url);
+			state.previewWindow.dispatchEvent(new state.previewWindow.Event("hashchange"));
+		}
+	} catch (err) {
+		console.warn(`Stopped updating live ${state.format} preview:`, err);
+		releaseLivePreview(state);
+	}
+}
+
+function openLivePreview(kind, button) {
+	const state = livePreviews[kind];
+	if (isLivePreviewOpen(state)) {
+		state.previewWindow.focus();
+		updateLivePreviewLocation(state);
+		return;
+	}
+
+	const previewWindow = window.open(getLivePreviewUrl(state), "_blank");
+	if (previewWindow == null) {
+		showControlResult(button, "error", 3000);
+		showToast("Popup blocked", true);
+		return;
+	}
+
+	state.previewWindow = previewWindow;
+	state.button = button;
+	state.ready = false;
+	button.classList.add("active");
+	previewWindow.addEventListener("load", () => {
+		if (state.previewWindow !== previewWindow) {
+			return;
+		}
+		state.ready = true;
+		previewWindow.addEventListener("pagehide", () => {
+			if (state.previewWindow === previewWindow) {
+				releaseLivePreview(state);
+			}
+		}, {once: true});
+		updateLivePreviewLocation(state);
+	}, {once: true});
+	previewWindow.focus();
+}
+
+function updateLivePreviews() {
+	updateLivePreviewLocation(livePreviews.svg);
+	updateLivePreviewLocation(livePreviews.png);
 }
 
 function resize() {
@@ -53,7 +253,7 @@ function controls() {
 	const copy = document.getElementById("copy");
 	copy.addEventListener("click", () => {
 		const content = getContent();
-		navigator.clipboard.writeText(content).then(
+		copyText(content).then(
 			() => {
 				copy.classList.add("success");
 				setTimeout(() => (copy.classList.remove("success")), 300);
@@ -128,6 +328,12 @@ function controls() {
 			setTimeout(() => (copyBitmap.classList.remove("error")), 3000);
 		}
 	});
+
+	const openSvg = document.getElementById("open-svg");
+	openSvg.addEventListener("click", () => openLivePreview("svg", openSvg));
+
+	const openPng = document.getElementById("open-png");
+	openPng.addEventListener("click", () => openLivePreview("png", openPng));
 
 	const theme = document.getElementById("theme");
 	theme.addEventListener("click", () => {
@@ -216,8 +422,10 @@ function contextMenu() {
 		// real action, error handling and visual feedback live in one
 		// place (the click handlers installed by controls()).
 		const ENTRIES = [
-			{ label: "Copy as bitmap", buttonId: "copy-bitmap" },
-			{ label: "Copy as SVG",    buttonId: "copy"        }
+			{ label: "Copy as bitmap",       buttonId: "copy-bitmap" },
+			{ label: "Copy as SVG",          buttonId: "copy"        },
+			{ label: "Open live PNG preview", buttonId: "open-png"    },
+			{ label: "Open live SVG preview", buttonId: "open-svg"    }
 		];
 		for (const entry of ENTRIES) {
 			const li = document.createElement("li");

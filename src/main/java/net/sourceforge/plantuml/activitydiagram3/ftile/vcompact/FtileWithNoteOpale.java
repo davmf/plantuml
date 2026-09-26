@@ -68,12 +68,13 @@ import net.sourceforge.plantuml.sequencediagram.NoteType;
 import net.sourceforge.plantuml.skin.AlignmentParam;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.Styleable;
 import net.sourceforge.plantuml.svek.image.Opale;
 import net.sourceforge.plantuml.utils.Direction;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class FtileWithNoteOpale extends AbstractFtile implements Stencil, Styleable {
 
@@ -85,15 +86,16 @@ public class FtileWithNoteOpale extends AbstractFtile implements Stencil, Stylea
 	private final double suppSpace = 20;
 	private final Swimlane swimlaneNote;
 
-	public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.note);
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_NOTE;
 	}
 
 	public Set<Swimlane> getSwimlanes() {
 		if (swimlaneNote != null) {
 			final Set<Swimlane> result = new HashSet<>(tile.getSwimlanes());
 			result.add(swimlaneNote);
-			return Collections.unmodifiableSet(result);
+			return MyCollections.unmodifiableSet(result);
 		}
 		return tile.getSwimlanes();
 	}
@@ -134,8 +136,9 @@ public class FtileWithNoteOpale extends AbstractFtile implements Stencil, Stylea
 
 		final Stereotype stereotype = note.getStereotype();
 
-		final Style style = getStyleSignature().withTOBECHANGED(stereotype)
-				.getMergedStyle(skinParam().getCurrentStyleBuilder()).eventuallyOverride(note.getColors());
+		final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery().withStereotype(stereotype))
+				.eventuallyOverride(note.getColors());
+
 		final HColor noteBackgroundColor = style.value(PName.BackGroundColor).asColor(getIHtmlColorSet());
 		final HColor borderColor = style.value(PName.LineColor).asColor(getIHtmlColorSet());
 		final FontConfiguration fc = style.getFontConfiguration(getIHtmlColorSet());

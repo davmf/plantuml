@@ -43,6 +43,7 @@ import org.teavm.jso.dom.html.HTMLDocument;
 import org.teavm.jso.dom.xml.Document;
 import org.teavm.jso.dom.xml.Element;
 
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.klimt.UGroupType;
 import net.sourceforge.plantuml.klimt.drawing.svg.PortableSvgDocument;
 import net.sourceforge.plantuml.klimt.drawing.svg.SvgGraphics;
@@ -408,9 +409,7 @@ public class SvgGraphicsTeaVM {
 	}
 
 	private String format(double value) {
-		if (value == (int) value)
-			return String.valueOf((int) value);
-		return String.format("%.2f", value).replace(',', '.');
+		return StringUtils.formatDecimal(value, 2);
 	}
 
 	private String formatPoints(double... points) {
@@ -630,7 +629,7 @@ public class SvgGraphicsTeaVM {
 	 * Wraps SVG content with a scale transform.
 	 */
 	private String wrapWithScaleTransform(String svg, double scale) {
-		String svg2 = svg.replace('\n', ' ').replace('\r', ' ');
+		String svg2 = StringUtils.replaceChar(StringUtils.replaceChar(svg, '\n', ' '), '\r', ' ');
 		if (!svg2.contains("<g ") && !svg2.contains("<g>")) {
 			svg = svg.replaceFirst("\\<svg\\>", "<svg><g>");
 			svg = svg.replaceFirst("\\</svg\\>", "</g></svg>");

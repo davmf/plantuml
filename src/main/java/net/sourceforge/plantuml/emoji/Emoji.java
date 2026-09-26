@@ -40,7 +40,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +49,7 @@ import java.util.TreeMap;
 import org.teavm.jso.JSBody;
 // ::done
 
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.emoji.data.Dummy;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -83,7 +83,7 @@ public class Emoji {
 	}
 
 	public static Map<String, Emoji> getAll() {
-		return Collections.unmodifiableMap(new TreeMap<>(ALL));
+		return MyCollections.unmodifiableMap(new TreeMap<>(ALL));
 	}
 
 	private ISvgSpriteParser parser;

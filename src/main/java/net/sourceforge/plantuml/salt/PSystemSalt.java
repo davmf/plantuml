@@ -55,8 +55,11 @@ import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.salt.element.Element;
@@ -112,7 +115,17 @@ public class PSystemSalt extends TitledDiagram {
 	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
 		final Element salt = createElement(manageSprite());
 		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam(), getPragma());
-		final XDimension2D size = salt.getPreferredDimension(stringBounder, 0, 0);
+		final XDimension2D preferred = salt.getPreferredDimension(stringBounder, 0, 0);
+		// Only pay for the extra dry-run pass - and only let it influence the
+		// final size - when something in the tree can actually draw beyond
+		// its own preferred dimension. It measures via LimitFinder, a
+		// different (UText-based) code path than getPreferredDimension's own
+		// (creole-aware) text measurement, so it is not always pixel-for-
+		// pixel identical even when nothing truly overflows; gating it here
+		// keeps every ordinary salt diagram byte-identical to before this
+		// existed instead of picking up a stray pixel or two of margin.
+		final XDimension2D size = salt.mayDrawBeyondPreferredDimension() ? withActualExtent(salt, preferred, stringBounder)
+				: preferred;
 		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
@@ -129,6 +142,35 @@ public class PSystemSalt extends TitledDiagram {
 				return getSkinParam().getBackgroundColor();
 			}
 		};
+	}
+
+	// Some elements (an open salt droplist - see ElementDroplist - is the
+	// current example) deliberately draw beyond their own preferred
+	// dimension, so they can float over / overlap whatever the layout put
+	// after them instead of pushing it down, the way a real UI drop-down
+	// covers whatever is under it. getPreferredDimension() has to stay
+	// unaware of that overflow, since it is also what every grid/row/column
+	// in the diagram is sized from (see ElementPyramid#init) - growing it
+	// would reserve room for the overflow and defeat the "floats over"
+	// behavior. But it means getPreferredDimension() alone is not always
+	// large enough to size the final image: whatever gets drawn past its
+	// edge is clipped outright by raster formats such as PNG, because their
+	// canvas is allocated at exactly that size (see TextBlockExporter);
+	// SVG happens to auto-grow its declared viewBox from the shapes it
+	// actually draws instead, which is why this was never visible there
+	// (see issue #2882). Do a dry run of the real drawU() calls - which,
+	// unlike getPreferredDimension(), walks actual absolute positions - and
+	// grow the canvas to whatever that dry run really touched, without
+	// changing how any element itself gets laid out.
+	private static XDimension2D withActualExtent(final Element salt, final XDimension2D preferred,
+			StringBounder stringBounder) {
+		final MinMax minmax = TextBlockUtils.getMinMax(new UDrawable() {
+			public void drawU(UGraphic ug) {
+				salt.drawU(ug, 0, preferred);
+				salt.drawU(ug, 1, preferred);
+			}
+		}, stringBounder, true);
+		return preferred.atLeast(minmax.getMaxX(), minmax.getMaxY());
 	}
 
 	public DiagramDescription getDescription() {
@@ -177,13 +219,28 @@ public class PSystemSalt extends TitledDiagram {
 
 		final Collection<AbstractElementFactoryComplex> cpx = new ArrayList<>();
 
+		// A single, shared ElementFactoryTree instance, reused everywhere a tree
+		// table can appear (top-level, and as a child of Pyramid/Scroll/Border/
+		// itself below) instead of creating a fresh one per parent. Tree cells
+		// are themselves dispatched through getNextElement() (see
+		// ElementFactoryTree#create()), so whichever instance ends up handling a
+		// given "{T#...}" block needs its own factories wired up exactly like
+		// Pyramid/Scroll/Border do; sharing one instance guarantees that instead
+		// of leaving every other copy with an empty, unusable factory list.
+		final ElementFactoryTree treeFactory = new ElementFactoryTree(source, dictionary);
+
 		// cpx.add(new ElementFactorySimpleFrame(source, dictionnary));
 		cpx.add(new ElementFactoryPyramid(source, dictionary));
 		cpx.add(new ElementFactoryScroll(source, dictionary));
 		cpx.add(new ElementFactoryBorder(source, dictionary));
+		// A tree table ("{T#...}") must be a top-level candidate too, not only
+		// something reachable once already inside a Pyramid/Scroll/Border body -
+		// otherwise a bare tree table needs a useless extra wrapping "{ ... }"
+		// to render at all (see issue #2730).
+		cpx.add(treeFactory);
 
 		for (AbstractElementFactoryComplex f : cpx)
-			addSimpleFactory(f, source, dictionary);
+			addSimpleFactory(f, source, dictionary, treeFactory);
 
 		for (AbstractElementFactoryComplex f1 : cpx)
 			for (AbstractElementFactoryComplex f2 : cpx)
@@ -202,9 +259,9 @@ public class PSystemSalt extends TitledDiagram {
 	}
 
 	private static void addSimpleFactory(final AbstractElementFactoryComplex cpxFactory, final DataSource source,
-			SaltDictionary dictionary) {
+			SaltDictionary dictionary, ElementFactoryTree treeFactory) {
 		cpxFactory.addFactory(new ElementFactoryMenu(source, dictionary));
-		cpxFactory.addFactory(new ElementFactoryTree(source, dictionary));
+		cpxFactory.addFactory(treeFactory);
 		cpxFactory.addFactory(new ElementFactoryTab(source, dictionary));
 		cpxFactory.addFactory(new ElementFactoryLine(source));
 		cpxFactory.addFactory(new ElementFactoryTextField(source, dictionary));

@@ -1,0 +1,174 @@
+'use strict';
+// Functional check that the browser (TeaVM) engine falls back to the Smetana
+// layout engine when viz-global.js is not loaded, without any pragma.
+//
+// usage: node check-viz-fallback.js target=<dir-or-js>
+//   target   a directory containing plantuml.js (viz-global.js is served from
+//            there too for the control page), or a path to the engine .js file
+//
+// Before the fallback, a Graphviz-family diagram on a page without
+// viz-global.js could not render at all: the Viz global was simply missing.
+// The JVM build already handles the equivalent situation (no dot binary) by
+// falling back to Smetana, and this check pins the same behavior for the
+// browser: with viz-global.js absent and no pragma, every Graphviz-family
+// diagram type renders a real SVG through Smetana with zero WebAssembly use,
+// and a one-time console note explains what happened. A diagram carrying
+// '!pragma layout smetana' renders with no note at all: the pragma
+// short-circuits the probe. On a control page WITH viz-global.js, the default
+// path still uses the Graphviz bridge, so the fallback changes nothing for
+// pages that load viz. A page with a partially loaded Viz (the global exists
+// but instance() is not a function) falls back the same way as an absent one.
+const fs = require('fs');
+const path = require('path');
+const { createCheckReporter, isErrorImage } = require('../lib/browser-check');
+const { parseTargetArg } = require('../lib/browser-cli');
+const { createMountedServer, startServer } = require('../lib/browser-http');
+const { createModulePageHtml, delay, loadPlaywright, makeRenderModuleBody, maybeScriptTag, openReadyPage, renderOn } = require('../lib/browser-page');
+
+const scriptName = path.basename(__filename, '.js');
+const { dir, file } = parseTargetArg(process.argv, `node ${scriptName}.js target=<dir-or-js>`);
+const pw = loadPlaywright();
+
+if (!fs.existsSync(path.join(dir, 'viz-global.js'))) {
+  console.error('viz-global.js not found next to the engine in ' + dir + ' (needed for the control page)');
+  process.exit(2);
+}
+
+const hook = `<script>
+window.__wasm = 0;
+['compile','instantiate','instantiateStreaming','compileStreaming'].forEach(function (k) {
+  var o = WebAssembly[k];
+  if (o) WebAssembly[k] = function () { window.__wasm++; return o.apply(WebAssembly, arguments); };
+});
+</script>`;
+
+// A partially loaded viz: the Viz global exists but instance() is not a
+// function, the shape a page gets when viz-global.js was interrupted or a
+// different script claimed the name. The probe must treat this as missing.
+const stub = `<script>window.Viz = {};</script>`;
+
+const pageHtml = mode => createModulePageHtml({
+  headHtml: hook,
+  bodyHtml: mode === 'viz' ? maybeScriptTag(dir, 'viz-global.js', '/viz-global.js') : mode === 'stub' ? stub : '',
+  modulePath: `/${file}`,
+  moduleBody: makeRenderModuleBody({ maxSvgSize: 98304 }),
+});
+
+const server = createMountedServer({
+  routes: {
+    '/index.html': { contentType: 'text/html', body: pageHtml('bare') },
+    '/index-viz.html': { contentType: 'text/html', body: pageHtml('viz') },
+    '/index-stub.html': { contentType: 'text/html', body: pageHtml('stub') },
+  },
+  mounts: [{ prefix: '/', dir }],
+});
+
+const { check, finish } = createCheckReporter();
+
+const FAMILIES = [
+  ['class', ['class Car {', '  +drive(): void', '}', 'class Engine', 'class Wheel', 'Car *-- Engine', 'Car *-- "4" Wheel']],
+  ['component', ['[Web UI] --> [API Gateway]', '[Mobile App] --> [API Gateway]', '[API Gateway] --> [Orders]']],
+  ['deployment', ['node "Load Balancer" as lb', 'node "App Server" as app', 'database "Primary" as db', 'lb --> app', 'app --> db']],
+  ['usecase', ['actor User', 'User --> (Login)', 'User --> (Browse)', '(Browse) --> (Checkout)']],
+  ['composite state', ['[*] --> Working', 'state Working {', '  [*] --> Fetching', '  Fetching --> Parsing : done', '}', 'Working --> [*] : shutdown']],
+];
+const SEQUENCE = ['Alice -> Bob: hello', 'Bob --> Alice: hi'];
+const diagram = body => ['@startuml', ...body, '@enduml'];
+
+(async () => {
+  const port = await startServer(server);
+  const browser = await pw.chromium.launch({ headless: true });
+
+  // Page 1: engine only, viz-global.js not loaded, no pragma anywhere.
+  const fallbackNotes = [];
+  const bareReady = await openReadyPage(browser, `http://127.0.0.1:${port}/index.html`, {
+    polling: 200,
+    onConsole: m => { if (m.type() === 'info' && /Smetana layout engine/.test(m.text())) fallbackNotes.push(m.text()); },
+  });
+  const bare = bareReady.page;
+  const bareErrors = bareReady.errors;
+
+  // First render on the page carries the pragma: the pragma must short-circuit
+  // the probe, so it renders through Smetana with no fallback note at all.
+  const prag = await renderOn(bare, ['@startuml', '!pragma layout smetana', ...FAMILIES[0][1], '@enduml'], {
+    includeWasmCount: true,
+    includeShapeCounts: true,
+    maxTextLength: 120,
+  });
+  await delay(250); // let any console event arrive before asserting absence
+  check('pragma diagram on the viz-less page renders with no fallback note (pragma short-circuits the probe)',
+    !prag.thrown && !!prag.svg && !isErrorImage(prag.svg) && prag.shapes > 0 && prag.wasm === 0 && fallbackNotes.length === 0,
+    prag.thrown || (!prag.svg ? 'no svg: ' + prag.text.slice(0, 120)
+      : fallbackNotes.length !== 0 ? 'fallback note logged for an explicit pragma render'
+      : 'render failed (shapes=' + prag.shapes + ' wasm=' + prag.wasm + ')'));
+
+  const seq = await renderOn(bare, diagram(SEQUENCE), { maxTextLength: 120 });
+  check('sequence diagram renders without `viz-global.js`', !seq.thrown && !!seq.svg,
+    seq.thrown || 'no svg produced: ' + seq.text.slice(0, 120));
+
+  for (const [label, body] of FAMILIES) {
+    const r = await renderOn(bare, diagram(body), {
+      includeWasmCount: true,
+      includeShapeCounts: true,
+      maxTextLength: 120,
+    });
+    const ok = !r.thrown && !!r.svg && !isErrorImage(r.svg) && r.shapes > 0 && r.texts > 0 && r.wasm === 0;
+    check(`${label} diagram without \`viz-global.js\` and without pragma falls back to smetana`, ok,
+      r.thrown || (!r.svg ? 'no svg: ' + r.text.slice(0, 120)
+        : isErrorImage(r.svg) ? 'error image'
+        : r.wasm !== 0 ? 'unexpected WebAssembly use (' + r.wasm + ')'
+        : 'svg but no drawn content (shapes=' + r.shapes + ' texts=' + r.texts + ')'));
+  }
+  check('one console note explains the fallback', fallbackNotes.length === 1,
+    fallbackNotes.length === 0 ? 'no console.info note seen' : fallbackNotes.length + ' notes seen (expected exactly one)');
+  check('no unhandled page errors on the viz-less page', bareErrors.length === 0, bareErrors.join(' | '));
+
+  // Page 2 (control): viz-global.js loaded. The default path must be unchanged.
+  const ctrlNotes = [];
+  const ctrlReady = await openReadyPage(browser, `http://127.0.0.1:${port}/index-viz.html`, {
+    polling: 200,
+    onConsole: m => { if (m.type() === 'info' && /Smetana layout engine/.test(m.text())) ctrlNotes.push(m.text()); },
+  });
+  const ctrl = ctrlReady.page;
+  const ctrlErrors = ctrlReady.errors;
+
+  const viaViz = await renderOn(ctrl, diagram(FAMILIES[0][1]), {
+    includeWasmCount: true,
+    maxTextLength: 120,
+  });
+  check('control: class diagram without the pragma still uses the `Graphviz` bridge',
+    !viaViz.thrown && !!viaViz.svg && !isErrorImage(viaViz.svg) && viaViz.wasm > 0,
+    viaViz.thrown || (!viaViz.svg ? 'no svg: ' + viaViz.text.slice(0, 120)
+      : viaViz.wasm === 0 ? 'render used no WebAssembly, default path changed' : 'error image'));
+  check('control: no fallback note when `viz-global.js` is loaded', ctrlNotes.length === 0,
+    ctrlNotes.join(' | '));
+  check('no unhandled page errors on the control page', ctrlErrors.length === 0, ctrlErrors.join(' | '));
+
+  // Page 3: a partially loaded Viz (the global exists, instance() is not a
+  // function). The probe must treat it as missing and fall back, with the note.
+  const partNotes = [];
+  const partReady = await openReadyPage(browser, `http://127.0.0.1:${port}/index-stub.html`, {
+    polling: 200,
+    onConsole: m => { if (m.type() === 'info' && /Smetana layout engine/.test(m.text())) partNotes.push(m.text()); },
+  });
+  const part = partReady.page;
+  const partErrors = partReady.errors;
+
+  const viaStub = await renderOn(part, diagram(FAMILIES[0][1]), {
+    includeWasmCount: true,
+    includeShapeCounts: true,
+    maxTextLength: 120,
+  });
+  await delay(250);
+  check('partially loaded Viz (no instance function) falls back to smetana with the note',
+    !viaStub.thrown && !!viaStub.svg && !isErrorImage(viaStub.svg) && viaStub.shapes > 0 && viaStub.wasm === 0 && partNotes.length === 1,
+    viaStub.thrown || (!viaStub.svg ? 'no svg: ' + viaStub.text.slice(0, 120)
+      : viaStub.wasm !== 0 ? 'unexpected WebAssembly use (' + viaStub.wasm + ')'
+      : partNotes.length !== 1 ? partNotes.length + ' fallback notes seen (expected exactly one)'
+      : 'svg but no drawn content (shapes=' + viaStub.shapes + ')'));
+  check('no unhandled page errors on the partial-viz page', partErrors.length === 0, partErrors.join(' | '));
+
+  await browser.close();
+  server.close();
+  finish(scriptName, { uppercase: true });
+})().catch(e => { console.error(e); process.exit(2); });

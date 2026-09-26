@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UStroke;
@@ -50,10 +51,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.ShapeType;
@@ -73,7 +73,7 @@ public class EntityImageActivity extends AbstractEntityImage {
 		super(entity);
 		this.bibliotekon = bibliotekon;
 
-		final Style style = getStyleSignature().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		final Style style = getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(getSkinParam().getIHtmlColorSet());
 		final HorizontalAlignment horizontalAlignment = style.getHorizontalAlignment();
 		this.shadowing = style.getShadowing();
@@ -129,7 +129,7 @@ public class EntityImageActivity extends AbstractEntityImage {
 
 		ug = applyColors(ug);
 
-		final Style style = getStyleSignature().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		final Style style = getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
 		final UStroke stroke = style.getStroke();
 
 		ug.apply(stroke).draw(rect);
@@ -139,14 +139,13 @@ public class EntityImageActivity extends AbstractEntityImage {
 	}
 
 	@Override
-	public StyleSignature getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity)
-				.withTOBECHANGED(getStereo());
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY.withStereotype(getStereo());
 	}
 
 	private UGraphic applyColors(UGraphic ug) {
 
-		final Style style = getStyleSignature().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		final Style style = getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
 		final HColor borderColor = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
 		HColor backcolor = getEntity().getColors().getColor(ColorType.BACK);
 		if (backcolor == null)

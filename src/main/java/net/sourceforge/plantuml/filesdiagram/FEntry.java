@@ -35,7 +35,6 @@
 package net.sourceforge.plantuml.filesdiagram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -55,10 +54,11 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.image.Opale;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class FEntry implements Iterable<FEntry> {
 
@@ -110,7 +110,7 @@ public class FEntry implements Iterable<FEntry> {
 
 	@Override
 	public Iterator<FEntry> iterator() {
-		return Collections.unmodifiableCollection(children).iterator();
+		return MyCollections.unmodifiableCollection(children).iterator();
 	}
 
 	public FEntry getParent() {
@@ -164,9 +164,8 @@ public class FEntry implements Iterable<FEntry> {
 
 	private Opale createOpale(ISkinParam skinParam) {
 
-		final StyleSignatureBasic signature = StyleSignatureBasic.of(SName.root, SName.element, SName.filesDiagram,
-				SName.note);
-		final Style style = signature.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final StyleQuery signature = StyleQueries.FILESDIAG_NOTE;
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(signature);
 
 		final FontConfiguration fc = FontConfiguration.create(skinParam, style);
 		final double shadowing = style.getShadowing();
