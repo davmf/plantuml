@@ -65,6 +65,7 @@ import net.sourceforge.plantuml.timingdiagram.command.CommandPixelHeight;
 import net.sourceforge.plantuml.timingdiagram.command.CommandRobustConcise;
 import net.sourceforge.plantuml.timingdiagram.command.CommandScalePixel;
 import net.sourceforge.plantuml.timingdiagram.command.CommandTicks;
+import net.sourceforge.plantuml.timingdiagram.command.CommandTimeAxisUnit;
 import net.sourceforge.plantuml.timingdiagram.command.CommandTimeMessage;
 import net.sourceforge.plantuml.timingdiagram.command.CommandUseDateFormat;
 
@@ -100,6 +101,7 @@ public class TimingDiagramFactory extends PSystemCommandFactory {
 		cmds.add(new CommandConstraint());
 		cmds.add(new CommandScalePixel());
 		cmds.add(new CommandHideTimeAxis());
+		cmds.add(new CommandTimeAxisUnit());
 		cmds.add(new CommandHighlight());
 		cmds.add(new CommandModeCompact());
 		cmds.add(new CommandTicks());
