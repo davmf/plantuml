@@ -35,17 +35,26 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandStop3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("stop");
 
 	public CommandStop3() {
 		super(getRegexConcat());
@@ -55,13 +64,40 @@ public class CommandStop3 extends SingleLineCommand2<ActivityDiagram3> {
 		return RegexConcat.build(CommandStop3.class.getName(), RegexLeaf.start(), //
 				new RegexLeaf("stop"), //
 				new RegexLeaf(";?"), //
+				RegexLeaf.spaceZeroOrMore(), //
+				Stereogroup.optionalStereogroup(), //
 				RegexLeaf.end());
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
-		diagram.stop();
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'stop' terminates the flow with a final node (a bullseye), as
+		// opposed to 'end' which draws an end node (a circled cross).
+		sb.append("Stopping the flow with a final node");
+
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		if (stereogroup.isEmpty() == false)
+			sb.append(", stereotyped ").append(arg.get("STEREOGROUP", 0));
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		final Colors colors = stereogroup.getInnerColors(diagram.getSkinParam().getIHtmlColorSet());
+		
+		diagram.stop(colors);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

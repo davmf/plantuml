@@ -35,14 +35,18 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
+import java.util.Collection;
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -56,10 +60,15 @@ public class CommandAddField extends SingleLineCommand2<StateDiagram> {
 	public CommandAddField() {
 		super(getRegexConcat());
 	}
-	
+
 	@Override
 	public boolean isEligibleFor(ParserPass pass) {
-		return pass == ParserPass.THREE;
+		return pass == ParserPass.ONE;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 
@@ -75,8 +84,18 @@ public class CommandAddField extends SingleLineCommand2<StateDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'State : text' adds a description line inside the body of a state,
+		// creating it if it does not exist yet. The name may be quoted (CODE4)
+		// or not (CODE3), hence the lazzy lookup, like in executeArg.
+		return "Adding the description line \"" + arg.get("FIELD", 0) + "\" to the state '"
+				+ arg.getLazzy("CODE", 0) + "' (created if it does not exist yet)";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
 		final String codeString = arg.getLazzy("CODE", 0);
 
 		final Quark<Entity> quark;

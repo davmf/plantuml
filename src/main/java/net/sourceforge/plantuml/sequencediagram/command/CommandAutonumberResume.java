@@ -36,7 +36,10 @@
 package net.sourceforge.plantuml.sequencediagram.command;
 
 import java.text.DecimalFormat;
+import java.util.Arrays;
+import java.util.Collection;
 
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -48,6 +51,8 @@ import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandAutonumberResume extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("autonumber");
 
 	public CommandAutonumberResume() {
 		super(getConcat());
@@ -72,6 +77,27 @@ public class CommandAutonumberResume extends SingleLineCommand2<SequenceDiagram>
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Resumes the numbering stopped by 'autonumber stop', continuing from
+		// the current value. The increment and the format are only replaced
+		// when given (see AutoNumber.resume).
+		sb.append("Resuming automatic numbering of messages");
+
+		final String inc = arg.get("INC", 0);
+		if (inc != null)
+			sb.append(", incrementing by ").append(inc);
+
+		final String df = arg.get("DF", 0);
+		if (df != null)
+			sb.append(", with format \"").append(df).append("\"");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String df = arg.get("DF", 0);
@@ -92,6 +118,11 @@ public class CommandAutonumberResume extends SingleLineCommand2<SequenceDiagram>
 			diagram.getAutoNumber().resume(Integer.parseInt(inc), decimalFormat);
 		}
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

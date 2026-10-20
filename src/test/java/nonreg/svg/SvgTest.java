@@ -29,7 +29,12 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -65,6 +70,7 @@ public class SvgTest {
 
 	private String stripExtraneousAndUnpredictableNodes(String svgXML) {
 		Document document = parseXML(svgXML);
+		removeProcessingInstructions(document);
 		removeElementsByXPath(document,
 				"/svg:svg/@style",
 				"//svg:script/text()",
@@ -87,6 +93,24 @@ public class SvgTest {
 				"//@viewBox"
 		);
 		return convertDocumentToString(document);
+	}
+
+	private void removeProcessingInstructions(Document document) {
+		removeProcessingInstructionsRecursive(document);
+	}
+
+	private void removeProcessingInstructionsRecursive(Node parent) {
+		NodeList children = parent.getChildNodes();
+		List<Node> toRemove = new ArrayList<>();
+		for (int i = 0; i < children.getLength(); i++) {
+			Node child = children.item(i);
+			if (child.getNodeType() == Node.PROCESSING_INSTRUCTION_NODE)
+				toRemove.add(child);
+			else if (child.getNodeType() == Node.ELEMENT_NODE)
+				removeProcessingInstructionsRecursive(child);
+		}
+		for (Node node : toRemove)
+			parent.removeChild(node);
 	}
 
 	private Document parseXML(String xml) {

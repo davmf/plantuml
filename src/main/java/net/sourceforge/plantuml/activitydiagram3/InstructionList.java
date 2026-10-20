@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.activitydiagram3;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -52,6 +51,7 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.GtileAssembly;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GtileEmpty;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
@@ -59,6 +59,7 @@ import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class InstructionList extends WithNote implements Instruction, InstructionCollection {
 
@@ -90,14 +91,19 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 		if (all.size() != 1)
 			return false;
 
-		if (getLast() instanceof InstructionSpot)
+		final Instruction last = getLast();
+
+		if (last instanceof InstructionSimple)
+			return ((InstructionSimple) last).isKilled();
+
+		if (last instanceof InstructionSpot)
 			return true;
 
-		if (getLast() instanceof InstructionStop)
-			return ((InstructionStop) getLast()).hasNotes() == false;
+		if (last instanceof InstructionStop)
+			return ((InstructionStop) last).hasNotes() == false;
 
-		if (getLast() instanceof InstructionEnd)
-			return ((InstructionEnd) getLast()).hasNotes() == false;
+		if (last instanceof InstructionEnd)
+			return ((InstructionEnd) last).hasNotes() == false;
 
 		return false;
 	}
@@ -108,7 +114,6 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 		return CommandExecutionResult.ok();
 	}
 
-	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		if (all.size() == 0)
@@ -126,10 +131,9 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 		}
 		return result;
 	}
-	// ::done
 
 	@Override
-	public Ftile createFtile(FtileFactory factory) {
+	public Ftile createFtile(FtileFactory factory) throws NoSuchColorException {
 		if (all.size() == 0) {
 			Ftile result = new FtileEmpty(factory.skinParam(), defaultSwimlane);
 			// Not a typo, in that case, we decide to decorate the entry link.
@@ -183,7 +187,8 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 	}
 
 	@Override
-	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote, Stereotype stereotype) {
+	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote,
+			Stereotype stereotype) {
 		if (getLast() == null)
 			return super.addNote(note, position, type, colors, swimlaneNote, stereotype);
 
@@ -217,7 +222,7 @@ public class InstructionList extends WithNote implements Instruction, Instructio
 		for (Instruction ins : list)
 			result.addAll(ins.getSwimlanes());
 
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	private LinkRendering outlinkRendering;

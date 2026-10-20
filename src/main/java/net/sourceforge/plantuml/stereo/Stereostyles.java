@@ -36,15 +36,14 @@
 package net.sourceforge.plantuml.stereo;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class Stereostyles {
-	// ::remove folder when __HAXE__
 
 	public static final Stereostyles NONE = new Stereostyles();
 
@@ -61,7 +60,7 @@ public class Stereostyles {
 
 	public static Stereostyles build(String label) {
 		final Stereostyles result = new Stereostyles();
-		final Matcher2 m = p.matcher(label);
+		final Matcher2 m = p.matcher(label, 0);
 		while (m.find())
 			result.names.add(m.group(1));
 
@@ -69,7 +68,7 @@ public class Stereostyles {
 	}
 
 	public Collection<String> getStyleNames() {
-		return Collections.unmodifiableCollection(names);
+		return MyCollections.unmodifiableCollection(names);
 	}
 
 }

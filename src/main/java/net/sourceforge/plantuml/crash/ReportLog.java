@@ -37,14 +37,14 @@ package net.sourceforge.plantuml.crash;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import net.sourceforge.plantuml.OptionPrint;
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.cli.OptionPrint;
 import net.sourceforge.plantuml.eggs.QuoteUtils;
 import net.sourceforge.plantuml.text.BackSlash;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.version.Version;
 
 public class ReportLog implements Iterable<String> {
@@ -63,11 +63,11 @@ public class ReportLog implements Iterable<String> {
 
 	@Override
 	public Iterator<String> iterator() {
-		return Collections.unmodifiableList(strings).iterator();
+		return MyCollections.unmodifiableList(strings).iterator();
 	}
 
 	public List<String> asList() {
-		return Collections.unmodifiableList(strings);
+		return MyCollections.unmodifiableList(strings);
 	}
 
 	public void youShouldSendThisDiagram() {
@@ -100,12 +100,13 @@ public class ReportLog implements Iterable<String> {
 		add(" ");
 	}
 
-	public void anErrorHasOccured(Throwable exception, String fullDiagramText) {
+	public void anErrorHasOccurred(Throwable exception, String fullDiagramText) {
 		
 		if (exception == null)
-			add("An error has occured!");
+			add("An error has occurred!");
 		else
-			add("An error has occured : " + exception);
+			add("An error has occurred : " + exception);
+		// ::comment when __TEAVM__
 		final String quote = StringUtils.rot(QuoteUtils.getSomeQuote());
 		add("<i>" + quote);
 		addEmptyLine();
@@ -115,6 +116,7 @@ public class ReportLog implements Iterable<String> {
 		checkOldVersionWarning();
 		add("Diagram size: " + lines(fullDiagramText) + " lines / " + fullDiagramText.length() + " characters.");
 		addEmptyLine();
+		// ::done
 	}
 
 	private int lines(String text) {
@@ -144,7 +146,7 @@ public class ReportLog implements Iterable<String> {
 	}
 
 	public void addProperties() {
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		addAll(OptionPrint.interestingProperties());
 		addAll(OptionPrint.interestingValues());
 		// ::done

@@ -36,9 +36,13 @@
  */
 package net.sourceforge.plantuml.descdiagram.command;
 
+import java.util.Collection;
+import java.util.regex.Pattern;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.classdiagram.command.CommandCreateClassMultilines;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
@@ -55,6 +59,7 @@ import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -74,6 +79,11 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 
 	public CommandCreateElementFull() {
 		super(getRegexConcat());
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 	private static IRegex getRegexConcat() {
@@ -128,17 +138,104 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 	public static final String DISPLAY = "(" + DISPLAY_CORE + ")";
 	public static final String DISPLAY_WITHOUT_QUOTE = "(" + DISPLAY_CORE + "|[%pLN_.]+)";
 
-	@Override
-	final protected boolean isForbidden(CharSequence line) {
-		if (line.toString().matches("^[\\p{L}0-9_.]+$"))
-			return true;
+	private static final Pattern FORBIDDEN_PATTERN = Pattern.compile("^[\\p{L}0-9_.]+$");
 
-		return false;
+	@Override
+	protected final boolean isForbidden(CharSequence line) {
+		return FORBIDDEN_PATTERN.matcher(line).matches();
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(DescriptionDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Mirror the symbol deduction of executeArg: the shape of the code or
+		// of the display ('()...', '(...)', ':...:', '[...]') overrides the
+		// keyword, and a trailing '/' selects the business variant of usecases
+		// and actors.
+		String codeRaw = arg.getLazzy("CODE", 0);
+		String displayRaw = arg.getLazzy("DISPLAY", 0);
+		final char codeChar = getCharEncoding(codeRaw);
+		final char codeDisplay = getCharEncoding(displayRaw);
+		final String symbol;
+		if (codeRaw.startsWith("()")) {
+			symbol = "interface";
+			codeRaw = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(StringUtils.trin(codeRaw.substring(2)));
+		} else if (codeChar == '(' || codeDisplay == '(') {
+			if (arg.get("SYMBOL", 0) != null && arg.get("SYMBOL", 0).endsWith("/"))
+				symbol = "usecase/";
+			else if (displayRaw != null && displayRaw.endsWith(")/")) {
+				displayRaw = displayRaw.substring(0, displayRaw.length() - 1);
+				symbol = "usecase/";
+			} else if (codeRaw.endsWith(")/")) {
+				codeRaw = codeRaw.substring(0, codeRaw.length() - 1);
+				symbol = "usecase/";
+			} else
+				symbol = "usecase";
+		} else if (codeChar == ':' || codeDisplay == ':') {
+			if (arg.get("SYMBOL", 0) != null && arg.get("SYMBOL", 0).endsWith("/"))
+				symbol = "actor/";
+			else if (displayRaw != null && displayRaw.endsWith(":/")) {
+				displayRaw = displayRaw.substring(0, displayRaw.length() - 1);
+				symbol = "actor/";
+			} else if (codeRaw.endsWith(":/")) {
+				codeRaw = codeRaw.substring(0, codeRaw.length() - 1);
+				symbol = "actor/";
+			} else
+				symbol = "actor";
+		} else if (codeChar == '[' || codeDisplay == '[')
+			symbol = "component";
+		else
+			symbol = arg.get("SYMBOL", 0);
+
+		final String idShort = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(codeRaw);
+		sb.append("Creating the ").append(describeSymbol(symbol)).append(" '").append(idShort).append("'");
+
+		if (displayRaw != null)
+			sb.append(" displayed as \"")
+					.append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(displayRaw)).append("\"");
+
+		// The stereotype may be written inside the 'as' clause or at the end
+		// of the line, hence the lazzy lookup, like in executeArg.
+		final String stereotype = arg.getLazzy("STEREOTYPE", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		final String tags = arg.getLazzy("TAGS", 0);
+		if (tags != null && tags.isEmpty() == false)
+			sb.append(", tagged ").append(tags);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		// The color written before the name (COLOR2) is parsed but never read
+		// by executeArg.
+		if (arg.get("COLOR2", 0) != null)
+			sb.append(" (the leading color ").append(arg.get("COLOR2", 0)).append(" is currently ignored)");
+
+		return sb.toString();
+	}
+
+	static String describeSymbol(String symbol) {
+		if (symbol == null)
+			return "element";
+
+		if (symbol.equalsIgnoreCase("usecase/"))
+			return "business usecase";
+
+		if (symbol.equalsIgnoreCase("actor/"))
+			return "business actor";
+
+		return StringUtils.goLowerCase(symbol);
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(DescriptionDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
 		String codeRaw = arg.getLazzy("CODE", 0);
 		String displayRaw = arg.getLazzy("DISPLAY", 0);
 		final char codeChar = getCharEncoding(codeRaw);
@@ -228,7 +325,8 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 
 		Entity entity = quark.getData();
 		if (entity == null)
-			entity = diagram.reallyCreateLeaf(location, quark, Display.getWithNewlines(diagram.getPragma(), display), type, usymbol);
+			entity = diagram.reallyCreateLeaf(location, quark, Display.getWithNewlines(diagram.getPragma(), display),
+					type, usymbol);
 
 		entity.setDisplay(Display.getWithNewlines(diagram.getPragma(), display));
 
@@ -239,7 +337,7 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 
 		CommandCreateClassMultilines.addTags(entity, arg.getLazzy("TAGS", 0));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);

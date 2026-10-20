@@ -40,25 +40,26 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.sourceforge.plantuml.Option;
-import net.sourceforge.plantuml.OptionFlags;
+import net.sourceforge.plantuml.cli.CliOptions;
+import net.sourceforge.plantuml.cli.GlobalConfig;
+import net.sourceforge.plantuml.cli.GlobalConfigKey;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class FileGroup {
-	// ::remove file when __CORE__
+	
 
 	private final List<File> result = new ArrayList<>();
 	private final String pattern;
 	private final List<String> excluded;
-	private final Option option;
 
 	private final static Pattern2 predirPath = Pattern2.cmpile("^([^*?]*[/\\\\])?(.*)$");
 
-	public FileGroup(String pattern, List<String> excluded, Option option) {
+	public FileGroup(String pattern, List<String> excluded) {
 		this.pattern = pattern;
 		this.excluded = excluded;
-		this.option = option;
 		if (pattern.indexOf("*") == -1 && pattern.indexOf("?") == -1)
 			initNoStar();
 		else if (pattern.indexOf("**") != -1)
@@ -71,7 +72,7 @@ public class FileGroup {
 	}
 
 	private void recurse() {
-		final Matcher2 m = predirPath.matcher(pattern);
+		final Matcher2 m = predirPath.matcher(pattern, 0);
 		final boolean ok = m.find();
 		if (ok == false)
 			throw new IllegalArgumentException();
@@ -104,10 +105,10 @@ public class FileGroup {
 	}
 
 	private void addSimpleDirectory(File dir) {
-		if (OptionFlags.getInstance().isWord())
+		if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.WORD))
 			addSimpleDirectory(dir, "(?i)^.*_extr\\d+\\.txt$");
 		else
-			addSimpleDirectory(dir, option.getPattern());
+			addSimpleDirectory(dir, CliOptions.getPattern());
 
 	}
 
@@ -129,8 +130,8 @@ public class FileGroup {
 	private final static Pattern2 noStarInDirectory = Pattern2.cmpile("^(?:([^*?]*)[/\\\\])?([^/\\\\]*)$");
 
 	private void initWithSimpleStar() {
-		assert pattern.indexOf("**") == -1;
-		final Matcher2 m = noStarInDirectory.matcher(pattern);
+		if (TeaVM.a()) assert pattern.indexOf("**") == -1;
+		final Matcher2 m = noStarInDirectory.matcher(pattern, 0);
 		if (m.find()) {
 			File dir = new File(".");
 			if (m.group(1) != null) {
@@ -161,7 +162,7 @@ public class FileGroup {
 	}
 
 	public List<File> getFiles() {
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public static String toRegexp(String pattern) {

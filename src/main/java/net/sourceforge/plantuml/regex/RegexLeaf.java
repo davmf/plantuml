@@ -35,13 +35,12 @@
  */
 package net.sourceforge.plantuml.regex;
 
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.FoxSignature;
 import net.sourceforge.plantuml.text.StringLocated;
 
@@ -66,14 +65,19 @@ public class RegexLeaf implements IRegex {
 		this.pattern = regex;
 		this.name = name;
 		this.count = count;
-		assert internalSlowCount() == count : name; // name + " internal=" + internalSlowCount() + " count=" + count
-//		if (internalSlowCount() != count) {
-//			Log.logStackTrace(name + " internal=" + internalSlowCount() + " count=" + count);
-//		}
+		if (TeaVM.a()) assert internalSlowCount() == count : "Bad count number for " + name;
 	}
 
 	public static RegexLeaf spaceZeroOrMore() {
 		return new RegexLeaf("[%s]*");
+	}
+
+	public static RegexLeaf spaceOne() {
+		return new RegexLeaf("[%s]");
+	}
+
+	public static RegexOptional spaceZeroOrOne() {
+		return new RegexOptional(spaceOne());
 	}
 
 	public static RegexLeaf spaceOneOrMore() {
@@ -110,16 +114,21 @@ public class RegexLeaf implements IRegex {
 		return Pattern2.compileInternal(pattern).matcher("").groupCount();
 	}
 
-	public Map<String, RegexPartialMatch> createPartialMatch(Iterator<String> it) {
-		final RegexPartialMatch m = new RegexPartialMatch(name);
-		for (int i = 0; i < count(); i++) {
-			final String group = it.next();
-			m.add(group);
-		}
-		if (name == null)
-			return Collections.emptyMap();
+	public void fillPartialMatch(Iterator<String> it, RegexResult result) {
+		if (name == null) {
+			// Nothing to record, but the groups are still this node's and have to be consumed:
+			// the previous version built a RegexPartialMatch here, filled it, and dropped it.
+			for (int i = count(); i > 0; i--)
+				it.next();
 
-		return Collections.singletonMap(name, m);
+			return;
+		}
+
+		final RegexPartialMatch m = new RegexPartialMatch(count());
+		for (int i = 0; i < count(); i++)
+			m.add(it.next());
+
+		result.add(name, m);
 	}
 
 	public boolean match(StringLocated full) {
@@ -174,9 +183,9 @@ public class RegexLeaf implements IRegex {
 //			final boolean changed = UNKNOWN.add(pattern2);
 //			if (changed) {
 //				if (pattern.equals(pattern2))
-//					System.err.println("unknow=" + UNKNOWN.size() + " " + pattern);
+//					System.err.println("unknown=" + UNKNOWN.size() + " " + pattern);
 //				else
-//					System.err.println("unknow=" + UNKNOWN.size() + " " + pattern2 + "        " + pattern);
+//					System.err.println("unknown=" + UNKNOWN.size() + " " + pattern2 + "        " + pattern);
 //				// Thread.dumpStack();
 //			}
 //		}

@@ -46,9 +46,11 @@ import net.sourceforge.plantuml.activitydiagram3.PositionedNote;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.Style;
@@ -61,15 +63,16 @@ public interface FtileFactory {
 
 	public ISkinParam skinParam();
 
-	public Ftile start(Swimlane swimlane);
+	public Ftile start(Swimlane swimlane, Colors colors);
 
-	public Ftile stop(Swimlane swimlane);
+	public Ftile stop(Swimlane swimlane, Colors colors);
 
-	public Ftile end(Swimlane swimlane);
+	public Ftile end(Swimlane swimlane, Colors colors);
 
 	public Ftile spot(Swimlane swimlane, String spot, HColor color);
 
-	public Ftile activity(Display label, Swimlane swimlane, BoxStyle style, Colors colors, Stereotype stereotype, StyleBuilder styleBuilder);
+	public Ftile activity(Display label, Swimlane swimlane, BoxStyle style, Colors colors, Stereotype stereotype,
+			StyleBuilder styleBuilder);
 
 	public Ftile addNote(Ftile ftile, Swimlane swimlane, Collection<PositionedNote> notes,
 			VerticalAlignment verticalAlignment);
@@ -82,22 +85,24 @@ public interface FtileFactory {
 
 	public Ftile assembly(Ftile tile1, Ftile tile2);
 
-	public Ftile repeat(BoxStyle boxStyleIn, Stereotype stereotype, Swimlane swimlane, Swimlane swimlaneOut, Display startLabel, Ftile repeat,
-			Display test, Display yes, Display out, Colors colors, Ftile backward, boolean noOut,
-			LinkRendering incoming1, LinkRendering incoming2, StyleBuilder currentStyleBuilder);
+	public Ftile repeat(Stereogroup stereotype, Stereogroup stereotype2, BoxStyle boxStyleIn, Swimlane swimlane,
+			Swimlane swimlaneOut, Display startLabel, Ftile repeat, Display test, Display yes, Display out,
+			Ftile backward, boolean noOut, LinkRendering incoming1, LinkRendering incoming2,
+			StyleBuilder currentStyleBuilder) throws NoSuchColorException;
 
 	public Ftile createWhile(LinkRendering outColor, Swimlane swimlane, Ftile whileBlock, Display test, Display yes,
 			HColor color, Instruction specialOut, Ftile backward, LinkRendering incoming1, LinkRendering incoming2,
-			StyleBuilder currentStyleBuilder);
+			StyleBuilder currentStyleBuilder) throws NoSuchColorException;
 
 	public Ftile createIf(Swimlane swimlane, List<Branch> thens, Branch elseBranch, LinkRendering outColor,
 			LinkRendering topInlinkRendering, Url url, Collection<PositionedNote> notes, Stereotype stereotype,
 			StyleBuilder currentStyleBuilder);
 
 	public Ftile createSwitch(Swimlane swimlane, List<Branch> branches, LinkRendering afterEndwhile,
-			LinkRendering topInlinkRendering, Display labelTest);
+			LinkRendering topInlinkRendering, Display labelTest, Colors colors, Colors endColors);
 
-	public Ftile createParallel(List<Ftile> all, ForkStyle style, String label, Swimlane in, Swimlane out);
+	public Ftile createParallel(List<Ftile> all, ForkStyle style, String label, Swimlane in, Swimlane out,
+			Colors colors);
 
 	public Ftile createGroup(Ftile list, Display name, HColor backColor, PositionedNote note, USymbol type,
 			Style style);

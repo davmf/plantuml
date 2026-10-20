@@ -35,9 +35,14 @@
  */
 package net.sourceforge.plantuml.descdiagram;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.command.GenericRegexProducer;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -61,6 +66,8 @@ import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateDomain extends SingleLineCommand2<DescriptionDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("domain", "requirement");
 	public static final String DISPLAY_WITH_GENERIC = "[%g](.+?)(?:\\<(" + GenericRegexProducer.PATTERN + ")\\>)?[%g]";
 	public static final String CODE = "[^%s{}%g<>]+";
 
@@ -81,6 +88,45 @@ public class CommandCreateDomain extends SingleLineCommand2<DescriptionDiagram> 
 				// domain: lexical, causal, biddable
 				// requirement: FR, NFR, quality
 				new RegexLeaf(1, "GROUP", "(\\{)?"), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'domain "Display" as code' (or 'requirement ...') creates a Problem
+		// Frames element; with a trailing '{' it opens a group instead of a
+		// leaf, closed by '}'. Like in executeArg, the creation fails when the
+		// name already exists.
+		final String type = StringUtils.goLowerCase(arg.get("TYPE", 0));
+		if (arg.get("GROUP", 0) != null)
+			sb.append("Starting the ").append(type).append(" group '");
+		else
+			sb.append("Creating the ").append(type).append(" '");
+		sb.append(arg.getLazzy("CODE", 0)).append("' displayed as \"").append(arg.getLazzy("DISPLAY", 0))
+				.append("\"");
+
+		// On a domain, these stereotypes select the Problem Frames notation of
+		// the symbol, and are displayed as well, like in executeArg.
+		final String stereotype = arg.get("STEREO", 0);
+		if (stereotype != null) {
+			sb.append(", stereotype ").append(stereotype);
+			if (type.equals("domain") && (stereotype.equalsIgnoreCase("<<Machine>>")
+					|| stereotype.equalsIgnoreCase("<<Causal>>") || stereotype.equalsIgnoreCase("<<Designed>>")
+					|| stereotype.equalsIgnoreCase("<<Lexical>>") || stereotype.equalsIgnoreCase("<<Biddable>>")))
+				sb.append(" (selecting the Problem Frames symbol)");
+		}
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		// The generic part of the display, like "Name<T>", is parsed but never
+		// read by executeArg.
+		if (arg.get("DISPLAY", 1) != null)
+			sb.append(" (the generic <").append(arg.get("DISPLAY", 1)).append("> is currently ignored)");
+
+		return sb.toString();
 	}
 
 	@Override
@@ -120,7 +166,7 @@ public class CommandCreateDomain extends SingleLineCommand2<DescriptionDiagram> 
 			return CommandExecutionResult.error("Object already exists : " + codeString);
 
 		Display display = Display.getWithNewlines(diagram.getPragma(), displayString);
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		final String group = arg.get("GROUP", 0);
 		Entity entity;
 		if (group != null) {
@@ -144,6 +190,11 @@ public class CommandCreateDomain extends SingleLineCommand2<DescriptionDiagram> 
 				s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s));
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

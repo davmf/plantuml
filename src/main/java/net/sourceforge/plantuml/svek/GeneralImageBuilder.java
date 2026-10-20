@@ -39,11 +39,11 @@ package net.sourceforge.plantuml.svek;
 
 import java.util.Collection;
 
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
+import net.sourceforge.plantuml.cli.GlobalConfig;
 import net.sourceforge.plantuml.cucadiagram.PortionShower;
 import net.sourceforge.plantuml.decoration.symbol.USymbolInterface;
 import net.sourceforge.plantuml.descdiagram.EntityImageDesignedDomain;
@@ -56,7 +56,6 @@ import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.skin.LineParam;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.svek.image.EntityImageActivity;
 import net.sourceforge.plantuml.svek.image.EntityImageArcCircle;
 import net.sourceforge.plantuml.svek.image.EntityImageAssociation;
@@ -88,6 +87,7 @@ import net.sourceforge.plantuml.svek.image.EntityImageStateBorder;
 import net.sourceforge.plantuml.svek.image.EntityImageStateEmptyDescription;
 import net.sourceforge.plantuml.svek.image.EntityImageSynchroBar;
 import net.sourceforge.plantuml.svek.image.EntityImageTips;
+import net.sourceforge.plantuml.svek.image.EntityImageTransitionLabel;
 import net.sourceforge.plantuml.text.Guillemet;
 
 public final class GeneralImageBuilder {
@@ -133,7 +133,7 @@ public final class GeneralImageBuilder {
 				return new EntityImageStateBorder(leaf, stateParent, bibliotekon);
 			}
 			if (isHideEmptyDescriptionForState && leaf.getBodier().getRawBody().size() == 0)
-				return new EntityImageStateEmptyDescription(leaf, leaf.getSkinParam());
+				return new EntityImageStateEmptyDescription(leaf);
 
 			if (leaf.getStereotype() != null
 					&& "<<sdlreceive>>".equals(leaf.getStereotype().getLabel(Guillemet.DOUBLE_COMPARATOR)))
@@ -142,14 +142,19 @@ public final class GeneralImageBuilder {
 			return new EntityImageState(leaf);
 
 		}
-		if (leaf.getLeafType() == LeafType.CIRCLE_START)
+		if (leaf.getLeafType() == LeafType.CIRCLE_START || leaf.getLeafType() == LeafType.JUNCTION)
+			// A junction pseudostate is rendered identically to the initial pseudostate (a
+			// small filled circle, per the UML spec), but it must stay a distinct LeafType:
+			// LeafType.CIRCLE_START also marks "the diagram's real entry point" for other
+			// consumers (see ScxmlStateDiagramStandard.getInitial()), and a junction must
+			// never be mistaken for that.
 			return new EntityImageCircleStart(leaf);
 
 		if (leaf.getLeafType() == LeafType.CIRCLE_END)
 			return new EntityImageCircleEnd(leaf);
 
 		if (leaf.getLeafType() == LeafType.BRANCH || leaf.getLeafType() == LeafType.STATE_CHOICE)
-			return new EntityImageBranch(leaf, leaf.getSkinParam());
+			return new EntityImageBranch(leaf);
 
 		if (leaf.getLeafType() == LeafType.LOLLIPOP_FULL || leaf.getLeafType() == LeafType.LOLLIPOP_HALF)
 			return new EntityImageLollipopInterface(leaf);
@@ -158,9 +163,9 @@ public final class GeneralImageBuilder {
 			return new EntityImageDescription(leaf, portionShower, links, bibliotekon);
 
 		if (leaf.getLeafType() == LeafType.DESCRIPTION) {
-			if (OptionFlags.USE_INTERFACE_EYE1 && leaf.getUSymbol() instanceof USymbolInterface) {
+			if (GlobalConfig.USE_INTERFACE_EYE1 && leaf.getUSymbol() instanceof USymbolInterface) {
 				return new EntityImageLollipopInterfaceEye1(leaf, bibliotekon);
-			} else if (OptionFlags.USE_INTERFACE_EYE2 && leaf.getUSymbol() instanceof USymbolInterface) {
+			} else if (GlobalConfig.USE_INTERFACE_EYE2 && leaf.getUSymbol() instanceof USymbolInterface) {
 				return new EntityImageLollipopInterfaceEye2(leaf, portionShower);
 			} else {
 				return new EntityImageDescription(leaf, portionShower, links, bibliotekon);
@@ -186,8 +191,9 @@ public final class GeneralImageBuilder {
 		if (leaf.getLeafType() == LeafType.JSON)
 			return new EntityImageJson(leaf, portionShower);
 
-		if (leaf.getLeafType() == LeafType.SYNCHRO_BAR || leaf.getLeafType() == LeafType.STATE_FORK_JOIN)
-			return new EntityImageSynchroBar(leaf, leaf.getSkinParam(), SName.activityBar);
+		if (leaf.getLeafType() == LeafType.SYNCHRO_BAR || leaf.getLeafType() == LeafType.STATE_FORK_JOIN
+				|| leaf.getLeafType() == LeafType.STATE_FORK_JOIN_HIDDEN)
+			return new EntityImageSynchroBar(leaf);
 
 		if (leaf.getLeafType() == LeafType.ARC_CIRCLE)
 			return new EntityImageArcCircle(leaf);
@@ -209,6 +215,9 @@ public final class GeneralImageBuilder {
 
 		if (leaf.getLeafType() == LeafType.PSEUDO_STATE)
 			return new EntityImagePseudoState(leaf);
+
+		if (leaf.getLeafType() == LeafType.STATE_TRANSITION_LABEL)
+			return new EntityImageTransitionLabel(leaf);
 
 		if (leaf.getLeafType() == LeafType.DEEP_HISTORY)
 			return new EntityImageDeepHistory(leaf);

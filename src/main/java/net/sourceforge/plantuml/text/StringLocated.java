@@ -44,12 +44,11 @@ import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.jaws.Jaws;
-import net.sourceforge.plantuml.jaws.JawsFlags;
 import net.sourceforge.plantuml.jaws.JawsStrange;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 final public class StringLocated {
-	// ::remove folder when __HAXE__
 
 	private final String s;
 	private final LineLocation location;
@@ -59,71 +58,26 @@ final public class StringLocated {
 	private long fox = -1;
 	private TLineType type;
 
-//	public StringLocated jawsPatchNewlines() {
-//	return new StringLocated(s.replace("\\n", "%n()"), location, preprocessorError);
-//}
-//
-//public BlocLines expandsJaws() {
-//	BlocLines result = BlocLines.create();
-//	for (String part : s.split("" + Jaws.BLOCK_E1_NEWLINE))
-//		result = result.add(new StringLocated(part, location, preprocessorError));
-//	return result;
-//}
+	public int findMultilineTripleSeparator() {
+		final Matcher matcher = TRIPLE_PATTERN.matcher(s);
+		if (matcher.find())
+			return matcher.start();
+		return -1;
+	}
 
-	public List<StringLocated> expandsJawsForPreprocessor() {
-		if (JawsFlags.PARSE_NEW_MULTILINE_TRIPLE_MARKS) {
-			final int x = searchMultilineTripleSeparators();
-			if (x == -1)
-				return Arrays.asList(this);
-			final String s1 = s.substring(0, x);
-			final String s2 = s.substring(x + 3);
-			return Arrays.asList(new StringLocated(s1, location, preprocessorError).jawsHideBackslash(),
-					new StringLocated(s2, location, preprocessorError).jawsHideBackslash());
-		}
-		return Arrays.asList(this);
+	public StringLocated[] splitAtTripleSeparator(int x) {
+		final String s1 = s.substring(0, x);
+		final String s2 = s.substring(x + 3);
+		return new StringLocated[] { new StringLocated(s1, location, preprocessorError).jawsHideBackslash(),
+				new StringLocated(s2, location, preprocessorError).jawsHideBackslash() };
 	}
 
 	private static final Pattern TRIPLE_PATTERN = Pattern.compile("!!!|'''|\"\"\"");
-
-	private int searchMultilineTripleSeparators() {
-		final Matcher matcher = TRIPLE_PATTERN.matcher(s);
-
-		if (matcher.find())
-			return matcher.start();
-
-		return -1;
-	}
 
 	public List<StringLocated> expandsNewline() {
 		final List<StringLocated> copy = new ArrayList<>();
 		for (String s : Arrays.asList(s.split("" + Jaws.BLOCK_E1_NEWLINE)))
 			copy.add(new StringLocated(s, location, preprocessorError));
-		return copy;
-	}
-
-	public List<StringLocated> expandsBreaklineButEmbedded() {
-		final List<StringLocated> copy = new ArrayList<>();
-		int level = 0;
-		StringBuilder pending = new StringBuilder();
-		for (int i = 0; i < s.length(); i++) {
-			final char ch = s.charAt(i);
-
-			if (ch == '{' && i + 1 < s.length() && s.charAt(i + 1) == '{')
-				level++;
-			else if (ch == '}' && i + 1 < s.length() && s.charAt(i + 1) == '}')
-				level--;
-
-			if (level > 0) {
-				pending.append(ch);
-			} else if (ch == Jaws.BLOCK_E1_BREAKLINE) {
-				copy.add(new StringLocated(pending.toString(), location, preprocessorError));
-				pending.setLength(0);
-			} else {
-				pending.append(ch);
-			}
-		}
-		copy.add(new StringLocated(pending.toString(), location, preprocessorError));
-
 		return copy;
 	}
 
@@ -200,7 +154,9 @@ final public class StringLocated {
 
 	@Override
 	public String toString() {
-		return s;
+		if (s.length() == 0)
+			return "<<<EMPTY STRING>>>";
+		return "(SL) " + s;
 	}
 
 	public StringLocated append(String endOfLine) {
@@ -232,10 +188,19 @@ final public class StringLocated {
 	}
 
 	public StringLocated getTrimmed() {
+		if (s.length() == 0)
+			return this;
+
 		if (trimmed == null) {
-			this.trimmed = new StringLocated(StringUtils.trin(this.getString()), location, preprocessorError);
-			trimmed.fox = this.fox;
-			trimmed.trimmed = trimmed;
+			final String tmp = StringUtils.trin(s);
+			// tmp==s when no trim is needed
+			if (tmp == s) {
+				this.trimmed = this;
+			} else {
+				this.trimmed = new StringLocated(tmp, location, preprocessorError);
+				trimmed.fox = this.fox;
+				trimmed.trimmed = trimmed;
+			}
 		}
 		return trimmed;
 	}
@@ -308,6 +273,80 @@ final public class StringLocated {
 
 	public boolean containsExclamationMark() {
 		return (getFoxSignature() & EXCLAMATION_MARK) != 0L;
+	}
+
+	private String firstToken = null;
+
+	/**
+	 * The token the command index files this line under: {@code PSystemCommandFactory} only tries,
+	 * on a line, the commands that declared its first token (see
+	 * {@code Command#mandatoryFirstTokens}), plus those that declared nothing.
+	 *
+	 * <p>
+	 * Once the blanks the line opens with are skipped -- the very ones {@link #getTrimmed()}
+	 * removes, so that trimming a line never changes its token -- the token is:
+	 * <ul>
+	 * <li>for a line starting with an ASCII letter, the whole run of ASCII letters it starts with,
+	 * lower-cased: {@code "Title foo"} gives {@code "title"}, {@code "endif"} gives
+	 * {@code "endif"}, {@code "note2"} gives {@code "note"};</li>
+	 * <li>for a line starting with any other character, that character alone, as it is:
+	 * {@code "}"} gives {@code "}"}, {@code "-> B"} gives {@code "-"}, {@code "@0"} gives
+	 * {@code "@"}, {@code "12:00"} gives {@code "1"} -- every digit is a token of its own --
+	 * and a line starting with an accented letter has that letter for token;</li>
+	 * <li>for a blank line, {@code ""}.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Why a single character rather than {@code ""} for every line that does not start with a
+	 * letter: those lines -- closing braces, arrows, dividers, activities, colors... -- used to
+	 * share one bucket, holding every command that could start that way. Measured on the Vega
+	 * corpus, they were 28% of the lines but 54% of the regex attempts. Their first character is
+	 * almost always enough to tell those commands apart.
+	 *
+	 * <p>
+	 * Letters are folded because the command patterns are compiled with {@code CASE_INSENSITIVE};
+	 * other characters are not, because that flag, without {@code UNICODE_CASE}, folds nothing
+	 * else. {@code net.sourceforge.plantuml.regex.FirstTokens} reads the tokens a pattern accepts
+	 * with this same definition: the two must change together.
+	 */
+	public String getFirstToken() {
+		if (firstToken == null) {
+			int start = 0;
+			while (start < s.length() && StringUtils.isTrimmable(s.charAt(start)))
+				start++;
+
+			if (start == s.length()) {
+				firstToken = "";
+			} else if (isLetter(s.charAt(start))) {
+				final StringBuilder sb = new StringBuilder();
+				int end = start;
+				while (end < s.length() && isLetter(s.charAt(end))) {
+					sb.append(toLowerCase(s.charAt(end)));
+					end++;
+				}
+				firstToken = sb.toString();
+			} else {
+				firstToken = String.valueOf(s.charAt(start));
+			}
+		}
+		return firstToken;
+	}
+
+	/**
+	 * Only ever called on a letter, as the loop above guarantees and the assert repeats, which is
+	 * what makes the fold a single bit: 'A'-'Z' become 'a'-'z' by setting bit 5, and 'a'-'z'
+	 * already have it. That is also exactly the folding Pattern.CASE_INSENSITIVE does without
+	 * UNICODE_CASE -- the flag the command patterns are compiled with -- so a token finds an
+	 * indexed command here whenever the pattern itself would have matched.
+	 */
+	private static char toLowerCase(char ch) {
+		if (TeaVM.a())
+			assert (isLetter(ch));
+		return (char) (ch | 0x20);
+	}
+
+	private static boolean isLetter(char ch) {
+		return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 	}
 
 }

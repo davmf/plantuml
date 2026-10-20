@@ -36,19 +36,18 @@ package net.sourceforge.plantuml;
 
 import static net.sourceforge.plantuml.klimt.shape.GraphicStrings.createBlackOnWhite;
 
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.klimt.geom.GraphicPosition;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 
-public abstract class PlainStringsDiagram extends PlainDiagram {
-	// ::remove file when __HAXE__
+public abstract class PlainStringsDiagram extends UgDiagram {
 
-	protected BufferedImage image = null;
+	protected PortableImage image = null;
 	protected GraphicPosition imagePosition = null;
 
 	protected final List<String> strings = new ArrayList<>();
@@ -58,7 +57,8 @@ public abstract class PlainStringsDiagram extends PlainDiagram {
 	}
 
 	@Override
-	public UDrawable getRootDrawable(FileFormatOption fileFormatOption) {
+	public final TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
 		return createBlackOnWhite(strings, image, imagePosition);
 	}
+
 }

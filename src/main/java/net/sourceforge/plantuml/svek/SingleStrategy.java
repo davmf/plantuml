@@ -64,7 +64,7 @@ public enum SingleStrategy {
 //			}
 //			result.add(link);
 //		}
-//		return Collections.unmodifiableCollection(result);
+//		return MyCollections.unmodifiableCollection(result);
 //	}
 
 	static int computeBranch(int size) {

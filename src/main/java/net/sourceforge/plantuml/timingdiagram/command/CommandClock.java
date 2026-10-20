@@ -35,6 +35,11 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -49,6 +54,8 @@ import net.sourceforge.plantuml.timingdiagram.TimingDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandClock extends SingleLineCommand2<TimingDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("clock", "compact");
 
 	public CommandClock() {
 		super(getRegexConcat());
@@ -73,18 +80,18 @@ public class CommandClock extends SingleLineCommand2<TimingDiagram> {
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf("period"), //
 				RegexLeaf.spaceOneOrMore(), //
-				new RegexLeaf(1, "PERIOD", "([0-9]+)"), //
+				new RegexLeaf(1, "PERIOD", "([0-9]+(?:\\.[0-9]+)?)"), //
 				new RegexOptional(new RegexConcat( //
 						RegexLeaf.spaceOneOrMore(), //
 						new RegexLeaf("pulse"), //
 						RegexLeaf.spaceOneOrMore(), //
-						new RegexLeaf(1, "PULSE", "([0-9]+)") //
+						new RegexLeaf(1, "PULSE", "([0-9]+(?:\\.[0-9]+)?)") //
 				)), //
 				new RegexOptional(new RegexConcat( //
 						RegexLeaf.spaceOneOrMore(), //
 						new RegexLeaf("offset"), //
 						RegexLeaf.spaceOneOrMore(), //
-						new RegexLeaf(1, "OFFSET", "([0-9]+)") //
+						new RegexLeaf(1, "OFFSET", "([0-9]+(?:\\.[0-9]+)?)") //
 				)), //
 				RegexLeaf.spaceZeroOrMore(), //
 				StereotypePattern.optional("STEREO"), //
@@ -93,13 +100,43 @@ public class CommandClock extends SingleLineCommand2<TimingDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String compact = arg.get("COMPACT", 0);
+		final String code = arg.get("CODE", 0);
+		final String full = arg.get("FULL", 0);
+		final String period = arg.get("PERIOD", 0);
+		final String pulse = arg.get("PULSE", 0);
+		final String offset = arg.get("OFFSET", 0);
+		final String stereotype = arg.get("STEREO", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		if (compact != null)
+			sb.append("Creating a compact clock '");
+		else
+			sb.append("Creating a clock '");
+		sb.append(code).append("'");
+		if (full != null)
+			sb.append(" displayed as \"").append(full).append("\"");
+		sb.append(" with period ").append(period);
+		// PULSE and OFFSET default to 0 when omitted
+		if (pulse != null)
+			sb.append(" pulse ").append(pulse);
+		if (offset != null)
+			sb.append(" offset ").append(offset);
+		if (stereotype != null)
+			sb.append(" stereotyped ").append(stereotype);
+		return sb.toString();
+	}
+
+	@Override
 	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String compact = arg.get("COMPACT", 0);
 		final String code = arg.get("CODE", 0);
-		final int period = Integer.parseInt(arg.get("PERIOD", 0));
-		final int pulse = getInt(arg.get("PULSE", 0));
-		final int offset = getInt(arg.get("OFFSET", 0));
+		final BigDecimal period = new BigDecimal(arg.get("PERIOD", 0));
+		final BigDecimal pulse = getBigDecimal(arg.get("PULSE", 0));
+		final BigDecimal offset = getBigDecimal(arg.get("OFFSET", 0));
 		String full = arg.get("FULL", 0);
 		if (full == null)
 			full = "";
@@ -107,13 +144,19 @@ public class CommandClock extends SingleLineCommand2<TimingDiagram> {
 		Stereotype stereotype = null;
 		if (stereotypeString != null)
 			stereotype = Stereotype.build(stereotypeString);
-		return diagram.createClock(code, full, period, pulse, offset, compact != null, stereotype);
+		diagram.createPlayerClock(code, full, period, pulse, offset, compact != null, stereotype);
+		return CommandExecutionResult.ok();
 	}
 
-	private int getInt(String value) {
+	private BigDecimal getBigDecimal(String value) {
 		if (value == null)
-			return 0;
-		return Integer.parseInt(value);
+			return BigDecimal.ZERO;
+		return new BigDecimal(value);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

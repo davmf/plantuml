@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.klimt.color.ColorParser;
 import net.sourceforge.plantuml.klimt.color.ColorType;
@@ -55,6 +59,8 @@ import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandNamespace2 extends SingleLineCommand2<ClassDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("namespace");
 
 	public CommandNamespace2() {
 		super(getRegexConcat());
@@ -82,6 +88,31 @@ public class CommandNamespace2 extends SingleLineCommand2<ClassDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'namespace "Display" as a.b.c {' opens a namespace (a package-like
+		// container) with a display title, closed by '}'; a dotted name
+		// creates the intermediate namespaces. Unlike CommandNamespace, the
+		// stereotype is applied as such here and never selects a shape.
+		sb.append("Starting the namespace '").append(arg.get("NAME", 0)).append("' displayed as \"")
+				.append(arg.getLazzy("DISPLAY", 0)).append("\"");
+
+		final String stereotype = arg.get("STEREOTYPE", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
 			throws NoSuchColorException {
 		final String idShort = arg.get("NAME", 0);
@@ -97,7 +128,7 @@ public class CommandNamespace2 extends SingleLineCommand2<ClassDiagram> {
 		if (stereotype != null)
 			p.setStereotype(Stereotype.build(stereotype));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);
@@ -109,6 +140,11 @@ public class CommandNamespace2 extends SingleLineCommand2<ClassDiagram> {
 			p.setSpecificColorTOBEREMOVED(ColorType.BACK, diagram.getSkinParam().getIHtmlColorSet().getColor(color));
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

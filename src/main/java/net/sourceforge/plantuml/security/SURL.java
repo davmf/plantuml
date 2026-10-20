@@ -35,7 +35,6 @@
  */
 package net.sourceforge.plantuml.security;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -70,13 +69,13 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.swing.ImageIcon;
 
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.authentication.SecurityAccessInterceptor;
 import net.sourceforge.plantuml.security.authentication.SecurityAuthentication;
 import net.sourceforge.plantuml.security.authentication.SecurityCredentials;
-//::uncomment when __CORE__
-//import net.sourceforge.plantuml.FileUtils;
-//::done
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.FileUtils;
 
 /**
  * Secure replacement for java.net.URL.
@@ -164,45 +163,24 @@ public class SURL {
 		if (url == null)
 			throw new MalformedURLException("URL cannot be null");
 
-		// ::comment when __CORE__
-		final String credentialId = url.getUserInfo();
+		if (TeaVM.isTeaVM()) {
+			return new SURL(url, WITHOUT_AUTHENTICATION);
+		} else {
+			final String credentialId = url.getUserInfo();
 
-		if (credentialId == null || credentialId.indexOf(':') > 0)
-			// No user info at all, or a user with password (This is a legacy BasicAuth
-			// access, and we bypass it):
-			return new SURL(url, WITHOUT_AUTHENTICATION);
-		else if (SecurityUtils.existsSecurityCredentials(credentialId))
-			// Given userInfo, but without a password. We try to find SecurityCredentials
-			return new SURL(removeUserInfo(url), credentialId);
-		else
-			// ::done
-			return new SURL(url, WITHOUT_AUTHENTICATION);
+			if (credentialId == null || credentialId.indexOf(':') > 0)
+				// No user info at all, or a user with password (This is a legacy BasicAuth
+				// access, and we bypass it):
+				return new SURL(url, WITHOUT_AUTHENTICATION);
+			else if (SecurityUtils.existsSecurityCredentials(credentialId))
+				// Given userInfo, but without a password. We try to find SecurityCredentials
+				return new SURL(removeUserInfo(url), credentialId);
+			else
+				return new SURL(url, WITHOUT_AUTHENTICATION);
+		}
 	}
 
-	// ::uncomment when __CORE__
-//	public InputStream openStream() {
-//	try {
-//		return internal.openStream();
-//	} catch (IOException e) {
-//		System.err.println("SURL::openStream " + e);
-//		return null;
-//	}
-//}
-//public byte[] getBytes() {
-//	final InputStream is = openStream();
-//	if (is != null)
-//		try {
-//			final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//			FileUtils.copyInternal(is, baos, true);
-//			return baos.toByteArray();
-//		} catch (IOException e) {
-//			System.err.println("SURL::getBytes " + e);
-//		}
-//	return null;
-//}
-	// ::done
-
-	public BufferedImage readRasterImageFromURL() {
+	public PortableImage readRasterImageFromURL() {
 		if (isUrlOk())
 			try {
 				final byte[] bytes = getBytes();
@@ -220,51 +198,53 @@ public class SURL {
 	 * Check SecurityProfile to see if this URL can be opened.
 	 */
 	public boolean isUrlOk() {
-		// ::comment when __CORE__
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX)
-			// In SANDBOX, we cannot read any URL
+		if (TeaVM.isTeaVM()) {
+			return true;
+		} else {
+			if (SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX)
+				// In SANDBOX, we cannot read any URL
+				return false;
+
+			if (isInUrlAllowList())
+				return true;
+
+			if (SecurityUtils.getSecurityProfile() == SecurityProfile.LEGACY) {
+				if (URLCheck.isURLforbidden(cleanPath(internal.toString())))
+					return false;
+				return true;
+			}
+
+			if (SecurityUtils.getSecurityProfile() == SecurityProfile.INSECURE)
+				// We are INSECURE anyway
+				return true;
+
+			if (SecurityUtils.getSecurityProfile() == SecurityProfile.INTERNET
+					|| SecurityUtils.getSecurityProfile() == SecurityProfile.INTERNET_WITH_DOTSVG) {
+				if (URLCheck.isURLforbidden(cleanPath(internal.toString())))
+					return false;
+
+				final int port = internal.getPort();
+				// Using INTERNET profile, port 80 and 443 are ok
+				return port == 80 || port == 443 || port == -1;
+			}
 			return false;
-
-		if (isInUrlAllowList())
-			// ::done
-			return true;
-		// ::comment when __CORE__
-
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.LEGACY) {
-			if (URLCheck.isURLforbidden(cleanPath(internal.toString())))
-				return false;
-			return true;
 		}
-
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE)
-			// We are UNSECURE anyway
-			return true;
-
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.INTERNET) {
-			if (URLCheck.isURLforbidden(cleanPath(internal.toString())))
-				return false;
-
-			final int port = internal.getPort();
-			// Using INTERNET profile, port 80 and 443 are ok
-			return port == 80 || port == 443 || port == -1;
-		}
-		return false;
-		// ::done
 	}
 
-	// ::comment when __CORE__
+	// ::comment when __TEAVM__
 	/**
 	 * Regex to remove the UserInfo part from a URL.
 	 */
 	private static final Pattern PATTERN_USERINFO = Pattern.compile("(^https?://)([-_0-9a-zA-Z]+@)([^@]*)$");
 
-	private static final ExecutorService EXE = Executors.newCachedThreadPool(new ThreadFactory() {
-		public Thread newThread(Runnable r) {
-			final Thread t = Executors.defaultThreadFactory().newThread(r);
-			t.setDaemon(true);
-			return t;
-		}
-	});
+	private static final ExecutorService EXE = TeaVM.isTeaVM() ? null
+			: Executors.newCachedThreadPool(new ThreadFactory() {
+				public Thread newThread(Runnable r) {
+					final Thread t = Executors.defaultThreadFactory().newThread(r);
+					t.setDaemon(true);
+					return t;
+				}
+			});
 
 	private static final Map<String, Long> BAD_HOSTS = new ConcurrentHashMap<String, Long>();
 
@@ -343,38 +323,53 @@ public class SURL {
 	 * @return data loaded data from endpoint
 	 */
 	public byte[] getBytes() {
-		if (isUrlOk() == false)
+		if (TeaVM.isTeaVM()) {
+			final InputStream is = openStream();
+			if (is != null)
+				try {
+					final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+					FileUtils.copyInternal(is, baos, true);
+					return baos.toByteArray();
+				} catch (IOException e) {
+					System.err.println("SURL::getBytes " + e);
+				}
 			return null;
 
-		final SecurityCredentials credentials = SecurityUtils.loadSecurityCredentials(securityIdentifier);
-		final SecurityAuthentication authentication = SecurityUtils.getAuthenticationManager(credentials)
-				.create(credentials);
-		try {
-			final String host = internal.getHost();
-			final Long bad = BAD_HOSTS.get(host);
-			if (bad != null) {
-				if ((System.currentTimeMillis() - bad) < 1000L * 60)
-					return null;
-				BAD_HOSTS.remove(host);
-			}
+		} else {
+			if (isUrlOk() == false)
+				return null;
 
+			final SecurityCredentials credentials = SecurityUtils.loadSecurityCredentials(securityIdentifier);
+			final SecurityAuthentication authentication = SecurityUtils.getAuthenticationManager(credentials)
+					.create(credentials);
 			try {
-				final Future<byte[]> result = EXE
-						.submit(requestWithGetAndResponse(internal, credentials.getProxy(), authentication, null));
-				final byte[] data = result.get(SecurityUtils.getSecurityProfile().getTimeout(), TimeUnit.MILLISECONDS);
-				if (data != null)
-					return data;
+				final String host = internal.getHost();
+				final Long bad = BAD_HOSTS.get(host);
+				if (bad != null) {
+					if ((System.currentTimeMillis() - bad) < 1000L * 60)
+						return null;
+					BAD_HOSTS.remove(host);
+				}
 
-			} catch (Exception e) {
-				System.err.println("issue " + host + " " + e);
+				try {
+					final Future<byte[]> result = EXE
+							.submit(requestWithGetAndResponse(internal, credentials.getProxy(), authentication, null));
+					final byte[] data = result.get(SecurityUtils.getSecurityProfile().getTimeout(),
+							TimeUnit.MILLISECONDS);
+					if (data != null)
+						return data;
+
+				} catch (Exception e) {
+					System.err.println("issue " + host + " " + e);
+				}
+
+				BAD_HOSTS.put(host, System.currentTimeMillis());
+				return null;
+			} finally {
+				// clean up. We don't cache tokens, no expire handling. All time a re-request.
+				credentials.eraseCredentials();
+				authentication.eraseCredentials();
 			}
-
-			BAD_HOSTS.put(host, System.currentTimeMillis());
-			return null;
-		} finally {
-			// clean up. We don't cache tokens, no expire handling. All time a re-request.
-			credentials.eraseCredentials();
-			authentication.eraseCredentials();
 		}
 	}
 
@@ -447,26 +442,27 @@ public class SURL {
 		}
 	}
 
-    /**
-     * Configures the specified {@link URLConnection} with security-related settings.
-     * <p>
-     * This method disables user interactions for the connection and, if the connection 
-     * is an instance of {@link HttpURLConnection}, it also disables automatic 
-     * following of HTTP redirects, unless the security profile is set to 
-     * {@link SecurityProfile#UNSECURE}.
-     * </p>
-     *
-     * @param connection the {@link URLConnection} to be configured
-     *
-     * @see URLConnection#setAllowUserInteraction(boolean)
-     * @see HttpURLConnection#setInstanceFollowRedirects(boolean)
-     * @see SecurityUtils#getSecurityProfile()
-     * @see SecurityProfile
-     */
+	/**
+	 * Configures the specified {@link URLConnection} with security-related
+	 * settings.
+	 * <p>
+	 * This method disables user interactions for the connection and, if the
+	 * connection is an instance of {@link HttpURLConnection}, it also disables
+	 * automatic following of HTTP redirects, unless the security profile is set to
+	 * {@link SecurityProfile#INSECURE}.
+	 * </p>
+	 *
+	 * @param connection the {@link URLConnection} to be configured
+	 *
+	 * @see URLConnection#setAllowUserInteraction(boolean)
+	 * @see HttpURLConnection#setInstanceFollowRedirects(boolean)
+	 * @see SecurityUtils#getSecurityProfile()
+	 * @see SecurityProfile
+	 */
 	protected static void configure(URLConnection connection) {
 		connection.setAllowUserInteraction(false);
 
-		if (SecurityUtils.getSecurityProfile() != SecurityProfile.UNSECURE && connection instanceof HttpURLConnection)
+		if (SecurityUtils.getSecurityProfile() != SecurityProfile.INSECURE && connection instanceof HttpURLConnection)
 			((HttpURLConnection) connection).setInstanceFollowRedirects(false);
 	}
 
@@ -521,6 +517,7 @@ public class SURL {
 	 * @param url            URL to request via POST method
 	 * @param proxy          proxy to apply
 	 * @param authentication the authentication to use
+	 * @param data           POST body (form or JSON)
 	 * @param headers        additional headers, if needed
 	 * @return the callable handler.
 	 */
@@ -555,7 +552,7 @@ public class SURL {
 	}
 
 	private static final Pattern pattern = Pattern.compile("(?i)\\bcharset=\\s*\"?([^\\s;\"]*)");
-	
+
 	private static Charset extractCharset(String contentType) {
 		if (StringUtils.isEmpty(contentType))
 			return null;
@@ -627,11 +624,20 @@ public class SURL {
 	}
 
 	public InputStream openStream() {
-		if (isUrlOk()) {
-			final byte[] data = getBytes();
-			if (data != null)
-				return new ByteArrayInputStream(data);
+		// No URL is read by the TeaVM builds (JavaScript and C). java.net.URL goes
+		// through TeaVM's XHR connection, an @Async method: reachable from here, it
+		// would turn most of PlantUML into coroutines (see tools/teavm-coroutines).
+		// Nothing calls this at run time anyway: !include, !includesub, !theme, sprite
+		// and <img> of a URL are refused before getting here in the TeaVM builds.
+		if (TeaVM.isTeaVM()) {
+			return null;
+		} else {
+			if (isUrlOk()) {
+				final byte[] data = getBytes();
+				if (data != null)
+					return new ByteArrayInputStream(data);
 
+			}
 		}
 		return null;
 	}
@@ -673,6 +679,7 @@ public class SURL {
 	/**
 	 * Set the headers for a URL connection
 	 *
+	 * @param http    the connection to add headers to
 	 * @param headers map Keys with values (can be String or list of String)
 	 */
 	private static void applyAdditionalHeaders(URLConnection http, Map<String, Object> headers) {

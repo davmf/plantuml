@@ -35,9 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram;
 
+
 import net.sourceforge.plantuml.skin.ComponentType;
-import net.sourceforge.plantuml.style.SName;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public enum NoteStyle {
 
@@ -63,13 +64,15 @@ public enum NoteStyle {
 		return ComponentType.NOTE;
 	}
 
-	public StyleSignatureBasic getDefaultStyleDefinition() {
+	StyleQuery getStyleQuery() {
 		if (this == NoteStyle.HEXAGONAL)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.note, SName.hnote);
+			return StyleQueries.SEQUENCEDIAG_NOTE_HNOTE;
 
 		if (this == NoteStyle.BOX)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.note, SName.rnote);
+			return StyleQueries.SEQUENCEDIAG_NOTE_RNOTE;
 
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.note);
+		return StyleQueries.SEQUENCEDIAG_NOTE;
+
 	}
+
 }

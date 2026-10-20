@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.svek;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.dot.Neighborhood;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -43,17 +43,17 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 
-public class EntityImageProtected extends AbstractTextBlock implements IEntityImage, Untranslated, WithPorts {
+public class EntityImageProtected implements IEntityImage, Untranslated, WithPorts {
 
 	private final IEntityImage orig;
 	private final double border;
 	private final Bibliotekon bibliotekon;
 	private final Neighborhood neighborhood;
 
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		final XRectangle2D result = orig.getInnerPosition(member, stringBounder, strategy);
+	@Override
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		final XRectangle2D result = orig.getInnerPosition(member, stringBounder);
 		return new XRectangle2D(result.getMinX() + border, result.getMinY() + border, result.getWidth(),
 				result.getHeight());
 	}
@@ -73,6 +73,8 @@ public class EntityImageProtected extends AbstractTextBlock implements IEntityIm
 		return orig.getBackcolor();
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return orig.calculateDimension(stringBounder).delta(2 * border);
 	}

@@ -35,14 +35,12 @@
  */
 package net.sourceforge.plantuml.klimt.font;
 
-import java.awt.Font;
 
-import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
-
-// ::remove file when __HAXE__
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 interface FontParamConstant {
 	String FAMILY = "SansSerif";
@@ -50,116 +48,116 @@ interface FontParamConstant {
 }
 
 public enum FontParam {
-	TIMING(12, Font.PLAIN), //
-	ACTIVITY(12, Font.PLAIN), //
-	ACTIVITY_DIAMOND(11, Font.PLAIN), //
-	// ACTIVITY_ARROW(11, Font.PLAIN), //
-	// GENERIC_ARROW(13, Font.PLAIN), //
-	ARROW(13, Font.PLAIN), //
-	CIRCLED_CHARACTER(17, Font.BOLD, FontParamConstant.COLOR, "Monospaced"), //
-	OBJECT_ATTRIBUTE(10, Font.PLAIN), //
-	OBJECT(12, Font.PLAIN), //
-	OBJECT_STEREOTYPE(12, Font.ITALIC), //
-	CLASS_ATTRIBUTE(10, Font.PLAIN), //
-	CLASS(12, Font.PLAIN), //
-	CLASS_STEREOTYPE(12, Font.ITALIC), //
-	COMPONENT(14, Font.PLAIN), //
-	INTERFACE(14, Font.PLAIN), //
-	INTERFACE_STEREOTYPE(14, Font.ITALIC), //
-	COMPONENT_STEREOTYPE(14, Font.ITALIC), //
-	NOTE(13, Font.PLAIN), //
-	PACKAGE(14, Font.PLAIN), //
-	PACKAGE_STEREOTYPE(14, Font.ITALIC), //
-	ACTOR(14, Font.PLAIN), //
-	ARTIFACT(14, Font.PLAIN), //
-	CLOUD(14, Font.PLAIN), //
-	FOLDER(14, Font.PLAIN), //
-	FILE(14, Font.PLAIN), //
-	FRAME(14, Font.PLAIN), //
-	STORAGE(14, Font.PLAIN), //
-	BOUNDARY(14, Font.PLAIN), //
-	CONTROL(14, Font.PLAIN), //
-	ENTITY(14, Font.PLAIN), //
-	AGENT(14, Font.PLAIN), //
-	RECTANGLE(14, Font.PLAIN), //
-	LABEL(14, Font.PLAIN), //
-	HEXAGON(14, Font.PLAIN), //
-	PERSON(14, Font.PLAIN), //
-	ARCHIMATE(14, Font.PLAIN), //
-	CARD(14, Font.PLAIN), //
-	NODE(14, Font.PLAIN), //
-	DATABASE(14, Font.PLAIN), //
-	QUEUE(14, Font.PLAIN), //
-	STACK(14, Font.PLAIN), //
-	// SEQUENCE_ARROW(13, Font.PLAIN), //
-	SEQUENCE_BOX(13, Font.BOLD), //
-	SEQUENCE_DIVIDER(13, Font.BOLD), //
-	SEQUENCE_REFERENCE(13, Font.PLAIN), //
-	SEQUENCE_DELAY(11, Font.PLAIN), //
-	SEQUENCE_GROUP(11, Font.BOLD), //
-	SEQUENCE_GROUP_HEADER(13, Font.BOLD), //
-	PARTICIPANT(14, Font.PLAIN), //
-	PARTICIPANT_STEREOTYPE(14, Font.ITALIC), //
-	STATE(14, Font.PLAIN), //
-	STATE_ATTRIBUTE(12, Font.PLAIN), //
-	LEGEND(14, Font.PLAIN), //
-	TITLE(18, Font.PLAIN), //
-	// SEQUENCE_TITLE(14, Font.BOLD), //
-	CAPTION(14, Font.PLAIN), //
-	SWIMLANE_TITLE(18, Font.PLAIN), //
-	FOOTER(10, Font.PLAIN, "#888888", FontParamConstant.FAMILY), //
-	HEADER(10, Font.PLAIN, "#888888", FontParamConstant.FAMILY), //
-	USECASE(14, Font.PLAIN), //
-	USECASE_STEREOTYPE(14, Font.ITALIC), //
-	ARTIFACT_STEREOTYPE(14, Font.ITALIC), //
-	CLOUD_STEREOTYPE(14, Font.ITALIC), //
-	STORAGE_STEREOTYPE(14, Font.ITALIC), //
-	BOUNDARY_STEREOTYPE(14, Font.ITALIC), //
-	CONTROL_STEREOTYPE(14, Font.ITALIC), //
-	ENTITY_STEREOTYPE(14, Font.ITALIC), //
-	AGENT_STEREOTYPE(14, Font.ITALIC), //
-	RECTANGLE_STEREOTYPE(14, Font.ITALIC), //
-	LABEL_STEREOTYPE(14, Font.ITALIC), //
-	PERSON_STEREOTYPE(14, Font.ITALIC), //
-	HEXAGON_STEREOTYPE(14, Font.ITALIC), //
-	ARCHIMATE_STEREOTYPE(14, Font.ITALIC), //
-	CARD_STEREOTYPE(14, Font.ITALIC), //
-	NODE_STEREOTYPE(14, Font.ITALIC), //
-	FOLDER_STEREOTYPE(14, Font.ITALIC), //
-	FILE_STEREOTYPE(14, Font.ITALIC), //
-	FRAME_STEREOTYPE(14, Font.ITALIC), //
-	DATABASE_STEREOTYPE(14, Font.ITALIC), //
-	QUEUE_STEREOTYPE(14, Font.ITALIC), //
-	STACK_STEREOTYPE(14, Font.ITALIC), //
-	ACTOR_STEREOTYPE(14, Font.ITALIC), //
-	SEQUENCE_STEREOTYPE(14, Font.ITALIC), //
-	PARTITION(14, Font.PLAIN), DESIGNED_DOMAIN(12, Font.PLAIN), //
-	DESIGNED_DOMAIN_STEREOTYPE(12, Font.ITALIC), //
-	DOMAIN(12, Font.PLAIN), //
-	DOMAIN_STEREOTYPE(12, Font.ITALIC), //
-	MACHINE(12, Font.PLAIN), //
-	MACHINE_STEREOTYPE(12, Font.ITALIC), //
-	REQUIREMENT(12, Font.PLAIN), //
-	REQUIREMENT_STEREOTYPE(12, Font.ITALIC); //
+	TIMING(12, UFontFace.normal()), //
+	ACTIVITY(12, UFontFace.normal()), //
+	ACTIVITY_DIAMOND(11, UFontFace.normal()), //
+	// ACTIVITY_ARROW(11, UFontFace.normal()), //
+	// GENERIC_ARROW(13, UFontFace.normal()), //
+	ARROW(13, UFontFace.normal()), //
+	CIRCLED_CHARACTER(17, UFontFace.bold(), FontParamConstant.COLOR, "Monospaced"), //
+	OBJECT_ATTRIBUTE(10, UFontFace.normal()), //
+	OBJECT(12, UFontFace.normal()), //
+	OBJECT_STEREOTYPE(12, UFontFace.italic()), //
+	CLASS_ATTRIBUTE(10, UFontFace.normal()), //
+	CLASS(12, UFontFace.normal()), //
+	CLASS_STEREOTYPE(12, UFontFace.italic()), //
+	COMPONENT(14, UFontFace.normal()), //
+	INTERFACE(14, UFontFace.normal()), //
+	INTERFACE_STEREOTYPE(14, UFontFace.italic()), //
+	COMPONENT_STEREOTYPE(14, UFontFace.italic()), //
+	NOTE(13, UFontFace.normal()), //
+	PACKAGE(14, UFontFace.normal()), //
+	PACKAGE_STEREOTYPE(14, UFontFace.italic()), //
+	ACTOR(14, UFontFace.normal()), //
+	ARTIFACT(14, UFontFace.normal()), //
+	CLOUD(14, UFontFace.normal()), //
+	FOLDER(14, UFontFace.normal()), //
+	FILE(14, UFontFace.normal()), //
+	FRAME(14, UFontFace.normal()), //
+	STORAGE(14, UFontFace.normal()), //
+	BOUNDARY(14, UFontFace.normal()), //
+	CONTROL(14, UFontFace.normal()), //
+	ENTITY(14, UFontFace.normal()), //
+	AGENT(14, UFontFace.normal()), //
+	RECTANGLE(14, UFontFace.normal()), //
+	LABEL(14, UFontFace.normal()), //
+	HEXAGON(14, UFontFace.normal()), //
+	PERSON(14, UFontFace.normal()), //
+	ARCHIMATE(14, UFontFace.normal()), //
+	CARD(14, UFontFace.normal()), //
+	NODE(14, UFontFace.normal()), //
+	DATABASE(14, UFontFace.normal()), //
+	QUEUE(14, UFontFace.normal()), //
+	STACK(14, UFontFace.normal()), //
+	// SEQUENCE_ARROW(13, UFontFace.normal()), //
+	SEQUENCE_BOX(13, UFontFace.bold()), //
+	SEQUENCE_DIVIDER(13, UFontFace.bold()), //
+	SEQUENCE_REFERENCE(13, UFontFace.normal()), //
+	SEQUENCE_DELAY(11, UFontFace.normal()), //
+	SEQUENCE_GROUP(11, UFontFace.bold()), //
+	SEQUENCE_GROUP_HEADER(13, UFontFace.bold()), //
+	PARTICIPANT(14, UFontFace.normal()), //
+	PARTICIPANT_STEREOTYPE(14, UFontFace.italic()), //
+	STATE(14, UFontFace.normal()), //
+	STATE_ATTRIBUTE(12, UFontFace.normal()), //
+	LEGEND(14, UFontFace.normal()), //
+	TITLE(18, UFontFace.normal()), //
+	// SEQUENCE_TITLE(14, UFontFace.bold()), //
+	CAPTION(14, UFontFace.normal()), //
+	SWIMLANE_TITLE(18, UFontFace.normal()), //
+	FOOTER(10, UFontFace.normal(), "#888888", FontParamConstant.FAMILY), //
+	HEADER(10, UFontFace.normal(), "#888888", FontParamConstant.FAMILY), //
+	USECASE(14, UFontFace.normal()), //
+	USECASE_STEREOTYPE(14, UFontFace.italic()), //
+	ARTIFACT_STEREOTYPE(14, UFontFace.italic()), //
+	CLOUD_STEREOTYPE(14, UFontFace.italic()), //
+	STORAGE_STEREOTYPE(14, UFontFace.italic()), //
+	BOUNDARY_STEREOTYPE(14, UFontFace.italic()), //
+	CONTROL_STEREOTYPE(14, UFontFace.italic()), //
+	ENTITY_STEREOTYPE(14, UFontFace.italic()), //
+	AGENT_STEREOTYPE(14, UFontFace.italic()), //
+	RECTANGLE_STEREOTYPE(14, UFontFace.italic()), //
+	LABEL_STEREOTYPE(14, UFontFace.italic()), //
+	PERSON_STEREOTYPE(14, UFontFace.italic()), //
+	HEXAGON_STEREOTYPE(14, UFontFace.italic()), //
+	ARCHIMATE_STEREOTYPE(14, UFontFace.italic()), //
+	CARD_STEREOTYPE(14, UFontFace.italic()), //
+	NODE_STEREOTYPE(14, UFontFace.italic()), //
+	FOLDER_STEREOTYPE(14, UFontFace.italic()), //
+	FILE_STEREOTYPE(14, UFontFace.italic()), //
+	FRAME_STEREOTYPE(14, UFontFace.italic()), //
+	DATABASE_STEREOTYPE(14, UFontFace.italic()), //
+	QUEUE_STEREOTYPE(14, UFontFace.italic()), //
+	STACK_STEREOTYPE(14, UFontFace.italic()), //
+	ACTOR_STEREOTYPE(14, UFontFace.italic()), //
+	SEQUENCE_STEREOTYPE(14, UFontFace.italic()), //
+	PARTITION(14, UFontFace.normal()), DESIGNED_DOMAIN(12, UFontFace.normal()), //
+	DESIGNED_DOMAIN_STEREOTYPE(12, UFontFace.italic()), //
+	DOMAIN(12, UFontFace.normal()), //
+	DOMAIN_STEREOTYPE(12, UFontFace.italic()), //
+	MACHINE(12, UFontFace.normal()), //
+	MACHINE_STEREOTYPE(12, UFontFace.italic()), //
+	REQUIREMENT(12, UFontFace.normal()), //
+	REQUIREMENT_STEREOTYPE(12, UFontFace.italic()); //
 
 	private final int defaultSize;
-	private final int fontStyle;
+	private final UFontFace defaultFace;
 	private final String defaultColor;
 	private final String defaultFamily;
 
-	private FontParam(int defaultSize, int fontStyle, String defaultColor, String defaultFamily) {
+	private FontParam(int defaultSize, UFontFace defaultFace, String defaultColor, String defaultFamily) {
 		this.defaultSize = defaultSize;
-		this.fontStyle = fontStyle;
+		this.defaultFace = defaultFace;
 		this.defaultColor = defaultColor;
 		this.defaultFamily = defaultFamily;
 	}
 
-	private FontParam(int defaultSize, int fontStyle) {
-		this(defaultSize, fontStyle, FontParamConstant.COLOR, FontParamConstant.FAMILY);
+	private FontParam(int defaultSize, UFontFace defaultFace) {
+		this(defaultSize, defaultFace, FontParamConstant.COLOR, FontParamConstant.FAMILY);
 	}
 
 	public final int getDefaultSize(ISkinParam skinParam) {
-		if (this == ARROW && skinParam.getUmlDiagramType() == UmlDiagramType.ACTIVITY) {
+		if (this == ARROW && skinParam.getDiagramType() == DiagramType.ACTIVITY) {
 			return 11;
 		}
 		if (this == CLASS_ATTRIBUTE) {
@@ -168,14 +166,14 @@ public enum FontParam {
 		return defaultSize;
 	}
 
-	public final int getDefaultFontStyle(ISkinParam skinParam, boolean inPackageTitle) {
-		if (this == STATE) {
-			return fontStyle;
-		}
-		if (inPackageTitle || this == PACKAGE) {
-			return Font.BOLD;
-		}
-		return fontStyle;
+	public final UFontFace getDefaultFontFace(ISkinParam skinParam, boolean inPackageTitle) {
+		if (this == STATE)
+			return defaultFace;
+
+		if (inPackageTitle || this == PACKAGE)
+			return UFontFace.bold();
+
+		return defaultFace;
 	}
 
 	public final String getDefaultColor() {
@@ -190,23 +188,23 @@ public enum FontParam {
 		return FontConfiguration.create(skinParam, this, null);
 	}
 
-	public StyleSignatureBasic getStyleDefinition(SName diagramType) {
+	public StyleQuery getStyleDefinition(SName diagramType) {
 		if (this == FOOTER) {
-			return StyleSignatureBasic.of(SName.root, SName.document, SName.footer);
+			return StyleQueries.DOCUMENT_FOOTER;
 		}
 		if (this == HEADER) {
-			return StyleSignatureBasic.of(SName.root, SName.document, SName.header);
+			return StyleQueries.DOCUMENT_HEADER;
 		}
 		if (this == TITLE) {
-			return StyleSignatureBasic.of(SName.root, SName.document, SName.title);
+			return StyleQueries.DOCUMENT_TITLE;
 		}
 		if (this == CLASS_ATTRIBUTE) {
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.classDiagram, SName.class_);
+			return StyleQueries.CLASSDIAG_CLASS;
 		}
 		if (this == RECTANGLE || this == NODE) {
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.componentDiagram, SName.component);
+			return StyleQueries.COMPONENTDIAG_COMPONENT;
 		}
-		return StyleSignatureBasic.of(SName.root, SName.element, diagramType, SName.component);
+		return StyleQueries.COMPONENT.add(diagramType);
 //		System.err.println("Warning " + this);
 //		throw new UnsupportedOperationException();
 	}

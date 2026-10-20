@@ -35,22 +35,30 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.TitledDiagram;
-import net.sourceforge.plantuml.emoji.SvgNanoParser;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.svg.parser.ISvgSpriteParser;
+import net.sourceforge.plantuml.svg.parser.SvgSpriteParserFactory;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 
 public class CommandSpriteSvgMultiline extends CommandMultilines2<TitledDiagram> {
 
-	private final static Lazy<Pattern2> END = new Lazy<>(
-			() -> Pattern2.cmpile("(.*\\</svg\\>)$"));
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("sprite");
+
+	private final static Lazy<Pattern2> END = new Lazy<>(() -> Pattern2.cmpile("(.*\\</svg\\>)$"));
 
 	public static final CommandSpriteSvgMultiline ME = new CommandSpriteSvgMultiline();
 
@@ -70,6 +78,20 @@ public class CommandSpriteSvgMultiline extends CommandMultilines2<TitledDiagram>
 	}
 
 	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: the '<svg' element starts on the declaration line
+		// itself and the closing '</svg>' line is part of the data, so the
+		// whole block contributes to the SVG.
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Defining a sprite from an inline SVG element";
+
+		return "Defining the sprite '" + line0.get("NAME", 0) + "' from an inline SVG element of " + lines.size()
+				+ (lines.size() == 1 ? " line" : " lines");
+	}
+
+	@Override
 	protected CommandExecutionResult executeNow(TitledDiagram system, BlocLines lines, ParserPass currentPass)
 			throws NoSuchColorException {
 
@@ -77,13 +99,20 @@ public class CommandSpriteSvgMultiline extends CommandMultilines2<TitledDiagram>
 		final String svgStart = line0.get("SVGSTART", 0);
 		lines = lines.subExtract(1, 0);
 
-		final StringBuilder svg = new StringBuilder(svgStart);
+		final List<String> svg = new ArrayList<>();
+		svg.add(svgStart);
 		for (StringLocated sl : lines)
-			svg.append(sl.getString());
+			svg.add(sl.getString());
 
-		final SvgNanoParser nanoParser = new SvgNanoParser(svg.toString());
-		system.addSprite(line0.get("NAME", 0), nanoParser);
+		final ISvgSpriteParser parser = SvgSpriteParserFactory.create(svg, system.getPragma(), system.getMd5map());
+		system.addSprite(line0.get("NAME", 0), parser);
 
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

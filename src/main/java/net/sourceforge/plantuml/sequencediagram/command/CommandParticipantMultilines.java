@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
@@ -64,8 +68,9 @@ import net.sourceforge.plantuml.utils.BlocLines;
 
 public class CommandParticipantMultilines extends CommandMultilines2<SequenceDiagram> {
 
-	private final static Lazy<Pattern2> END = new Lazy<>(
-			() -> Pattern2.cmpile("^([^\\[\\]]*)\\]$"));
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("participant");
+
+	private final static Lazy<Pattern2> END = new Lazy<>(() -> Pattern2.cmpile("^([^\\[\\]]*)\\]$"));
 
 	public CommandParticipantMultilines() {
 		super(getRegexConcat(), MultilinesStrategy.REMOVE_STARTING_QUOTE, Trim.BOTH, END);
@@ -85,6 +90,46 @@ public class CommandParticipantMultilines extends CommandMultilines2<SequenceDia
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("\\["), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: the first line carries the participant
+		// declaration, the lines up to the closing ']' are its multiline
+		// display. If the participant already exists, executeNow just moves it
+		// to the last position.
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Declaring a participant";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Declaring participant '").append(line0.get("CODE", 0)).append("'");
+
+		final String order = line0.get("ORDER", 0);
+		if (order != null)
+			sb.append(", order ").append(order);
+
+		final String stereo = line0.get("STEREO", 0);
+		if (stereo != null)
+			sb.append(", stereotype ").append(stereo);
+
+		// The color is parsed by the starting pattern but never applied by
+		// executeNow.
+		final String color = line0.get("COLOR", 0);
+		if (color != null)
+			sb.append(", background color ").append(color).append(" (currently ignored)");
+
+		if (line0.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		// Body: the display lines between the opening '[' and the closing ']'.
+		final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+		if (bodyCount > 0)
+			sb.append(", displayed as ").append(bodyCount).append(bodyCount == 1 ? " line" : " lines")
+					.append(" of text");
+
+		return sb.toString();
 	}
 
 	@Override
@@ -120,7 +165,7 @@ public class CommandParticipantMultilines extends CommandMultilines2<SequenceDia
 					diagram.getSkinParam().getIHtmlColorSet()), stereotypePositionTop);
 		}
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);
@@ -132,6 +177,11 @@ public class CommandParticipantMultilines extends CommandMultilines2<SequenceDia
 
 	private static ColorParser color() {
 		return ColorParser.simpleColor(ColorType.BACK);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

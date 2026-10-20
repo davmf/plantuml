@@ -36,17 +36,18 @@ package net.sourceforge.plantuml.tim.expression;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.tim.Eater;
 import net.sourceforge.plantuml.tim.EaterException;
 import net.sourceforge.plantuml.tim.TContext;
 import net.sourceforge.plantuml.tim.TMemory;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class TokenStack {
 
@@ -65,7 +66,7 @@ public class TokenStack {
 	}
 
 	public TokenStack subTokenStack(int i) {
-		return new TokenStack(Collections.unmodifiableList(tokens.subList(i, tokens.size())));
+		return new TokenStack(MyCollections.unmodifiableList(tokens.subList(i, tokens.size())));
 	}
 
 	@Override
@@ -173,8 +174,8 @@ public class TokenStack {
 		for (Map.Entry<Integer, Integer> ids : parens.entrySet()) {
 			final int iopen = ids.getKey();
 			final int iclose = ids.getValue();
-			assert tokens.get(iopen).getTokenType() == TokenType.OPEN_PAREN_MATH;
-			assert tokens.get(iclose).getTokenType() == TokenType.CLOSE_PAREN_MATH;
+			if (TeaVM.a()) assert tokens.get(iopen).getTokenType() == TokenType.OPEN_PAREN_MATH;
+			if (TeaVM.a()) assert tokens.get(iclose).getTokenType() == TokenType.CLOSE_PAREN_MATH;
 			if (iopen > 0 && tokens.get(iopen - 1).getTokenType() == TokenType.PLAIN_TEXT) {
 				tokens.set(iopen - 1, new Token(tokens.get(iopen - 1).getSurface(), TokenType.FUNCTION_NAME, null));
 				final int nbArg = countFunctionArg(subTokenStack(iopen + 1).tokenIterator(), location);

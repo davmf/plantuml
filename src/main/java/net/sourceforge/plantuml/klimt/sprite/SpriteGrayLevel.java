@@ -35,10 +35,8 @@
  */
 package net.sourceforge.plantuml.klimt.sprite;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.code.AsciiEncoder;
@@ -49,8 +47,12 @@ import net.sourceforge.plantuml.code.CompressionZopfliZlib;
 import net.sourceforge.plantuml.code.NoPlantumlCompressionException;
 import net.sourceforge.plantuml.code.PairInt;
 import net.sourceforge.plantuml.code.SpiralOnRectangle;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.ColorUtils;
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public enum SpriteGrayLevel {
 
@@ -79,8 +81,8 @@ public enum SpriteGrayLevel {
 		return nbColor;
 	}
 
-	// ::comment when __CORE__
-	public List<String> encode(BufferedImage img) {
+	// ::comment when __TEAVM__
+	public List<String> encode(PortableImage img) {
 		if (this == GRAY_16)
 			return encode16(img);
 
@@ -94,7 +96,7 @@ public enum SpriteGrayLevel {
 	}
 	// ::done
 
-	private List<String> encode16(BufferedImage img) {
+	private List<String> encode16(PortableImage img) {
 		final int width = img.getWidth();
 		final int height = img.getHeight();
 		// final int type = img.getType();
@@ -110,10 +112,10 @@ public enum SpriteGrayLevel {
 			}
 			result.add(sb.toString());
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
-	private List<String> encode8(BufferedImage img) {
+	private List<String> encode8(PortableImage img) {
 		final int width = img.getWidth();
 		final int height = img.getHeight();
 		// final int type = img.getType();
@@ -124,18 +126,18 @@ public enum SpriteGrayLevel {
 			final StringBuilder sb = new StringBuilder(width);
 			for (int x = 0; x < width; x++) {
 				final int level1 = getGrayOn16(img, x, y) / 2;
-				assert level1 >= 0 && level1 <= 7;
+				if (TeaVM.a()) assert level1 >= 0 && level1 <= 7;
 				final int level2 = getGrayOn16(img, x, y + 1) / 2;
-				assert level2 >= 0 && level2 <= 7;
+				if (TeaVM.a()) assert level2 >= 0 && level2 <= 7;
 				final int v = level1 * 8 + level2;
 				sb.append(AsciiEncoder.encode6bit((byte) v));
 			}
 			result.add(sb.toString());
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
-	private List<String> encode4(BufferedImage img) {
+	private List<String> encode4(PortableImage img) {
 		final int width = img.getWidth();
 		final int height = img.getHeight();
 		// final int type = img.getType();
@@ -146,27 +148,27 @@ public enum SpriteGrayLevel {
 			final StringBuilder sb = new StringBuilder(width);
 			for (int x = 0; x < width; x++) {
 				final int level1 = getGrayOn16(img, x, y) / 4;
-				assert level1 >= 0 && level1 <= 3;
+				if (TeaVM.a()) assert level1 >= 0 && level1 <= 3;
 				final int level2 = getGrayOn16(img, x, y + 1) / 4;
-				assert level2 >= 0 && level2 <= 3;
+				if (TeaVM.a()) assert level2 >= 0 && level2 <= 3;
 				final int level3 = getGrayOn16(img, x, y + 2) / 4;
-				assert level3 >= 0 && level3 <= 3;
+				if (TeaVM.a()) assert level3 >= 0 && level3 <= 3;
 				final int v = level1 * 16 + level2 * 4 + level3;
 				sb.append(AsciiEncoder.encode6bit((byte) v));
 			}
 			result.add(sb.toString());
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
-	private int getGrayOn16(BufferedImage img, int x, int y) {
+	private int getGrayOn16(PortableImage img, int x, int y) {
 		if (x >= img.getWidth()) {
 			return 0;
 		}
 		if (y >= img.getHeight()) {
 			return 0;
 		}
-		final Color g = ColorUtils.getGrayScaleColor(new Color(img.getRGB(x, y)));
+		final XColor g = ColorUtils.getGrayScaleColor(XColor.from(img.getRGB(x, y)));
 		final int gray = 255 - g.getRed();
 		return gray / 16;
 	}
@@ -242,8 +244,8 @@ public enum SpriteGrayLevel {
 		return result;
 	}
 
-	// ::comment when __CORE__
-	public List<String> encodeZ(BufferedImage img) {
+	// ::comment when __TEAVM__
+	public List<String> encodeZ(PortableImage img) {
 		final int width = img.getWidth();
 		final int height = img.getHeight();
 		final byte raw[] = new byte[width * height];
@@ -260,7 +262,7 @@ public enum SpriteGrayLevel {
 		return cut(new AsciiEncoderFinalZeros().encode(comp));
 	}
 
-	private List<String> encodeZSpiral(BufferedImage img) {
+	private List<String> encodeZSpiral(PortableImage img) {
 		final int width = img.getWidth();
 		final int height = img.getHeight();
 		final byte raw[] = new byte[width * height];
@@ -283,7 +285,7 @@ public enum SpriteGrayLevel {
 			result.add(s.substring(i, j));
 
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 	// ::done
 

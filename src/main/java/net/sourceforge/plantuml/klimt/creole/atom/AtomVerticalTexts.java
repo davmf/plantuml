@@ -49,7 +49,8 @@ public class AtomVerticalTexts extends AbstractAtom implements Atom {
 		this.all = texts;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		double width = 0;
 		double height = 0;
 		for (Atom text : all) {

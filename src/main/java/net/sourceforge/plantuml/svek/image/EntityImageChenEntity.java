@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
@@ -53,9 +54,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.url.Url;
@@ -75,8 +76,8 @@ public class EntityImageChenEntity extends AbstractEntityImage {
 		final FontConfiguration titleFontConfiguration = getStyleStateTitle(entity, getSkinParam())
 				.getFontConfiguration(getSkinParam().getIHtmlColorSet(), entity.getColors());
 
-		title = entity.getDisplay().create8(titleFontConfiguration, HorizontalAlignment.CENTER, getSkinParam(), CreoleMode.FULL,
-				getStyleState().wrapWidth());
+		title = entity.getDisplay().create8(titleFontConfiguration, HorizontalAlignment.CENTER, getSkinParam(),
+				CreoleMode.FULL, getStyleState().wrapWidth());
 
 		url = entity.getUrl99();
 	}
@@ -89,14 +90,19 @@ public class EntityImageChenEntity extends AbstractEntityImage {
 		return getStyleState(getEntity(), getSkinParam());
 	}
 
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.CHENEER_ENTITY;
+	}
+
 	private static Style getStyleState(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.chenEerDiagram, SName.chenEntity)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.CHENEER_ENTITY.withStereotype(group.getStereotype()));
 	}
 
 	private static Style getStyleStateTitle(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.chenEerDiagram, SName.chenEntity, SName.title)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.CHENEER_ENTITY_TITLE.withStereotype(group.getStereotype()));
 	}
 
 	@Override
@@ -105,7 +111,7 @@ public class EntityImageChenEntity extends AbstractEntityImage {
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dim = title.calculateDimension(stringBounder);
 
 		return dim.delta(MARGIN * 2 + 2 * MARGIN_LINE);

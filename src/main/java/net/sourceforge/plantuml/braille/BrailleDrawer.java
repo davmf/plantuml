@@ -39,11 +39,15 @@ import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 
-public class BrailleDrawer implements UDrawable {
+import net.sourceforge.plantuml.annotation.Fast;
+
+public class BrailleDrawer implements TextBlock {
 
 	private final BrailleGrid grid;
 	private final double step = 9;
@@ -53,6 +57,15 @@ public class BrailleDrawer implements UDrawable {
 		this.grid = grid;
 	}
 
+	@Fast
+	@Override
+	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		final double width = (grid.getMaxX() - grid.getMinX()) * step + spotSize + 2;
+		final double height = (grid.getMaxY() - grid.getMinY()) * step + spotSize + 2;
+		return new XDimension2D(width, height);
+	}
+
+	@Override
 	public void drawU(UGraphic ug) {
 		ug = ug.apply(HColorSet.instance().getColorOrWhite("#F0F0F0"));
 		for (int x = grid.getMinX(); x <= grid.getMaxX(); x++) {

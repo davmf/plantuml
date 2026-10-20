@@ -38,15 +38,14 @@ package net.sourceforge.plantuml;
 import java.io.File;
 import java.io.PrintStream;
 
+import net.sourceforge.plantuml.cli.ExitStatus;
 import net.sourceforge.plantuml.core.Diagram;
 
 public interface Stdrpt {
-	// ::remove file when __CORE__
-	// ::remove file when __HAXE__
 
 	public void printInfo(PrintStream output, Diagram sys);
 
-	public void finalMessage(ErrorStatus error);
+	public void finalMessage(ExitStatus error);
 
 	public void errorLine(int lineError, File file);
 

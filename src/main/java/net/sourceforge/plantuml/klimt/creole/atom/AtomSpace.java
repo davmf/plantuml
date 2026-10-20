@@ -51,7 +51,8 @@ public class AtomSpace extends AbstractAtom implements Atom {
 		this.width = width;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return new XDimension2D(width, 1);
 	}
 

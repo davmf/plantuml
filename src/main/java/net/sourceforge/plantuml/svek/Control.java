@@ -35,18 +35,18 @@
  */
 package net.sourceforge.plantuml.svek;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.Fashion;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 
-public class Control extends AbstractTextBlock implements TextBlock {
+public class Control implements TextBlock {
 
 	private final double margin = 4;
 
@@ -82,6 +82,8 @@ public class Control extends AbstractTextBlock implements TextBlock {
 		ug.apply(new UTranslate(x + radius - xContact, y)).draw(polygon);
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(radius * 2 + 2 * margin, radius * 2 + 2 * margin);
 	}

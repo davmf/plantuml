@@ -34,33 +34,78 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.svg;
 
-import java.awt.font.TextLayout;
+import java.awt.Shape;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
+import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.font.UFont;
-import net.sourceforge.plantuml.klimt.font.UFontContext;
 import net.sourceforge.plantuml.klimt.font.UnusedSpace;
 import net.sourceforge.plantuml.klimt.shape.UCenteredCharacter;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class DriverCenteredCharacterSvg implements UDriver<UCenteredCharacter, SvgGraphics> {
-    // ::remove file when __HAXE__
+
+	private final FileFormat fileFormat;
+
+	public DriverCenteredCharacterSvg(FileFormat fileFormat) {
+		this.fileFormat = fileFormat;
+	}
 
 	public void draw(UCenteredCharacter characterCircled, double x, double y, ColorMapper mapper, UParam param,
 			SvgGraphics svg) {
 		final char c = characterCircled.getChar();
+		final HColor textColor = param.getColor();
+
+		// For deterministic SVG output (used by tests), avoid rendering the glyph as a
+		// vector path derived from the system font (which differs across OS/JVM).
+		// Instead, emit a simple <text> element with a fixed font-family.
+		// Same in the TeaVM C build, which has no AWT to get the glyph outline.
+		if (fileFormat == FileFormat.SVG_DETERMINISTIC || TeaVM.isC()) {
+			svg.setFillColor(textColor.toSvg(mapper));
+			svg.text(String.valueOf(c), x - 5, y + 5, "monospace", 14, null, null, null, 0,
+					new HashMap<String, String>(), null);
+			return;
+		}
+
 		final UFont font = characterCircled.getFont();
 		final UnusedSpace unusedSpace = UnusedSpace.getUnusedSpace(font, c);
 
 		final double xpos = x - unusedSpace.getCenterX() - 0.5;
 		final double ypos = y - unusedSpace.getCenterY() - 0.5;
 
-		final TextLayout t = UFontContext.SVG.createTextLayout(font, "" + c);
-		final HColor textColor = param.getColor();
 		svg.setFillColor(textColor.toSvg(mapper));
 
-		svg.drawPathIterator(xpos, ypos, t.getOutline(null).getPathIterator(null));
+		svg.drawPathIterator(xpos, ypos, getOutline(font, c).getPathIterator(null));
+	}
+
+	// The outline of a glyph never changes, and building it (a TextLayout) is costly
+	// compared to the few distinct (font, char) pairs a diagram uses (circled C, I, E...).
+	private static final int OUTLINE_CACHE_SIZE = 500;
+	private static final Map<List<Object>, Shape> OUTLINE_CACHE = new LinkedHashMap<List<Object>, Shape>(
+			OUTLINE_CACHE_SIZE, 0.75f, true) {
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<List<Object>, Shape> eldest) {
+			return size() > OUTLINE_CACHE_SIZE;
+		}
+	};
+
+	private static Shape getOutline(UFont font, char c) {
+		final List<Object> key = Arrays.<Object>asList(font, c);
+		synchronized (OUTLINE_CACHE) {
+			Shape result = OUTLINE_CACHE.get(key);
+			if (result == null) {
+				result = font.createTextLayout("" + c).getOutline(null);
+				OUTLINE_CACHE.put(key, result);
+			}
+			return result;
+		}
 	}
 }

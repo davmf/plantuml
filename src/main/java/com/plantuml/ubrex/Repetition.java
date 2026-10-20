@@ -36,24 +36,48 @@ package com.plantuml.ubrex;
 
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Repetition {
 
 	private final Set<Integer> values = new TreeSet<>();
+	private final AtomicInteger minInclusive = new AtomicInteger(Integer.MAX_VALUE);
 
 	public static Repetition parse(TextNavigator input) {
 		final Repetition result = new Repetition();
+		final StringBuilder token = new StringBuilder();
 		while (true) {
 			final char ch = input.charAt(0);
-			if (ch >= '0' && ch <= '9') {
-				result.add(ch - '0');
-			} else if (ch == '}') {
+			if (ch == '}') {
+				result.addToken(token.toString());
 				input.jump(1);
 				return result;
+			} else if (ch == ';') {
+				result.addToken(token.toString());
+				token.setLength(0);
 			} else {
-				throw new UnsupportedOperationException();
+				token.append(ch);
 			}
 			input.jump(1);
+		}
+	}
+
+	private void addToken(String token) {
+		if (token.isEmpty())
+			throw new UnsupportedOperationException("empty repetition token");
+
+		if (token.endsWith("+")) {
+			final int min = Integer.parseInt(token.substring(0, token.length() - 1));
+			this.minInclusive.set(min);
+		} else if (token.contains("-")) {
+			final int dash = token.indexOf('-');
+			final int min = Integer.parseInt(token.substring(0, dash));
+			final int max = Integer.parseInt(token.substring(dash + 1));
+			for (int i = min; i <= max; i++)
+				add(i);
+		} else {
+			final int exact = Integer.parseInt(token);
+			add(exact);
 		}
 	}
 
@@ -67,6 +91,8 @@ public class Repetition {
 	}
 
 	public boolean match(int nb) {
+		if (nb >= minInclusive.get())
+			return true;
 		return values.contains(nb);
 	}
 

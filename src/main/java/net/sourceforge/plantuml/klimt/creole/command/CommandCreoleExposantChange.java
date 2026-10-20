@@ -35,6 +35,8 @@
  */
 package net.sourceforge.plantuml.klimt.creole.command;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import com.plantuml.ubrex.UMatcher;
@@ -43,6 +45,7 @@ import com.plantuml.ubrex.UnicodeBracketedExpression;
 import net.sourceforge.plantuml.klimt.creole.legacy.StripeSimple;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontPosition;
+import net.sourceforge.plantuml.style.ISkinSimple;
 
 public class CommandCreoleExposantChange implements Command {
 
@@ -50,8 +53,8 @@ public class CommandCreoleExposantChange implements Command {
 	private final UnicodeBracketedExpression ubrex;
 
 	@Override
-	public String startingChars() {
-		return "<";
+	public Collection<String> starters() {
+		return Collections.singleton("<s");
 	}
 
 	private CommandCreoleExposantChange(String ubrexString, FontPosition position) {
@@ -65,18 +68,20 @@ public class CommandCreoleExposantChange implements Command {
 		return new CommandCreoleExposantChange(ubrexString, position);
 	}
 
-	public int matchingSize(String line) {
-		final UMatcher matcher = ubrex.match(line);
-		final List<String> value = matcher.getCapture("V");
+	@Override
+	public int matchingSize(String line, int pos) {
+		final UMatcher matcher = ubrex.match(line, pos);
+		final List<String> value = matcher.findValuesByKey("V");
 		if (value.size() == 0)
 			return 0;
 		return value.get(0).length();
 	}
 
-	public String executeAndGetRemaining(String line, StripeSimple stripe) {
+	@Override
+	public int executeAndAdvance(ISkinSimple skinSimple, String line, int pos, StripeSimple stripe) {
 
-		final UMatcher matcher = ubrex.match(line);
-		final List<String> value = matcher.getCapture("V");
+		final UMatcher matcher = ubrex.match(line, pos);
+		final List<String> value = matcher.findValuesByKey("V");
 		final String accepted = matcher.getAcceptedMatch();
 
 		if (value.size() == 0)
@@ -88,7 +93,7 @@ public class CommandCreoleExposantChange implements Command {
 		stripe.setActualFontConfiguration(fc2);
 		stripe.analyzeAndAdd(value.get(0));
 		stripe.setActualFontConfiguration(fc1);
-		return line.substring(accepted.length());
+		return accepted.length();
 	}
 
 }

@@ -38,7 +38,7 @@ package net.sourceforge.plantuml.klimt.creole;
 import java.util.List;
 import java.util.Objects;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.creole.atom.Atom;
@@ -48,12 +48,11 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.WithPorts;
 
-final public class SheetBlock2 extends AbstractTextBlock implements TextBlock, Atom, WithPorts {
+final public class SheetBlock2 implements TextBlock, Atom, WithPorts {
 
 	private final SheetBlock1 block;
 	private final UStroke defaultStroke;
@@ -88,10 +87,13 @@ final public class SheetBlock2 extends AbstractTextBlock implements TextBlock, A
 		return block.toString();
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return block.calculateDimension(stringBounder);
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		if (stencil != null)
 			ug = UGraphicStencil.create(ug, stencil, defaultStroke);
@@ -99,6 +101,10 @@ final public class SheetBlock2 extends AbstractTextBlock implements TextBlock, A
 		if (getHorizontalAlignment() == HorizontalAlignment.CENTER && block.getMinimumWidth() > 0) {
 			final double width = calculateDimension(ug.getStringBounder()).getWidth();
 			final double dx = (block.getMinimumWidth() - width) / 2;
+			ug = ug.apply(UTranslate.dx(dx));
+		} else if (getHorizontalAlignment() == HorizontalAlignment.RIGHT && block.getMinimumWidth() > 0) {
+			final double width = calculateDimension(ug.getStringBounder()).getWidth();
+			final double dx = block.getMinimumWidth() - width;
 			ug = ug.apply(UTranslate.dx(dx));
 		}
 		block.drawU(ug);
@@ -109,8 +115,8 @@ final public class SheetBlock2 extends AbstractTextBlock implements TextBlock, A
 	}
 
 	@Override
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		return block.getInnerPosition(member, stringBounder, strategy);
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		return block.getInnerPosition(member, stringBounder);
 	}
 
 	@Override

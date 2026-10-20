@@ -35,13 +35,13 @@
  */
 package net.sourceforge.plantuml.openiconic;
 
-import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.awt.XAffineTransform;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 
@@ -189,7 +189,7 @@ public class SvgPath {
 		return result;
 	}
 
-	private UPath toUPath(AffineTransform at) {
+	private UPath toUPath(XAffineTransform at) {
 		UPath result = UPath.none();
 		Movement previous = null;
 		for (Movement move : movements) {
@@ -241,13 +241,15 @@ public class SvgPath {
 		return result;
 	}
 
+	public void drawMe(UGraphic ug, XAffineTransform at) {
+		final UPath path = toUPath(at);
+		if (path.isInvisible() == false)
+			ug.draw(path);
+	}
+
 	public void drawMe(UGraphic ug, double factor) {
 		final UPath path = toUPath(factor, factor);
 		ug.draw(path);
 	}
 
-	public void drawMe(UGraphic ug, AffineTransform at) {
-		final UPath path = toUPath(at);
-		ug.draw(path);
-	}
 }

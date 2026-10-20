@@ -34,7 +34,6 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.svg;
 
-import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
@@ -42,19 +41,12 @@ import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 
 public class DriverEllipseSvg implements UDriver<UEllipse, SvgGraphics> {
-    // ::remove file when __HAXE__
-
-	private final ClipContainer clipContainer;
-
-	public DriverEllipseSvg(ClipContainer clipContainer) {
-		this.clipContainer = clipContainer;
-	}
 
 	public void draw(UEllipse shape, double x, double y, ColorMapper mapper, UParam param, SvgGraphics svg) {
 		final double width = shape.getWidth();
 		final double height = shape.getHeight();
 
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null) {
 			if (clip.isInside(x, y) == false) {
 				return;

@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.abel.DisplayPositioned;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
@@ -53,8 +57,9 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMultilinesLegend extends CommandMultilines2<TitledDiagram> {
 
-	private final static Lazy<Pattern2> END = new Lazy<>(
-			() -> Pattern2.cmpile("^end[%s]?legend$"));
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("legend");
+
+	private final static Lazy<Pattern2> END = new Lazy<>(() -> Pattern2.cmpile("^end[%s]?legend$"));
 
 	public static final CommandMultilinesLegend ME = new CommandMultilinesLegend();
 
@@ -75,6 +80,37 @@ public class CommandMultilinesLegend extends CommandMultilines2<TitledDiagram> {
 								RegexLeaf.spaceOneOrMore(), //
 								new RegexLeaf(1, "ALIGN", "(left|right|center)") //
 						)), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: the optional alignments are on the first line, the
+		// lines up to 'end legend' are the text of the legend (default
+		// position when not given: bottom, centered).
+		lines = lines.trimSmart(1);
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Setting the legend of the diagram";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Setting the legend of the diagram");
+
+		final String valign = line0.get("VALIGN", 0);
+		if (valign != null)
+			sb.append(", positioned at the ").append(valign);
+
+		final String align = line0.get("ALIGN", 0);
+		if (align != null)
+			sb.append(", aligned ").append(align);
+
+		final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+		if (bodyCount > 0)
+			sb.append(", from ").append(bodyCount).append(bodyCount == 1 ? " line" : " lines").append(" of text");
+		else
+			sb.append(" (rejected at execution: no legend defined)");
+
+		return sb.toString();
 	}
 
 	@Override
@@ -99,4 +135,10 @@ public class CommandMultilinesLegend extends CommandMultilines2<TitledDiagram> {
 		}
 		return CommandExecutionResult.error("No legend defined");
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

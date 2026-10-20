@@ -19,31 +19,31 @@ class SecurityProfileTest {
 					"  ALLOWLIST, path.separator, true",
 					"  INTERNET,  path.separator, true",
 					"  LEGACY,    path.separator, true",
-					"  UNSECURE,  path.separator, true",
+					"  INSECURE,  path.separator, true",
 
 					"  SANDBOX,   line.separator, true",
 					"  ALLOWLIST, line.separator, true",
 					"  INTERNET,  line.separator, true",
 					"  LEGACY,    line.separator, true",
-					"  UNSECURE,  line.separator, true",
+					"  INSECURE,  line.separator, true",
 					
 					"  SANDBOX,   plantuml.security.foo, false",
 					"  ALLOWLIST, plantuml.security.foo, false",
 					"  INTERNET,  plantuml.security.foo, false",
 					"  LEGACY,    plantuml.security.foo, false",
-					"  UNSECURE,  plantuml.security.foo, false",
+					"  INSECURE,  plantuml.security.foo, false",
 
 					"  SANDBOX,   plantuml.dummy, true",
 					"  ALLOWLIST, plantuml.dummy, true",
 					"  INTERNET,  plantuml.dummy, true",
 					"  LEGACY,    plantuml.dummy, true",
-					"  UNSECURE,  plantuml.dummy, true",
+					"  INSECURE,  plantuml.dummy, true",
 
 					"  SANDBOX,   custom.name, false",
 					"  ALLOWLIST, custom.name, false",
 					"  INTERNET,  custom.name, false",
 					"  LEGACY,    custom.name, false",
-					"  UNSECURE,  custom.name, true",
+					"  INSECURE,  custom.name, true",
 
 			},
 			nullValues = { "NULL" })

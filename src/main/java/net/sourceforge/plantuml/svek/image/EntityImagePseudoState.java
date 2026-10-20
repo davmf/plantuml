@@ -35,14 +35,15 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
-import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
@@ -50,9 +51,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 
@@ -60,41 +61,60 @@ public class EntityImagePseudoState extends AbstractEntityImage {
 
 	private static final int SIZE = 22;
 	private final TextBlock desc;
+	private final Style style;
+	private final Colors colors;
 
 	public EntityImagePseudoState(Entity entity) {
 		this(entity, "H");
 	}
 
-	private Style getStyle() {
-		return getStyleSignature().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.DIAMOND.add(getStyleName());
 	}
 
-	private StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), SName.diamond);
+	/**
+	 * Stereotype labels every history pseudo-state answers to, whether it was
+	 * written <code>[H]</code>, <code>state h &lt;&lt;history&gt;&gt;</code> or
+	 * the deep variant: this is what makes <code>.history { ... }</code> in a
+	 * <code>&lt;style&gt;</code> block reach all of them. A label such as
+	 * <code>history*</code> cannot be used as a style class name, hence the
+	 * separate {@link #getImplicitStereotypes()} of the deep history.
+	 */
+	protected String[] getImplicitStereotypes() {
+		return new String[] { "history" };
 	}
 
 	public EntityImagePseudoState(Entity entity, String historyText) {
 		super(entity);
 		final Stereotype stereotype = entity.getStereotype();
 
-		final FontConfiguration fontConfiguration = FontConfiguration.create(getSkinParam(), FontParam.STATE,
-				stereotype);
+		StyleQuery query = getStyleQuery().withStereotype(stereotype);
+		for (String implicit : getImplicitStereotypes())
+			query = query.withStereotype(implicit);
+
+		this.style = getSkinParam().getCurrentStyleBuilder().getMergedStyle(query);
+		this.colors = entity.getColors();
+
+		final FontConfiguration fontConfiguration = style.getFontConfiguration(getSkinParam().getIHtmlColorSet(),
+				colors);
 
 		this.desc = Display.create(historyText).create(fontConfiguration, HorizontalAlignment.CENTER, getSkinParam());
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return new XDimension2D(SIZE, SIZE);
 	}
 
 	final public void drawU(UGraphic ug) {
 		final UEllipse circle = UEllipse.build(SIZE, SIZE);
 
-		final Style style = getStyle();
-		final HColor borderColor = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
-		final HColor backgroundColor = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+		final HColor borderColor = colors.getColor(style, PName.LineColor, getSkinParam().getIHtmlColorSet());
+		final HColor backgroundColor = colors.getColor(style, PName.BackGroundColor,
+				getSkinParam().getIHtmlColorSet());
 		final double shadow = style.getShadowing();
-		final UStroke stroke = style.getStroke();
+		final UStroke stroke = style.getStroke(colors);
 
 		circle.setDeltaShadow(shadow);
 		ug = ug.apply(stroke);

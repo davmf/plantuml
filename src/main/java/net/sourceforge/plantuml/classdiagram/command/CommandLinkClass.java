@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -36,31 +36,37 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArg;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.LinkDecor;
 import net.sourceforge.plantuml.decoration.LinkType;
 import net.sourceforge.plantuml.descdiagram.command.CommandLinkElement;
 import net.sourceforge.plantuml.descdiagram.command.Labels;
+import net.sourceforge.plantuml.gantt.Failable;
 import net.sourceforge.plantuml.klimt.color.ColorParser;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.objectdiagram.AbstractClassOrObjectDiagram;
 import net.sourceforge.plantuml.plasma.Quark;
-import net.sourceforge.plantuml.project.Failable;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexOr;
 import net.sourceforge.plantuml.regex.RegexResult;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.StereotypePattern;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.url.UrlMode;
@@ -69,17 +75,46 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 final public class CommandLinkClass extends SingleLineCommand2<AbstractClassOrObjectDiagram> {
 
-	private static final String SINGLE = "[.\\\\]{0,2}[%pLN_]+(?:[.\\\\]{1,2}[%pLN_]+)*";
-	private static final String SINGLE_GUILLEMENT = "[%g][.\\\\]{0,2}[%pLN_]+(?:[.\\\\]{1,2}[%pLN_]+)*[%g]";
+	// Issue #2685: a separator is any single character that is not part of an
+	// identifier (letter, digit, _, $) and not a PlantUML syntactic
+	// character (space, #, :, {},<>,").
+
+	// This lets 'set separator' accept !, -, ~, @, |, /, etc. anything an author
+	// might want while keeping the parsing of class names and relations
+	// unambiguous.
+
+	// Note:
+	// - '#' is excluded because it introduces colors (#red, #FF0000).
+	// - ':' is excluded because it introduces relation labels (A --> B : label) and
+	// is already handled as a separator only in its doubled form '::' below.
+	private static final String SEPARATOR_CHAR_SINGLE = "[^%pLN%s_$#\\:{}<>%g]";
+
+	// Two-character separators must be listed explicitly
+	// Only '::' (legacy UML namespace) and '\\'
+	// Package-visible so CommandNamespaceSeparator can reuse it (issue #2801).
+	static final String SEPARATOR_CHAR_DOUBLE = "[\\\\]{2}|::";
+
+	public static String getSeparator() {
+		return "(?:" + SEPARATOR_CHAR_SINGLE + "|" + SEPARATOR_CHAR_DOUBLE + ")";
+	}
+
+	private static final String SINGLE = getSeparator() + "?[%pLN_]+(?:" + getSeparator() + "[%pLN_]+)*";
+	private static final String SINGLE_GUILLEMENT = "[%g]" + getSeparator() + "?[%pLN_]+(?:" + getSeparator()
+			+ "[%pLN_]+)*[%g]";
 	private static final String SINGLE2 = "(?:" + SINGLE + "|" + SINGLE_GUILLEMENT + ")";
 	private static final String COUPLE = "\\([%s]*(" + SINGLE2 + ")[%s]*,[%s]*(" + SINGLE2 + ")[%s]*\\)";
 
-	public CommandLinkClass(UmlDiagramType umlDiagramType) {
-		super(getRegexConcat(umlDiagramType));
+	public CommandLinkClass(DiagramType diagramType) {
+		super(getRegexConcat(diagramType));
 	}
 
-	static private RegexConcat getRegexConcat(UmlDiagramType umlDiagramType) {
-		return RegexConcat.build(CommandLinkClass.class.getName() + umlDiagramType, RegexLeaf.start(), //
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
+	}
+
+	static private RegexConcat getRegexConcat(DiagramType diagramType) {
+		return RegexConcat.build(CommandLinkClass.class.getName() + diagramType, RegexLeaf.start(), //
 				new RegexOptional( //
 						new RegexConcat( //
 								new RegexLeaf(1, "HEADER", "@([\\d.]+)"), //
@@ -98,6 +133,7 @@ final public class CommandLinkClass extends SingleLineCommand2<AbstractClassOrOb
 						RegexLeaf.spaceOneOrMore() //
 				)), //
 				new RegexOptional(new RegexLeaf(1, "FIRST_LABEL", "[%g]([^%g]+)[%g]")), //
+				new RegexOptional(new RegexLeaf(1, "FIRST_ROLE", "/([^%s]+|[%g][^%g]+[%g])")), //
 
 				RegexLeaf.spaceZeroOrMore(), //
 
@@ -114,6 +150,7 @@ final public class CommandLinkClass extends SingleLineCommand2<AbstractClassOrOb
 				RegexLeaf.spaceZeroOrMore(), //
 
 				new RegexOptional(new RegexLeaf(1, "SECOND_LABEL", "[%g]([^%g]+)[%g]")), //
+				new RegexOptional(new RegexLeaf(1, "SECOND_ROLE", "/([^%s]+|[%g][^%g]+[%g])")), //
 				new RegexOptional(new RegexConcat( //
 						RegexLeaf.spaceOneOrMore(), //
 						new RegexLeaf("[\\[]"), //
@@ -132,6 +169,7 @@ final public class CommandLinkClass extends SingleLineCommand2<AbstractClassOrOb
 				RegexLeaf.spaceZeroOrMore(), //
 				UrlBuilder.OPTIONAL, //
 				RegexLeaf.spaceZeroOrMore(), //
+				StereotypePattern.optional("STEREOTYPE"), //
 				new RegexOptional( //
 						new RegexConcat( //
 								new RegexLeaf(":"), //
@@ -144,12 +182,120 @@ final public class CommandLinkClass extends SingleLineCommand2<AbstractClassOrOb
 		return ColorParser.simpleColor(ColorType.LINE);
 	}
 
-	private static String getClassIdentifier() {
+	public static String getClassIdentifier() {
 		return "(" + getSeparator() + "?[%pLN_$]+(?:" + getSeparator() + "[%pLN_$]+)*|[%g][^%g]+[%g])";
 	}
 
-	public static String getSeparator() {
-		return "(?:\\.|::|\\\\|\\\\\\\\)";
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// The relation kind is deduced from the arrow decorations, like in
+		// getLinkType(); an endpoint may be a plain entity or a '(A, B)'
+		// couple targeting an existing association (association class syntax,
+		// see the executeArgSpecial methods).
+		sb.append("Drawing ").append(describeRelation(getArrowHead1(arg), getArrowHead2(arg))).append(" between ")
+				.append(describeEndpoint(arg, "ENT1", "COUPLE1")).append(" and ")
+				.append(describeEndpoint(arg, "ENT2", "COUPLE2"));
+
+		if (notNull(arg.get("ARROW_BODY1", 0)).contains(".") || notNull(arg.get("ARROW_BODY2", 0)).contains("."))
+			sb.append(", dashed");
+
+		final String direction = arg.get("ARROW_DIRECTION", 0);
+		if (direction != null && direction.isEmpty() == false)
+			sb.append(", oriented ").append(describeDirection(direction));
+
+		if (arg.get("INSIDE", 0) != null)
+			sb.append(", with a middle circle");
+
+		final String style = arg.getLazzy("ARROW_STYLE", 0);
+		if (style != null)
+			sb.append(", with style '").append(style).append("'");
+
+		final String qualifier1 = arg.get("QUALIFIER1", 0);
+		if (qualifier1 != null)
+			sb.append(", qualifier \"").append(qualifier1).append("\" on the first end");
+
+		final String qualifier2 = arg.get("QUALIFIER2", 0);
+		if (qualifier2 != null)
+			sb.append(", qualifier \"").append(qualifier2).append("\" on the second end");
+
+		final String firstLabel = arg.get("FIRST_LABEL", 0);
+		if (firstLabel != null)
+			sb.append(", cardinality \"").append(firstLabel).append("\" on the first end");
+
+		final String secondLabel = arg.get("SECOND_LABEL", 0);
+		if (secondLabel != null)
+			sb.append(", cardinality \"").append(secondLabel).append("\" on the second end");
+
+		final String firstRole = arg.get("FIRST_ROLE", 0);
+		if (firstRole != null)
+			sb.append(", role \"").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(firstRole))
+					.append("\" on the first end");
+
+		final String secondRole = arg.get("SECOND_ROLE", 0);
+		if (secondRole != null)
+			sb.append(", role \"").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(secondRole))
+					.append("\" on the second end");
+
+		final String label = arg.get("LABEL_LINK", 0);
+		if (label != null)
+			sb.append(", labelled \"").append(label).append("\"");
+
+		if (arg.get("STEREOTYPE", 0) != null)
+			sb.append(", stereotype ").append(arg.get("STEREOTYPE", 0));
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", line color ").append(arg.get("COLOR", 0));
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		final String weight = arg.get("HEADER", 0);
+		if (weight != null)
+			sb.append(", weight ").append(weight);
+
+		return sb.toString();
+	}
+
+	public static String describeRelation(String head1, String head2) {
+		// Keep the most significant decoration: '<|' wins over '<', and so on.
+		final String heads = head1 + head2;
+		if (heads.contains("|"))
+			return "an extension (inheritance) link";
+		if (heads.contains("*"))
+			return "a composition link";
+		if (heads.contains("o"))
+			return "an aggregation link";
+		if (heads.contains("<") || heads.contains(">"))
+			return "a directed association";
+		if (heads.isEmpty())
+			return "an association";
+		return "a link";
+	}
+
+	private String describeEndpoint(RegexResult arg, String entKey, String coupleKey) {
+		final String ent = arg.get(entKey, 0);
+		if (ent != null)
+			return "'" + StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(ent) + "'";
+
+		return "the association between '"
+				+ StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.get(coupleKey, 0)) + "' and '"
+				+ StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.get(coupleKey, 1)) + "'";
+	}
+
+	private String describeDirection(String direction) {
+		switch (StringUtils.goLowerCase(direction).charAt(0)) {
+		case 'l':
+			return "to the left";
+		case 'r':
+			return "to the right";
+		case 'u':
+			return "upwards";
+		default:
+			return "downwards";
+		}
 	}
 
 	@Override
@@ -211,13 +357,14 @@ final public class CommandLinkClass extends SingleLineCommand2<AbstractClassOrOb
 				.build(labels.getDisplay(diagram.getPragma()), queue,
 						diagram.getSkinParam().classAttributeIconSize() > 0)
 				.withQuantifier(labels.getFirstLabel(), labels.getSecondLabel())
+				.withRole(labels.getFirstRole(), labels.getSecondRole())
 				.withDistanceAngle(diagram.getLabeldistance(), diagram.getLabelangle()).withKal(kal1, kal2);
 
 		Link link = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), cl1, cl2, linkType,
 				linkArg);
-		if (arg.get("URL", 0) != null) {
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
-			final Url url = urlBuilder.getUrl(arg.get("URL", 0));
+			final Url url = urlBuilder.getUrl(arg.get(UrlBuilder.URL_KEY, 0));
 			link.setUrl(url);
 		}
 		link.setPortMembers(port1, port2);
@@ -228,6 +375,10 @@ final public class CommandLinkClass extends SingleLineCommand2<AbstractClassOrOb
 		link.setLinkArrow(labels.getLinkArrow());
 		link.setColors(color().getColor(arg, diagram.getSkinParam().getIHtmlColorSet()));
 		link.applyStyle(arg.getLazzy("ARROW_STYLE", 0));
+		if (arg.get("STEREOTYPE", 0) != null) {
+			final Stereotype stereotype = Stereotype.build(arg.get("STEREOTYPE", 0));
+			link.setStereotype(stereotype);
+		}
 		link.setCodeLine(location);
 
 		addLink(diagram, link, arg.get("HEADER", 0));

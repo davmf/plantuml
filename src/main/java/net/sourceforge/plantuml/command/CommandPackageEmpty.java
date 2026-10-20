@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
@@ -51,6 +55,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandPackageEmpty extends SingleLineCommand2<AbstractEntityDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("package");
 
 	public CommandPackageEmpty() {
 		super(getRegexConcat());
@@ -75,6 +81,30 @@ public class CommandPackageEmpty extends SingleLineCommand2<AbstractEntityDiagra
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("\\}"), //
 				RegexLeaf.end()); //
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'package Name {}' declares an empty package, opened and closed on
+		// the same line; an empty name creates an anonymous one, like in
+		// executeArg.
+		final String display = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.get("DISPLAY", 0));
+		final String code = arg.get("CODE", 0);
+		if (code != null)
+			sb.append("Declaring the empty package '").append(code).append("' displayed as \"").append(display)
+					.append("\"");
+		else if (display.length() == 0)
+			sb.append("Declaring an anonymous empty package");
+		else
+			sb.append("Declaring the empty package '").append(display).append("'");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		return sb.toString();
 	}
 
 	@Override
@@ -106,6 +136,11 @@ public class CommandPackageEmpty extends SingleLineCommand2<AbstractEntityDiagra
 
 		diagram.endGroup();
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -57,9 +57,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.url.Url;
@@ -79,8 +79,8 @@ public class EntityImageChenRelationship extends AbstractEntityImage {
 		final FontConfiguration titleFontConfiguration = getStyleTitle(entity, getSkinParam())
 				.getFontConfiguration(getSkinParam().getIHtmlColorSet(), entity.getColors());
 
-		title = entity.getDisplay().create8(titleFontConfiguration, HorizontalAlignment.CENTER, getSkinParam(), CreoleMode.FULL,
-				getStyle().wrapWidth());
+		title = entity.getDisplay().create8(titleFontConfiguration, HorizontalAlignment.CENTER, getSkinParam(),
+				CreoleMode.FULL, getStyle().wrapWidth());
 
 		url = entity.getUrl99();
 	}
@@ -93,14 +93,18 @@ public class EntityImageChenRelationship extends AbstractEntityImage {
 		return getStyle(getEntity(), getSkinParam());
 	}
 
-	private static Style getStyle(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.chenEerDiagram, SName.chenRelationship)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.CHENEER_RELATIONSHIP;
+	}
+
+	private Style getStyle(Entity group, ISkinParam skinParam) {
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleQuery().withStereotype(group.getStereotype()));
 	}
 
 	private static Style getStyleTitle(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.chenEerDiagram, SName.chenRelationship, SName.title)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.CHENEER_RELATIONSHIP_TITLE.withStereotype(group.getStereotype()));
 	}
 
 	@Override
@@ -109,7 +113,7 @@ public class EntityImageChenRelationship extends AbstractEntityImage {
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dimTitle = title.calculateDimension(stringBounder);
 
 		// Fit a diamond with aspect ratio 2 around the text

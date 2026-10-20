@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -51,10 +55,13 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexOr;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandBackward3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("(", "backward");
 
 	public CommandBackward3() {
 		super(getRegexConcat());
@@ -74,7 +81,9 @@ public class CommandBackward3 extends SingleLineCommand2<ActivityDiagram3> {
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf(":"), //
 				new RegexLeaf(1, "LABEL", "(.*?)"), //
-				new RegexLeaf(2, "STYLE", CommandActivity3.endingGroup()), //
+				new RegexLeaf(";"), //
+				RegexLeaf.spaceZeroOrMore(), //
+				Stereogroup.optionalStereogroup(), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexOptional(new RegexConcat( //
 						new RegexLeaf("\\("), //
@@ -88,23 +97,51 @@ public class CommandBackward3 extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
-		final BoxStyle boxStyle;
-		final String styleString = arg.get("STYLE", 0);
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
 
-		if (styleString == null)
-			boxStyle = BoxStyle.PLAIN;
-		else
-			boxStyle = BoxStyle.fromString(styleString);
+		// 'backward :label;' defines the activity drawn on the return edge of
+		// the enclosing repeat loop. The optional '(...)' groups decorate the
+		// arrows entering (before the keyword) and leaving (after the
+		// stereotypes) this activity.
+		sb.append("Defining the backward activity \"").append(arg.get("LABEL", 0))
+				.append("\" on the return edge of the repeat loop");
 
-		BoxStyle.checkDeprecatedWarning(diagram, styleString);
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		if (stereogroup.isEmpty() == false) {
+			sb.append(", stereotyped ").append(arg.get("STEREOGROUP", 0));
+			final BoxStyle style = stereogroup.getBoxStyle();
+			if (style != BoxStyle.PLAIN)
+				sb.append(" (box style: ").append(style.name().toLowerCase()).append(")");
+		}
 
-		final String stereo = arg.get("STYLE", 1);
+		appendArrow(sb, arg, "INCOMING", "incoming");
+		appendArrow(sb, arg, "OUTCOMING", "outgoing");
 
-		Stereotype stereotype = null;
-		if (stereo != null)
-			stereotype = Stereotype.build(stereo);
+		return sb.toString();
+	}
+
+	static void appendArrow(StringBuilder sb, RegexResult arg, String key, String word) {
+		final String label = arg.get(key, 0);
+		final String color = arg.get(key + "_COLOR", 0);
+		final boolean hasLabel = label != null && label.isEmpty() == false;
+		if (hasLabel == false && color == null)
+			return;
+
+		sb.append(", ").append(word).append(" arrow");
+		if (hasLabel)
+			sb.append(" labelled \"").append(label).append("\"");
+		if (color != null)
+			sb.append(" with color or style '").append(color).append("'");
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		final BoxStyle boxStyle = stereogroup.getBoxStyle();
+		final Stereotype stereotype = stereogroup.buildStereotype();
 
 		final Display label = Display.getWithNewlines(diagram.getPragma(), arg.get("LABEL", 0));
 
@@ -133,6 +170,11 @@ public class CommandBackward3 extends SingleLineCommand2<ActivityDiagram3> {
 			return null;
 		}
 		return Rainbow.build(diagram.getSkinParam(), colorString, diagram.getSkinParam().colorArrowSeparationSpace());
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

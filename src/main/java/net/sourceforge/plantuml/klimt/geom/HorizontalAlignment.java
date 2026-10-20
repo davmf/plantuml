@@ -40,6 +40,7 @@ import java.util.Objects;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 
 public enum HorizontalAlignment {
@@ -71,7 +72,6 @@ public enum HorizontalAlignment {
 		return result;
 	}
 
-	// ::comment when __HAXE__
 	public String getGraphVizValue() {
 		return toString().substring(0, 1).toLowerCase();
 	}
@@ -88,6 +88,23 @@ public enum HorizontalAlignment {
 		}
 
 	}
-	// ::done
+
+	public double getPosition(double width, double fullWidth) {
+		if (this == HorizontalAlignment.RIGHT)
+			return fullWidth - width;
+		else if (this == HorizontalAlignment.CENTER)
+			return (fullWidth - width) / 2;
+		return 0;
+	}
+
+	public PlacementStrategy asPlacementStrategy(StringBounder sb) {
+		if (this == HorizontalAlignment.RIGHT)
+			return new PlacementStrategyY1Y2Right(sb);
+		else if (this == HorizontalAlignment.CENTER)
+			return new PlacementStrategyY1Y2(sb);
+
+		return new PlacementStrategyY1Y2Left(sb);
+
+	}
 
 }

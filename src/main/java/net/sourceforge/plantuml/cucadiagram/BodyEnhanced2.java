@@ -48,7 +48,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
-import net.sourceforge.plantuml.klimt.shape.TextBlockVertical2;
+import net.sourceforge.plantuml.klimt.shape.TextBlockVertical;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
@@ -88,7 +88,7 @@ public class BodyEnhanced2 extends BodyEnhancedAbstract {
 		final Iterator<CharSequence> it = rawBody.iterator();
 		while (it.hasNext()) {
 			final CharSequence s = it.next();
-			final String type = EmbeddedDiagram.getEmbeddedType(StringUtils.trinNoTrace(s));
+			final String type = EmbeddedDiagram.getEmbeddedType(s);
 			if (type != null) {
 				display = display.add(s);
 				display = addOneSingleLineManageEmbedded2(it, display);
@@ -109,7 +109,7 @@ public class BodyEnhanced2 extends BodyEnhancedAbstract {
 		if (blocks.size() == 1)
 			this.area = blocks.get(0);
 		else
-			this.area = new TextBlockVertical2(blocks, align);
+			this.area = new TextBlockVertical(blocks, align);
 
 		final double minClassWidth = getStyle().value(PName.MinimumWidth).asDouble();
 		if (minClassWidth > 0)
@@ -123,10 +123,9 @@ public class BodyEnhanced2 extends BodyEnhancedAbstract {
 		while (it.hasNext()) {
 			final CharSequence s = it.next();
 			display = display.add(s);
-			if (EmbeddedDiagram.getEmbeddedType(StringUtils.trinNoTrace(s)) != null)
-				// if (s.getTrimmed().getString().startsWith(EmbeddedDiagram.EMBEDDED_START))
+			if (EmbeddedDiagram.getEmbeddedType(s) != null)
 				nested++;
-			else if (StringUtils.trinNoTrace(s).equals(EmbeddedDiagram.EMBEDDED_END)) {
+			else if (StringUtils.trim2(s).equals(EmbeddedDiagram.EMBEDDED_END)) {
 				nested--;
 				if (nested == 0)
 					return display;

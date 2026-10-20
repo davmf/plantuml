@@ -49,7 +49,7 @@ import java.util.Enumeration;
 import java.util.Random;
 
 import net.sourceforge.plantuml.FileUtils;
-import net.sourceforge.plantuml.OptionPrint;
+import net.sourceforge.plantuml.cli.OptionPrint;
 import net.sourceforge.plantuml.dedication.Dedication;
 import net.sourceforge.plantuml.dedication.QBlock;
 import net.sourceforge.plantuml.dedication.TurningBytes;
@@ -57,7 +57,7 @@ import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.utils.SignatureUtils;
 
 public class PLSSignature {
-	// ::remove file when __CORE__
+	
 
 	private final int type;
 	private final byte[] sha;
@@ -75,12 +75,19 @@ public class PLSSignature {
 		this.context = context;
 	}
 
-	private LicenseInfo toLicenseInfo() {
-		return new LicenseInfo(LicenseType.fromInt(type), now, exp, owner, context, sha);
+	private LicenseInfo toLicenseInfo(String key) {
+		return new LicenseInfo(LicenseType.fromInt(type), now, exp, owner, context, sha, key);
 	}
 
+	/**
+	 * SHA-512 of the distributor.png resource, or null when the jar ships no
+	 * distributor logo (a distributor license may come without one).
+	 */
 	public static byte[] retrieveDistributorImageSignature() throws IOException, NoSuchAlgorithmException {
 		final InputStream dis = PSystemVersion.class.getResourceAsStream("/distributor.png");
+		if (dis == null)
+			return null;
+
 		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		FileUtils.copyToStream(dis, baos);
 		return SignatureUtils.getSHA512raw(baos.toByteArray());
@@ -177,7 +184,7 @@ public class PLSSignature {
 			return LicenseInfo.NONE;
 		}
 
-		return sig2.toLicenseInfo();
+		return sig2.toLicenseInfo(key);
 	}
 
 	public static LicenseInfo retrieveDistributor(String key) throws IOException, NoSuchAlgorithmException {
@@ -186,7 +193,7 @@ public class PLSSignature {
 		if (sig2 == null) {
 			return LicenseInfo.NONE;
 		}
-		return sig2.toLicenseInfo();
+		return sig2.toLicenseInfo(key);
 	}
 
 	private static byte[] decode(String key) throws IOException {

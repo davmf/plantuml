@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -50,6 +54,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandSwimlane extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("|");
 
 	public CommandSwimlane() {
 		super(getRegexConcat());
@@ -66,6 +72,26 @@ public class CommandSwimlane extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// '|name|' switches the flow to the given swimlane, creating it on
+		// first use; the following activities are drawn inside it. An
+		// optional trailing label gives its display title.
+		sb.append("Switching to the swimlane '").append(arg.get("SWIMLANE", 0)).append("'");
+
+		final String label = arg.get("LABEL", 0);
+		if (label != null && label.isEmpty() == false)
+			sb.append(" displayed as \"").append(label).append("\"");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
 			throws NoSuchColorException {
 		final String s = arg.get("COLOR", 0);
@@ -73,6 +99,11 @@ public class CommandSwimlane extends SingleLineCommand2<ActivityDiagram3> {
 		final String name = arg.get("SWIMLANE", 0);
 		final Display label = Display.getWithNewlines(diagram.getPragma(), arg.get("LABEL", 0));
 		return diagram.swimlane(name, color, label);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

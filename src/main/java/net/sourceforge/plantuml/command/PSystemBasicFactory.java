@@ -35,7 +35,8 @@
  */
 package net.sourceforge.plantuml.command;
 
-import net.sourceforge.plantuml.AbstractPSystem;
+import java.util.List;
+
 import net.sourceforge.plantuml.ErrorUml;
 import net.sourceforge.plantuml.ErrorUmlType;
 import net.sourceforge.plantuml.Previous;
@@ -43,19 +44,23 @@ import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.error.PSystemErrorUtils;
+import net.sourceforge.plantuml.explain.Explanation;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.StartUtils;
 import net.sourceforge.plantuml.version.IteratorCounter2;
 
-public abstract class PSystemBasicFactory<P extends AbstractPSystem> extends PSystemAbstractFactory {
+public abstract class PSystemBasicFactory<P extends Diagram> extends PSystemAbstractFactory {
 
 	public PSystemBasicFactory(DiagramType diagramType) {
 		super(diagramType);
 	}
 
-	public PSystemBasicFactory() {
-		this(DiagramType.UML);
+	@Override
+	public List<Explanation> explain(PathSystem pathSystem, UmlSource source, Previous previous,
+			PreprocessingArtifact preprocessing) {
+		throw new UnsupportedOperationException("wip " + getClass());
 	}
 
 	public abstract P executeLine(UmlSource source, P system, String line, PreprocessingArtifact preprocessing);
@@ -67,8 +72,9 @@ public abstract class PSystemBasicFactory<P extends AbstractPSystem> extends PSy
 	}
 
 	@Override
-	final public Diagram createSystem(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
-		source = source.removeInitialSkinparam();
+	final public Diagram createSystem(PathSystem pathSystem, UmlSource source, Previous previous,
+			PreprocessingArtifact preprocessing) {
+		source = source.removeInitialNoise();
 		final IteratorCounter2 it = source.iterator2();
 		final StringLocated startLine = it.next();
 		P system = initDiagram(source, startLine.getString(), preprocessing);
@@ -79,15 +85,15 @@ public abstract class PSystemBasicFactory<P extends AbstractPSystem> extends PSy
 				continue;
 
 			first = false;
-			if (StartUtils.isArobaseEndDiagram(s.getString())) {
+			if (StartUtils.isEndDirective(s.getString())) {
 				if (source.getTotalLineCount() == 2 && source.isStartDef() == false)
-					return buildEmptyError(source, s.getLocation(), it.getTrace(), preprocessing);
+					return buildEmptyError(source, s, it.getTrace(), preprocessing);
 
 				return system;
 			}
 			system = executeLine(source, system, s.getString(), preprocessing);
 			if (system == null) {
-				final ErrorUml err = new ErrorUml(ErrorUmlType.SYNTAX_ERROR, "Syntax Error?", 0, s.getLocation(), getUmlDiagramType());
+				final ErrorUml err = new ErrorUml(ErrorUmlType.SYNTAX_ERROR, "Syntax Error?", 0, s, getDiagramType());
 				// return PSystemErrorUtils.buildV1(source, err, null);
 				return PSystemErrorUtils.buildV2(source, err, null, it.getTrace(), preprocessing);
 			}

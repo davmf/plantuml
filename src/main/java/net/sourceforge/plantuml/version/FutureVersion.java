@@ -48,7 +48,8 @@ import net.sourceforge.plantuml.utils.SignatureUtils;
 
 public class FutureVersion {
 	// ::remove folder when __HAXE__
-
+	
+	
 	public static String versionString() {
 		readVersionTxtIfNeeded();
 		return versionCache.get(0);
@@ -110,7 +111,6 @@ public class FutureVersion {
 		return new Date(FutureVersion.compileTime()).toString();
 	}
 
-	// ::comment when __CORE__
 	public static String getJarPath() {
 		try {
 			final ClassLoader loader = FutureVersion.class.getClassLoader();
@@ -129,6 +129,5 @@ public class FutureVersion {
 			return t.toString();
 		}
 	}
-	// ::done
 
 }

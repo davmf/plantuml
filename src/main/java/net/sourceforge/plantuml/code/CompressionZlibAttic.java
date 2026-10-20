@@ -42,7 +42,7 @@ import java.util.zip.Inflater;
 
 @Deprecated
 public class CompressionZlibAttic implements Compression {
-	// ::remove file when __CORE__
+	
 
 	private static boolean USE_ZOPFLI = false;
 	private static final int COMPRESSION_LEVEL = 9;
@@ -65,13 +65,13 @@ public class CompressionZlibAttic implements Compression {
 
 	private byte[] tryCompress(byte[] in, final int len) {
 		// Compress the bytes
-		final Deflater compresser = new Deflater(COMPRESSION_LEVEL, true);
-		compresser.setInput(in);
-		compresser.finish();
+		final Deflater compressor = new Deflater(COMPRESSION_LEVEL, true);
+		compressor.setInput(in);
+		compressor.finish();
 
 		final byte[] output = new byte[len];
-		final int compressedDataLength = compresser.deflate(output);
-		if (compresser.finished() == false)
+		final int compressedDataLength = compressor.deflate(output);
+		if (compressor.finished() == false)
 			return null;
 
 		return copyArray(output, compressedDataLength);
@@ -102,14 +102,14 @@ public class CompressionZlibAttic implements Compression {
 
 		// Decompress the bytes
 		final byte[] tmp = new byte[len];
-		final Inflater decompresser = new Inflater(true);
-		decompresser.setInput(in);
+		final Inflater decompressor = new Inflater(true);
+		decompressor.setInput(in);
 		try {
-			final int resultLength = decompresser.inflate(tmp);
-			if (decompresser.finished() == false)
+			final int resultLength = decompressor.inflate(tmp);
+			if (decompressor.finished() == false)
 				return null;
 
-			decompresser.end();
+			decompressor.end();
 
 			final byte[] result = copyArray(tmp, resultLength);
 			return result;

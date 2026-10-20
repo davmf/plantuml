@@ -39,7 +39,6 @@ import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.security.SFile;
 
 public class FileImageData {
-	// ::remove file when __HAXE__
 
 	public static final int ERROR = 400;
 	public static final int CRASH = 503;
@@ -61,10 +60,16 @@ public class FileImageData {
 	}
 
 	public int getStatus() {
-		if (imageData == null) {
+		if (imageData == null)
 			return 0;
-		}
+
 		return imageData.getStatus();
+	}
+
+	public Throwable getRootCause() {
+		if (imageData == null)
+			return null;
+		return imageData.getRootCause();
 	}
 
 }

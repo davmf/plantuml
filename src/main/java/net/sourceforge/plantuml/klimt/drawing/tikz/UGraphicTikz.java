@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.klimt.drawing.tikz;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
@@ -50,6 +51,7 @@ import net.sourceforge.plantuml.klimt.shape.UCenteredCharacter;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.klimt.shape.UImageSvg;
+import net.sourceforge.plantuml.klimt.shape.UImageTikz;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
@@ -61,9 +63,9 @@ import net.sourceforge.plantuml.url.Url;
 public class UGraphicTikz extends AbstractUGraphic<TikzGraphics> implements ClipContainer {
 
 	public UGraphicTikz(HColor defaultBackground, ColorMapper colorMapper, StringBounder stringBounder, double scale,
-			boolean withPreamble, Pragma pragma) {
+			FileFormat format, Pragma pragma) {
 		super(stringBounder);
-		copy(defaultBackground, colorMapper, new TikzGraphics(scale, withPreamble, colorMapper, pragma));
+		copy(defaultBackground, colorMapper, new TikzGraphics(scale, format, colorMapper, pragma));
 		register();
 	}
 
@@ -76,7 +78,6 @@ public class UGraphicTikz extends AbstractUGraphic<TikzGraphics> implements Clip
 	private UGraphicTikz(UGraphicTikz other) {
 		super(other.getStringBounder());
 		copy(other);
-		register();
 	}
 
 	private void register() {
@@ -87,6 +88,7 @@ public class UGraphicTikz extends AbstractUGraphic<TikzGraphics> implements Clip
 		registerDriver(UPolygon.class, new DriverPolygonTikz());
 		registerDriver(UEllipse.class, new DriverEllipseTikz());
 		registerDriver(UImage.class, new DriverImageTikz());
+		registerDriver(UImageTikz.class, new DriverImageTikzTikz());
 		ignoreShape(UImageSvg.class);
 		registerDriver(UPath.class, new DriverPathTikz());
 		registerDriver(DotPath.class, new DriverDotPathTikz());
@@ -112,6 +114,9 @@ public class UGraphicTikz extends AbstractUGraphic<TikzGraphics> implements Clip
 	@Override
 	public boolean matchesProperty(String propertyName) {
 		if ("SPECIALTXT".equalsIgnoreCase(propertyName))
+			return true;
+
+		if ("TIKZ".equalsIgnoreCase(propertyName))
 			return true;
 
 		return false;

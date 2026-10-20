@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -56,6 +60,9 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandRobustConcise extends SingleLineCommand2<TimingDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"compact", "concise", "rectangle", "robust");
+
 	public CommandRobustConcise() {
 		super(getRegexConcat());
 	}
@@ -66,7 +73,7 @@ public class CommandRobustConcise extends SingleLineCommand2<TimingDiagram> {
 						new RegexConcat( //
 								new RegexLeaf(1, "COMPACT", "(compact)"), //
 								RegexLeaf.spaceOneOrMore())), //
-				new RegexLeaf(1, "TYPE", "(robust|concise)"), //
+				new RegexLeaf(1, "TYPE", "(robust|concise|rectangle)"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexOptional( //
 						new RegexConcat( //
@@ -86,13 +93,40 @@ public class CommandRobustConcise extends SingleLineCommand2<TimingDiagram> {
 	}
 
 	@Override
-	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String compact = arg.get("COMPACT", 0);
+		final String type = arg.get("TYPE", 0);
+		final String code = arg.get("CODE", 0);
+		final String full = arg.get("FULL", 0);
+		// The two stereotype slots are mutually exclusive in practice; STEREOTYPE takes priority over STEREOTYPE2
+		String stereotype = arg.get("STEREOTYPE", 0);
+		if (stereotype == null)
+			stereotype = arg.get("STEREOTYPE2", 0);
+		final String color = arg.getLazzy("COLOR", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Creating a ");
+		if (compact != null)
+			sb.append("compact ");
+		sb.append(type).append(" timing player '").append(code).append("'");
+		if (full != null)
+			sb.append(" displayed as \"").append(full).append("\"");
+		if (stereotype != null)
+			sb.append(" stereotyped ").append(stereotype);
+		if (color != null)
+			sb.append(" with background color ").append(color);
+		return sb.toString();
+	}
+
+	@Override
+	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
 		final String compact = arg.get("COMPACT", 0);
 		final String code = arg.get("CODE", 0);
 		String full = arg.get("FULL", 0);
 		if (full == null)
-			full = code;
+			full = "";
 
 		Stereotype stereotype = null;
 		if (arg.get("STEREOTYPE", 0) != null)
@@ -103,8 +137,25 @@ public class CommandRobustConcise extends SingleLineCommand2<TimingDiagram> {
 		final TimingStyle type = TimingStyle.valueOf(arg.get("TYPE", 0).toUpperCase());
 		final Colors colors = color().getColor(arg, diagram.getSkinParam().getIHtmlColorSet());
 
-		return diagram.createRobustConcise(code, full, type, compact != null, stereotype,
-				colors.getColor(ColorType.BACK));
+		switch (type) {
+		case ROBUST:
+			diagram.createPlayerRobust(code, full, compact != null, stereotype, colors.getColor(ColorType.BACK));
+			break;
+		case CONCISE:
+			diagram.createPlayerConcise(code, full, compact != null, stereotype, colors.getColor(ColorType.BACK));
+			break;
+		case RECTANGLE:
+			diagram.createPlayerRectangle(code, full, compact != null, stereotype, colors.getColor(ColorType.BACK));
+			break;
+		default:
+			return CommandExecutionResult.error("Unknown timing style: " + type);
+		}
+		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.abel.DisplayPositioned;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
@@ -46,6 +50,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMainframe extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("mainframe");
 
 	public static final CommandMainframe ME = new CommandMainframe();
 
@@ -63,10 +69,25 @@ public class CommandMainframe extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'mainframe Title' (or 'mainframe: Title') draws a frame around the
+		// whole diagram, with the label in its top left pentagonal corner, as
+		// in UML 'sd' interaction frames.
+		return "Framing the whole diagram with the label \"" + arg.get("LABEL", 0) + "\"";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final Display label = Display.getWithNewlines(diagram.getPragma(), arg.get("LABEL", 0));
 		diagram.setMainFrame(DisplayPositioned.single(location, label, null, null));
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

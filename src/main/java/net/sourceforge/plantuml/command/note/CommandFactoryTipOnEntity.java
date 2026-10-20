@@ -35,12 +35,16 @@
  */
 package net.sourceforge.plantuml.command.note;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArg;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
@@ -73,6 +77,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.utils.Position;
 
 public final class CommandFactoryTipOnEntity implements SingleMultiFactoryCommand<AbstractEntityDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("note");
 
 	private final String key = "a";
 
@@ -138,6 +144,47 @@ public final class CommandFactoryTipOnEntity implements SingleMultiFactoryComman
 				MultilinesStrategy.KEEP_STARTING_QUOTE, Trim.BOTH, withBracket ? END_WITH_BRACKET : END) {
 
 			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
+
+			@Override
+			@Explain
+			protected String explainNow(BlocLines lines) {
+				// Mirror executeNow: 'note left of Class::member' attaches a
+				// tip (a small bubble) to a field or a method of an existing
+				// entity; the lines up to 'end note' (or '}') are its text.
+				final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+				if (line0 == null)
+					return "Adding a tip";
+
+				final StringBuilder sb = new StringBuilder();
+				final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+				sb.append("Adding a tip on the ").append(line0.get("POSITION", 0)).append(" of the member '")
+						.append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(line0.get("CODE", 1)))
+						.append("' of '").append(line0.get("CODE", 0)).append("' with ").append(bodyCount)
+						.append(bodyCount == 1 ? " line" : " lines").append(" of text");
+
+				final String stereotype = line0.get("STEREO", 0);
+				if (stereotype != null)
+					sb.append(", stereotype ").append(stereotype);
+
+				if (line0.get("COLOR", 0) != null)
+					sb.append(", background color ").append(line0.get("COLOR", 0));
+
+				// Parsed but never read by executeInternal: the stereotags and
+				// the URL.
+				final String tags = line0.getLazzy("TAGS", 0);
+				if (tags != null && tags.isEmpty() == false)
+					sb.append(" (the tag ").append(tags).append(" is currently ignored)");
+
+				if (line0.get(UrlBuilder.URL_KEY, 0) != null)
+					sb.append(" (the URL is currently ignored)");
+
+				return sb.toString();
+			}
+
+			@Override
 			protected CommandExecutionResult executeNow(final AbstractEntityDiagram system, BlocLines lines,
 					ParserPass currentPass) throws NoSuchColorException {
 				// StringUtils.trim(lines, false);
@@ -147,10 +194,10 @@ public final class CommandFactoryTipOnEntity implements SingleMultiFactoryComman
 				final Display display = lines.toDisplay();
 
 				Url url = null;
-				if (line0.get("URL", 0) != null) {
+				if (line0.get(UrlBuilder.URL_KEY, 0) != null) {
 					final UrlBuilder urlBuilder = new UrlBuilder(system.getSkinParam().getValue("topurl"),
 							UrlMode.STRICT);
-					url = urlBuilder.getUrl(line0.get("URL", 0));
+					url = urlBuilder.getUrl(line0.get(UrlBuilder.URL_KEY, 0));
 				}
 
 				return executeInternal(lines.getLocation(), line0, system, url, display);
@@ -192,7 +239,6 @@ public final class CommandFactoryTipOnEntity implements SingleMultiFactoryComman
 
 			diagram.addLink(link);
 		}
-		tips.putTip(member, display);
 
 		Colors colors = color().getColor(line0, diagram.getSkinParam().getIHtmlColorSet());
 
@@ -203,10 +249,14 @@ public final class CommandFactoryTipOnEntity implements SingleMultiFactoryComman
 			colors = colors.applyStereotypeForNote(stereotype, diagram.getSkinParam(), ColorParam.noteBackground,
 					ColorParam.noteBorder);
 		}
-		if (stereotypeString != null)
-			tips.setStereotype(stereotype);
 
-		tips.setColors(colors);
+		// Several "note ... of Class::member" on the same side of the same
+		// class share one Entity (see the identTip lookup above), so the
+		// color/stereotype of THIS tip must travel with its own member entry
+		// rather than be stamped on that shared Entity: doing the latter
+		// makes the last tip parsed override the color of every earlier tip
+		// on the same side of the same class (issue #2814).
+		tips.putTip(member, display, colors, stereotype);
 
 		return CommandExecutionResult.ok();
 	}

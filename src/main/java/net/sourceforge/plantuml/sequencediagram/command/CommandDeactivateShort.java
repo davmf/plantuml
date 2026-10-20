@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -49,6 +53,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandDeactivateShort extends SingleLineCommand2<SequenceDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("deactivate");
+
 	public CommandDeactivateShort() {
 		super(getRegexConcat());
 	}
@@ -58,6 +64,15 @@ public class CommandDeactivateShort extends SingleLineCommand2<SequenceDiagram> 
 				new RegexLeaf(0, "TYPE", "deactivate"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// No participant given: this deactivates the target of the latest
+		// still-active activating message (see executeArg and
+		// SequenceDiagram.getActivatingMessage).
+		return "Deactivating the life line activated by the latest message";
 	}
 
 	@Override
@@ -72,6 +87,11 @@ public class CommandDeactivateShort extends SingleLineCommand2<SequenceDiagram> 
 			return CommandExecutionResult.error(error);
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -38,14 +38,14 @@ package net.sourceforge.plantuml.klimt.shape;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
-public class TextBlockHorizontal extends AbstractTextBlock implements TextBlock {
-    // ::remove file when __HAXE__
+public class TextBlockHorizontal extends TextBlockMemoized {
 
 	private final List<TextBlock> blocks = new ArrayList<>();
 	private final VerticalAlignment alignment;
@@ -57,32 +57,37 @@ public class TextBlockHorizontal extends AbstractTextBlock implements TextBlock 
 	}
 
 	public TextBlockHorizontal(List<TextBlock> all, VerticalAlignment alignment) {
-		if (all.size() < 2) {
+		if (all.size() < 2)
 			throw new IllegalArgumentException();
-		}
+
 		this.blocks.addAll(all);
 		this.alignment = alignment;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	@Fast
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		XDimension2D dim = blocks.get(0).calculateDimension(stringBounder);
-		for (int i = 1; i < blocks.size(); i++) {
+		for (int i = 1; i < blocks.size(); i++)
 			dim = dim.mergeLR(blocks.get(i).calculateDimension(stringBounder));
-		}
+
 		return dim;
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		double x = 0;
 		final XDimension2D dimtotal = calculateDimension(ug.getStringBounder());
 		for (TextBlock block : blocks) {
 			final XDimension2D dimb = block.calculateDimension(ug.getStringBounder());
-			if (alignment == VerticalAlignment.CENTER) {
-				final double dy = (dimtotal.getHeight() - dimb.getHeight()) / 2;
-				block.drawU(ug.apply(new UTranslate(x, dy)));
-			} else {
-				block.drawU(ug.apply(UTranslate.dx(x)));
-			}
+			final double dy;
+			if (alignment == VerticalAlignment.CENTER)
+				dy = (dimtotal.getHeight() - dimb.getHeight()) / 2;
+			else if (alignment == VerticalAlignment.BOTTOM)
+				dy = dimtotal.getHeight() - dimb.getHeight();
+			else
+				dy = 0;
+			block.drawU(ug.apply(new UTranslate(x, dy)));
 			x += dimb.getWidth();
 		}
 	}

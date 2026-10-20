@@ -51,6 +51,7 @@ public enum SName {
 	arrow, //
 	artifact, //
 	binary, //
+	body, //
 	boundary, //
 	box, //
 	boxless, //
@@ -81,6 +82,7 @@ public enum SName {
 	database, //
 	day, //
 	delay, //
+	description, //
 	destroy, //
 	diamond, //
 	document, //
@@ -117,11 +119,13 @@ public enum SName {
 	milestone, //
 	mindmapDiagram, //
 	month, //
+	name, //
 	network, //
 	newpage, //
 	node, //
 	note, //
 	nwdiagDiagram, //
+	packetdiagDiagram, //
 	objectDiagram, //
 	object, //
 	package_, //
@@ -183,7 +187,19 @@ public enum SName {
 	spotRecord, //
 
 	wbsDiagram, //
-	yamlDiagram; //
+	yamlDiagram, //
+	chartDiagram, //
+
+	// Chart elements
+	bar, //
+	line, //
+	area, //
+	scatter, //
+	axis, //
+	hAxis, //
+	vAxis, //
+	grid, //
+	annotation; //
 
 	private static final Map<String, SName> ALL = new HashMap<>();
 

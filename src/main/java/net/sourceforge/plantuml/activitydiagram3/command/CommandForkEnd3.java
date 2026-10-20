@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.ForkStyle;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -48,6 +52,9 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandForkEnd3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"end", "endfork", "endmerge", "fork", "forkend");
 
 	public CommandForkEnd3() {
 		super(getRegexConcat());
@@ -80,12 +87,38 @@ public class CommandForkEnd3 extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'end fork' (or 'fork end') joins the parallel branches with a
+		// synchronization bar; 'end merge' merges them into a diamond, without
+		// synchronization. The optional '{label}' is displayed next to the
+		// join, typically as a join specification.
+		if (arg.get("STYLE", 0).contains("merge"))
+			sb.append("Closing the enclosing fork with a merge, without synchronization");
+		else
+			sb.append("Closing the enclosing fork, synchronizing the parallel branches");
+
+		final String label = arg.get("LABEL", 0);
+		if (label != null)
+			sb.append(", labelled \"").append(label.substring(1, label.length() - 1)).append("\"");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String style = arg.get("STYLE", 0);
 		final ForkStyle forkStyle = style.contains("merge") ? ForkStyle.MERGE : ForkStyle.FORK;
 		final String label = arg.get("LABEL", 0);
 		return diagram.endFork(forkStyle, label);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

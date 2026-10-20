@@ -34,6 +34,7 @@
  */
 package net.sourceforge.plantuml.gitlog;
 
+
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -41,7 +42,8 @@ import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
-import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFace;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
@@ -49,9 +51,8 @@ import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 
 public class MagicBox {
 
@@ -62,19 +63,19 @@ public class MagicBox {
 	public MagicBox(ISkinParam skinParam, GNode node) {
 		this.skinParam = skinParam;
 		this.node = node;
-		final Style style = StyleSignatureBasic.of(SName.root, SName.element, SName.gitDiagram)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.GITDIAG);
 		this.fontColor = style.value(PName.FontColor).asColor(skinParam.getIHtmlColorSet());
 	}
 
 	private TextBlock getSmallBlock() {
-		final FontConfiguration fc = FontConfiguration.create(UFont.monospaced(15).bold(), fontColor, fontColor, null);
+		final FontConfiguration fc = FontConfiguration.create(UFontFactory.monospace(15).withFontFace(UFontFace.bold()), fontColor, fontColor, null);
 		return node.getDisplay().create(fc, HorizontalAlignment.CENTER, skinParam);
 	}
 
 	private TextBlock getCommentBlock() {
 		if (node.getComment() != null && node.isTop()) {
-			final FontConfiguration tag = FontConfiguration.create(UFont.sansSerif(13), fontColor, fontColor, null);
+			final FontConfiguration tag = FontConfiguration.create(UFontFactory.sansSerif(13), fontColor, fontColor, null);
 			return Display.create(node.getComment()).create(tag, HorizontalAlignment.CENTER, skinParam);
 		}
 		return TextBlockUtils.empty(0, 0);

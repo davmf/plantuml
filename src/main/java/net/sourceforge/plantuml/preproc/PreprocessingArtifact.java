@@ -54,7 +54,8 @@ public class PreprocessingArtifact implements WarningHandler {
 
 	@Override
 	public void addWarning(Warning warning) {
-		this.warnings.add(warning);
+		if (warning != null)
+			this.warnings.add(warning);
 	}
 
 	@Override

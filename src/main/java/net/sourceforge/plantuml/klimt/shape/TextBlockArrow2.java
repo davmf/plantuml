@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.klimt.shape;
 
 import java.util.Objects;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -46,9 +47,7 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.svek.GuideLine;
 
-public class TextBlockArrow2 extends AbstractTextBlock implements TextBlock {
-    // ::remove file when __HAXE__
-
+public class TextBlockArrow2 implements TextBlock {
 	private final double size;
 	private final GuideLine angle;
 	private final HColor color;
@@ -83,6 +82,8 @@ public class TextBlockArrow2 extends AbstractTextBlock implements TextBlock {
 		return new XPoint2D(dx, dy);
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(size, size);
 	}

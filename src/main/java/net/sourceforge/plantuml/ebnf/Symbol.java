@@ -37,7 +37,7 @@ package net.sourceforge.plantuml.ebnf;
 
 public enum Symbol {
 
-	LITTERAL, //
+	LITERAL, //
 
 	// https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form
 	DEFINITION, // =

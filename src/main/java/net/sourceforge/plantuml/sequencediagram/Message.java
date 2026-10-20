@@ -41,6 +41,7 @@ import java.util.List;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
 import net.sourceforge.plantuml.style.StyleBuilder;
+import net.sourceforge.plantuml.utils.LineLocation;
 
 public final class Message extends AbstractMessage {
 
@@ -48,8 +49,8 @@ public final class Message extends AbstractMessage {
 	final private Participant p2;
 
 	public Message(StyleBuilder styleBuilder, Participant p1, Participant p2, Display label,
-			ArrowConfiguration arrowConfiguration, String messageNumber) {
-		super(styleBuilder, label, arrowConfiguration, messageNumber);
+			ArrowConfiguration arrowConfiguration, String messageNumber, LineLocation location) {
+		super(styleBuilder, label, arrowConfiguration, messageNumber, location);
 		this.p1 = p1;
 		this.p2 = p2;
 	}

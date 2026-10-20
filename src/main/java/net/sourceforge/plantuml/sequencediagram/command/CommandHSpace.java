@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandHSpace extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("|");
 
 	public CommandHSpace() {
 		super(getRegexConcat());
@@ -60,7 +66,24 @@ public class CommandHSpace extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// '|||' inserts extra vertical spacing between events; '||45||' gives
+		// the size in pixels (the default is 25, see SequenceDiagram.hspace).
+		sb.append("Inserting extra vertical spacing");
+
+		final String value = arg.get("VALUE", 0);
+		if (StringUtils.isNotEmpty(value))
+			sb.append(" of ").append(value).append(" pixels");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final String size = arg.get("VALUE", 0);
 		if (StringUtils.isNotEmpty(size)) {
 			diagram.hspace(Integer.parseInt(size));
@@ -69,4 +92,10 @@ public class CommandHSpace extends SingleLineCommand2<SequenceDiagram> {
 		}
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

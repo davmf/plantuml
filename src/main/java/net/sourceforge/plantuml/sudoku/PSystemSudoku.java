@@ -35,45 +35,20 @@
  */
 package net.sourceforge.plantuml.sudoku;
 
-import java.io.IOException;
-import java.io.OutputStream;
-
-import net.sourceforge.plantuml.AbstractPSystem;
-import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
+import net.sourceforge.plantuml.UgDiagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.core.UmlSource;
-import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 
-public class PSystemSudoku extends AbstractPSystem {
+public class PSystemSudoku extends UgDiagram {
 
 	final private ISudoku sudoku;
 
 	@Override
-	final protected ImageData exportDiagramNow(OutputStream os, int num, FileFormatOption fileFormat)
-			throws IOException {
-		final GraphicsSudoku sud = new GraphicsSudoku(sudoku);
-		// ::comment when __CORE__
-		if (fileFormat.getFileFormat() == FileFormat.EPS)
-			return sud.writeImageEps(os);
-
-		if (fileFormat.getFileFormat() == FileFormat.LATEX
-				|| fileFormat.getFileFormat() == FileFormat.LATEX_NO_PREAMBLE)
-			return sud.writeImageLatex(os, fileFormat.getFileFormat());
-		// ::done
-
-		if (fileFormat.getFileFormat() == FileFormat.SVG)
-			return sud.writeImageSvg(os);
-
-		return sud.writeImagePng(os);
-	}
-
-	@Override
-	public void exportDiagramGraphic(UGraphic ug, FileFormatOption fileFormatOption) {
-		final GraphicsSudoku sud = new GraphicsSudoku(sudoku);
-		sud.drawInternal(ug);
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
+		return new GraphicsSudoku(sudoku);
 	}
 
 	public DiagramDescription getDescription() {

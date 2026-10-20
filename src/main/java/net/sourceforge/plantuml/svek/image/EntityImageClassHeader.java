@@ -64,7 +64,8 @@ import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.HeaderLayout;
 import net.sourceforge.plantuml.svek.ShapeType;
@@ -73,6 +74,17 @@ import net.sourceforge.plantuml.text.Guillemet;
 public class EntityImageClassHeader extends AbstractEntityImage {
 
 	final private HeaderLayout headerLayout;
+
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.CLASSDIAG_CLASS_HEADER;
+	}
+
+	private FontConfiguration getStereotypeFontConfiguration(Stereotype stereotype) {
+		final Style styleStereo = getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.CLASSDIAG_CLASS.add(SName.stereotype).forStereotypeItself(stereotype));
+		return styleStereo.getFontConfiguration(getSkinParam().getIHtmlColorSet());
+	}
 
 	public EntityImageClassHeader(Entity entity, PortionShower portionShower) {
 		super(entity);
@@ -84,13 +96,12 @@ public class EntityImageClassHeader extends AbstractEntityImage {
 		final boolean displayGenericWithOldFashion = getSkinParam().displayGenericWithOldFashion();
 		final String generic = displayGenericWithOldFashion ? null : entity.getGeneric();
 
-		final Style styleHeader = StyleSignatureBasic
-				.of(SName.root, SName.element, SName.classDiagram, SName.class_, SName.header) //
-				.withTOBECHANGED(stereotype) //
-				.with(entity.getStereostyles()) //
-				.getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		final Style styleHeader = getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery() //
+				.withStereotype(stereotype) //
+				.withStereostyles(entity.getStereostyles()));
 
-		FontConfiguration fontConfigurationName = FontConfiguration.create(getSkinParam(), styleHeader, entity.getColors());
+		FontConfiguration fontConfigurationName = FontConfiguration.create(getSkinParam(), styleHeader,
+				entity.getColors());
 		if (italic)
 			fontConfigurationName = fontConfigurationName.italic();
 
@@ -108,7 +119,9 @@ public class EntityImageClassHeader extends AbstractEntityImage {
 			final HColor back = rose.getHtmlColor(getSkinParam(), modifier.getBackground());
 			final HColor fore = rose.getHtmlColor(getSkinParam(), modifier.getForeground());
 
-			final TextBlock uBlock = modifier.getUBlock(getSkinParam().classAttributeIconSize(), fore, back, false);
+			final TextBlock uBlock = TextBlockUtils.withMargin(
+					modifier.getUBlock(getSkinParam().classAttributeIconSize(), fore, back, false), 0, 0, 4, 0);
+
 			name = TextBlockUtils.mergeLR(uBlock, name, VerticalAlignment.CENTER);
 			name = TextBlockUtils.withMargin(name, 3, 3, 0, 0);
 		}
@@ -120,25 +133,22 @@ public class EntityImageClassHeader extends AbstractEntityImage {
 			stereo = null;
 		else
 			stereo = TextBlockUtils.withMargin(Display.create(stereotypeLabels).create(
-					FontConfiguration.create(getSkinParam(), FontParam.CLASS_STEREOTYPE, stereotype),
-					HorizontalAlignment.CENTER, getSkinParam()), 1, 0);
+					getStereotypeFontConfiguration(stereotype), HorizontalAlignment.CENTER, getSkinParam()), 1, 0);
 
 		TextBlock genericBlock;
 		if (generic == null) {
 			genericBlock = null;
 		} else {
-			final Style styleGeneric = StyleSignatureBasic
-					.of(SName.root, SName.element, SName.classDiagram, SName.class_, SName.generic) //
-					.withTOBECHANGED(stereotype) //
-					.with(entity.getStereostyles()) //
-					.getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+			final Style styleGeneric = getSkinParam().getCurrentStyleBuilder().getMergedStyle(StyleQueries.CLASSDIAG_CLASS_GENERIC //
+					.withStereotype(stereotype) //
+					.withStereostyles(entity.getStereostyles()));
 
 			genericBlock = Display.getWithNewlines(getSkinParam().getPragma(), generic).create(
-					FontConfiguration.create(getSkinParam(), FontParam.CLASS_STEREOTYPE, stereotype),
-					HorizontalAlignment.CENTER, getSkinParam());
+					getStereotypeFontConfiguration(stereotype), HorizontalAlignment.CENTER, getSkinParam());
 			genericBlock = TextBlockUtils.withMargin(genericBlock, 1, 1);
 
-			final HColor classBackground = styleGeneric.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+			final HColor classBackground = styleGeneric.value(PName.BackGroundColor)
+					.asColor(getSkinParam().getIHtmlColorSet());
 			final HColor classBorder = styleGeneric.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
 
 			genericBlock = new TextBlockGeneric(genericBlock, classBackground, classBorder);
@@ -163,7 +173,7 @@ public class EntityImageClassHeader extends AbstractEntityImage {
 
 		final LeafType leafType = entity.getLeafType();
 
-		final Style style = spotStyleSignature(leafType).getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(spotStyleSignature(leafType));
 		final HColor spotBorder = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 		final HColor spotBackColor = style.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
 
@@ -185,34 +195,34 @@ public class EntityImageClassHeader extends AbstractEntityImage {
 				spotBorder, fontColor);
 	}
 
-	private StyleSignatureBasic spotStyleSignature(LeafType leafType) {
+	private StyleQuery spotStyleSignature(LeafType leafType) {
 		switch (leafType) {
 		case ANNOTATION:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotAnnotation);
+			return StyleQueries.SPOT_ANNOTATION;
 		case ABSTRACT_CLASS:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotAbstractClass);
+			return StyleQueries.SPOT_ABSTRACT_CLASS;
 		case CLASS:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotClass);
+			return StyleQueries.SPOT_CLASS;
 		case INTERFACE:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotInterface);
+			return StyleQueries.SPOT_INTERFACE;
 		case ENUM:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotEnum);
+			return StyleQueries.SPOT_ENUM;
 		case ENTITY:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotEntity);
+			return StyleQueries.SPOT_ENTITY;
 		case PROTOCOL:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotProtocol);
+			return StyleQueries.SPOT_PROTOCOL;
 		case STRUCT:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotStruct);
+			return StyleQueries.SPOT_STRUCT;
 		case EXCEPTION:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotException);
+			return StyleQueries.SPOT_EXCEPTION;
 		case METACLASS:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotMetaClass);
+			return StyleQueries.SPOT_META_CLASS;
 		case STEREOTYPE:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotStereotype);
+			return StyleQueries.SPOT_STEREOTYPE;
 		case DATACLASS:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotDataClass);
+			return StyleQueries.SPOT_DATA_CLASS;
 		case RECORD:
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.spot, SName.spotRecord);
+			return StyleQueries.SPOT_RECORD;
 		}
 		throw new IllegalStateException();
 	}
@@ -250,7 +260,8 @@ public class EntityImageClassHeader extends AbstractEntityImage {
 		return '?';
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return headerLayout.getDimension(stringBounder);
 	}
 

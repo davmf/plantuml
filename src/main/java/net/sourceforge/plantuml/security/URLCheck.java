@@ -84,8 +84,8 @@ public class URLCheck {
 		if (host == null || host.isEmpty() || !host.contains("."))
 			return true;
 
-		// When UNSECURE, we allow localhost
-		if (SecurityUtils.getSecurityProfile() != SecurityProfile.UNSECURE) {
+		// When INSECURE, we allow localhost
+		if (SecurityUtils.getSecurityProfile() != SecurityProfile.INSECURE) {
 			// Additional check for IP addresses or invalid host patterns
 			if (host.matches("^[-#.0-9:\\[\\]+]+$"))
 				return true;

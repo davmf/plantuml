@@ -50,10 +50,10 @@ public enum LinkStrategy {
 	LEGACY_toberemoved,
 
 	/*
-	 * In simplier mode, there are no tail/head in GraphViz generated dot.
+	 * In simplest mode, there are no tail/head in GraphViz generated dot.
 	 * The decoration angle is retrieved using Bezier data.
 	 * 
 	 */
-	SIMPLIER
+	SIMPLEST
 
 }

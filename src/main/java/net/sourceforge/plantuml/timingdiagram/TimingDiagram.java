@@ -34,8 +34,6 @@
  */
 package net.sourceforge.plantuml.timingdiagram;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -46,10 +44,10 @@ import java.util.Locale;
 import java.util.Map;
 
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -59,21 +57,21 @@ import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.timingdiagram.graphic.IntricatedPoint;
+import net.sourceforge.plantuml.timingdiagram.graphic.Panels;
 import net.sourceforge.plantuml.timingdiagram.graphic.TimeArrow;
 
-public class TimingDiagram extends UmlDiagram implements Clocks {
+public class TimingDiagram extends TitledDiagram implements Clocks {
 
 	public static final double marginX1 = 5;
 	private final double marginX2 = 5;
@@ -94,19 +92,12 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 	}
 
 	public TimingDiagram(UmlSource source, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.TIMING, null, preprocessing);
+		super(source, DiagramType.TIMING, null, preprocessing);
 	}
 
 	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-
-		return createImageBuilder(fileFormatOption).drawable(getTextMainBlock(fileFormatOption)).write(os);
-	}
-
-	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		return new AbstractTextBlock() {
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
+		final TextBlock result = new TextBlock() {
 
 			public void drawU(UGraphic ug) {
 				drawInternal(ug);
@@ -119,14 +110,15 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 			}
 
 		};
+		return TextBlockUtils.withMargin(result, 10, 10);
 	}
 
-	private StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram);
+	private StyleQuery getStyleSignature() {
+		return StyleQueries.TIMINGDIAG;
 	}
 
 	private HColor black() {
-		final Style style = getStyleSignature().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		final Style style = getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleSignature());
 		return style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
 
 	}
@@ -137,11 +129,14 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 		final double part1MaxWidth = getPart1MaxWidth(stringBounder);
 
 		for (Player player : players.values()) {
-			final UGraphic ugPlayer = ug.apply(getUTranslateForPlayer(player, stringBounder));
 			final HColor generalBackgroundColor = player.getGeneralBackgroundColor();
-			if (generalBackgroundColor != null)
-				ugPlayer.apply(generalBackgroundColor).apply(generalBackgroundColor.bg())
-						.draw(URectangle.build(getWidthTotal(stringBounder), player.getFullHeight(stringBounder)));
+			if (generalBackgroundColor != null) {
+				UGraphic ugPlayer = ug.apply(getUTranslateForPlayerFrame(player, stringBounder));
+				final double fullHeight = player.getFrameHeight(stringBounder)
+						+ player.panels().getFullHeight(stringBounder);
+				ugPlayer = ugPlayer.apply(generalBackgroundColor).apply(generalBackgroundColor.bg());
+				ugPlayer.draw(URectangle.build(getWidthTotal(stringBounder), fullHeight));
+			}
 		}
 
 		final UTranslate widthPart1 = UTranslate.dx(part1MaxWidth);
@@ -152,27 +147,19 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 
 		drawHighlightsBack(ug.apply(widthPart1));
 		ruler.drawVlines(ug.apply(widthPart1), getHeightInner(stringBounder));
-		boolean first = true;
 
 		for (Player player : players.values()) {
 			final UGraphic ugPlayer = ug.apply(getUTranslateForPlayer(player, stringBounder));
-			final double caption = getHeightForCaptions(stringBounder);
+			final UGraphic ugFrame = ug.apply(getUTranslateForPlayerFrame(player, stringBounder));
+			if (player.isCompact() == false)
+				drawHorizontalSeparator(ugFrame);
 
-			if (first) {
-				if (player.isCompact() == false)
-					drawHorizontalSeparator(ugPlayer);
-
-				player.getPart1(part1MaxWidth, caption).drawU(ugPlayer);
-				player.getPart2().drawU(ugPlayer.apply(widthPart1).apply(UTranslate.dy(caption)));
-			} else {
-				if (player.isCompact() == false)
-					drawHorizontalSeparator(ugPlayer.apply(UTranslate.dy(caption)));
-
-				player.getPart1(part1MaxWidth, 0).drawU(ugPlayer.apply(UTranslate.dy(caption)));
-				player.getPart2().drawU(ugPlayer.apply(widthPart1).apply(UTranslate.dy(caption)));
-			}
-			first = false;
+			player.drawFrameTitle(ugFrame);
+			final Panels panels = player.panels();
+			panels.drawLeftPanel(ugPlayer, part1MaxWidth);
+			panels.drawRightPanel(ugPlayer.apply(widthPart1));
 		}
+
 		ug = ug.apply(widthPart1);
 		ruler.drawTimeAxis(ug.apply(getLastTranslate(stringBounder)), this.timeAxisStategy, codes);
 
@@ -199,11 +186,11 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 	}
 
 	private UStroke getBorderStroke() {
-		return getStyleSignature().getMergedStyle(getCurrentStyleBuilder()).getStroke();
+		return getCurrentStyleBuilder().getMergedStyle(getStyleSignature()).getStroke();
 	}
 
 	private UTranslate getLastTranslate(final StringBounder stringBounder) {
-		return getUTranslateForPlayer(null, stringBounder).compose(UTranslate.dy(getHeightForCaptions(stringBounder)));
+		return getUTranslateForPlayer(null, stringBounder);
 	}
 
 	private void drawHighlightsBack(UGraphic ug) {
@@ -230,23 +217,16 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 		return getLastTranslate(stringBounder).getDy();
 	}
 
-	private double getHeightForCaptions(StringBounder stringBounder) {
-		double result = 0;
-		for (Highlight highlight : highlights) {
-			final TextBlock caption = highlight.getCaption(getSkinParam());
-			result = Math.max(result, caption.calculateDimension(stringBounder).getHeight());
-		}
-		return result;
-	}
-
 	private double getWidthTotal(final StringBounder stringBounder) {
 		return getPart1MaxWidth(stringBounder) + ruler.getWidth() + marginX1 + marginX2;
 	}
 
 	private double getPart1MaxWidth(StringBounder stringBounder) {
 		double width = 0;
-		for (Player player : players.values())
-			width = Math.max(width, player.getPart1(0, 0).calculateDimension(stringBounder).getWidth());
+		for (Player player : players.values()) {
+			final double widthLeftPanel = player.panels().getLeftPanelWidth(stringBounder);
+			width = Math.max(width, widthLeftPanel);
+		}
 
 		return width;
 	}
@@ -256,13 +236,12 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 		final Player player2 = message.getPlayer2();
 
 		final StringBounder stringBounder = ug.getStringBounder();
-		final UTranslate translate1 = getUTranslateForPlayer(player1, stringBounder)
-				.compose(UTranslate.dy(getHeightForCaptions(stringBounder)));
-		final UTranslate translate2 = getUTranslateForPlayer(player2, stringBounder)
-				.compose(UTranslate.dy(getHeightForCaptions(stringBounder)));
 
-		final IntricatedPoint pt1 = player1.getTimeProjection(stringBounder, message.getTick1());
-		final IntricatedPoint pt2 = player2.getTimeProjection(stringBounder, message.getTick2());
+		final UTranslate translate1 = getUTranslateForPlayer(player1, stringBounder);
+		final UTranslate translate2 = getUTranslateForPlayer(player2, stringBounder);
+
+		final IntricatedPoint pt1 = player1.panels().getTimeProjection(stringBounder, message.getTick1());
+		final IntricatedPoint pt2 = player2.panels().getTimeProjection(stringBounder, message.getTick2());
 
 		if (pt1 == null || pt2 == null)
 			return;
@@ -273,53 +252,90 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 
 	}
 
-	private UTranslate getUTranslateForPlayer(Player candidat, StringBounder stringBounder) {
+	private UTranslate getUTranslateForPlayer(Player candidate, StringBounder stringBounder) {
 		double y = 0;
 		for (Player player : players.values()) {
-			if (candidat == player)
+			y += player.getFrameHeight(stringBounder);
+			if (candidate == player)
 				return UTranslate.dy(y);
 
 //			if (y == 0) {
 //				y += getHeightHighlights(stringBounder);
 //			}
-			y += player.getFullHeight(stringBounder);
+			y += player.panels().getFullHeight(stringBounder);
 		}
-		if (candidat == null)
+		if (candidate == null)
 			return UTranslate.dy(y);
 
 		throw new IllegalArgumentException();
 	}
 
-	public CommandExecutionResult createRobustConcise(String code, String full, TimingStyle type, boolean compact,
-			Stereotype stereotype, HColor backColor) {
-		final Player player = new PlayerRobustConcise(type, full, getSkinParam(), ruler, compactByDefault || compact,
-				stereotype, backColor);
+	private UTranslate getUTranslateForPlayerFrame(Player candidate, StringBounder stringBounder) {
+		double y = 0;
+		for (Player player : players.values()) {
+			if (candidate == player)
+				return UTranslate.dy(y);
+
+//			if (y == 0) {
+//				y += getHeightHighlights(stringBounder);
+//			}
+			y += player.getFrameHeight(stringBounder);
+			y += player.panels().getFullHeight(stringBounder);
+		}
+		if (candidate == null)
+			return UTranslate.dy(y);
+
+		throw new IllegalArgumentException();
+	}
+
+	public Player createPlayerRobust(String code, String full, boolean compact, Stereotype stereotype,
+			HColor backColor) {
+		final Player player = new PlayerRobust(full, getSkinParam(), ruler, compactByDefault || compact, stereotype,
+				backColor);
 		players.put(code, player);
 		lastPlayer = player;
-		return CommandExecutionResult.ok();
+		return player;
 	}
 
-	public CommandExecutionResult createClock(String code, String full, int period, int pulse, int offset,
-			boolean compact, Stereotype stereotype) {
-		final PlayerClock player = new PlayerClock(full, getSkinParam(), ruler, period, pulse, offset,
-				compactByDefault, stereotype);
+	public Player createPlayerConcise(String code, String full, boolean compact, Stereotype stereotype,
+			HColor backColor) {
+		final Player player = new PlayerConcise(full, getSkinParam(), ruler, compactByDefault || compact, stereotype,
+				backColor);
+		players.put(code, player);
+		lastPlayer = player;
+		return player;
+	}
+
+	public Player createPlayerRectangle(String code, String full, boolean compact, Stereotype stereotype,
+			HColor backColor) {
+		final Player player = new PlayerRectangle(full, getSkinParam(), ruler, compactByDefault || compact, stereotype,
+				backColor);
+		players.put(code, player);
+		lastPlayer = player;
+		return player;
+	}
+
+	public PlayerClock createPlayerClock(String code, String full, BigDecimal period, BigDecimal pulse,
+			BigDecimal offset, boolean compact, Stereotype stereotype) {
+		final PlayerClock player = new PlayerClock(full, getSkinParam(), ruler, period, pulse, offset, compactByDefault,
+				stereotype);
 		players.put(code, player);
 		clocks.put(code, player);
-		final TimeTick tick = new TimeTick(new BigDecimal(period), TimingFormat.DECIMAL);
+		final TimeTick tick = new TimeTick(period, TimingFormat.DECIMAL);
 		ruler.addTime(tick);
-		return CommandExecutionResult.ok();
+		return player;
 	}
 
-	public PlayerAnalog createAnalog(String code, String full, boolean compact, Stereotype stereotype) {
+	public PlayerAnalog createPlayerAnalog(String code, String full, boolean compact, Stereotype stereotype) {
 		final PlayerAnalog player = new PlayerAnalog(full, getSkinParam(), ruler, compactByDefault, stereotype);
 		players.put(code, player);
 		return player;
 	}
 
-	public CommandExecutionResult createBinary(String code, String full, boolean compact, Stereotype stereotype) {
+	public Player createPlayerBinary(String code, String full, boolean compact, Stereotype stereotype) {
 		final Player player = new PlayerBinary(full, getSkinParam(), ruler, compactByDefault, stereotype);
 		players.put(code, player);
-		return CommandExecutionResult.ok();
+		return player;
 	}
 
 	public TimeMessage createTimeMessage(Player player1, TimeTick time1, Player player2, TimeTick time2, String label) {
@@ -358,7 +374,7 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 		if (clock == null)
 			return null;
 
-		return new TimeTick(new BigDecimal(nb * clock.getPeriod()), TimingFormat.DECIMAL);
+		return new TimeTick(clock.getPeriod().multiply(BigDecimal.valueOf(nb)), TimingFormat.DECIMAL);
 	}
 
 	public void setLastPlayer(Player player) {
@@ -405,6 +421,10 @@ public class TimingDiagram extends UmlDiagram implements Clocks {
 		if (sdf == null)
 			return TimingFormat.DATE;
 		return TimingFormat.create(sdf);
+	}
+
+	public void setStopAt(TimeTick timeTick) {
+		ruler.setStopAt(timeTick);
 	}
 
 }

@@ -34,33 +34,25 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.eps;
 
-import java.awt.geom.Rectangle2D;
-
-import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorGradient;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 
 public class DriverRectangleEps implements UDriver<URectangle, EpsGraphics> {
-
-	private final ClipContainer clipContainer;
-
-	public DriverRectangleEps(ClipContainer clipContainer) {
-		this.clipContainer = clipContainer;
-	}
 
 	public void draw(URectangle rect, double x, double y, ColorMapper mapper, UParam param, EpsGraphics eps) {
 		double width = rect.getWidth();
 		double height = rect.getHeight();
 
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null) {
-			final Rectangle2D.Double orig = new Rectangle2D.Double(x, y, width, height);
-			final Rectangle2D.Double r = clip.getClippedRectangle(orig);
+			final XRectangle2D orig = new XRectangle2D(x, y, width, height);
+			final XRectangle2D r = clip.getClippedRectangle(orig);
 			if (r.height < 0) {
 				return;
 			}

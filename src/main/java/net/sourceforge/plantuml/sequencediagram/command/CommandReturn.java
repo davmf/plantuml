@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -58,6 +62,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandReturn extends SingleLineCommand2<SequenceDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("&", "return");
+
 	public CommandReturn() {
 		super(getRegexConcat());
 	}
@@ -74,6 +80,31 @@ public class CommandReturn extends SingleLineCommand2<SequenceDiagram> {
 								RegexLeaf.spaceOneOrMore() //
 						)), //
 				new RegexLeaf(1, "MESSAGE", "(.*)"), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Sends a dotted reply along the latest activating message, in the
+		// reverse direction, and deactivates the activated life line. When no
+		// activation is pending, executeArg falls back to reversing the last
+		// message, without any deactivation.
+		sb.append("Returning a dotted reply message to the caller");
+
+		final String message = arg.get("MESSAGE", 0);
+		if (message != null && message.isEmpty() == false)
+			sb.append(" labelled \"").append(message).append("\"");
+
+		final String color = arg.get("COLOR", 0);
+		if (color != null)
+			sb.append(", color ").append(color);
+
+		if (arg.get("PARALLEL", 0) != null)
+			sb.append(", parallel");
+
+		return sb.toString();
 	}
 
 	@Override
@@ -101,10 +132,10 @@ public class CommandReturn extends SingleLineCommand2<SequenceDiagram> {
 		if (message1 instanceof MessageExo) {
 			final MessageExo exo1 = (MessageExo) message1;
 			message2 = new MessageExo(diagram.getSkinParam().getCurrentStyleBuilder(), exo1.getParticipant(),
-					exo1.getType().reverse(), display, arrow, diagram.getNextMessageNumber(), false);
+					exo1.getType().reverse(), display, arrow, diagram.getNextMessageNumber(), false, location);
 		} else {
 			message2 = new Message(diagram.getSkinParam().getCurrentStyleBuilder(), message1.getParticipant2(),
-					message1.getParticipant1(), display, arrow, diagram.getNextMessageNumber());
+					message1.getParticipant1(), display, arrow, diagram.getNextMessageNumber(), location);
 			final boolean parallel = arg.get("PARALLEL", 0) != null;
 			if (parallel)
 				message2.goParallel();
@@ -123,4 +154,18 @@ public class CommandReturn extends SingleLineCommand2<SequenceDiagram> {
 		return CommandExecutionResult.ok();
 
 	}
+
+	// Declared by hand: the pattern also accepts the keyword glued to what follows it
+	// ("returnfoo"), whose first token FirstTokens cannot list. Such a line is deliberately left
+	// out: it no longer reaches this command.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FIRST_TOKENS;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

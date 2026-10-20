@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
-import net.sourceforge.plantuml.UmlDiagram;
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -45,7 +49,9 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandHideEmptyDescription extends SingleLineCommand2<UmlDiagram> {
+public class CommandHideEmptyDescription extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("hide", "show");
 
 	public static final CommandHideEmptyDescription ME = new CommandHideEmptyDescription();
 
@@ -63,10 +69,29 @@ public class CommandHideEmptyDescription extends SingleLineCommand2<UmlDiagram> 
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(UmlDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// In state diagrams, states without any description are drawn as a
+		// simple box when this is hidden, instead of the default two
+		// compartments shape.
+		final boolean hide = arg.get("HIDE", 0).equalsIgnoreCase("hide");
+		if (hide)
+			return "Hiding the empty description compartment of states";
+
+		return "Showing the empty description compartment of states";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final boolean hide = arg.get("HIDE", 0).equalsIgnoreCase("hide");
 		diagram.setHideEmptyDescription(hide);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

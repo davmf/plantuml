@@ -35,9 +35,14 @@
  */
 package net.sourceforge.plantuml.descdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.regex.Pattern;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -65,6 +70,8 @@ import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateElementParenthesis extends SingleLineCommand2<ClassDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("(");
 
 	public CommandCreateElementParenthesis() {
 		super(getRegexConcat());
@@ -130,12 +137,47 @@ public class CommandCreateElementParenthesis extends SingleLineCommand2<ClassDia
 		return ColorParser.simpleColor(ColorType.BACK, "COLOR2");
 	}
 
+	private static final Pattern FORBIDDEN_PATTERN = Pattern.compile("^[\\p{L}0-9_.]+$");
+
 	@Override
-	final protected boolean isForbidden(CharSequence line) {
-		if (line.toString().matches("^[\\p{L}0-9_.]+$")) {
-			return true;
-		}
-		return false;
+	protected final boolean isForbidden(CharSequence line) {
+		return FORBIDDEN_PATTERN.matcher(line).matches();
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// '() Name' creates an interface, drawn as a small circle (executeArg
+		// fails if the name already exists). The code and the display may be
+		// written in both orders, hence the lazzy lookups, like in executeArg.
+		final String idShort = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("CODE", 0));
+		sb.append("Creating the interface '").append(idShort).append("', drawn as a circle");
+
+		final String displayRaw = arg.getLazzy("DISPLAY", 0);
+		if (displayRaw != null)
+			sb.append(", displayed as \"")
+					.append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(displayRaw)).append("\"");
+
+		// The stereotype may be written inside the 'as' clause or at the end
+		// of the line, hence the lazzy lookup, like in executeArg.
+		final String stereotype = arg.getLazzy("STEREOTYPE", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		// The color written before the name (COLOR2) is parsed but never read
+		// by executeArg.
+		if (arg.get("COLOR2", 0) != null)
+			sb.append(" (the leading color ").append(arg.get("COLOR2", 0)).append(" is currently ignored)");
+
+		return sb.toString();
 	}
 
 	@Override
@@ -172,7 +214,7 @@ public class CommandCreateElementParenthesis extends SingleLineCommand2<ClassDia
 					diagram.getSkinParam().getFont(null, false, FontParam.CIRCLED_CHARACTER),
 					diagram.getSkinParam().getIHtmlColorSet()));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);
@@ -197,4 +239,10 @@ public class CommandCreateElementParenthesis extends SingleLineCommand2<ClassDia
 	private char getCharEncoding(final String codeRaw) {
 		return codeRaw != null && codeRaw.length() > 2 ? codeRaw.charAt(0) : 0;
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

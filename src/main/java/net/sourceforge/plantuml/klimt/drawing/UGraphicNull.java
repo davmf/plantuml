@@ -41,10 +41,10 @@ import java.io.OutputStream;
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.geom.EnsureVisible;
 
 public class UGraphicNull extends AbstractUGraphic<String> implements EnsureVisible {
-    // ::remove file when __HAXE__
 
 	@Override
 	protected AbstractCommonUGraphic copyUGraphic() {
@@ -66,7 +66,7 @@ public class UGraphicNull extends AbstractUGraphic<String> implements EnsureVisi
 	public void writeToStream(OutputStream os, String metadata, int dpi) throws IOException {
 	}
 
-	public void ensureVisible(double x, double y) {
+	public void ensureVisible(double x, double y, UClip clip) {
 	}
 
 }

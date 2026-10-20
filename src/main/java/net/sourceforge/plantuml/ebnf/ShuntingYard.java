@@ -37,10 +37,10 @@ package net.sourceforge.plantuml.ebnf;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class ShuntingYard {
 
@@ -53,7 +53,7 @@ public class ShuntingYard {
 //			System.err.println("token=" + token);
 //			System.err.println("ouputQueue=" + ouputQueue);
 //			System.err.println("operatorStack=" + operatorStack);
-			if (token.getSymbol() == Symbol.LITTERAL || token.getSymbol() == Symbol.TERMINAL_STRING1
+			if (token.getSymbol() == Symbol.LITERAL || token.getSymbol() == Symbol.TERMINAL_STRING1
 					|| token.getSymbol() == Symbol.TERMINAL_STRING2 || token.getSymbol() == Symbol.SPECIAL_SEQUENCE) {
 				ouputQueue.add(token);
 				while (thereIsAnCommentOnTopOfTheOperatorStack())
@@ -175,7 +175,7 @@ public class ShuntingYard {
 	}
 
 	public final List<Token> getOuputQueue() {
-		return Collections.unmodifiableList(ouputQueue);
+		return MyCollections.unmodifiableList(ouputQueue);
 	}
 
 }

@@ -43,7 +43,7 @@ import javax.xml.transform.TransformerException;
 
 import net.atmp.CucaDiagram;
 import net.sourceforge.plantuml.FileFormat;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.descdiagram.DescriptionDiagram;
 import net.sourceforge.plantuml.log.Logme;
@@ -51,7 +51,7 @@ import net.sourceforge.plantuml.statediagram.StateDiagram;
 import net.sourceforge.plantuml.utils.Log;
 
 public final class CucaDiagramXmiMaker {
-	// ::remove folder when __CORE__
+	
 
 	private final CucaDiagram diagram;
 	private final FileFormat fileFormat;
@@ -61,7 +61,7 @@ public final class CucaDiagramXmiMaker {
 		this.fileFormat = fileFormat;
 	}
 
-	public static String getModel(UmlDiagram classDiagram) {
+	public static String getModel(TitledDiagram classDiagram) {
 		return "model1";
 	}
 
@@ -76,7 +76,7 @@ public final class CucaDiagramXmiMaker {
 				xmi = createClassDiagram();
 			else
 				throw new UnsupportedOperationException(
-						"Diagram type " + diagram.getUmlDiagramType() + " is not supported in XMI");
+						"Diagram type " + diagram.getDiagramType() + " is not supported in XMI");
 
 			xmi.transformerXml(fos);
 		} catch (ParserConfigurationException e) {

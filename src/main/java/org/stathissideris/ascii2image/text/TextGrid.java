@@ -230,7 +230,7 @@ public class TextGrid {
 			+StringUtils.repeatString("0123456789", (int) Math.floor(getWidth()/10)+1));
 		while(it.hasNext()){
 			String row = it.next().toString();
-			String index = new Integer(i).toString();
+			String index = Integer.toString(i);
 			if(i < 10) index = " "+index;
 			System.out.println(index+" ("+row+")");
 			i++; 
@@ -246,7 +246,7 @@ public class TextGrid {
 			+StringUtils.repeatString("0123456789", (int) Math.floor(getWidth()/10)+1)+"\n");
 		while(it.hasNext()){
 			String row = it.next().toString();
-			String index = new Integer(i).toString();
+			String index = Integer.toString(i);
 			if(i < 10) index = " "+index;
 			row = row.replaceAll("\n", "\\\\n");
 			row = row.replaceAll("\r", "\\\\r");
@@ -1283,17 +1283,6 @@ public class TextGrid {
 		}
 	}
 
-	/**
-	 * 
-	 * Fills the continuous area with if c1 characters with c2,
-	 * flooding from cell x, y
-	 * 
-	 * @param x
-	 * @param y
-	 * @param c1 the character to replace
-	 * @param c2 the character to replace c1 with
-	 * @return the list of cells filled
-	 */
 //	public CellSet fillContinuousArea(int x, int y, char c1, char c2){
 //		CellSet cells = new CellSet();
 //		//fillContinuousArea_internal(x, y, c1, c2, cells);

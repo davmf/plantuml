@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -77,6 +77,20 @@ public class shortest__c {
 // static jmp_buf jbuf
 private static jmp_buf jbuf = new jmp_buf();
 
+/**
+ * Emulates a C longjmp(jbuf, 1) back to the setjmp() call in Pshortestpath.
+ * The real C triangulate() calls longjmp(jbuf, 1) when it fails to find a
+ * diagonal (a genuine abort of the current Pshortestpath computation, not a
+ * translation artifact - see SMETANA.md). Since Java has no longjmp, this
+ * exception is thrown instead and caught in Pshortestpath itself, exactly
+ * where "if (setjmp(jbuf) != 0) return -2;" would have taken over in C.
+ */
+private static final class PathplanAbort extends RuntimeException {
+    PathplanAbort(String message) {
+        super(message);
+    }
+}
+
 
 
 /* Pshortestpath:
@@ -101,8 +115,8 @@ try {
     CArray<ST_triangle_t> trip;
     int splitindex;
     
-    if (setjmp(jbuf)!=0)
-	return -2;
+    setjmp(jbuf);
+    try {
     /* make space */
     growpnls(zz, polyp.pn);
     zz.pnll = 0;
@@ -186,11 +200,12 @@ UNSUPPORTED("8d9xfgejx5vgd6shva5wk5k06"); // 	return -1;
     
     /* if endpoints in same triangle, use a single line */
     if (ftrii == ltrii) {
-UNSUPPORTED("2nnkwrdxg0ma2m482dqarlbz6"); // 	growops(2);
-UNSUPPORTED("5penbn9ky80i7jw02belk2zoj"); // 	output->pn = 2;
-UNSUPPORTED("8i925e1tnbqn909027lqcg3fi"); // 	ops[0] = eps[0], ops[1] = eps[1];
-UNSUPPORTED("3rcg6c9s9nmostq9c3r5n6x4h"); // 	output->ps = ops;
-UNSUPPORTED("c9ckhc8veujmwcw0ar3u3zld4"); // 	return 0;
+    	growops(zz, 2);
+    	output.pn = 2;
+    	zz.ops_shortest.get__(0).___(eps.get__(0));
+    	zz.ops_shortest.get__(1).___(eps.get__(1));
+    	output.ps = zz.ops_shortest;
+    	return 0;
     }
     
     /* build funnel and shortest path linked list (in add2dq) */
@@ -275,6 +290,9 @@ UNSUPPORTED("2cii65lhw4wb8nyvjv702v7md"); // 		lpnlp = trip->e[ei].pnl1p, rpnlp 
     output.ps = zz.ops_shortest;
     
     return 0;
+    } catch (PathplanAbort abort) {
+	return -2;
+    }
 } finally {
 LEAVING("2gub5b19vo2qexn56nw23wage","Pshortestpath");
 }
@@ -307,7 +325,8 @@ try {
 				return;
 			}
 		}
-		throw new IllegalStateException("libpath/%s:%d: %s\n" + "graphviz-2.38.0\\lib\\pathplan\\shortest.c" + 26 + ("triangulation failed"));
+		System.err.println("libpath/%s:%d: %s" + "graphviz-2.38.0\\lib\\pathplan\\shortest.c" + 26 + ("triangulation failed"));
+			throw new PathplanAbort("triangulation failed");
     } 
 	else
 		loadtriangle(zz, pnlps[0], pnlps[1], pnlps[2]);
@@ -404,20 +423,23 @@ LEAVING("7vf9jtj9i8rg0cxrstbqswuck","loadtriangle");
 public static void connecttris(Globals zz, int tri1, int tri2) {
 ENTERING("6coujw0qksrgu5sxj0r39qm1u","connecttris");
 try {
-	CArray<ST_triangle_t> tri1p;
-	CArray<ST_triangle_t> tri2p;
+	// Hoisted out of the 3x3 loop: plus_ allocates a wrapper per call, and
+	// tri1/tri2 do not change inside the loops (C pointer arithmetic is free,
+	// the emulated equivalent is not).
+	final CArray<ST_triangle_t> tri1p = zz.tris.plus_(tri1);
+	final CArray<ST_triangle_t> tri2p = zz.tris.plus_(tri2);
+	final ST_triangle_t t1 = tri1p.get__(0);
+	final ST_triangle_t t2 = tri2p.get__(0);
     int ei, ej;
     for (ei = 0; ei < 3; ei++) {
 	for (ej = 0; ej < 3; ej++) {
-	    tri1p = zz.tris.plus_(tri1);
-	    tri2p = zz.tris.plus_(tri2);
-	    if ((tri1p.get__(0).e[ei].pnl0p.pp == tri2p.get__(0).e[ej].pnl0p.pp &&
-		 tri1p.get__(0).e[ei].pnl1p.pp == tri2p.get__(0).e[ej].pnl1p.pp) ||
-		(tri1p.get__(0).e[ei].pnl0p.pp == tri2p.get__(0).e[ej].pnl1p.pp &&
-		 tri1p.get__(0).e[ei].pnl1p.pp == tri2p.get__(0).e[ej].pnl0p.pp))
+	    if ((t1.e[ei].pnl0p.pp == t2.e[ej].pnl0p.pp &&
+		 t1.e[ei].pnl1p.pp == t2.e[ej].pnl1p.pp) ||
+		(t1.e[ei].pnl0p.pp == t2.e[ej].pnl1p.pp &&
+		 t1.e[ei].pnl1p.pp == t2.e[ej].pnl0p.pp))
 		 {
-	    	tri1p.get__(0).e[ei].rtp = tri2p;
-	    	tri2p.get__(0).e[ej].rtp = tri1p;
+	    	t1.e[ei].rtp = tri2p;
+	    	t2.e[ej].rtp = tri1p;
 		 }
 	}
     }

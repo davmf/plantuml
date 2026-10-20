@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.descdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -47,7 +51,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandTogether extends SingleLineCommand2<AbstractEntityDiagram> {
-    // ::remove folder when __HAXE__
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("together");
 
 	public CommandTogether() {
 		super(getRegexConcat());
@@ -61,9 +66,24 @@ public class CommandTogether extends SingleLineCommand2<AbstractEntityDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'together {' groups the following elements so that the layout keeps
+		// them close to each other, without drawing any visible container;
+		// closed by '}'.
+		return "Starting a 'together' block: the elements inside are kept close in the layout";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(AbstractEntityDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
 			throws NoSuchColorException {
 		final CommandExecutionResult status = diagram.gotoTogether();
 		return status;
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

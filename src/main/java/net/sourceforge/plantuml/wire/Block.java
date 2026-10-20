@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
@@ -52,15 +53,13 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.utils.Position;
 
-public class Block extends AbstractTextBlock {
-	// ::remove folder when __CORE__
+public class Block implements TextBlock {
 
 	static class Pos {
 		final double x;
@@ -117,6 +116,8 @@ public class Block extends AbstractTextBlock {
 		throw new IllegalArgumentException();
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		if (fixedDim == null)
 			return minMax.getDimension();
@@ -124,6 +125,7 @@ public class Block extends AbstractTextBlock {
 		return fixedDim;
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		ug = ug.apply(getBlack());
 		if (children.size() == 0) {

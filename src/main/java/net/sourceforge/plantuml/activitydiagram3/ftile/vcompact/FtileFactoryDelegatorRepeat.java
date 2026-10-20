@@ -54,12 +54,16 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.WeldingPoint;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileDiamond;
 import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
@@ -73,35 +77,53 @@ public class FtileFactoryDelegatorRepeat extends FtileFactoryDelegator {
 	}
 
 	@Override
-	public Ftile repeat(BoxStyle boxStyleIn, Stereotype stereotype, Swimlane swimlane, Swimlane swimlaneOut,
-			Display startLabel, final Ftile repeat, Display test, Display yes, Display out, Colors colors,
+	public Ftile repeat(Stereogroup stereogroup1, Stereogroup stereogroup2, BoxStyle boxStyleIn, Swimlane swimlane,
+			Swimlane swimlaneOut, Display startLabel, final Ftile repeat, Display test, Display yes, Display out,
 			Ftile backward, boolean noOut, LinkRendering incoming1, LinkRendering incoming2,
-			StyleBuilder currentStyleBuilder) {
+			StyleBuilder currentStyleBuilder) throws NoSuchColorException {
+
+		if (stereogroup1 == null)
+			throw new IllegalStateException();
+
+		if (stereogroup2 == null)
+			throw new IllegalStateException();
 
 		final ConditionStyle conditionStyle = skinParam().getConditionStyle();
+		final HColorSet colorSet = skinParam().getIHtmlColorSet();
 
-		final Style styleArrow = getDefaultStyleDefinitionArrow().getMergedStyle(currentStyleBuilder);
-		final Style styleDiamond = getDefaultStyleDefinitionDiamond().withTOBECHANGED(stereotype)
-				.getMergedStyle(currentStyleBuilder);
-		final HColor borderColor = styleDiamond.value(PName.LineColor).asColor(skinParam().getIHtmlColorSet());
-		final HColor diamondColor = styleDiamond.value(PName.BackGroundColor).asColor(skinParam().getIHtmlColorSet());
-		final Rainbow arrowColor = Rainbow.build(styleArrow, skinParam().getIHtmlColorSet());
-		final FontConfiguration fcDiamond = styleDiamond.getFontConfiguration(skinParam().getIHtmlColorSet());
-		final FontConfiguration fcArrow = styleArrow.getFontConfiguration(skinParam().getIHtmlColorSet());
+		final Style styleArrow = currentStyleBuilder.getMergedStyle(getDefaultStyleDefinitionArrow());
+		final Style styleDiamond = currentStyleBuilder.getMergedStyle(getDefaultStyleDefinitionDiamond());
+
+		final HColor borderColor = styleDiamond.value(PName.LineColor).asColor(colorSet);
+
+		final HColor diamondColor1 = stereogroup1.getHColor(getDefaultStyleDefinitionDiamond(), PName.BackGroundColor,
+				currentStyleBuilder, colorSet);
+		HColor diamondColor2 = stereogroup2.getHColor(getDefaultStyleDefinitionDiamond(), PName.BackGroundColor,
+				currentStyleBuilder, colorSet);
+
+		if (stereogroup2.getInnerColors(colorSet).isEmpty() && stereogroup2.isEmpty())
+			diamondColor2 = diamondColor1;
+
+		final Colors colorsEntry = currentStyleBuilder.getMergedStyle(getDefaultStyleDefinitionActivity())
+				.toColors(colorSet).add(ColorType.BACK, diamondColor1);
+
+		final Rainbow arrowColor = Rainbow.build(styleArrow, colorSet);
+		final FontConfiguration fcDiamond = styleDiamond.getFontConfiguration(colorSet);
+		final FontConfiguration fcArrow = styleArrow.getFontConfiguration(colorSet);
 
 		final LinkRendering endRepeatLinkRendering = repeat.getOutLinkRendering();
 		final Rainbow endRepeatLinkColor = endRepeatLinkRendering == null ? null : endRepeatLinkRendering.getRainbow();
 
-		final Ftile entry = getEntry(swimlane, startLabel, colors, boxStyleIn, stereotype);
+		final Ftile entry = getEntry(swimlane, startLabel, colorsEntry, boxStyleIn, stereogroup1.buildStereotype());
 
 		Ftile result = FtileRepeat.create(swimlane, swimlaneOut, entry, repeat, test, yes, out, borderColor,
-				diamondColor, arrowColor, endRepeatLinkColor, conditionStyle, this.skinParam(), fcDiamond, fcArrow,
-				backward, noOut, incoming1, incoming2);
+				diamondColor1, diamondColor2, arrowColor, endRepeatLinkColor, conditionStyle, this.skinParam(),
+				fcDiamond, fcArrow, backward, noOut, incoming1, incoming2);
 
 		final List<WeldingPoint> weldingPoints = repeat.getWeldingPoints();
 		if (weldingPoints.size() > 0) {
 
-			final Ftile diamondBreak = new FtileDiamond(repeat.skinParam(), diamondColor, borderColor, swimlane);
+			final Ftile diamondBreak = new FtileDiamond(repeat.skinParam(), diamondColor2, borderColor, swimlane);
 			result = assembly(FtileUtils.addHorizontalMargin(result, 10, 0), diamondBreak);
 			final Genealogy genealogy = new Genealogy(result);
 

@@ -35,12 +35,15 @@
  */
 package net.sourceforge.plantuml.descdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
@@ -69,6 +72,12 @@ import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateElementMultilines extends CommandMultilines2<AbstractEntityDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"action", "actor", "agent", "artifact", "boundary", "card", "circle", "cloud",
+			"collections", "component", "control", "database", "entity", "file", "folder", "frame",
+			"hexagon", "interface", "label", "node", "package", "person", "port", "portin",
+			"portout", "process", "queue", "rectangle", "stack", "storage", "usecase");
 
 	private final int type;
 
@@ -123,6 +132,44 @@ public class CommandCreateElementMultilines extends CommandMultilines2<AbstractE
 	}
 
 	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: the description starts after the 'as "' (or the
+		// '[') of the first line and ends on the line carrying the closing
+		// '"' (or ']').
+		lines = lines.trimSmart(1).expandsNewline(false);
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Creating an element with a multiline description";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Creating the ").append(CommandCreateElementFull.describeSymbol(line0.get("TYPE", 0)))
+				.append(" '").append(line0.get("CODE", 0)).append("'");
+
+		// Count the description lines like executeNow assembles the display:
+		// the tail of the first line and the prefix of the last one only count
+		// when they are not empty.
+		final List<String> lineLast = StringUtils.getSplit(getEndPattern(), lines.getLast().getTrimmed().getString());
+		int descLines = lines.size() > 2 ? lines.size() - 2 : 0;
+		if (StringUtils.isNotEmpty(line0.get("DESC", 0)))
+			descLines++;
+		if (lineLast != null && StringUtils.isNotEmpty(lineLast.get(0)))
+			descLines++;
+		sb.append(" with a description of ").append(descLines).append(descLines == 1 ? " line" : " lines");
+
+		if (line0.get("STEREO", 0) != null)
+			sb.append(", stereotype ").append(line0.get("STEREO", 0));
+
+		if (line0.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (line0.get("COLOR", 0) != null)
+			sb.append(", background color ").append(line0.get("COLOR", 0));
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeNow(AbstractEntityDiagram diagram, BlocLines lines, ParserPass currentPass)
 			throws NoSuchColorException {
 		final LineLocation location = lines.getLocation();
@@ -174,7 +221,7 @@ public class CommandCreateElementMultilines extends CommandMultilines2<AbstractE
 					diagram.getSkinParam().getFont(null, false, FontParam.CIRCLED_CHARACTER),
 					diagram.getSkinParam().getIHtmlColorSet()));
 
-		final String urlString = line0.get("URL", 0);
+		final String urlString = line0.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);
@@ -189,6 +236,11 @@ public class CommandCreateElementMultilines extends CommandMultilines2<AbstractE
 
 	private static ColorParser color() {
 		return ColorParser.simpleColor(ColorType.BACK);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

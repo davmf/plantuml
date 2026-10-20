@@ -34,6 +34,9 @@
  */
 package net.sourceforge.plantuml.tim;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.preproc.OptionKey;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.tim.expression.TValue;
@@ -52,13 +55,28 @@ public class EaterOption extends Eater {
 		skipSpaces();
 		final String key = eatAndGetVarname();
 		skipSpaces();
-		final TValue value = eatExpression(context, memory);
+		TValue value;
+		try {
+			value = eatExpression(context, memory);
+		} catch (EaterException e) {
+			// Sorry, not great...
+			value = null;
+		}
 		skipSpaces();
 		final OptionKey optionKey = OptionKey.lazyFrom(key);
 		if (optionKey == null)
-			context.getPreprocessingArtifact().addWarning(new Warning("No such !option " + key));
+			context.getPreprocessingArtifact()
+					.addWarning(new Warning("Unknown '!option " + key + "': this line is ignored", "Known options are: "
+							+ Arrays.stream(OptionKey.values()).map(k -> StringUtils.goLowerCase(k.name()))
+									.collect(Collectors.joining(", "))));
+		else if (value == null && optionKey.getDefaultValue() == null)
+			context.getPreprocessingArtifact()
+					.addWarning(new Warning("'!option " + key + "' needs a value: write '!option " + key + " <value>'"));
+		else if (value == null)
+			context.getPreprocessingArtifact().getOption().define(optionKey, optionKey.getDefaultValue());
 		else
 			context.getPreprocessingArtifact().getOption().define(optionKey, value.toString());
+
 	}
 
 }

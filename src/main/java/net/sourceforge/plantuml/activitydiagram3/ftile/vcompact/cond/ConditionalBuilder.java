@@ -67,9 +67,9 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.ConditionEndStyle;
 import net.sourceforge.plantuml.svek.ConditionStyle;
 import net.sourceforge.plantuml.url.Url;
@@ -98,12 +98,12 @@ public class ConditionalBuilder {
 	private final Collection<PositionedNote> notes;
 	private final Style styleDiamond;
 
-	private StyleSignatureBasic getStyleSignatureDiamond() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
+	private StyleQuery getStyleSignatureDiamond() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY_DIAMOND;
 	}
 
-	private StyleSignatureBasic getStyleSignatureArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	private StyleQuery getStyleSignatureArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 	public ConditionalBuilder(Swimlane swimlane, HColor backColor, FtileFactory ftileFactory,
@@ -243,7 +243,8 @@ public class ConditionalBuilder {
 				.createSheet(labelTest);
 		final SheetBlock1 sheetBlock1 = new SheetBlock1(sheet, diamondLineBreak, skinParam.getPadding());
 
-		final UStroke thickness = getStyleSignatureDiamond().getMergedStyle(skinParam.getCurrentStyleBuilder()).getStroke();
+		final UStroke thickness = skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleSignatureDiamond())
+				.getStroke();
 		final TextBlock tbTest = new SheetBlock2(sheetBlock1, Hexagon.asStencil(sheetBlock1), thickness);
 
 		final Ftile shape1;
@@ -296,7 +297,8 @@ public class ConditionalBuilder {
 			final TextBlock tbout2 = out2 == null ? null
 					: out2.create7(fontArrow, HorizontalAlignment.LEFT, ftileFactory.skinParam(),
 							CreoleMode.SIMPLE_LINE);
-			FtileDiamond tmp = new FtileDiamond(tile1.skinParam(), backColor, borderColor, swimlane);
+			final HColor color = branch2.getColor() == null ? backColor : branch2.getColor();
+			FtileDiamond tmp = new FtileDiamond(tile1.skinParam(), color, borderColor, swimlane);
 			tmp = useNorth ? tmp.withNorth(tbout1) : tmp.withWest(tbout1);
 			tmp = tmp.withEast(tbout2);
 			shape2 = tmp;

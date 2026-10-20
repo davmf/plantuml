@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -189,34 +189,37 @@ try {
     int bi, si, splinepi;
     double t;
     final CArray<ST_pointf> sp = CArray.<ST_pointf>ALLOC__(4, ZType.ST_pointf);
+    // The four slots are fixed: hoisted out of the loops (each get__ is a
+    // method call and offset arithmetic; the inner loop did ~44 of them).
+    final ST_pointf s0 = sp.get__(0), s1 = sp.get__(1), s2 = sp.get__(2), s3 = sp.get__(3);
     int num_div = delta * boxn;
     for (splinepi = 0; splinepi + 3 < pn; splinepi += 3) {
 	for (si = 0; si <= num_div; si++) {
 	    t = si / (double)num_div;
-	    sp.get__(0).___(pps.get__(splinepi));
-	    sp.get__(1).___(pps.get__(splinepi+1));
-	    sp.get__(2).___(pps.get__(splinepi+2));
-	    sp.get__(3).___(pps.get__(splinepi+3));
-	    sp.get__(0).x = sp.get__(0).x + t * (sp.get__(1).x - sp.get__(0).x);
-	    sp.get__(0).y = sp.get__(0).y + t * (sp.get__(1).y - sp.get__(0).y);
-	    sp.get__(1).x = sp.get__(1).x + t * (sp.get__(2).x - sp.get__(1).x);
-	    sp.get__(1).y = sp.get__(1).y + t * (sp.get__(2).y - sp.get__(1).y);
-	    sp.get__(2).x = sp.get__(2).x + t * (sp.get__(3).x - sp.get__(2).x);
-	    sp.get__(2).y = sp.get__(2).y + t * (sp.get__(3).y - sp.get__(2).y);
- 	    sp.get__(0).x = sp.get__(0).x + t * (sp.get__(1).x - sp.get__(0).x);
-	    sp.get__(0).y = sp.get__(0).y + t * (sp.get__(1).y - sp.get__(0).y);
-	    sp.get__(1).x = sp.get__(1).x + t * (sp.get__(2).x - sp.get__(1).x);
-	    sp.get__(1).y = sp.get__(1).y + t * (sp.get__(2).y - sp.get__(1).y);
-	    sp.get__(0).x = sp.get__(0).x + t * (sp.get__(1).x - sp.get__(0).x);
-	    sp.get__(0).y = sp.get__(0).y + t * (sp.get__(1).y - sp.get__(0).y);
+	    s0.___(pps.get__(splinepi));
+	    s1.___(pps.get__(splinepi+1));
+	    s2.___(pps.get__(splinepi+2));
+	    s3.___(pps.get__(splinepi+3));
+	    s0.x = s0.x + t * (s1.x - s0.x);
+	    s0.y = s0.y + t * (s1.y - s0.y);
+	    s1.x = s1.x + t * (s2.x - s1.x);
+	    s1.y = s1.y + t * (s2.y - s1.y);
+	    s2.x = s2.x + t * (s3.x - s2.x);
+	    s2.y = s2.y + t * (s3.y - s2.y);
+ 	    s0.x = s0.x + t * (s1.x - s0.x);
+	    s0.y = s0.y + t * (s1.y - s0.y);
+	    s1.x = s1.x + t * (s2.x - s1.x);
+	    s1.y = s1.y + t * (s2.y - s1.y);
+	    s0.x = s0.x + t * (s1.x - s0.x);
+	    s0.y = s0.y + t * (s1.y - s0.y);
 	    for (bi = 0; bi < boxn; bi++) {
 /* this tested ok on 64bit machines, but on 32bit we need this FUDGE
  *     or graphs/directed/records.gv fails */
-		if (sp.get__(0).y <= boxes[bi].UR.y+.0001 && sp.get__(0).y >= boxes[bi].LL.y-.0001) {
-		    if (boxes[bi].LL.x > sp.get__(0).x)
-			boxes[bi].LL.x = sp.get__(0).x;
-		    if (boxes[bi].UR.x < sp.get__(0).x)
-			boxes[bi].UR.x = sp.get__(0).x;
+		if (s0.y <= boxes[bi].UR.y+.0001 && s0.y >= boxes[bi].LL.y-.0001) {
+		    if (boxes[bi].LL.x > s0.x)
+			boxes[bi].LL.x = s0.x;
+		    if (boxes[bi].UR.x < s0.x)
+			boxes[bi].UR.x = s0.x;
 		}
 	    }
 	}
@@ -607,21 +610,48 @@ UNSUPPORTED("btmwubugs9vkexo4yb7a5nqel"); // 	    return 1;
 	    	bb.LL.y = xy;
 	    	d = 0;
 	    }
-	    else if (u == 1)
-UNSUPPORTED("5kcd52bwvbxxs0md0enfs100u"); // 		xy = ba.LL.y, ba.LL.y = bb.UR.y, bb.UR.y = xy, u = 0;
+	    // [FIX-cluster-layout] Ported from lib/common/routespl.c (was UNSUPPORTED
+	    // 5kcd52bwvbxxs0md0enfs100u): symmetric to the d==1 branch above. First
+	    // reached by zdev.Test_3: a flat-edge label whose position constraint was
+	    // skipped by make_LR_constraints' deferred pass (see SMETANA.md) can end
+	    // up outside its endpoints' x-span, making make_flat_labeled_edge produce
+	    // consecutive boxes where ba lies entirely above bb.
+	    else if (u == 1) {
+	    	xy = (int)(ba.LL.y);
+	    	ba.LL.y = bb.UR.y;
+	    	bb.UR.y = xy;
+	    	u = 0;
+	    }
+	    // [FIX-cluster-layout] Ported from lib/common/routespl.c (was UNSUPPORTED):
+	    // second repair pass, reached only when the two boxes were disjoint on
+	    // BOTH axes at once (errs == 2). The first if/else chain above fixed one
+	    // axis and zeroed its flag; this meets the boxes at the midpoint on the
+	    // remaining axis.
 	    for (i = 0; i < errs - 1; i++) {
-UNSUPPORTED("as3p2ldwbg3rbgy64oxx5phar"); // 		if (l == 1)
-UNSUPPORTED("efz1z5cfywki1k6q6avldku9z"); // 		    xy = (ba.UR.x + bb.LL.x) / 2.0 + 0.5, ba.UR.x =
-UNSUPPORTED("6dfh7cf1xptapqd1mcqtxjrxa"); // 			bb.LL.x = xy, l = 0;
-UNSUPPORTED("ang3qytu77fd5owijwbnmkdav"); // 		else if (r == 1)
-UNSUPPORTED("67ehof0qqlk339zgl0sqwfu5r"); // 		    xy = (ba.LL.x + bb.UR.x) / 2.0 + 0.5, ba.LL.x =
-UNSUPPORTED("llmwvndoq1ne9c62ohtstkwa"); // 			bb.UR.x = xy, r = 0;
-UNSUPPORTED("3ce9i9asrqbuog7v1tdurqo6e"); // 		else if (d == 1)
-UNSUPPORTED("3mibjrb2jtfextkg9ac5k9spl"); // 		    xy = (ba.UR.y + bb.LL.y) / 2.0 + 0.5, ba.UR.y =
-UNSUPPORTED("bccpbv2n38c5utkfh7msoc2y"); // 			bb.LL.y = xy, d = 0;
-UNSUPPORTED("7302rnmwdji9n7txquk8k36to"); // 		else if (u == 1)
-UNSUPPORTED("9oqpoodvpheztihe63p40guof"); // 		    xy = (ba.LL.y + bb.UR.y) / 2.0 + 0.5, ba.LL.y =
-UNSUPPORTED("2cnb1bdjh6y26f98vonla73qa"); // 			bb.UR.y = xy, u = 0;
+		if (l == 1) {
+		    xy = (int) ((ba.UR.x + bb.LL.x) / 2.0 + 0.5);
+		    ba.UR.x = xy;
+		    bb.LL.x = xy;
+		    l = 0;
+		}
+		else if (r == 1) {
+		    xy = (int) ((ba.LL.x + bb.UR.x) / 2.0 + 0.5);
+		    ba.LL.x = xy;
+		    bb.UR.x = xy;
+		    r = 0;
+		}
+		else if (d == 1) {
+		    xy = (int) ((ba.UR.y + bb.LL.y) / 2.0 + 0.5);
+		    ba.UR.y = xy;
+		    bb.LL.y = xy;
+		    d = 0;
+		}
+		else if (u == 1) {
+		    xy = (int) ((ba.LL.y + bb.UR.y) / 2.0 + 0.5);
+		    ba.LL.y = xy;
+		    bb.UR.y = xy;
+		    u = 0;
+		}
 	    }
 	}
 	/* check for overlapping boxes */

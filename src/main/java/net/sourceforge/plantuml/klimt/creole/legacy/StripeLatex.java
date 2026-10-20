@@ -38,6 +38,7 @@ package net.sourceforge.plantuml.klimt.creole.legacy;
 import java.util.Collections;
 import java.util.List;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.creole.Neutron;
 import net.sourceforge.plantuml.klimt.creole.Parser;
 import net.sourceforge.plantuml.klimt.creole.atom.Atom;
@@ -47,9 +48,10 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.math.ScientificEquationSafe;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class StripeLatex implements StripeRaw {
-	// ::remove file when __CORE__
+
 	final private FontConfiguration fontConfiguration;
 	final private StringBuilder formula = new StringBuilder();
 	private AtomMath atom;
@@ -84,13 +86,18 @@ public class StripeLatex implements StripeRaw {
 	}
 
 	private Atom getAtom() {
-		if (atom == null) {
-			final ScientificEquationSafe math = ScientificEquationSafe.fromLatex(formula.toString());
-			atom = new AtomMath(math, fontConfiguration.getColor(), fontConfiguration.getExtendedColor());
-		}
-		return atom;
+		if (!TeaVM.isTeaVM()) {
+			if (atom == null) {
+				final ScientificEquationSafe math = ScientificEquationSafe.fromLatex(formula.toString());
+				atom = new AtomMath(math, fontConfiguration.getColor(), fontConfiguration.getExtendedColor());
+			}
+			return atom;
+		} else
+			return null;
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return getAtom().calculateDimension(stringBounder);
 	}

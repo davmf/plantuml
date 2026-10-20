@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.command;
 
-import net.sourceforge.plantuml.AbstractPSystem;
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.ScaleSimple;
+import net.sourceforge.plantuml.annotation.Explain;
+import net.sourceforge.plantuml.core.AbstractDiagram;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -44,7 +48,9 @@ import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandScale extends SingleLineCommand2<AbstractPSystem> {
+public class CommandScale extends SingleLineCommand2<AbstractDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("scale");
 
 	public static final CommandScale ME = new CommandScale();
 
@@ -67,7 +73,27 @@ public class CommandScale extends SingleLineCommand2<AbstractPSystem> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(AbstractPSystem diagram, LineLocation location, RegexResult arg,
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'scale 1.5' or 'scale 2/3' multiplies the size of the final image.
+		final String scale = arg.get("SCALE", 0);
+		final String div = arg.get("DIV", 0);
+		sb.append("Scaling the diagram by a factor of ").append(scale);
+		if (div != null)
+			sb.append(" / ").append(div);
+
+		// Zero is detected on the raw strings, to mirror the validation of
+		// executeArg without risking a NumberFormatException here.
+		if (scale.matches("[0.]+") || (div != null && div.matches("[0.]+")))
+			sb.append(" (rejected at execution: scale cannot be zero)");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(AbstractDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		double scale = Double.parseDouble(arg.get("SCALE", 0));
 		if (scale == 0)
@@ -82,6 +108,11 @@ public class CommandScale extends SingleLineCommand2<AbstractPSystem> {
 		}
 		diagram.setScale(new ScaleSimple(scale));
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

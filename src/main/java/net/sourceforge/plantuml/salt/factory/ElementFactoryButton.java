@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.salt.factory;
 
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.salt.DataSource;
 import net.sourceforge.plantuml.salt.Terminated;
 import net.sourceforge.plantuml.salt.element.Element;
@@ -58,13 +59,25 @@ public class ElementFactoryButton implements ElementFactory {
 		}
 		final Terminated<String> next = dataSource.next();
 		final String text = next.getElement();
-		final UFont font = UFont.byDefault(12);
+		final UFont font = UFontFactory.byDefault(12);
 		return new Terminated<Element>(new ElementButton(text.substring(1, text.length() - 1), font, spriteContainer),
 				next.getTerminator());
 	}
 
 	public boolean ready() {
 		final String text = dataSource.peek(0).getElement();
+		// A "[[url{tooltip}]]" creole link also starts with "[" and ends with
+		// "]", so without this check it was always claimed here first (this
+		// factory is tried before ElementFactoryText) and rendered as a button
+		// whose literal label is "[url{tooltip}]" - the link was never actually
+		// parsed as a link (see issue #2732). Excluding a leading "[[" lets it
+		// fall through to ElementFactoryText instead, which feeds cell content
+		// through the same shared creole engine that already turns "[[...]]"
+		// into a real link with a tooltip everywhere else (e.g. in notes) -
+		// nothing link-specific needs to be added here or in ElementFactoryText,
+		// this is purely a dispatch-order fix.
+		if (text.startsWith("[["))
+			return false;
 		return text.startsWith("[") && text.endsWith("]");
 	}
 }

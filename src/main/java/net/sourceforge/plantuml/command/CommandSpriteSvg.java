@@ -35,15 +35,23 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+
 import net.sourceforge.plantuml.TitledDiagram;
-import net.sourceforge.plantuml.emoji.SvgNanoParser;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.svg.parser.ISvgSpriteParser;
+import net.sourceforge.plantuml.svg.parser.SvgSpriteParserFactory;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandSpriteSvg extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("sprite");
 
 	public static final CommandSpriteSvg ME = new CommandSpriteSvg();
 
@@ -62,11 +70,28 @@ public class CommandSpriteSvg extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(TitledDiagram system, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// Defines a sprite from an inline '<svg>...</svg>' element, parsed by
+		// the SVG sprite parser.
+		return "Defining the sprite '" + arg.get("NAME", 0) + "' from an inline SVG element ("
+				+ arg.get("SVG", 0).length() + " characters)";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram system, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final String svg = arg.get("SVG", 0);
-		final SvgNanoParser nanoParser = new SvgNanoParser(svg);
-		system.addSprite(arg.get("NAME", 0), nanoParser);
+		final ISvgSpriteParser parser = SvgSpriteParserFactory.create(Collections.singletonList(svg),
+				system.getPragma(), system.getMd5map());
+		system.addSprite(arg.get("NAME", 0), parser);
 
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

@@ -76,7 +76,8 @@ public class EntityImageArcCircle extends AbstractEntityImage {
 
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dimName = name.calculateDimension(stringBounder);
 		final XDimension2D dimStereo = getStereoDimension(stringBounder);
 		// final Dimension2D circle = new Dimension2DDouble(SIZE, SIZE);
@@ -84,9 +85,9 @@ public class EntityImageArcCircle extends AbstractEntityImage {
 	}
 
 	private XDimension2D getStereoDimension(StringBounder stringBounder) {
-		if (stereo == null) {
+		if (stereo == null) 
 			return new XDimension2D(0, 0);
-		}
+		
 		return stereo.calculateDimension(stringBounder);
 	}
 

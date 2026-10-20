@@ -39,6 +39,8 @@ import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
+import net.sourceforge.plantuml.teavm.TeaVM;
+
 public class I18n {
 
 	/**
@@ -57,23 +59,27 @@ public class I18n {
 	 *                                  null
 	 */
 	public static String getLocalizedValue(String language, String key, String defaultValue) {
-		if (key == null)
-			throw new IllegalArgumentException("Key must not be null.");
-		if (defaultValue == null)
-			throw new IllegalArgumentException("defaultValue must not be null.");
-
-		// Default to the system's default language if none is provided
-		if (language == null)
-			language = Locale.getDefault().getLanguage();
-
-		final Locale locale = Locale.forLanguageTag(language);
-
-		try {
-			final ResourceBundle bundle = ResourceBundle.getBundle("i18n", locale);
-			return bundle.getString(key);
-		} catch (MissingResourceException e) {
-			// Return the default value if the translation is not found
+		if (TeaVM.isTeaVM()) {
 			return defaultValue;
+		} else {
+			if (key == null)
+				throw new IllegalArgumentException("Key must not be null.");
+			if (defaultValue == null)
+				throw new IllegalArgumentException("defaultValue must not be null.");
+
+			// Default to the system's default language if none is provided
+			if (language == null)
+				language = Locale.getDefault().getLanguage();
+
+			final Locale locale = Locale.forLanguageTag(language);
+
+			try {
+				final ResourceBundle bundle = ResourceBundle.getBundle("i18n", locale);
+				return bundle.getString(key);
+			} catch (MissingResourceException e) {
+				// Return the default value if the translation is not found
+				return defaultValue;
+			}
 		}
 	}
 }

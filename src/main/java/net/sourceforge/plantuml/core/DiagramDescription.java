@@ -36,10 +36,17 @@
 package net.sourceforge.plantuml.core;
 
 public class DiagramDescription {
+
 	private final String description;
+	private final ImageData imageData;
+
+	public DiagramDescription(String description, ImageData imageData) {
+		this.description = description;
+		this.imageData = imageData;
+	}
 
 	public DiagramDescription(String description) {
-		this.description = description;
+		this(description, null);
 	}
 
 	public String getDescription() {
@@ -49,6 +56,14 @@ public class DiagramDescription {
 	@Override
 	public String toString() {
 		return description;
+	}
+
+	public DiagramDescription withImageData(ImageData imageData) {
+		return new DiagramDescription(description, imageData);
+	}
+
+	public ImageData getImageData() {
+		return imageData;
 	}
 
 }

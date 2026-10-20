@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
+import java.util.Collection;
+
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -44,6 +48,7 @@ import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -57,6 +62,11 @@ public class CommandAddMethod extends SingleLineCommand2<ClassDiagram> {
 		super(getRegexConcat());
 	}
 
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
+	}
+
 	static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandAddMethod.class.getName(), RegexLeaf.start(), //
 				new RegexLeaf(1, "NAME", "([%pLN_.]+|[%g][^%g]+[%g])"), //
@@ -68,8 +78,20 @@ public class CommandAddMethod extends SingleLineCommand2<ClassDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'A : +field' adds a field or a method to the body of 'A', creating
+		// it as a class if it does not exist yet. Whether it is a field or a
+		// method is deduced later by the bodier, mostly from the presence of
+		// parentheses.
+		final String name = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.get("NAME", 0));
+		return "Adding the field or method \"" + arg.get("DATA", 0) + "\" to '" + name
+				+ "' (created as a class if it does not exist yet)";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
 		final String idShort = arg.get("NAME", 0);
 		final Quark<Entity> quark = diagram.quarkInContext(true, diagram.cleanId(idShort));
 		Entity entity = quark.getData();

@@ -42,68 +42,57 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.stereo.Stereotype;
-import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.text.Guillemet;
 
 public class EntityImageStateEmptyDescription extends EntityImageStateCommon {
 
-    final private static int MIN_WIDTH = 50;
-    final private static int MIN_HEIGHT = 40;
-    final private static int MIN_TRANSITION_WIDTH = 30;
-    final private static int MIN_TRANSITION_HEIGHT = 15;
+	final private static int MIN_WIDTH = 50;
+	final private static int MIN_HEIGHT = 40;
+	final private static int MIN_TRANSITION_WIDTH = 30;
+	final private static int MIN_TRANSITION_HEIGHT = 15;
 
-    private boolean isTransition = false;
+	private boolean isTransition = false;
 
-    public EntityImageStateEmptyDescription(Entity entity, ISkinParam skinParam) {
-        super(entity);
-        Stereotype stereotype = entity.getStereotype();
+	public EntityImageStateEmptyDescription(Entity entity) {
+		super(entity);
+		final Stereotype stereotype = entity.getStereotype();
+		if (stereotype != null) {
+			final String label = stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR);
+			this.isTransition = "<<transition>>".equals(label) || "<<transition_hidden>>".equals(label);
+		}
+	}
 
-        if (stereotype != null) {
-            this.isTransition = (
-                "<<transition>>".equals(stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR)) ||
-                "<<transition_hidden>>".equals(stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR))
-            );
-        }
-    }
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
+		final XDimension2D dim = name.calculateDimension(stringBounder);
+		final XDimension2D result = dim.delta(MARGIN * 2);
+		if (isTransition)
+			return result.delta(0, -12).atLeast(MIN_TRANSITION_WIDTH, MIN_TRANSITION_HEIGHT);
+		return result.atLeast(MIN_WIDTH, MIN_HEIGHT);
+	}
 
-    public XDimension2D calculateDimension(StringBounder stringBounder) {
-        final XDimension2D dim = title.calculateDimension(stringBounder);
-        final XDimension2D result = dim.delta(MARGIN * 2);
+	final public void drawU(UGraphic ug) {
+		if (url != null)
+			ug.startUrl(url);
 
-        if (this.isTransition) {
-            return result.delta(0, -12).atLeast(MIN_TRANSITION_WIDTH, MIN_TRANSITION_HEIGHT);
-        }
-        else {
-            return result.atLeast(MIN_WIDTH, MIN_HEIGHT);
-        }
-    }
+		final StringBounder stringBounder = ug.getStringBounder();
+		final XDimension2D dimTotal = calculateDimension(stringBounder);
+		final XDimension2D dimHeader = name.calculateDimension(stringBounder);
 
-    final public void drawU(UGraphic ug) {
-        if (url != null)
-            ug.startUrl(url);
+		final UStroke stroke = getStyleState().getStroke(lineConfig.getColors());
 
-        final StringBounder stringBounder = ug.getStringBounder();      
-        int yShift = 0;
+		ug = applyColor(ug, getStyleStateDescription());
+		ug = ug.apply(stroke);
 
-        if (this.isTransition) {
-            yShift = -2;
-        }
-        final XDimension2D dimTotal = calculateDimension(stringBounder);
-        final XDimension2D dimDesc = title.calculateDimension(stringBounder);
-        final UStroke stroke = getStyleState().getStroke(lineConfig.getColors());
+		ug.draw(getShape(dimTotal));
 
-        ug = applyColor(ug);
-        ug = ug.apply(stroke);
+		final double xDesc = (dimTotal.getWidth() - dimHeader.getWidth()) / 2;
+		final double yDesc = (dimTotal.getHeight() - dimHeader.getHeight()) / 2 + (isTransition ? -2 : 0);
+		name.drawU(ug.apply(new UTranslate(xDesc, yDesc)));
 
-        ug.draw(getShape(dimTotal));
+		if (url != null)
+			ug.closeUrl();
 
-        final double xDesc = (dimTotal.getWidth() - dimDesc.getWidth()) / 2;
-        final double yDesc = (dimTotal.getHeight() - dimDesc.getHeight()) / 2 + yShift;
-        title.drawU(ug.apply(new UTranslate(xDesc, yDesc)));
-
-        if (url != null)
-            ug.closeUrl();
-
-    }
+	}
 
 }

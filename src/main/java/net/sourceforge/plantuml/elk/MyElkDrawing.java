@@ -44,9 +44,12 @@ import net.sourceforge.plantuml.abel.CucaNote;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.annotation.DuplicateCode;
+import net.sourceforge.plantuml.annotation.Fast;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.symbol.USymbolFolder;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
@@ -60,19 +63,18 @@ import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.skin.AlignmentParam;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.svek.RoleLabels;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.ClusterManager;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
@@ -83,7 +85,7 @@ import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
 import net.sourceforge.plantuml.utils.Position;
 
 // The Drawing class does the real drawing
-class MyElkDrawing extends AbstractTextBlock {
+class MyElkDrawing implements TextBlock {
 
 	// min and max of all coord
 	private final MinMax minMax;
@@ -164,7 +166,7 @@ class MyElkDrawing extends AbstractTextBlock {
 		if (ent.getSvekImage() == null) {
 			final ISkinParam skinParam = diagram.getSkinParam();
 			if (skinParam.sameClassWidth())
-				System.err.println("NOT YET IMPLEMENED");
+				System.err.println("NOT YET IMPLEMENTED");
 
 			return GeneralImageBuilder.createEntityImageBlock(ent, diagram.isHideEmptyDescriptionForState(), diagram,
 					getBibliotekon(), null, diagram.getLinks());
@@ -192,30 +194,36 @@ class MyElkDrawing extends AbstractTextBlock {
 		final TextBlock label = getLabel(ug.getStringBounder(), link);
 		final TextBlock quantifier1 = getQuantifier(ug.getStringBounder(), link, 1);
 		final TextBlock quantifier2 = getQuantifier(ug.getStringBounder(), link, 2);
-		final MyElkEdge elkPath = new MyElkEdge(diagram, SName.classDiagram, link, edge, label, quantifier1,
-				quantifier2, magicY2, elkClusters, UTranslate.point(translate), nodeImages);
+		final TextBlock role1 = getRoleLabel(ug.getStringBounder(), link, 1);
+		final TextBlock role2 = getRoleLabel(ug.getStringBounder(), link, 2);
+		final TextBlock tailLabel = quantifier1 != null ? quantifier1 : role1;
+		final TextBlock headLabel = quantifier2 != null ? quantifier2 : role2;
+		final TextBlock tailRole = quantifier1 != null ? role1 : null;
+		final TextBlock headRole = quantifier2 != null ? role2 : null;
+		final MyElkEdge elkPath = new MyElkEdge(diagram, SName.classDiagram, link, edge, label, tailLabel, headLabel,
+				tailRole, headRole, magicY2, elkClusters, UTranslate.point(translate), nodeImages);
 		elkPath.drawU(ug);
 	}
 
 	private FontConfiguration getFontForLink(Link link, final ISkinParam skinParam) {
-		final SName styleName = skinParam.getUmlDiagramType().getStyleName();
+		final SName styleName = skinParam.getDiagramType().getStyleName();
 
-		final Style style = getDefaultStyleDefinitionArrow(link.getStereotype(), styleName)
-				.getMergedStyle(link.getStyleBuilder());
+		final Style style = link.getStyleBuilder()
+				.getMergedStyle(getDefaultStyleDefinitionArrow(link.getStereotype(), styleName));
 		return style.getFontConfiguration(skinParam.getIHtmlColorSet());
 	}
 
 	// Duplication from SvekEdge
-	final public StyleSignature getDefaultStyleDefinitionArrow(Stereotype stereotype, SName styleName) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, styleName, SName.arrow);
+	private StyleQuery getDefaultStyleDefinitionArrow(Stereotype stereotype, SName styleName) {
+		StyleQuery result = StyleQueries.ARROW.add(styleName);
 		if (stereotype != null)
-			result = result.withTOBECHANGED(stereotype);
+			result = result.withStereotype(stereotype);
 
 		return result;
 	}
 
-	private HorizontalAlignment getMessageTextAlignment(UmlDiagramType umlDiagramType, ISkinParam skinParam) {
-		if (umlDiagramType == UmlDiagramType.STATE)
+	private HorizontalAlignment getMessageTextAlignment(DiagramType diagramType, ISkinParam skinParam) {
+		if (diagramType == DiagramType.STATE)
 			return skinParam.getHorizontalAlignment(AlignmentParam.stateMessageAlignment, null, false, null);
 
 		return skinParam.getDefaultTextAlignment(HorizontalAlignment.CENTER);
@@ -243,7 +251,7 @@ class MyElkDrawing extends AbstractTextBlock {
 //		TextBlock labelOnly = link.getLabel().create(labelFont,
 //				skinParam.getDefaultTextAlignment(HorizontalAlignment.CENTER), skinParam);
 
-		final UmlDiagramType type = skinParam.getUmlDiagramType();
+		final DiagramType type = skinParam.getDiagramType();
 		final FontConfiguration font = getFontForLink(link, skinParam);
 
 		TextBlock labelOnly;
@@ -262,7 +270,13 @@ class MyElkDrawing extends AbstractTextBlock {
 			// block = StringWithArrow.addSeveralMagicArrows(link.getLabel(), this, font,
 			// alignment, skinParam);
 			// else
-			block = link.getLabel().create0(font, alignment, skinParam, skinParam.maxMessageSize(),
+			final Style arrowStyle = link.getStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow(
+					link.getStereotype(), skinParam.getDiagramType().getStyleName()));
+			final LineBreakStrategy styleWidth = arrowStyle.wrapWidth();
+			final LineBreakStrategy wrapWidth = styleWidth.getMaxWidth() > 0
+					? styleWidth
+					: skinParam.maxMessageSize();
+			block = link.getLabel().create0(font, alignment, skinParam, wrapWidth,
 					CreoleMode.SIMPLE_LINE, null, null);
 
 			labelOnly = addVisibilityModifier(block, link, skinParam);
@@ -308,11 +322,27 @@ class MyElkDrawing extends AbstractTextBlock {
 		return label;
 	}
 
+	private TextBlock getRoleLabel(StringBounder stringBounder, Link link, int n) {
+		final String role = n == 1 ? link.getRole1() : link.getRole2();
+		if (role == null)
+			return null;
+
+		final ISkinParam skinParam = diagram.getSkinParam();
+		final FontConfiguration labelFont = FontConfiguration.create(skinParam, FontParam.ARROW, null);
+		final TextBlock label = RoleLabels.create(role, diagram.getPragma(), labelFont, skinParam);
+		if (TextBlockUtils.isEmpty(label, stringBounder))
+			return null;
+
+		return label;
+	}
+
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		if (minMax == null)
 			throw new UnsupportedOperationException();
 
-		return minMax.getDimension();
+		return minMax.getDimension().delta(20, 20);
 	}
 
 	public HColor getBackcolor() {

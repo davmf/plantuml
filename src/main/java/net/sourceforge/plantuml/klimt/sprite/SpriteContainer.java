@@ -44,4 +44,6 @@ public interface SpriteContainer extends SvgCharSizeHack {
 
 	public Guillemet guillemet();
 
+	public String getFromMd5(String md5);
+
 }

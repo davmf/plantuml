@@ -40,10 +40,12 @@ import java.util.Objects;
 import com.plantuml.ubrex.UMatcher;
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.error.PSystemError;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
@@ -80,6 +82,7 @@ public abstract class UBrexSingleLineCommand2<S extends Diagram> implements Comm
 
 	}
 
+	@Override
 	final public CommandControl isValid(BlocLines lines) {
 		if (lines.size() == 2 && syntaxWithFinalBracket())
 			return isValidBracket(lines);
@@ -87,7 +90,7 @@ public abstract class UBrexSingleLineCommand2<S extends Diagram> implements Comm
 		if (lines.size() != 1)
 			return CommandControl.NOT_OK;
 
-		if (isCommandForbidden())
+		if (isCommandForbidden(lines))
 			return CommandControl.NOT_OK;
 
 		final StringLocated line2 = myTrim2(lines.getFirst());
@@ -99,7 +102,7 @@ public abstract class UBrexSingleLineCommand2<S extends Diagram> implements Comm
 			return CommandControl.NOT_OK;
 		}
 
-		final UMatcher result = pattern.match(line2.getString());
+		final UMatcher result = pattern.match(line2.getString(), 0);
 		if (result.exactMatch())
 			return finalVerification();
 
@@ -107,8 +110,10 @@ public abstract class UBrexSingleLineCommand2<S extends Diagram> implements Comm
 	}
 
 	private CommandControl isValidBracket(BlocLines lines) {
-		assert lines.size() == 2;
-		assert syntaxWithFinalBracket();
+		if (TeaVM.a())
+			assert lines.size() == 2;
+		if (TeaVM.a())
+			assert syntaxWithFinalBracket();
 		if (myTrim(lines.getAt(1)).equals("{") == false)
 			return CommandControl.NOT_OK;
 
@@ -116,17 +121,41 @@ public abstract class UBrexSingleLineCommand2<S extends Diagram> implements Comm
 		return isValid(BlocLines.singleString(vline));
 	}
 
-	protected boolean isCommandForbidden() {
-		return false;
-	}
-
 	protected CommandControl finalVerification() {
 		return CommandControl.OK;
 	}
 
+	@Override
+	final public String explain(BlocLines lines) {
+		if (syntaxWithFinalBracket() && lines.size() == 2) {
+			if (TeaVM.a())
+				assert myTrim(lines.getAt(1)).equals("{");
+			lines = BlocLines.singleString(lines.getFirst().getString() + " {");
+		}
+		if (lines.size() != 1)
+			throw new IllegalArgumentException();
+
+		final StringLocated first = lines.getFirst();
+		final String line = myTrim(first);
+		if (isForbidden(line))
+			return null;
+
+		final UMatcher result = pattern.match(line, 0);
+
+		if (result.exactMatch() == false)
+			return null;
+
+		return explainArg(first.getLocation(), new RegexResult(result));
+	}
+
+	@Explain
+	abstract protected String explainArg(LineLocation location, RegexResult arg);
+
+	@Override
 	public final CommandExecutionResult execute(S system, BlocLines lines, ParserPass currentPass) {
 		if (syntaxWithFinalBracket() && lines.size() == 2) {
-			assert myTrim(lines.getAt(1)).equals("{");
+			if (TeaVM.a())
+				assert myTrim(lines.getAt(1)).equals("{");
 			lines = BlocLines.singleString(lines.getFirst().getString() + " {");
 		}
 		if (lines.size() != 1)
@@ -137,8 +166,7 @@ public abstract class UBrexSingleLineCommand2<S extends Diagram> implements Comm
 		if (isForbidden(line))
 			return CommandExecutionResult.error("Syntax error: " + line);
 
-		// final RegexResult arg = pattern.matcher(line);
-		final UMatcher result = pattern.match(line);
+		final UMatcher result = pattern.match(line, 0);
 
 		if (result.exactMatch() == false)
 			return CommandExecutionResult.error("Cannot parse line " + line);

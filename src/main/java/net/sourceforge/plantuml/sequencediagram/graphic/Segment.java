@@ -41,6 +41,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
+
 public class Segment {
 
 	final private double pos1;
@@ -110,10 +113,10 @@ public class Segment {
 			if (pause.pos1 > this.pos2) {
 				if (pendingStart < this.pos2)
 					result2.add(new Segment(pendingStart, this.pos2));
-				return Collections.unmodifiableCollection(result2);
+				return MyCollections.unmodifiableCollection(result2);
 			}
 			if (this.contains(pause)) {
-				assert pendingStart < pause.pos1;
+				if (TeaVM.a()) assert pendingStart < pause.pos1;
 				result2.add(new Segment(pendingStart, pause.pos1));
 				pendingStart = pause.pos2;
 			}
@@ -121,7 +124,7 @@ public class Segment {
 		if (pendingStart < this.pos2)
 			result2.add(new Segment(pendingStart, this.pos2));
 
-		return Collections.unmodifiableCollection(result2);
+		return MyCollections.unmodifiableCollection(result2);
 	}
 
 	static class SortPos1 implements Comparator<Segment> {

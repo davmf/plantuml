@@ -36,12 +36,14 @@
 package net.sourceforge.plantuml.salt.factory;
 
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.salt.DataSource;
 import net.sourceforge.plantuml.salt.SaltDictionary;
 import net.sourceforge.plantuml.salt.Terminated;
 import net.sourceforge.plantuml.salt.Terminator;
 import net.sourceforge.plantuml.salt.element.Element;
 import net.sourceforge.plantuml.salt.element.ElementMenuBar;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class ElementFactoryMenu extends AbstractElementFactoryComplex {
 
@@ -54,9 +56,9 @@ public class ElementFactoryMenu extends AbstractElementFactoryComplex {
 			throw new IllegalStateException();
 		}
 		final String header = getDataSource().next().getElement();
-		assert header.startsWith("{*");
+		if (TeaVM.a()) assert header.startsWith("{*");
 
-		final UFont font = UFont.byDefault(12);
+		final UFont font = UFontFactory.byDefault(12);
 		final ElementMenuBar result = new ElementMenuBar(font, getDictionary());
 
 		String subentry = null;

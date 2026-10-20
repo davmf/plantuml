@@ -35,7 +35,6 @@
  */
 package net.sourceforge.plantuml.bpm;
 
-import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
@@ -49,6 +48,8 @@ import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.ISkinParam;
+
+import net.sourceforge.plantuml.annotation.Fast;
 
 public class ConnectorPuzzleEmpty extends AbstractConnectorPuzzle implements Placeable, TextBlock, ConnectorPuzzle {
 
@@ -113,6 +114,7 @@ public class ConnectorPuzzleEmpty extends AbstractConnectorPuzzle implements Pla
 		}
 	}
 
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(20, 20);
 	}
@@ -121,7 +123,8 @@ public class ConnectorPuzzleEmpty extends AbstractConnectorPuzzle implements Pla
 		throw new UnsupportedOperationException();
 	}
 
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
+	@Override
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 		return null;
 	}
 

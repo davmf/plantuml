@@ -35,11 +35,12 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
-import java.awt.geom.AffineTransform;
+import net.sourceforge.plantuml.klimt.UShapeKind;
 import java.util.ArrayList;
 import java.util.List;
 
 import net.sourceforge.plantuml.klimt.AbstractShadowable;
+import net.sourceforge.plantuml.klimt.awt.XAffineTransform;
 import net.sourceforge.plantuml.klimt.compress.CompressionMode;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
@@ -113,10 +114,10 @@ public class UPolygon extends AbstractShadowable {
 	public void rotate(double theta) {
 		if (theta == 0)
 			return;
-		affine(AffineTransform.getRotateInstance(theta));
+		affine(XAffineTransform.getRotateInstance(theta));
 	}
 
-	public void affine(AffineTransform rotate) {
+	public void affine(XAffineTransform rotate) {
 		for (int i = 0; i < all.size(); i++)
 			all.set(i, all.get(i).transform(rotate));
 
@@ -178,6 +179,11 @@ public class UPolygon extends AbstractShadowable {
 
 	public final void setCompressionMode(CompressionMode compressionMode) {
 		this.compressionMode = compressionMode;
+	}
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.POLYGON;
 	}
 
 }

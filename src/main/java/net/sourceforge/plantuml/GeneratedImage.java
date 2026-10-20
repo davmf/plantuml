@@ -38,7 +38,6 @@ package net.sourceforge.plantuml;
 import java.io.File;
 
 public interface GeneratedImage extends Comparable<GeneratedImage> {
-	// ::remove file when __HAXE__
 
 	public File getPngFile();
 
@@ -47,5 +46,7 @@ public interface GeneratedImage extends Comparable<GeneratedImage> {
 	public int lineErrorRaw();
 
 	public int getStatus();
+
+	public Throwable getRootCause();
 
 }

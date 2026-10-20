@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.stereo;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.StringUtils;
@@ -54,6 +53,7 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.text.Guillemet;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class StereotypeDecoration {
 	private final static RegexComposed circleChar = new RegexConcat( //
@@ -109,12 +109,12 @@ public class StereotypeDecoration {
 		for (String s : cutLabels(label, Guillemet.NONE))
 			result.add(s);
 		if (spriteName == null)
-			return Collections.unmodifiableList(result);
+			return MyCollections.unmodifiableList(result);
 
 		final int idx = spriteName.lastIndexOf('/');
 		if (idx != -1)
 			result.add(spriteName.substring(idx + 1));
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	private StereotypeDecoration(String label, HColor htmlColor, char character, String spriteName,
@@ -186,13 +186,13 @@ public class StereotypeDecoration {
 
 	static List<String> cutLabels(final String label, Guillemet guillemet) {
 		final List<String> result = new ArrayList<>();
-		final Matcher2 m = p.matcher(label);
+		final Matcher2 m = p.matcher(label, 0);
 		while (m.find()) {
 			final String group = m.group();
 			if (group.startsWith("<<<") == false)
 				result.add(guillemet.manageGuillemetStrict(group));
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 }

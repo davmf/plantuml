@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
@@ -46,7 +46,6 @@ import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.url.Url;
 
 public class TextBlockWithUrl implements TextBlock {
-    // ::remove file when __HAXE__
 
 	private final TextBlock block;
 	private final Url url;
@@ -70,6 +69,8 @@ public class TextBlockWithUrl implements TextBlock {
 		ug.closeUrl();
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return block.calculateDimension(stringBounder);
 	}
@@ -78,8 +79,9 @@ public class TextBlockWithUrl implements TextBlock {
 		return block.getMinMax(stringBounder);
 	}
 
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		return block.getInnerPosition(member, stringBounder, strategy);
+	@Override
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		return block.getInnerPosition(member, stringBounder);
 	}
 
 	@Override

@@ -37,23 +37,23 @@ package net.sourceforge.plantuml.classdiagram;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import net.atmp.CucaDiagram;
 import net.sourceforge.plantuml.Previous;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.core.DiagramDescription;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.skin.PragmaKey;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public abstract class AbstractEntityDiagram extends CucaDiagram {
-	// ::remove folder when __HAXE__
 
-	public AbstractEntityDiagram(UmlSource source, UmlDiagramType type, Previous previous, PreprocessingArtifact preprocessing) {
+	public AbstractEntityDiagram(UmlSource source, DiagramType type, Previous previous,
+			PreprocessingArtifact preprocessing) {
 		super(source, type, previous, preprocessing);
 	}
 
@@ -66,7 +66,7 @@ public abstract class AbstractEntityDiagram extends CucaDiagram {
 		final String attribute = getPragma().getValue(PragmaKey.GRAPH_ATTRIBUTES);
 		final List<String> result = new ArrayList<>(def);
 		result.add(attribute);
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	final public DiagramDescription getDescription() {

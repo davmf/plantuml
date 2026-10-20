@@ -67,9 +67,9 @@ public class GetAllTheme extends SimpleReturnFunction {
 			Map<String, TValue> named) throws EaterException {
 		final JsonArray result = new JsonArray();
 		try {
-			for (String theme : ThemeUtils.getAllThemeNames()) {
+			for (String theme : ThemeUtils.getAllThemeNames())
 				result.add(theme);
-			}
+
 			return TValue.fromJson(result);
 		} catch (IOException e) {
 			Logme.error(e);

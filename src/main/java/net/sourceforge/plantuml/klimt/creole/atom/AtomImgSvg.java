@@ -48,7 +48,8 @@ public class AtomImgSvg extends AbstractAtom implements Atom {
 		this.tileImageSvg = tileImageSvg;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return tileImageSvg.calculateDimension(stringBounder);
 	}
 

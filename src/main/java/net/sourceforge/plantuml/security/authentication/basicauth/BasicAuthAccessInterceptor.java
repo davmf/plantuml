@@ -49,7 +49,8 @@ import net.sourceforge.plantuml.utils.Base64Coder;
  * @author Aljoscha Rittner
  */
 public class BasicAuthAccessInterceptor implements SecurityAccessInterceptor {
-
+	
+	
 	/**
 	 * Applies from {@link SecurityAuthentication} data a BasicAuth authentication
 	 * access header.

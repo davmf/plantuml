@@ -36,13 +36,11 @@
 package net.sourceforge.plantuml.utils;
 
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.text.StringLocated;
 
 public class StartUtils {
-	// ::remove file when __HAXE__
 
 	public static final Pattern2 patternFilename = Pattern2
 			.cmpile("^[@\\\\]start[^%s{}%g]+[%s{][%s%g]*([^%g]*?)[%s}%g]*$");
@@ -50,61 +48,84 @@ public class StartUtils {
 	public static final String PAUSE_PATTERN = "((?:\\W|\\<[^<>]*\\>)*)[@\\\\]unpause";
 	public static final String START_PATTERN = "((?:[^\\w~]|\\<[^<>]*\\>)*)[@\\\\]start";
 
+	public static boolean isStartDirective(String s) {
+		final int n = s.length();
+		int i = 0;
+		while (i < n && Character.isWhitespace(s.charAt(i)))
+			i++;
+		if (i >= n)
+			return false;
+		final char c = s.charAt(i);
+		if (c != '@' && c != '\\')
+			return false;
+		// need '@' + "start" + at least one char after
+		return i + 6 < n && s.regionMatches(i + 1, "start", 0, 5);
+	}
+
 	public static String beforeStartUml(final String s) {
+		final int n = s.length();
 		boolean inside = false;
-		for (int i = 0; i < s.length(); i++) {
-			final String tmp = s.substring(i, s.length());
-			if (startsWithSymbolAnd("start", tmp))
+
+		for (int i = 0; i < n; i++) {
+			if (startsWithDirectiveKeyword(s, i, "start"))
 				return s.substring(0, i);
 
-			final String single = s.substring(i, i + 1);
+			final char c = s.charAt(i);
+
 			if (inside) {
-				if (single.equals(">"))
+				if (c == '>')
 					inside = false;
 
 				continue;
 			}
 
-			if (single.equals("<"))
+			if (c == '<')
 				inside = true;
-			else if (single.matches("[\\w~]"))
+			else if (isWordOrTilde(c))
 				return null;
 
 		}
 		return null;
 	}
 
-	public static boolean isArobaseStartDiagram(String s) {
-		return DiagramType.getTypeFromArobaseStart(s) != DiagramType.UNKNOWN;
+	private static boolean isWordOrTilde(char c) {
+		return c == '~' || Character.isLetterOrDigit(c) || c == '_';
 	}
 
-	private static boolean startsWithSymbolAnd(String keyword, String text) {
-		for (int i = 0; i < text.length(); i++) {
+	private static boolean startsWithDirectiveKeyword(String text, int from, String keyword) {
+		final int n = text.length();
+		int i = from;
+
+		while (i < n) {
 			final char c = text.charAt(i);
-			if (Character.isWhitespace(c))
+			if (Character.isWhitespace(c)) {
+				i++;
 				continue;
+			}
 
 			if (c != '@' && c != '\\')
 				return false;
 
-			if (text.length() - i - 1 < keyword.length())
+			final int kwLen = keyword.length();
+			final int start = i + 1;
+			if (start + kwLen > n)
 				return false;
 
-			return text.regionMatches(i + 1, keyword, 0, keyword.length());
+			return text.regionMatches(start, keyword, 0, kwLen);
 		}
 		return false;
 	}
 
-	public static boolean isArobaseEndDiagram(String s) {
-		return startsWithSymbolAnd("end", s);
+	public static boolean isEndDirective(String s) {
+		return startsWithDirectiveKeyword(s, 0, "end");
 	}
 
-	public static boolean isArobasePauseDiagram(String s) {
-		return startsWithSymbolAnd("pause", s);
+	public static boolean isPauseDirective(String s) {
+		return startsWithDirectiveKeyword(s, 0, "pause");
 	}
 
-	public static boolean isArobaseUnpauseDiagram(String s) {
-		return startsWithSymbolAnd("unpause", s);
+	public static boolean isUnpauseDirective(String s) {
+		return startsWithDirectiveKeyword(s, 0, "unpause");
 	}
 
 	public static boolean isExit(CharSequence s) {
@@ -132,7 +153,7 @@ public class StartUtils {
 
 	public static StringLocated getPossibleAppend(StringLocated cs) {
 		final String s = cs.getString();
-		final Matcher2 m = append.matcher(s);
+		final Matcher2 m = append.matcher(s, 0);
 		if (m.find()) {
 			final String tmp = s.substring(m.group(0).length(), s.length());
 			return new StringLocated(StringUtils.trin(tmp), cs.getLocation(), cs.getPreprocessorError());

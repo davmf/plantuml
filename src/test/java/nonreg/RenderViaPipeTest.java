@@ -1,22 +1,26 @@
 package nonreg;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.util.Lists.newArrayList;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import net.sourceforge.plantuml.ErrorStatus;
-import net.sourceforge.plantuml.Option;
 import net.sourceforge.plantuml.Pipe;
+import net.sourceforge.plantuml.cli.CliFlag;
+import net.sourceforge.plantuml.cli.CliOptions;
+import net.sourceforge.plantuml.cli.CliParser;
+import net.sourceforge.plantuml.cli.ExitStatus;
 
 /**
  * Tests the Render
@@ -40,17 +44,17 @@ class RenderViaPipeTest {
     // private static final String[] COMMON_OPTIONS = {"-tutxt"};
 
     private String[] optionArray(String... extraOptions) {
-        final List<String> list = newArrayList(COMMON_OPTIONS);
+        final List<String> list = new ArrayList<>(Arrays.asList(COMMON_OPTIONS));
         Collections.addAll(list, extraOptions);
         return list.toArray(new String[0]);
     }
 
     private String renderViaPipe(String diagram, String... extraOptions) throws Exception {
-        final Option option = new Option(optionArray(extraOptions));
+        final CliOptions option = CliParser.parse(optionArray(extraOptions));
         final ByteArrayInputStream bais = new ByteArrayInputStream(diagram.getBytes(UTF_8));
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        final Pipe pipe = new Pipe(option, new PrintStream(baos), bais, option.getCharset());
-        pipe.managePipe(ErrorStatus.init());
+        final Pipe pipe = new Pipe(option, new PrintStream(baos), bais, option.getString(CliFlag.CHARSET));
+        pipe.managePipe(ExitStatus.init());
         final String rendered = new String(baos.toByteArray(), UTF_8);
         // System.out.println(rendered);
         return rendered;
@@ -58,6 +62,6 @@ class RenderViaPipeTest {
 
     public void assertRenderExpectedOutput(String input, String expected) throws Exception {
         final String rendered = renderViaPipe(input);
-        assertThat(rendered).doesNotContain("syntax").contains(expected);
+        assertFalse(rendered.contains("syntax")); assertTrue(rendered.contains(expected));
     }   
 }

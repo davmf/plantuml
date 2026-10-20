@@ -35,11 +35,15 @@
  */
 package net.sourceforge.plantuml.activitydiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 import com.plantuml.ubrex.builder.UBrexConcat;
 import com.plantuml.ubrex.builder.UBrexLeaf;
 
 import net.sourceforge.plantuml.activitydiagram.ActivityDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.UBrexSingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class UBrexCommandEndif extends UBrexSingleLineCommand2<ActivityDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("end", "endif");
 	// ::remove folder when __HAXE__
 
 	public UBrexCommandEndif() {
@@ -62,6 +68,14 @@ public class UBrexCommandEndif extends UBrexSingleLineCommand2<ActivityDiagram> 
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'endif' closes the enclosing 'if' (legacy activity diagram syntax);
+		// executeArg fails when no 'if' is pending.
+		return "Closing the enclosing if";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		if (diagram.getLastEntityConsulted() == null)
@@ -73,6 +87,17 @@ public class UBrexCommandEndif extends UBrexSingleLineCommand2<ActivityDiagram> 
 		diagram.endif();
 
 		return CommandExecutionResult.ok();
+	}
+
+	// Declared by hand: FirstTokens only reads regex patterns, and this one is a UBrex expression.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FIRST_TOKENS;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

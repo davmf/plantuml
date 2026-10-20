@@ -42,7 +42,6 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
 public class AtomEmoji extends AbstractAtom implements Atom {
-
 	private static final double MAGIC = 24.0;
 	private final Emoji emoji;
 	private final double factor;
@@ -54,7 +53,8 @@ public class AtomEmoji extends AbstractAtom implements Atom {
 		this.color = color;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final double size = 36 * factor;
 		return new XDimension2D(size, size);
 	}

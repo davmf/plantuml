@@ -35,38 +35,38 @@
  */
 package net.sourceforge.plantuml.dedication;
 
-import java.awt.image.BufferedImage;
-import java.util.Objects;
-
 import net.atmp.PixelImage;
-import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.PlainDiagram;
+import net.sourceforge.plantuml.UgSimpleDiagram;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.AffineTransformType;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 
-public class PSystemDedication extends PlainDiagram {
+public class PSystemDedication extends UgSimpleDiagram {
 
-	private final BufferedImage img;
+	private final UImage image;
 
-	public PSystemDedication(UmlSource source, BufferedImage img, PreprocessingArtifact preprocessing) {
+	public PSystemDedication(UmlSource source, PortableImage portableImage, PreprocessingArtifact preprocessing) {
 		super(source, preprocessing);
-		this.img = Objects.requireNonNull(img);
+		this.image = new UImage(new PixelImage(portableImage, AffineTransformType.TYPE_BILINEAR));
 	}
 
 	@Override
-	protected UDrawable getRootDrawable(FileFormatOption fileFormatOption) {
-		// return ug -> ug.draw(new UImage(new PixelImage(img,
-		// AffineTransformType.TYPE_BILINEAR)));
-		return new UDrawable() {
-			public void drawU(UGraphic ug) {
-				ug.draw(new UImage(new PixelImage(img, AffineTransformType.TYPE_BILINEAR)));
-			}
-		};
+	public void drawU(UGraphic ug) {
+		ug.draw(image);
+
+	}
+
+	@Override
+	@Fast
+	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		return image.calculateDimension(stringBounder);
 	}
 
 	public DiagramDescription getDescription() {

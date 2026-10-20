@@ -34,29 +34,26 @@
  */
 package net.sourceforge.plantuml.gitlog;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Collection;
 
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
-public class GitDiagram extends UmlDiagram {
+public class GitDiagram extends TitledDiagram {
 
 	private final Collection<GNode> gnodes;
+	private SmetanaForGit smetana;
 
 	public GitDiagram(UmlSource source, GitTextArea textArea, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.GIT, null, preprocessing);
+		super(source, DiagramType.GIT, null, preprocessing);
 		this.gnodes = new GNodeBuilder(textArea.getAllCommits()).getAllNodes();
 		new GNodeBuilder(textArea.getAllCommits());
 	}
@@ -65,35 +62,23 @@ public class GitDiagram extends UmlDiagram {
 		return new DiagramDescription("(Git)");
 	}
 
-	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
+	private SmetanaForGit getOrCreateSmetana(StringBounder stringBounder) {
+		if (smetana == null)
+			smetana = new SmetanaForGit(stringBounder, getSkinParam());
 
-		return createImageBuilder(fileFormatOption).drawable(getTextMainBlock(fileFormatOption)).write(os);
-	}
-
-	private void drawInternal(UGraphic ug) {
-
-		new SmetanaForGit(ug, getSkinParam()).drawMe(gnodes);
-
-//		final Display display = Display.getWithNewlines("Your data does not sound like GIT data");
-//		final FontConfiguration fontConfiguration = FontConfiguration.blackBlueTrue(UFont.courier(14));
-//		TextBlock result = display.create(fontConfiguration, HorizontalAlignment.LEFT, getSkinParam());
-//		result = TextBlockUtils.withMargin(result, 5, 2);
-//		result.drawU(ug);
-
+		return smetana;
 	}
 
 	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		return new AbstractTextBlock() {
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
+		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
-				drawInternal(ug);
+				getOrCreateSmetana(ug.getStringBounder()).drawMe(ug, gnodes);
 			}
 
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
-				return null;
+				return getOrCreateSmetana(stringBounder).calculateDimension(gnodes);
 			}
 
 		};

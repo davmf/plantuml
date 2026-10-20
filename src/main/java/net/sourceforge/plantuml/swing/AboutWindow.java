@@ -62,8 +62,6 @@ import net.sourceforge.plantuml.version.PSystemVersion;
 import net.sourceforge.plantuml.version.Version;
 
 class AboutWindow extends JFrame {
-	// ::remove folder when __CORE__
-
 	public AboutWindow() {
 		super();
 		setIconImage(PSystemVersion.getPlantumlSmallIcon2());
@@ -91,7 +89,7 @@ class AboutWindow extends JFrame {
 		final JPanel ptext = new JPanel();
 		ptext.add(text);
 
-		final JLabel icon = new JLabel(new ImageIcon(PSystemVersion.getPlantumlImage()));
+		final JLabel icon = new JLabel(new ImageIcon(PSystemVersion.getPlantumlImage().getBufferedImage()));
 
 		final JPanel result = new JPanel(new BorderLayout());
 		result.add(ptext, BorderLayout.CENTER);
@@ -121,13 +119,13 @@ class AboutWindow extends JFrame {
 
 	private JComponent getInfoVersion() {
 		final PSystemVersion p1 = PSystemVersion
-				.createShowVersion2(UmlSource.create(new ArrayList<StringLocated>(), false), new PreprocessingArtifact());
+				.createShowVersion(UmlSource.create(new ArrayList<StringLocated>(), false), new PreprocessingArtifact());
 		return getJComponent(skip(p1.getLines()));
 	}
 
 	private JComponent getInfoAuthors() {
 		final PSystemVersion p1 = PSystemVersion
-				.createShowAuthors2(UmlSource.create(new ArrayList<StringLocated>(), false), new PreprocessingArtifact());
+				.createShowAuthors(UmlSource.create(new ArrayList<StringLocated>(), false), new PreprocessingArtifact());
 		return getJComponent(skip(p1.getLines()));
 	}
 

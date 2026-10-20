@@ -35,17 +35,19 @@
  */
 package net.sourceforge.plantuml.klimt.creole.command;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import net.sourceforge.plantuml.klimt.creole.legacy.StripeSimple;
 import net.sourceforge.plantuml.math.ScientificEquationSafe;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
+import net.sourceforge.plantuml.style.ISkinSimple;
 
 public class CommandCreoleLatex implements Command {
-	// ::remove file when __CORE__
-
 	@Override
-	public String startingChars() {
-		return "<";
+	public Collection<String> starters() {
+		return Collections.singleton("<l");
 	}
 
 	private static final Pattern2 pattern = Pattern2.cmpile("^(" + Splitter.latexPattern + ")");
@@ -57,22 +59,24 @@ public class CommandCreoleLatex implements Command {
 		return new CommandCreoleLatex();
 	}
 
-	public int matchingSize(String line) {
-		final Matcher2 m = pattern.matcher(line);
+	@Override
+	public int matchingSize(String line, int pos) {
+		final Matcher2 m = pattern.matcher(line, pos);
 		if (m.find() == false)
 			return 0;
 
 		return m.group(1).length();
 	}
 
-	public String executeAndGetRemaining(String line, StripeSimple stripe) {
-		final Matcher2 m = pattern.matcher(line);
+	@Override
+	public int executeAndAdvance(ISkinSimple skinSimple, String line, int pos, StripeSimple stripe) {
+		final Matcher2 m = pattern.matcher(line, pos);
 		if (m.find() == false)
 			throw new IllegalStateException();
 
 		final String latex = m.group(2);
 		stripe.addMath(ScientificEquationSafe.fromLatex(latex));
-		return line.substring(m.group(1).length());
+		return m.group(1).length();
 	}
 
 }

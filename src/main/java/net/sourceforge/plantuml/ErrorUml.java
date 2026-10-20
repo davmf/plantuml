@@ -37,24 +37,32 @@ package net.sourceforge.plantuml;
 
 import java.util.Objects;
 
-import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.core.DiagramType;
+import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class ErrorUml {
-	// ::remove file when __HAXE__
 
 	private final String error;
 	private final ErrorUmlType errorType;
-	private final LineLocation lineLocation;
+	private final StringLocated line;
 	private final int score;
-	private final UmlDiagramType diagramType;
+	private final DiagramType diagramType;
 
-	public ErrorUml(ErrorUmlType type, String error, int score, LineLocation lineLocation, UmlDiagramType diagramType) {
+	public ErrorUml(ErrorUmlType type, String error, int score, StringLocated line, DiagramType diagramType) {
 		this.score = score;
 		this.error = Objects.requireNonNull(error);
 		this.errorType = Objects.requireNonNull(type);
-		this.lineLocation = lineLocation;
+		this.line = line;
 		this.diagramType = diagramType;
+	}
+
+	public ErrorUml(ErrorUmlType type, String error) {
+		this.score = 0;
+		this.error = Objects.requireNonNull(error);
+		this.errorType = Objects.requireNonNull(type);
+		this.line = null;
+		this.diagramType = null;
 	}
 
 	public int score() {
@@ -85,11 +93,17 @@ public class ErrorUml {
 	}
 
 	public final int getPosition() {
-		return lineLocation.getPosition();
+		if (line == null)
+			return 0;
+		return line.getLocation().getPosition();
 	}
 
 	public final LineLocation getLineLocation() {
-		return lineLocation;
+		return line.getLocation();
+	}
+
+	public final StringLocated getLine() {
+		return line;
 	}
 
 }

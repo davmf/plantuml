@@ -39,7 +39,6 @@ import java.io.OutputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -49,38 +48,40 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import net.atmp.ImageBuilder;
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.Previous;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.abel.DisplayPositioned;
 import net.sourceforge.plantuml.abel.EntityPortion;
+import net.sourceforge.plantuml.api.ImageDataSimple;
+import net.sourceforge.plantuml.asciiverse.AsciiBlock;
+import net.sourceforge.plantuml.asciiverse.InfinitePlan;
+import net.sourceforge.plantuml.cli.GlobalConfig;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
+import net.sourceforge.plantuml.core.DiagramChromeFactory;
 import net.sourceforge.plantuml.core.DiagramDescription;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.Fashion;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.Display;
-import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
-import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.sequencediagram.graphic.FileMaker;
-import net.sourceforge.plantuml.sequencediagram.graphic.SequenceDiagramFileMakerPuma2;
-import net.sourceforge.plantuml.sequencediagram.graphic.SequenceDiagramTxtMaker;
 import net.sourceforge.plantuml.sequencediagram.teoz.SequenceDiagramFileMakerTeoz;
 import net.sourceforge.plantuml.skin.ColorParam;
 import net.sourceforge.plantuml.skin.PragmaKey;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.xmi.SequenceDiagramXmiMaker;
 
-public class SequenceDiagram extends UmlDiagram {
+public class SequenceDiagram extends TitledDiagram {
 
 	private boolean hideUnlinkedData;
 
@@ -95,6 +96,7 @@ public class SequenceDiagram extends UmlDiagram {
 	private final List<Participant> participantsList = new ArrayList<>();
 
 	private final List<Event> events = new ArrayList<>();
+	private final List<DisplayPositioned> titles = new ArrayList<>();
 
 	private final Map<Participant, ParticipantEnglober> participantEnglobers2 = new HashMap<Participant, ParticipantEnglober>();
 
@@ -106,8 +108,14 @@ public class SequenceDiagram extends UmlDiagram {
 		return cpt;
 	}
 
+	public DisplayPositioned getTitle(int index) {
+		if (index > 0)
+			return titles.get(index - 1);
+		return getTitle();
+	}
+
 	public SequenceDiagram(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.SEQUENCE, previous, preprocessing);
+		super(source, DiagramType.SEQUENCE, previous, preprocessing);
 	}
 
 	@Deprecated
@@ -182,17 +190,20 @@ public class SequenceDiagram extends UmlDiagram {
 	}
 
 	public Collection<Participant> participants() {
-		return Collections.unmodifiableCollection(participantsList);
+		return MyCollections.unmodifiableCollection(participantsList);
 	}
 
 	public boolean participantsContainsKey(String code) {
 		return participantsget(code) != null;
 	}
 
+	private int messageCount;
+
 	public CommandExecutionResult addMessage(AbstractMessage m) {
 		if (m.isParallel())
 			m.setParallelBrother(getLastAbstractMessage());
 
+		m.setUid("msg" + (++messageCount));
 		lastEventWithDeactivate = m;
 		lastDelay = null;
 		events.add(m);
@@ -232,11 +243,12 @@ public class SequenceDiagram extends UmlDiagram {
 		events.add(n);
 	}
 
-	public void newpage(Display strings) {
+	public void newpage(DisplayPositioned title) {
 		if (ignoreNewpage)
 			return;
 
-		events.add(new Newpage(strings, getSkinParam().getCurrentStyleBuilder()));
+		titles.add(title);
+		events.add(new Newpage(getSkinParam().getCurrentStyleBuilder()));
 		countNewpage++;
 	}
 
@@ -258,7 +270,12 @@ public class SequenceDiagram extends UmlDiagram {
 	}
 
 	public void divider(Display strings) {
-		events.add(new Divider(strings, getSkinParam().getCurrentStyleBuilder()));
+		final Divider divider = new Divider(strings, getSkinParam().getCurrentStyleBuilder());
+		events.add(divider);
+		// See Divider.dealWith() for why this matters: without it, a bare
+		// activate/deactivate right after this divider would anchor itself to
+		// whatever message preceded the divider instead of to the divider itself.
+		lastEventWithDeactivate = divider;
 	}
 
 	public void hspace() {
@@ -278,55 +295,60 @@ public class SequenceDiagram extends UmlDiagram {
 	}
 
 	public List<Event> events() {
-		return Collections.unmodifiableList(events);
+		return MyCollections.unmodifiableList(events);
 	}
 
 	private FileMaker getSequenceDiagramPngMaker(int index, FileFormatOption fileFormatOption) {
-
 		// We reset the counter for messages
 		this.cpt.set(1);
 
-		final FileFormat fileFormat = fileFormatOption.getFileFormat();
-		// ::comment when __CORE__
-		if (fileFormat == FileFormat.ATXT || fileFormat == FileFormat.UTXT)
-			return new SequenceDiagramTxtMaker(this, fileFormat);
+		if (!TeaVM.isTeaVM()) {
+			final FileFormat fileFormat = fileFormatOption.getFileFormat();
+//			if (fileFormat == FileFormat.ATXT || fileFormat == FileFormat.UTXT)
+//				return new SequenceDiagramTxtMaker(this, fileFormat);
 
-		if (fileFormat.name().startsWith("XMI"))
-			return new SequenceDiagramXmiMaker(this, fileFormat);
-		// ::done
+			if (fileFormat.name().startsWith("XMI"))
+				return new SequenceDiagramXmiMaker(this, fileFormat);
 
-		if (modeTeoz())
-			return new SequenceDiagramFileMakerTeoz(this, skin2, fileFormatOption, index);
+		}
+		// if (modeTeoz())
+		return new SequenceDiagramFileMakerTeoz(this, skin2, fileFormatOption, index);
 
-		return new SequenceDiagramFileMakerPuma2(this, skin2, fileFormatOption);
+		// return new SequenceDiagramFileMakerPuma2(this, skin2, fileFormatOption);
 	}
 
 	private boolean modeTeoz() {
-		return OptionFlags.FORCE_TEOZ || getPragma().isTrue(PragmaKey.TEOZ);
+		return GlobalConfig.FORCE_TEOZ || getPragma().isTrue(PragmaKey.TEOZ);
 	}
 
 	@Override
-	public ImageBuilder createImageBuilder(FileFormatOption fileFormatOption) throws IOException {
-		return super.createImageBuilder(fileFormatOption).annotations(false);
-		// they are managed in the SequenceDiagramFileMaker* classes
+	protected ImageData exportXmi(OutputStream os, FileFormat fileFormat) throws IOException {
+		final SequenceDiagramXmiMaker maker = new SequenceDiagramXmiMaker(this, fileFormat);
+		return maker.createOne(os, 0, false);
 	}
 
 	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormat)
-			throws IOException {
-		final FileMaker sequenceDiagramPngMaker = getSequenceDiagramPngMaker(index, fileFormat);
-		return sequenceDiagramPngMaker.createOne(os, index, fileFormat.isWithMetadata());
+	protected ImageData exportTxt(OutputStream os, int index, FileFormat fileFormat) throws IOException {
+		final FileFormatOption fileFormatOption = new FileFormatOption(fileFormat);
+		final SequenceDiagramFileMakerTeoz maker = new SequenceDiagramFileMakerTeoz(this, skin2, fileFormatOption,
+				index);
+		final AsciiBlock rawBlock = maker.getAsciiBlock(index, fileFormatOption);
+		final AsciiBlock block = DiagramChromeFactory.createAscii(rawBlock, this);
+
+		final InfinitePlan plan = new InfinitePlan(fileFormat);
+		block.asciiDraw(plan);
+		plan.exportTxt(os);
+
+//		final SequenceDiagramTxtMaker maker = new SequenceDiagramTxtMaker(this, fileFormat);
+//		return maker.createOne(os, index, false);
+
+		return ImageDataSimple.ok();
 	}
 
 	@Override
-	final public void exportDiagramGraphic(UGraphic ug, FileFormatOption fileFormatOption) {
-		final FileMaker sequenceDiagramPngMaker = getSequenceDiagramPngMaker(0, fileFormatOption);
-		sequenceDiagramPngMaker.createOneGraphic(ug);
-	}
-
-	@Override
-	final protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		throw new UnsupportedOperationException();
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormat) {
+		final FileMaker sequenceDiagramPngMaker = getSequenceDiagramPngMaker(num, fileFormat);
+		return sequenceDiagramPngMaker.getTextBlock(num, fileFormat);
 	}
 
 	// support for CommandReturn
@@ -366,6 +388,13 @@ public class SequenceDiagram extends UmlDiagram {
 
 			return null;
 		}
+		// When the last message does not deal with this participant (for example
+		// "X -> X" followed by "destroy Y"), the life event must not be attached to
+		// that message: it stays a standalone event so that both Puma and Teoz can
+		// render it as a destroy cross without any associated message.
+		if (lastEventWithDeactivate.dealWith(p) == false)
+			return null;
+
 		if (lifeEventType == LifeEventType.ACTIVATE && lastEventWithDeactivate instanceof AbstractMessage)
 			activationState.push((AbstractMessage) lastEventWithDeactivate);
 		else if (lifeEventType == LifeEventType.DEACTIVATE && activationState.empty() == false)
@@ -386,7 +415,7 @@ public class SequenceDiagram extends UmlDiagram {
 
 	public boolean grouping(String title, String comment, GroupingType type, HColor backColorGeneral,
 			HColor backColorElement, boolean parallel) {
-		if (type != GroupingType.START && openGroupings.size() == 0)
+		if (type.isStart() == false && openGroupings.size() == 0)
 			return false;
 
 		if (backColorGeneral == null)
@@ -394,14 +423,20 @@ public class SequenceDiagram extends UmlDiagram {
 
 		final GroupingStart top = openGroupings.size() > 0 ? openGroupings.get(0) : null;
 
-		final Grouping g = type == GroupingType.START
-				? new GroupingStart(title, comment, backColorGeneral, backColorElement, top,
-						getSkinParam().getCurrentStyleBuilder())
-				: new GroupingLeaf(title, comment, type, backColorGeneral, backColorElement, top,
-						getSkinParam().getCurrentStyleBuilder());
+		final Grouping g;
+		switch (type) {
+		case START_PARTITION:
+		case START:
+			g = new GroupingStart(type, title, comment, backColorGeneral, backColorElement, top,
+					getSkinParam().getCurrentStyleBuilder());
+			break;
+		default:
+			g = new GroupingLeaf(title, comment, type, backColorGeneral, backColorElement, top,
+					getSkinParam().getCurrentStyleBuilder());
+		}
 		events.add(g);
 
-		if (type == GroupingType.START) {
+		if (type.isStart()) {
 			if (parallel)
 				((GroupingStart) g).goParallel();
 
@@ -489,17 +524,6 @@ public class SequenceDiagram extends UmlDiagram {
 	@Override
 	public int getNbImages() {
 		return countNewpage + 1;
-//		// ::comment when __CORE__
-//		try {
-//			// The DEBUG StringBounder is ok just to compute the number of pages here.
-//			return getSequenceDiagramPngMaker(1, new FileFormatOption(FileFormat.DEBUG)).getNbPages();
-//		} catch (Throwable t) {
-//			Logme.error(t);
-//			// ::done
-//		return 1;
-//			// ::comment when __CORE__
-//		}
-//		// ::done
 	}
 
 	public void removeHiddenParticipants() {
@@ -527,7 +551,8 @@ public class SequenceDiagram extends UmlDiagram {
 	public void putParticipantInLast(String code) {
 		final Participant p = Objects.requireNonNull(participantsget(code), code);
 		final boolean ok = participantsList.remove(p);
-		assert ok;
+		if (TeaVM.a())
+			assert ok;
 		addWithOrder(p);
 		participantEnglobers2.put(p, participantEnglober);
 	}
@@ -566,11 +591,8 @@ public class SequenceDiagram extends UmlDiagram {
 	}
 
 	@Override
-	public boolean isOk() {
-		if (participantsList.size() == 0)
-			return false;
-
-		return true;
+	public boolean isIncomplete() {
+		return participantsList.size() == 0;
 	}
 
 	@Override
@@ -603,7 +625,7 @@ public class SequenceDiagram extends UmlDiagram {
 	}
 
 	public List<LinkAnchor> getLinkAnchors() {
-		return Collections.unmodifiableList(linkAnchors);
+		return MyCollections.unmodifiableList(linkAnchors);
 	}
 
 	@Override
@@ -612,4 +634,5 @@ public class SequenceDiagram extends UmlDiagram {
 				? ClockwiseTopRightBottomLeft.same(5)
 				: ClockwiseTopRightBottomLeft.topRightBottomLeft(5, 5, 5, 0);
 	}
+
 }

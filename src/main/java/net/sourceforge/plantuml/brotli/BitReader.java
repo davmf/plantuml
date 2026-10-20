@@ -12,9 +12,8 @@ package net.sourceforge.plantuml.brotli;
  * Bit reading helpers.
  */
 final class BitReader {
-	// ::remove folder when __CORE__
 
-	// Added by Arnaud... not very beautifull
+	// Added by Arnaud... not very beautiful
 	private static final boolean CHECK_UNUSED_BYTES_AFTER_END = false;
 
 	// Possible values: {5, 6}. 5 corresponds to 32-bit build, 6 to 64-bit. This

@@ -39,10 +39,8 @@ import net.sourceforge.plantuml.command.PSystemBasicFactory;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
 public class PSystemCreoleFactory extends PSystemBasicFactory<PSystemCreole> {
-	// ::remove file when __CORE__
 
 	public PSystemCreoleFactory() {
 		super(DiagramType.CREOLE);
@@ -50,22 +48,14 @@ public class PSystemCreoleFactory extends PSystemBasicFactory<PSystemCreole> {
 
 	@Override
 	public PSystemCreole initDiagram(UmlSource source, String startLine, PreprocessingArtifact preprocessing) {
-		if (getDiagramType() == DiagramType.CREOLE)
-			return new PSystemCreole(source, preprocessing);
-
-		return null;
+		return new PSystemCreole(source, preprocessing);
 	}
 
 	@Override
-	public PSystemCreole executeLine(UmlSource source, PSystemCreole system, String line, PreprocessingArtifact preprocessing) {
+	public PSystemCreole executeLine(UmlSource source, PSystemCreole system, String line,
+			PreprocessingArtifact preprocessing) {
 		system.doCommandLine(line);
 		return system;
 	}
-	
-	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return null;
-	}
-
 
 }

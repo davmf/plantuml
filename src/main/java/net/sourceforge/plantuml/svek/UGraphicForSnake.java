@@ -44,6 +44,7 @@ import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.drawing.UGraphicDelegator;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 
 public class UGraphicForSnake extends UGraphicDelegator {
 
@@ -79,11 +80,23 @@ public class UGraphicForSnake extends UGraphicDelegator {
 
 		void removeEndDecorationIfTouches(List<PendingSnake> snakes) {
 			for (PendingSnake other : snakes) {
-				if (moved().touches(other.moved())) {
+				if (touchesOther(other)) {
 					this.snake = this.snake.withoutEndDecoration();
 					return;
 				}
 			}
+		}
+
+		// Check if this snake's last point (translated) touches other snake's first point (translated)
+		// without creating intermediate Snake/Worm objects
+		private boolean touchesOther(PendingSnake other) {
+			if (other.snake.cannotBeTouched())
+				return false;
+
+			final XPoint2D thisLast = snake.getLast();
+			final XPoint2D otherFirst = other.snake.getFirst();
+			return Snake.same(new XPoint2D(thisLast.getX() + dx, thisLast.getY() + dy),
+					new XPoint2D(otherFirst.getX() + other.dx, otherFirst.getY() + other.dy));
 		}
 
 		private Snake moved() {

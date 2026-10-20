@@ -35,33 +35,33 @@
  */
 package net.sourceforge.plantuml.dedication;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SFile;
 
 public class DedicationSimple implements Dedication {
 
-	private final byte crypted[];
+	private final byte encrypted[];
 	private final String sentence;
 
-	public DedicationSimple(byte crypted[], String sentence) {
-		this.crypted = crypted;
+	public DedicationSimple(byte encrypted[], String sentence) {
+		this.encrypted = encrypted;
 		this.sentence = sentence;
 	}
 
-	public synchronized BufferedImage getImage(TinyHashableString sentence) {
+	public synchronized PortableImage getImage(TinyHashableString sentence) {
 		if (same(this.sentence, sentence.getSentence()) == false)
 			return null;
 
 		try {
-			byte[] current = crypted.clone();
+			byte[] current = encrypted.clone();
 
 			final RBlocks init = RBlocks.readFrom(current, 513);
 			final RBlocks decoded = init.change(E, N);
 			current = decoded.toByteArray(512);
-			return SFile.getBufferedImageFromWebpButHeader(new ByteArrayInputStream(current));
+			return SFile.getImageFromWebpButHeader(new ByteArrayInputStream(current));
 		} catch (Throwable t) {
 			Logme.error(t);
 			return null;

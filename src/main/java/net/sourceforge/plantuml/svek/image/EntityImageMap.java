@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.LeafType;
@@ -56,7 +57,7 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
-import net.sourceforge.plantuml.klimt.geom.PlacementStrategyY1Y2;
+import net.sourceforge.plantuml.klimt.geom.PlacementStrategy;
 import net.sourceforge.plantuml.klimt.geom.ULayoutGroup;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
@@ -64,9 +65,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.ShapeType;
@@ -119,7 +120,8 @@ public class EntityImageMap extends AbstractEntityImage implements Stencil, With
 
 	private int marginEmptyFieldsOrMethod = 13;
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dimTitle = getTitleDimension(stringBounder);
 		final XDimension2D dimFields = entries.calculateDimension(stringBounder);
 		double width = Math.max(dimFields.getWidth(), dimTitle.getWidth() + 2 * xMarginCircle);
@@ -131,14 +133,19 @@ public class EntityImageMap extends AbstractEntityImage implements Stencil, With
 		return new XDimension2D(width, height);
 	}
 
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.OBJECTDIAG_MAP;
+	}
+
 	private Style getStyle() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.objectDiagram, SName.map)
-				.withTOBECHANGED(getEntity().getStereotype()).getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		return getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(getStyleQuery().withStereotype(getEntity().getStereotype()));
 	}
 
 	private Style getStyleHeader() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.objectDiagram, SName.map, SName.header)
-				.withTOBECHANGED(getEntity().getStereotype()).getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		return getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.OBJECTDIAG_MAP_HEADER.withStereotype(getEntity().getStereotype()));
 	}
 
 	final public void drawU(UGraphic ug) {
@@ -167,6 +174,10 @@ public class EntityImageMap extends AbstractEntityImage implements Stencil, With
 		if (backcolor == null)
 			backcolor = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
 
+		// final HorizontalAlignment horizontalAlignment =
+		// style.value(PName.HorizontalAlignment).asHorizontalAlignment();
+		final HorizontalAlignment horizontalAlignment = HorizontalAlignment.CENTER;
+
 		rect.setDeltaShadow(style.getShadowing());
 		final UStroke stroke = style.getStroke();
 
@@ -190,7 +201,8 @@ public class EntityImageMap extends AbstractEntityImage implements Stencil, With
 			ugHeader.apply(stroke).draw(rect2);
 		}
 
-		final ULayoutGroup header = new ULayoutGroup(new PlacementStrategyY1Y2(ug.getStringBounder()));
+		final PlacementStrategy placementStrategy = horizontalAlignment.asPlacementStrategy(ug.getStringBounder());
+		final ULayoutGroup header = new ULayoutGroup(placementStrategy);
 		if (stereo != null)
 			header.add(stereo);
 

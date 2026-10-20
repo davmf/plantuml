@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2024, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program.
+ * This translation is distributed under the same License as the original C program.
  * 
  * THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC
  * LICENSE ("AGREEMENT"). [Eclipse Public License - v 1.0]
@@ -36,23 +36,16 @@
 
 package smetana.core;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class UnsupportedStarStruct implements __struct__, __ptr__ {
 
-	// ::revert when __CORE__
-	public final static AtomicInteger CPT = new AtomicInteger();
-	// public static int CPT;
-	// ::done
-	public final int UID;
+	// The old AtomicInteger-backed UID was read only by commented-out debug
+	// code, but its increment ran in the constructor of EVERY translated C
+	// struct, on every allocation.
+	public final int UID = 0;
 
 	public static UnsupportedStarStruct SPY_ME;
 
 	public UnsupportedStarStruct() {
-		// ::revert when __CORE__
-		this.UID = CPT.incrementAndGet();
-		// this.UID = CPT++;
-		// ::done
 	}
 
 	final public __ptr__ unsupported() {

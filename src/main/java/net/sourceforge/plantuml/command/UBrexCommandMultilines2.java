@@ -41,8 +41,7 @@ import com.plantuml.ubrex.UnicodeBracketedExpression;
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
-import net.sourceforge.plantuml.regex.Matcher2;
-import net.sourceforge.plantuml.regex.Pattern2;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 
@@ -58,7 +57,8 @@ public abstract class UBrexCommandMultilines2<S extends Diagram> implements Comm
 
 	public UBrexCommandMultilines2(UnicodeBracketedExpression patternStart, MultilinesStrategy strategy, Trim trimEnd,
 			Lazy<UnicodeBracketedExpression> end) {
-		assert end != null;
+		if (TeaVM.a())
+			assert end != null;
 
 		this.strategy = strategy;
 		this.starting = patternStart;
@@ -76,7 +76,7 @@ public abstract class UBrexCommandMultilines2<S extends Diagram> implements Comm
 
 	final public CommandControl isValid(BlocLines lines) {
 		lines = lines.cleanList(strategy);
-		if (isCommandForbidden())
+		if (isCommandForbidden(lines))
 			return CommandControl.NOT_OK;
 
 		if (syntaxWithFinalBracket()) {
@@ -93,18 +93,29 @@ public abstract class UBrexCommandMultilines2<S extends Diagram> implements Comm
 		if (first == null)
 			return CommandControl.NOT_OK;
 
-		final UMatcher result1 = starting.match(first.getTrimmed().getString());
+		final UMatcher result1 = starting.match(first.getTrimmed().getString(), 0);
 		if (result1.exactMatch() == false)
 			return CommandControl.NOT_OK;
 
 		if (lines.size() == 1)
 			return CommandControl.OK_PARTIAL;
-		final UMatcher m1 = end.get().match(trimEnd.trim(lines.getLast()));
+		final UMatcher m1 = end.get().match(trimEnd.trim(lines.getLast()), 0);
 		if (m1.exactMatch() == false)
 			return CommandControl.OK_PARTIAL;
 
 		return finalVerification(lines);
 	}
+
+	@Override
+	final public String explain(BlocLines lines) {
+		lines = lines.cleanList(strategy);
+		if (syntaxWithFinalBracket())
+			lines = lines.eventuallyMoveBracket();
+
+		return explainNow(lines);
+	}
+
+	protected abstract String explainNow(BlocLines lines);
 
 	public final CommandExecutionResult execute(S system, BlocLines lines, ParserPass currentPass) {
 		lines = lines.cleanList(strategy);
@@ -120,10 +131,6 @@ public abstract class UBrexCommandMultilines2<S extends Diagram> implements Comm
 
 	protected abstract CommandExecutionResult executeNow(S system, BlocLines lines, ParserPass currentPass)
 			throws NoSuchColorException;
-
-	protected boolean isCommandForbidden() {
-		return false;
-	}
 
 	protected CommandControl finalVerification(BlocLines lines) {
 		return CommandControl.OK;

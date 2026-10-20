@@ -51,46 +51,210 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.UIManager;
 
+import net.sourceforge.plantuml.cli.CliAction;
+import net.sourceforge.plantuml.cli.CliFlag;
+import net.sourceforge.plantuml.cli.CliOptions;
+import net.sourceforge.plantuml.cli.CliParser;
+import net.sourceforge.plantuml.cli.CliParsingException;
+import net.sourceforge.plantuml.cli.Exit;
+import net.sourceforge.plantuml.cli.ExitStatus;
+import net.sourceforge.plantuml.cli.GlobalConfig;
+import net.sourceforge.plantuml.cli.GlobalConfigKey;
+import net.sourceforge.plantuml.cli.HelpPrint;
 import net.sourceforge.plantuml.code.NoPlantumlCompressionException;
 import net.sourceforge.plantuml.code.Transcoder;
 import net.sourceforge.plantuml.code.TranscoderUtil;
+import net.sourceforge.plantuml.dot.GraphvizRuntimeEnvironment;
 import net.sourceforge.plantuml.file.FileGroup;
 import net.sourceforge.plantuml.file.SuggestedFile;
 import net.sourceforge.plantuml.ftp.FtpServer;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.klimt.drawing.svg.SvgGraphics;
 import net.sourceforge.plantuml.klimt.sprite.SpriteGrayLevel;
 import net.sourceforge.plantuml.klimt.sprite.SpriteUtils;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.picoweb.PicoWebServer;
 import net.sourceforge.plantuml.png.MetadataTag;
-import net.sourceforge.plantuml.preproc.Stdlib;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SImageIO;
 import net.sourceforge.plantuml.security.SecurityUtils;
-import net.sourceforge.plantuml.stats.StatsUtils;
-import net.sourceforge.plantuml.swing.ClipboardLoop;
 import net.sourceforge.plantuml.swing.MainWindow;
 import net.sourceforge.plantuml.syntax.LanguageDescriptor;
-import net.sourceforge.plantuml.utils.Cypher;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.Obfuscate;
 import net.sourceforge.plantuml.version.Version;
 
 public class Run {
-	// ::remove file when __CORE__
-	// ::remove file when __HAXE__
 
-	private static Cypher cypher;
+	// ::remove file when __HAXE__
 
 	public static void main(String[] argsArray)
 			throws NoPlantumlCompressionException, IOException, InterruptedException {
-		System.setProperty("log4j.debug", "false");
+		if (!TeaVM.isC())
+			System.setProperty("log4j.debug", "false");
+
 		final long start = System.currentTimeMillis();
+
+		// No AWT in the C build, hence no display to detect
+		if (!TeaVM.isC())
+			detectDisplay(argsArray);
+
+		final ExitStatus exit = ExitStatus.init();
+		CliOptions option = null;
+
+		try {
+			option = CliParser.parse(argsArray);
+
+			final String timeout = option.getString(CliFlag.TIMEOUT);
+			if (timeout != null && timeout.matches("\\d+"))
+				GlobalConfig.getInstance().put(GlobalConfigKey.TIMEOUT_MS, Integer.parseInt(timeout) * 1000L);
+
+			final String charset = option.getString(CliFlag.CHARSET);
+			Log.info(() -> "Using charset " + charset);
+
+			option.flags.triggerNonImmediateCliAction();
+
+			final CliAction action = option.flags.getImmediateAction();
+			if (action != null) {
+				action.runAction();
+				return;
+			}
+
+			if (option.isTrue(CliFlag.GRAPHVIZ_DOT)) {
+				final String v = option.flags.getString(CliFlag.GRAPHVIZ_DOT);
+				GraphvizRuntimeEnvironment.getInstance()
+						.setDotExecutable(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(v));
+			}
+
+			if (option.flags.isTrue(CliFlag.FTP)) {
+				if (TeaVM.isC())
+					notAvailableInC("The FTP server (--ftp-server)");
+				else
+					goFtp(option);
+				return;
+			}
+
+			final List<String> remainingArgs = option.flags.getRemainingArgs();
+
+			if (!TeaVM.isC())
+				ProgressBar.setEnable(option.isTrue(CliFlag.PROGRESS));
+
+			Log.info(() -> "SecurityProfile " + SecurityUtils.getSecurityProfile());
+			if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.VERBOSE)) {
+				Log.info(() -> "PlantUML Version " + Version.versionString());
+				if (!TeaVM.isC())
+					Log.info(() -> "GraphicsEnvironment.isHeadless() " + GraphicsEnvironment.isHeadless());
+			}
+
+			if (option.isTrue(CliFlag.ENCODE_SPRITE)) {
+				if (TeaVM.isC())
+					notAvailableInC("Sprite encoding (--encode-sprite)");
+				else
+					encodeSprite(remainingArgs);
+				return;
+			}
+
+			if (option.isTrue(CliFlag.PICOWEB) && option.getPicowebPort() != -1) {
+				if (TeaVM.isC())
+					notAvailableInC("The HTTP server (--http-server)");
+				else
+					goPicoweb(option);
+				return;
+			}
+
+			if (!TeaVM.isC())
+				forceOpenJdkResourceLoad();
+
+			if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.GUI)) {
+				if (TeaVM.isC()) {
+					// Without arguments the JVM build opens the GUI: the help is the useful answer here
+					if (option.isTrue(CliFlag.GUI))
+						notAvailableInC("The graphical user interface (--gui)");
+					else
+						HelpPrint.printHelp();
+				} else
+					runGui(option);
+				return;
+			}
+
+			if (option.isTrue(CliFlag.PIPE) || option.isTrue(CliFlag.PIPEMAP) || option.isTrue(CliFlag.SYNTAX)) {
+				if (option.isTrue(CliFlag.PIPE) && refuseFormatInC(option, exit)) {
+					exit.eventuallyExit();
+					return;
+				}
+				new Pipe(option, System.out, System.in, charset).managePipe(exit);
+				exit.eventuallyExit();
+				return;
+			}
+
+			if (option.isTrue(CliFlag.DECODE_URL)) {
+				for (String s : option.getRemainingArgs()) {
+					final Transcoder transcoder = TranscoderUtil.getDefaultTranscoder();
+					System.out.println("@startuml");
+					System.out.println(transcoder.decode(s));
+					System.out.println("@enduml");
+				}
+				return;
+			}
+
+			if (option.isTrue(CliFlag.RETRIEVE_METADATA)) {
+				final List<File> files = new ArrayList<>();
+				for (String s : option.getRemainingArgs()) {
+					final FileGroup group = new FileGroup(s, option.getExcludes());
+					incTotal(group.getFiles().size());
+					files.addAll(group.getFiles());
+				}
+				for (File f : files)
+					extractMetadata(f);
+
+				return;
+			}
+			if (!TeaVM.isC() && option.isTrue(CliFlag.SPLASH))
+				Splash.createSplash();
+
+			final Run runner = new Run(option, exit, charset);
+
+			if (runner.size() == 0) {
+				Log.error("No file found");
+				Exit.exit(ExitStatus.ERROR_50_NO_FILE_FOUND);
+			}
+
+			incTotal(runner.size());
+
+			for (int i = 0; i < option.getLoop(); i++)
+				if (option.isTrue(CliFlag.COMPUTE_URL)) {
+					runner.computeUrl();
+					return;
+				} else if (option.isTrue(CliFlag.FAIL_FAST2) && runner.checkError()) {
+					// There are some errors, we won't do processInputsInParallel()
+				} else
+					runner.processInputsInParallel();
+
+		} catch (CliParsingException e) {
+			System.err.println(e.getMessage());
+			Exit.exit(42);
+		} finally {
+			if (option != null && option.isTrue(CliFlag.DURATION)) {
+				final double duration = (System.currentTimeMillis() - start) / 1000.0;
+				Log.error("Duration = " + duration + " seconds");
+			}
+		}
+
+		if (option != null)
+			option.getStdrpt().finalMessage(exit);
+
+		exit.eventuallyExit();
+
+	}
+
+	private static void detectDisplay(String[] argsArray) {
 		if (argsArray.length > 0 && argsArray[0].equalsIgnoreCase("-headless"))
 			System.setProperty("java.awt.headless", "true");
-		saveCommandLine(argsArray);
 
 		final String display = System.getenv("DISPLAY");
 		final String waylandDisplay = System.getenv("WAYLAND_DISPLAY");
@@ -112,148 +276,191 @@ public class Run {
 			Log.info(() -> "java.awt.headless not set");
 		else
 			Log.info(() -> "java.awt.headless set as '" + javaAwtHeadless + "'");
+	}
 
-		final Option option = new Option(argsArray);
-		ProgressBar.setEnable(option.isTextProgressBar());
-		if (OptionFlags.getInstance().isClipboardLoop()) {
-			ClipboardLoop.runLoop();
-			return;
-		}
-		if (OptionFlags.getInstance().isClipboard()) {
-			ClipboardLoop.runOnce();
-			return;
-		}
-		if (OptionFlags.getInstance().isExtractStdLib()) {
-			Stdlib.extractStdLib();
-			return;
-		}
-		if (OptionFlags.getInstance().isStdLib()) {
-			Stdlib.printStdLib();
-			return;
-		}
-		if (OptionFlags.getInstance().isDumpStats()) {
-			StatsUtils.dumpStats();
-			return;
-		}
-		if (OptionFlags.getInstance().isLoopStats()) {
-			StatsUtils.loopStats();
-			return;
-		}
-		if (OptionFlags.getInstance().isDumpHtmlStats()) {
-			StatsUtils.outHtml();
-			return;
-		}
-		if (OptionFlags.getInstance().isEncodesprite()) {
-			encodeSprite(option.getResult());
-			return;
-		}
-		Log.info(() -> "SecurityProfile " + SecurityUtils.getSecurityProfile());
-		if (OptionFlags.getInstance().isVerbose()) {
-			Log.info(() -> "PlantUML Version " + Version.versionString());
-			Log.info(() -> "GraphicsEnvironment.isHeadless() " + GraphicsEnvironment.isHeadless());
+	/**
+	 * The C build is a subset of the Java one (see {@code src/teavm-c/README.md}):
+	 * the options that need a GUI, a server, AWT or a process are accepted by the
+	 * command line, but they only print this message. The calls are guarded by
+	 * {@link TeaVM#isC()}, so that TeaVM does not compile what they would call.
+	 */
+	public static void notAvailableInC(String feature) {
+		System.err.println(feature + " is not available in the C build");
+	}
+
+	private final CliOptions option;
+	private final ExitStatus exitStatus;
+	private final String charset;
+	private final List<File> files = new ArrayList<>();
+
+	public Run(CliOptions option, ExitStatus exitStatus, String charset) {
+		this.option = option;
+		this.exitStatus = exitStatus;
+		this.charset = charset;
+
+		for (String s : option.getRemainingArgs()) {
+			final FileGroup group = new FileGroup(s, option.getExcludes());
+			for (final File f : group.getFiles())
+				files.add(f);
 		}
 
-		if (OptionFlags.getInstance().isPrintFonts()) {
-			printFonts();
-			return;
-		}
+		Log.info(() -> "Found " + size() + " files");
+	}
 
-		if (option.getFtpPort() != -1) {
-			goFtp(option);
-			return;
-		}
+	public int size() {
+		return files.size();
+	}
 
-		if (option.getPicowebPort() != -1) {
-			goPicoweb(option);
-			return;
-		}
+	@FunctionalInterface
+	static interface FileTask {
+		public void processFile(File f) throws IOException, InterruptedException;
 
-		forceOpenJdkResourceLoad();
-		if (option.getPreprocessorOutputMode() == OptionPreprocOutputMode.CYPHER)
-			cypher = new LanguageDescriptor().getCypher();
+	}
 
-		final ErrorStatus error = ErrorStatus.init();
-		boolean forceQuit = false;
-		if (OptionFlags.getInstance().isGui()) {
-			try {
-				UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
-			} catch (Exception e) {
+	private boolean checkError() throws InterruptedException {
+		final AtomicBoolean hasError = new AtomicBoolean();
+		processInParallel(file -> {
+			if (hasError.get())
+				return;
+			final ISourceFileReader sourceFileReader = getSourceFileReader(file, option, charset);
+			exitStatus.goesHasFiles();
+			if (sourceFileReader.hasError()) {
+				hasError.set(true);
+				exitStatus.goesHasErrors();
 			}
-			final List<String> list = option.getResult();
-			File dir = null;
-			if (list.size() == 1) {
-				final File f = new File(list.get(0));
-				if (f.exists() && f.isDirectory())
-					dir = f;
+		});
 
-			}
-			try {
-				new MainWindow(option, dir);
-			} catch (java.awt.HeadlessException e) {
-				System.err.println("There is an issue with your server. You will find some tips here:");
-				System.err.println("https://forum.plantuml.net/3399/problem-with-x11-and-headless-exception");
-				System.err.println("https://plantuml.com/en/faq#239d64f675c3e515");
-				throw e;
-			}
+		return hasError.get();
 
-		} else if (option.isPipe() || option.isPipeMap() || option.isSyntax()) {
-			managePipe(option, error);
-			forceQuit = true;
-		} else if (option.isFailfast2()) {
-			if (option.isSplash())
-				Splash.createSplash();
+	}
 
-			final long start2 = System.currentTimeMillis();
-			option.setCheckOnly(true);
-			manageAllFiles(option, error);
-			option.setCheckOnly(false);
-			if (option.isDuration()) {
-				final double duration = (System.currentTimeMillis() - start2) / 1000.0;
-				Log.error("Check Duration = " + duration + " seconds");
-			}
-			if (error.hasError() == false)
-				manageAllFiles(option, error);
-
-			forceQuit = true;
-		} else {
-			if (option.isSplash())
-				Splash.createSplash();
-
-			manageAllFiles(option, error);
-			forceQuit = true;
-		}
-
-		if (option.isDuration()) {
-			final double duration = (System.currentTimeMillis() - start) / 1000.0;
-			Log.error("Duration = " + duration + " seconds");
-		}
-
-		if (OptionFlags.getInstance().isGui() == false) {
-			if (error.hasError() || error.isNoData())
-				option.getStdrpt().finalMessage(error);
-
-			if (error.hasError())
-				System.exit(error.getExitCode());
-
-			if (forceQuit && OptionFlags.getInstance().isSystemExit())
-				System.exit(0);
-
+	private void computeUrl() throws IOException {
+		for (File f : files) {
+			final ISourceFileReader sourceFileReader = getSourceFileReader(f, option, charset);
+			for (BlockUml s : sourceFileReader.getBlocks())
+				System.out.println(s.getEncodedUrl());
 		}
 	}
 
-	private static String commandLine = "";
+	private void processInputsInParallel() throws InterruptedException {
+		SFile lockFile = null;
+		try {
+			if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.WORD)) {
+				final SFile dir = new SFile(option.getRemainingArgs().get(0));
+				final SFile javaIsRunningFile = dir.file("javaisrunning.tmp");
+				javaIsRunningFile.delete();
+				lockFile = dir.file("javaumllock.tmp");
+			}
+			processInParallel(file -> {
+				exitStatus.goesHasFiles();
+				if (exitStatus.hasErrors() && option.isFailfastOrFailfast2())
+					return;
 
-	public static final String getCommandLine() {
-		return commandLine;
+				manageFileInternal(file);
+				incDone(exitStatus.hasErrors());
+			});
+		} finally {
+			if (lockFile != null)
+				lockFile.delete();
+		}
 	}
 
-	private static void saveCommandLine(String[] argsArray) {
-		final StringBuilder sb = new StringBuilder();
-		for (String s : argsArray) {
-			sb.append(s);
-			sb.append(" ");
+	private void processInParallel(FileTask task) throws InterruptedException {
+		if (TeaVM.isC()) {
+			// No thread pool in the C build: one file after the other
+			for (File f : files)
+				try {
+					task.processFile(f);
+				} catch (IOException | InterruptedException e) {
+					Logme.error(e);
+				}
+			return;
 		}
-		commandLine = sb.toString();
+
+		Log.info(() -> "Using several threads: " + option.getNbThreads());
+		final ExecutorService executor = Executors.newFixedThreadPool(option.getNbThreads());
+
+		for (File f : files)
+			executor.submit(() -> {
+				try {
+					task.processFile(f);
+				} catch (IOException | InterruptedException e) {
+					Logme.error(e);
+				}
+			});
+
+		executor.shutdown();
+		executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+	}
+
+	private void manageFileInternal(File f) throws IOException, InterruptedException {
+		Log.info(() -> "Working on " + f.getPath());
+		final ISourceFileReader sourceFileReader = getSourceFileReader(f, option, charset);
+		sourceFileReader.updateStatus(exitStatus);
+
+		if (option.isTrue(CliFlag.CHECK_ONLY))
+			return;
+
+		if (refuseFormatInC(option, exitStatus))
+			return;
+
+		if (option.getFileFormatOption().getFileFormat() == FileFormat.PREPROC
+				|| option.getFileFormatOption().getFileFormat() == FileFormat.OBFUSCATE) {
+			extractPreprocessingSource(sourceFileReader);
+			return;
+		}
+		final List<GeneratedImage> result = sourceFileReader.getGeneratedImages();
+		final Stdrpt rpt = option.getStdrpt();
+		if (result.size() == 0) {
+			Log.error("Warning: no image in " + f.getPath());
+			rpt.printInfo(System.err, null);
+			return;
+		}
+		for (BlockUml s : sourceFileReader.getBlocks())
+			rpt.printInfo(System.err, s.getDiagram());
+
+		// A diagram can parse fine (no PSystemError/PSystemUnsupported, so
+		// updateStatus() above saw nothing wrong) and still fail to render: GraphViz/dot
+		// can crash, time out, or return something PlantUML cannot use. That failure is
+		// caught in UgDiagram.exportDiagram(), which produces a "crash" image and tags
+		// it with a non-OK status (see FileImageData/ImageDataSimple.error) - but until
+		// now nothing looked at that status here, so the process exited 0 even though a
+		// crash image had just been written to disk instead of the real diagram.
+		for (GeneratedImage image : result)
+			if (ExitStatus.isErrorStatus(image.getStatus()))
+				exitStatus.goesHasErrors();
+
+		if (result.size() != 0)
+			for (GeneratedImage image : result) {
+				final int lineError = image.lineErrorRaw();
+				if (lineError != -1) {
+					rpt.errorLine(lineError, f);
+					return;
+				}
+			}
+	}
+
+	private static void runGui(final CliOptions option) {
+		try {
+			UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
+		} catch (Exception e) {
+		}
+		final List<String> list = option.getRemainingArgs();
+		File dir = null;
+		if (list.size() == 1) {
+			final File f = new File(list.get(0));
+			if (f.exists() && f.isDirectory())
+				dir = f;
+
+		}
+		try {
+			new MainWindow(option, dir);
+		} catch (java.awt.HeadlessException e) {
+			System.err.println("There is an issue with your server. You will find some tips here:");
+			System.err.println("https://forum.plantuml.net/3399/problem-with-x11-and-headless-exception");
+			System.err.println("https://plantuml.com/en/faq#239d64f675c3e515");
+			throw e;
+		}
 	}
 
 	public static void forceOpenJdkResourceLoad() {
@@ -271,30 +478,30 @@ public class Run {
 
 	public static boolean isOpenJdkRunning() {
 		final String jvmName = System.getProperty("java.vm.name");
-		if (jvmName != null && jvmName.toLowerCase().contains("openjdk")) {
+		if (jvmName != null && jvmName.toLowerCase().contains("openjdk"))
 			return true;
-		}
+
 		return false;
 	}
 
 	static private final String httpProtocol = "http://";
 	static private final String httpsProtocol = "https://";
 
-	private static void encodeSprite(List<String> result) throws IOException {
+	private static void encodeSprite(List<String> remainingArgs) throws IOException {
 		SpriteGrayLevel level = SpriteGrayLevel.GRAY_16;
 		boolean compressed = false;
 		final String path;
-		if (result.size() > 1 && result.get(0).matches("(4|8|16)z?")) {
-			if (result.get(0).startsWith("8")) {
+		if (remainingArgs.size() > 1 && remainingArgs.get(0).matches("(4|8|16)z?")) {
+			if (remainingArgs.get(0).startsWith("8"))
 				level = SpriteGrayLevel.GRAY_8;
-			}
-			if (result.get(0).startsWith("4")) {
+
+			if (remainingArgs.get(0).startsWith("4"))
 				level = SpriteGrayLevel.GRAY_4;
-			}
-			compressed = StringUtils.goLowerCase(result.get(0)).endsWith("z");
-			path = result.get(1);
+
+			compressed = StringUtils.goLowerCase(remainingArgs.get(0)).endsWith("z");
+			path = remainingArgs.get(1);
 		} else {
-			path = result.get(0);
+			path = remainingArgs.get(0);
 		}
 
 		final String fileName;
@@ -310,11 +517,10 @@ public class Run {
 			fileName = f.getName();
 		}
 
-		if (source == null) {
+		if (source == null)
 			return;
-		}
 
-		final BufferedImage im;
+		final PortableImage im;
 		try (InputStream stream = source.openStream()) {
 			im = SImageIO.read(stream);
 		}
@@ -326,239 +532,130 @@ public class Run {
 
 	private static String getSpriteName(String fileName) {
 		final String s = getSpriteNameInternal(fileName);
-		if (s.length() == 0) {
+		if (s.length() == 0)
 			return "test";
-		}
+
 		return s;
 	}
 
 	private static String getSpriteNameInternal(String fileName) {
 		final StringBuilder sb = new StringBuilder();
-		for (char c : fileName.toCharArray()) {
-			if (("" + c).matches("[\\p{L}0-9_]")) {
+		for (char c : fileName.toCharArray())
+			if (("" + c).matches("[\\p{L}0-9_]"))
 				sb.append(c);
-			} else {
+			else
 				return sb.toString();
-			}
-		}
+
 		return sb.toString();
 	}
 
-	private static void goFtp(Option option) throws IOException {
+	private static void goFtp(CliOptions option) throws IOException {
 		final int ftpPort = option.getFtpPort();
 		System.err.println("ftpPort=" + ftpPort);
 		final FtpServer ftpServer = new FtpServer(ftpPort, option.getFileFormatOption().getFileFormat());
 		ftpServer.go();
 	}
 
-	private static void goPicoweb(Option option) throws IOException {
+	private static void goPicoweb(CliOptions option) throws IOException {
 		PicoWebServer.startServer(option.getPicowebPort(), option.getPicowebBindAddress(),
 				option.getPicowebEnableStop());
 	}
 
 	public static void printFonts() {
 		final Font fonts[] = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
-		for (Font f : fonts) {
+		for (Font f : fonts)
 			System.out.println(
 					"f=" + f + "/" + f.getPSName() + "/" + f.getName() + "/" + f.getFontName() + "/" + f.getFamily());
-		}
+
 		final String name[] = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-		for (String n : name) {
+		for (String n : name)
 			System.out.println("n=" + n);
-		}
-	}
 
-	private static void managePipe(Option option, ErrorStatus error) throws IOException {
-		final String charset = option.getCharset();
-		new Pipe(option, System.out, System.in, charset).managePipe(error);
-	}
-
-	private static void manageAllFiles(Option option, ErrorStatus error)
-			throws NoPlantumlCompressionException, InterruptedException {
-
-		SFile lockFile = null;
-		try {
-			if (OptionFlags.getInstance().isWord()) {
-				final SFile dir = new SFile(option.getResult().get(0));
-				final SFile javaIsRunningFile = dir.file("javaisrunning.tmp");
-				javaIsRunningFile.delete();
-				lockFile = dir.file("javaumllock.tmp");
-			}
-			processArgs(option, error);
-		} finally {
-			if (lockFile != null) {
-				lockFile.delete();
-			}
-		}
-
-	}
-
-	private static void processArgs(Option option, ErrorStatus error)
-			throws NoPlantumlCompressionException, InterruptedException {
-		if (option.isDecodeurl() == false && option.getNbThreads() > 1 && option.isCheckOnly() == false
-				&& OptionFlags.getInstance().isExtractFromMetadata() == false) {
-			multithread(option, error);
-			return;
-		}
-		final List<File> files = new ArrayList<>();
-		for (String s : option.getResult()) {
-			if (option.isDecodeurl()) {
-				error.goOk();
-				final Transcoder transcoder = TranscoderUtil.getDefaultTranscoder();
-				System.out.println("@startuml");
-				System.out.println(transcoder.decode(s));
-				System.out.println("@enduml");
-			} else {
-				final FileGroup group = new FileGroup(s, option.getExcludes(), option);
-				incTotal(group.getFiles().size());
-				files.addAll(group.getFiles());
-			}
-		}
-		foundNbFiles(files.size());
-		for (File f : files) {
-			try {
-				manageFileInternal(f, option, error);
-				incDone(error.hasError());
-				if (error.hasError() && option.isFailfastOrFailfast2()) {
-					return;
-				}
-			} catch (IOException e) {
-				Logme.error(e);
-			}
-		}
-	}
-
-	private static void multithread(Option option, ErrorStatus error) throws InterruptedException {
-		Log.info(() -> "Using several threads: " + option.getNbThreads());
-		final ExecutorService executor = Executors.newFixedThreadPool(option.getNbThreads());
-
-		int nb = 0;
-		for (String s : option.getResult()) {
-			final FileGroup group = new FileGroup(s, option.getExcludes(), option);
-			for (final File f : group.getFiles()) {
-				incTotal(1);
-				nb++;
-				executor.submit(new Runnable() {
-					public void run() {
-						if (error.hasError() && option.isFailfastOrFailfast2()) {
-							return;
-						}
-						try {
-							manageFileInternal(f, option, error);
-						} catch (IOException e) {
-							Logme.error(e);
-						} catch (InterruptedException e) {
-							Logme.error(e);
-						}
-						incDone(error.hasError());
-					}
-				});
-			}
-		}
-		foundNbFiles(nb);
-		executor.shutdown();
-		executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-	}
-
-	private static void foundNbFiles(int nb) {
-		Log.info(() -> "Found " + nb + " files");
 	}
 
 	private static void incDone(boolean error) {
+		// No splash screen nor progress bar in the C build
+		if (TeaVM.isC())
+			return;
 		Splash.incDone(error);
 		ProgressBar.incDone(error);
 	}
 
 	private static void incTotal(int nb) {
+		if (TeaVM.isC())
+			return;
 		Splash.incTotal(nb);
 		ProgressBar.incTotal(nb);
 	}
 
-	private static void manageFileInternal(File f, Option option, ErrorStatus error)
-			throws IOException, InterruptedException {
-		Log.info(() -> "Working on " + f.getPath());
-		if (OptionFlags.getInstance().isExtractFromMetadata()) {
-			error.goOk();
-			extractMetadata(f);
-			return;
-		}
+	private static ISourceFileReader getSourceFileReader(File f, CliOptions option, String charset) throws IOException {
 		final ISourceFileReader sourceFileReader;
-		if (option.getOutputFile() == null) {
-			File outputDir = option.getOutputDir();
-			if (outputDir != null && outputDir.getPath().endsWith("$")) {
-				final String path = outputDir.getPath();
-				outputDir = new File(path.substring(0, path.length() - 1)).getAbsoluteFile();
-				sourceFileReader = new SourceFileReaderCopyCat(option.getDefaultDefines(f), f, outputDir,
-						option.getConfig(), option.getCharset(), option.getFileFormatOption());
-			} else {
-				sourceFileReader = new SourceFileReader(option.getDefaultDefines(f), f, outputDir, option.getConfig(),
-						option.getCharset(), option.getFileFormatOption());
-			}
+		final FileFormatOption fileFormatOption = option.getFileFormatOption();
+
+		File outputDir = option.getOutputDir();
+		if (outputDir != null && outputDir.getPath().endsWith("$")) {
+			final String path = outputDir.getPath();
+			outputDir = new File(path.substring(0, path.length() - 1)).getAbsoluteFile();
+			sourceFileReader = new SourceFileReaderCopyCat(option.isTrue(CliFlag.IGNORE_STARTUML_FILENAME),
+					option.getDefaultDefines(f), f, outputDir, option.getConfig(), charset, fileFormatOption);
 		} else {
-			sourceFileReader = new SourceFileReaderHardFile(option.getDefaultDefines(f), f, option.getOutputFile(),
-					option.getConfig(), option.getCharset(), option.getFileFormatOption());
-		}
-		sourceFileReader.setCheckMetadata(option.isCheckMetadata());
-		((SourceFileReaderAbstract) sourceFileReader).setNoerror(option.isNoerror());
-
-		if (option.isComputeurl()) {
-			error.goOk();
-			for (BlockUml s : sourceFileReader.getBlocks()) {
-				System.out.println(s.getEncodedUrl());
-			}
-			return;
-		}
-		if (option.isCheckOnly()) {
-			error.goOk();
-			final boolean hasError = sourceFileReader.hasError();
-			if (hasError) {
-				error.goWithError();
-			}
-			// final List<GeneratedImage> result = sourceFileReader.getGeneratedImages();
-			// hasErrors(f, result, error);
-			return;
-		}
-		if (option.getPreprocessorOutputMode() != null) {
-			extractPreproc(option, sourceFileReader);
-			error.goOk();
-			return;
-		}
-		final List<GeneratedImage> result = sourceFileReader.getGeneratedImages();
-		final Stdrpt rpt = option.getStdrpt();
-		if (result.size() == 0) {
-			Log.error("Warning: no image in " + f.getPath());
-			rpt.printInfo(System.err, null);
-			// error.goNoData();
-			return;
-		}
-		for (BlockUml s : sourceFileReader.getBlocks()) {
-			rpt.printInfo(System.err, s.getDiagram());
+			sourceFileReader = new SourceFileReader(option.isTrue(CliFlag.IGNORE_STARTUML_FILENAME),
+					option.getDefaultDefines(f), f, outputDir, option.getConfig(), charset, fileFormatOption);
 		}
 
-		hasErrors(f, result, error, rpt);
+		sourceFileReader.setCheckMetadata(option.isTrue(CliFlag.CHECK_METADATA));
+		((SourceFileReaderAbstract) sourceFileReader).setNoErrorImage(option.isTrue(CliFlag.NO_ERROR_IMAGE));
+		return sourceFileReader;
 	}
 
-	private static void extractPreproc(Option option, final ISourceFileReader sourceFileReader) throws IOException {
-		final String charset = option.getCharset();
+	/**
+	 * The formats the C build writes: SVG and PNG (see
+	 * {@code UgDiagram#exportDiagram}), and the preprocessed source.
+	 */
+	private static boolean isAvailableInC(FileFormat format) {
+		return format == FileFormat.SVG || format == FileFormat.PNG || format == FileFormat.PREPROC;
+	}
+
+	/**
+	 * In the C build, tells that the output format is not available (and records
+	 * the error) so that the caller stops before exporting the diagram.
+	 */
+	private static boolean refuseFormatInC(CliOptions option, ExitStatus exitStatus) {
+		final FileFormat format = option.getFileFormatOption().getFileFormat();
+		if (!TeaVM.isC() || isAvailableInC(format))
+			return false;
+
+		notAvailableInC("The output format " + format);
+		exitStatus.goesHasErrors();
+		return true;
+	}
+
+	private void extractPreprocessingSource(final ISourceFileReader sourceFileReader) throws IOException {
+
+		final FileFormat format = option.getFileFormatOption().getFileFormat();
+		final Obfuscate obfuscate = format == FileFormat.OBFUSCATE && !TeaVM.isC()
+				? new LanguageDescriptor().getObfuscate()
+				: null;
+
 		for (BlockUml blockUml : sourceFileReader.getBlocks()) {
 			final SuggestedFile suggested = ((SourceFileReaderAbstract) sourceFileReader).getSuggestedFile(blockUml)
-					.withPreprocFormat();
+					.withPreprocFormat(option.getFileFormatOption().getFileFormat());
 			final SFile file = suggested.getFile(0);
 			Log.info(() -> "Export preprocessing source to " + file.getPrintablePath());
 			try (final PrintWriter pw = charset == null ? file.createPrintWriter() : file.createPrintWriter(charset)) {
 				int level = 0;
 				for (CharSequence cs : blockUml.getDefinition(true)) {
 					String s = cs.toString();
-					if (cypher != null) {
-						if (s.contains("skinparam") && s.contains("{")) {
+					if (obfuscate != null) {
+						if (s.contains("skinparam") && s.contains("{"))
 							level++;
-						}
-						if (level == 0 && s.contains("skinparam") == false) {
-							s = cypher.cypher(s);
-						}
-						if (level > 0 && s.contains("}")) {
+
+						if (level == 0 && s.contains("skinparam") == false)
+							s = obfuscate.obfuscate(s);
+
+						if (level > 0 && s.contains("}"))
 							level--;
-						}
+
 					}
 					pw.println(s);
 				}
@@ -566,22 +663,7 @@ public class Run {
 		}
 	}
 
-	private static void hasErrors(File file, final List<GeneratedImage> list, ErrorStatus error, Stdrpt stdrpt)
-			throws IOException {
-		if (list.size() == 0) {
-			// error.goNoData();
-			return;
-		}
-		for (GeneratedImage image : list) {
-			final int lineError = image.lineErrorRaw();
-			if (lineError != -1) {
-				stdrpt.errorLine(lineError, file);
-				error.goWithError();
-				return;
-			}
-		}
-		error.goOk();
-	}
+	private static final String META_HEADER_NEW = "<?plantuml-src ";
 
 	private static void extractMetadata(File f) throws IOException {
 		System.out.println("------------------------");
@@ -590,22 +672,41 @@ public class Run {
 		if (f.getName().endsWith(".svg")) {
 			final SFile file = SFile.fromFile(f);
 			final String svg = FileUtils.readFile(file);
-			final int idx = svg.lastIndexOf(SvgGraphics.META_HEADER);
-			if (idx > 0) {
-				String part = svg.substring(idx + SvgGraphics.META_HEADER.length());
-				final int idxEnd = part.indexOf("]");
-				if (idxEnd > 0) {
-					part = part.substring(0, idxEnd);
-					part = part.replace("- -", "--");
-					final String decoded = TranscoderUtil.getDefaultTranscoderProtected().decode(part);
-					System.err.println(decoded);
-				}
-			}
+			final String decoded = extractMetadataFromSvg(svg);
+			if (decoded != null)
+				System.out.println(decoded);
+		} else if (TeaVM.isC()) {
+			notAvailableInC("The extraction of the source from a PNG file (--extract-source)");
 		} else {
 			final String data = new MetadataTag(f, "plantuml").getData();
 			System.out.println(data);
 		}
 		System.out.println("------------------------");
+	}
+
+	private static String extractMetadataFromSvg(String svg) throws NoPlantumlCompressionException {
+		// New format: <?plantuml-src ...?>
+		final int idxNew = svg.lastIndexOf(META_HEADER_NEW);
+		if (idxNew > 0) {
+			String part = svg.substring(idxNew + META_HEADER_NEW.length());
+			final int idxEnd = part.indexOf("?>");
+			if (idxEnd > 0) {
+				part = part.substring(0, idxEnd);
+				return TranscoderUtil.getDefaultTranscoderProtected().decode(part);
+			}
+		}
+		// Old format: <!--SRC=[...]-->
+		final int idxOld = svg.lastIndexOf(SvgGraphics.META_HEADER);
+		if (idxOld > 0) {
+			String part = svg.substring(idxOld + SvgGraphics.META_HEADER.length());
+			final int idxEnd = part.indexOf("]");
+			if (idxEnd > 0) {
+				part = part.substring(0, idxEnd);
+				part = part.replace("- -", "--");
+				return TranscoderUtil.getDefaultTranscoderProtected().decode(part);
+			}
+		}
+		return null;
 	}
 
 }

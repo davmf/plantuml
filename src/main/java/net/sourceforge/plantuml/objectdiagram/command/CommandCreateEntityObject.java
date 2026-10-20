@@ -35,8 +35,13 @@
  */
 package net.sourceforge.plantuml.objectdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.NameAndCodeParser;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -62,6 +67,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateEntityObject extends SingleLineCommand2<AbstractClassOrObjectDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("object");
+
 	public CommandCreateEntityObject() {
 		super(getRegexConcat());
 	}
@@ -78,6 +85,36 @@ public class CommandCreateEntityObject extends SingleLineCommand2<AbstractClassO
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'object Name' (or 'object "Display" as code') creates an object;
+		// executeArg fails when the name already exists. The code and the
+		// display may be written in both orders, hence the lazzy lookups, like
+		// in executeArg.
+		final String idShort = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("CODE", 0));
+		sb.append("Creating the object '").append(idShort).append("'");
+
+		final String display = arg.getLazzy("DISPLAY", 0);
+		if (display != null)
+			sb.append(" displayed as \"").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(display))
+					.append("\"");
+
+		final String stereotype = arg.get("STEREO", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(AbstractClassOrObjectDiagram diagram, LineLocation location,
 			RegexResult arg, ParserPass currentPass) throws NoSuchColorException {
 		final String idShort = diagram.cleanId(arg.getLazzy("CODE", 0));
@@ -87,7 +124,7 @@ public class CommandCreateEntityObject extends SingleLineCommand2<AbstractClassO
 		final String stereotype = arg.get("STEREO", 0);
 
 		if (quark.getData() != null)
-			return CommandExecutionResult.error("Object already exists : " + quark.getData());
+			return CommandExecutionResult.error("Object already exists: " + quark.getName());
 
 		Display display = Display.getWithNewlines(diagram.getPragma(), displayString);
 		if (Display.isNull(display))
@@ -99,7 +136,7 @@ public class CommandCreateEntityObject extends SingleLineCommand2<AbstractClassO
 					diagram.getSkinParam().getFont(null, false, FontParam.CIRCLED_CHARACTER),
 					diagram.getSkinParam().getIHtmlColorSet()));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);
@@ -110,4 +147,10 @@ public class CommandCreateEntityObject extends SingleLineCommand2<AbstractClassO
 				s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s));
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

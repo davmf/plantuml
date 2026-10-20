@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.utils.BlocLines;
 
@@ -54,6 +57,7 @@ public class CommandDecoratorMultine<D extends Diagram> implements Command<D> {
 		this.nbMaxLines = nbMaxLines;
 	}
 
+	@Override
 	public CommandExecutionResult execute(D diagram, BlocLines lines, ParserPass currentPass) {
 		if (removeEmptyColumn)
 			lines = lines.removeEmptyColumns();
@@ -61,9 +65,19 @@ public class CommandDecoratorMultine<D extends Diagram> implements Command<D> {
 		lines = lines.toSingleLineWithHiddenNewLine();
 		return cmd.execute(diagram, lines, currentPass);
 	}
+	
+	@Override
+	@Explain
+	public String explain(BlocLines lines) {
+		if (removeEmptyColumn)
+			lines = lines.removeEmptyColumns();
+
+		lines = lines.toSingleLineWithHiddenNewLine();
+		return cmd.explain(lines);
+	}
 
 	public CommandControl isValid(BlocLines lines) {
-		if (cmd.isCommandForbidden())
+		if (cmd.isCommandForbidden(lines))
 			return CommandControl.NOT_OK;
 
 		lines = lines.toSingleLineWithHiddenNewLine();
@@ -87,6 +101,25 @@ public class CommandDecoratorMultine<D extends Diagram> implements Command<D> {
 	@Override
 	public boolean isEligibleFor(ParserPass pass) {
 		return cmd.isEligibleFor(pass);
+	}
+	
+	@Override
+	public final boolean isCommandForbidden(BlocLines lines) {
+		return cmd.isCommandForbidden(lines);
+	}
+
+	/**
+	 * The lines are glued into one before being handed over, so what the decorated command starts
+	 * with is what the first of them starts with.
+	 */
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return cmd.mandatoryFirstTokensSlow();
+	}
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return cmd.mandatoryFirstTokensFast();
 	}
 
 }

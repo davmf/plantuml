@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.activitydiagram.command;
 
+import java.util.Collection;
 import java.util.List;
 
 import net.sourceforge.plantuml.Lazy;
@@ -45,6 +46,7 @@ import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArg;
 import net.sourceforge.plantuml.activitydiagram.ActivityDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.command.CommandLinkClass;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
@@ -59,6 +61,7 @@ import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.regex.RegexConcat;
@@ -81,6 +84,11 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 
 	public CommandLinkLongActivity() {
 		super(getRegexConcat(), MultilinesStrategy.REMOVE_STARTING_QUOTE, Trim.BOTH, END);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 	static IRegex getRegexConcat() {
@@ -110,6 +118,68 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 				new RegexLeaf(1, "DESC", "([^%g]*?)"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: the first line carries the source, the arrow and
+		// the beginning of the quoted description; the description ends on the
+		// last line, optionally followed by 'as code', a stereotype, an 'in'
+		// partition and a color, all applied to the target activity.
+		lines = lines.trim();
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Drawing a link to a multiline activity";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Drawing a link from ").append(CommandLinkActivity.describeSource(line0))
+				.append(" to a multiline activity (block of ").append(lines.size())
+				.append(lines.size() == 1 ? " line)" : " lines)");
+
+		final List<String> lineLast = StringUtils.getSplit(getEndPattern(), lines.getLast().getString());
+		if (lineLast.get(1) != null)
+			sb.append(", with code '").append(lineLast.get(1)).append("'");
+
+		if (lineLast.get(3) != null)
+			sb.append(", placed in the partition '")
+					.append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(lineLast.get(3))).append("'");
+
+		final String bracket = line0.get("BRACKET", 0);
+		if (bracket != null)
+			sb.append(", labelled \"").append(bracket).append("\"");
+
+		final String bodies = CommandLinkClass.notNull(line0.get("ARROW_BODY1", 0))
+				+ CommandLinkClass.notNull(line0.get("ARROW_BODY2", 0));
+		if (bodies.contains("."))
+			sb.append(", dotted");
+
+		final String direction = line0.get("ARROW_DIRECTION", 0);
+		if (direction != null && direction.isEmpty() == false && "*".equals(direction) == false)
+			sb.append(", oriented ").append(CommandLinkActivity.describeDirection(direction));
+
+		final String style = line0.getLazzy("ARROW_STYLE", 0);
+		if (style != null)
+			sb.append(", with style '").append(style).append("'");
+
+		if (line0.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		// The stereotypes and colors written next to an endpoint are applied
+		// to that endpoint, not to the link.
+		if (line0.get("STEREOTYPE", 0) != null)
+			sb.append(", setting the stereotype of the source to ").append(line0.get("STEREOTYPE", 0));
+
+		if (line0.get("BACKCOLOR", 0) != null)
+			sb.append(", setting the background color of the source to ").append(line0.get("BACKCOLOR", 0));
+
+		if (lineLast.get(2) != null)
+			sb.append(", setting the stereotype of the target to ").append(lineLast.get(2));
+
+		if (lineLast.get(4) != null)
+			sb.append(", setting the background color of the target to ").append(lineLast.get(4));
+
+		return sb.toString();
 	}
 
 	@Override
@@ -206,7 +276,7 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 
 		final String arrow = StringUtils.manageArrowForCuca(arrowBody1 + arrowDirection + arrowBody2 + ">");
 
-		final int lenght = arrow.length() - 1;
+		final int length = arrow.length() - 1;
 
 		final Display linkLabel = Display.getWithNewlines(diagram.getPragma(), line0.get("BRACKET", 0));
 
@@ -214,16 +284,16 @@ public class CommandLinkLongActivity extends CommandMultilines2<ActivityDiagram>
 		if (arrow.contains("."))
 			type = type.goDotted();
 
-		final LinkArg linkArg = LinkArg.build(linkLabel, lenght, diagram.getSkinParam().classAttributeIconSize() > 0);
+		final LinkArg linkArg = LinkArg.build(linkLabel, length, diagram.getSkinParam().classAttributeIconSize() > 0);
 		Link link = new Link(lines.getLocation(), diagram, diagram.getSkinParam().getCurrentStyleBuilder(), entity1,
 				entity2, type, linkArg);
 		final Direction direction = StringUtils.getArrowDirection(arrowBody1 + arrowDirection + arrowBody2 + ">");
 		if (direction == Direction.LEFT || direction == Direction.UP)
 			link = link.getInv();
 
-		if (line0.get("URL", 0) != null) {
+		if (line0.get(UrlBuilder.URL_KEY, 0) != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
-			final Url urlLink = urlBuilder.getUrl(line0.get("URL", 0));
+			final Url urlLink = urlBuilder.getUrl(line0.get(UrlBuilder.URL_KEY, 0));
 			link.setUrl(urlLink);
 		}
 

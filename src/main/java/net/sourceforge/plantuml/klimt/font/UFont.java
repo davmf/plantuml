@@ -36,67 +36,60 @@
 package net.sourceforge.plantuml.klimt.font;
 
 import java.awt.Font;
+import java.awt.font.TextAttribute;
+import java.awt.font.TextLayout;
 import java.util.Objects;
 
-public class UFont {
+import net.sourceforge.plantuml.FileFormat;
+import net.sourceforge.plantuml.teavm.TeaVM;
+
+public final class UFont {
 
 	private final FontStack fontStack;
-	private final int style;
+	/**
+	 * The full font face (italic axis + CSS weight 100-900). This is the canonical
+	 * weight/style store.
+	 */
+	private final UFontFace face;
 	private final int size;
 
-	public static UFont build(String fullDefinition, int fontStyle, int fontSize) {
-		final FontStack fontStack = new FontStack(fullDefinition);
-		return new UFont(fontStack, fontStyle, fontSize);
-	}
-
-	private UFont(FontStack fontStack, int style, int size) {
+	/**
+	 * Face-aware constructor. Stores the full {@link UFontFace} so that
+	 * intermediate CSS weights (100-900) are preserved and applied via
+	 * {@link TextAttribute#WEIGHT} during Java2D rendering.
+	 */
+	UFont(FontStack fontStack, UFontFace face, int size) {
 		this.fontStack = fontStack;
-		this.style = style;
+		this.face = face == null ? UFontFace.normal() : face;
 		this.size = size;
 	}
 
-	public static UFont serif(int size) {
-		return UFont.build("Serif", Font.PLAIN, size);
-	}
-
-	public static UFont sansSerif(int size) {
-		return UFont.build("SansSerif", Font.PLAIN, size);
-	}
-
-	public static UFont courier(int size) {
-		return UFont.build("Courier", Font.PLAIN, size);
-	}
-
-	public static UFont byDefault(int size) {
-		return sansSerif(12);
-	}
-
-	public static UFont monospaced(int size) {
-		return UFont.build("Monospaced", Font.PLAIN, size);
-	}
-
-	public final Font getUnderlayingFont(String text) {
-		return fontStack.getFont(text, style, size);
+	/**
+	 * Returns the underlying {@link java.awt.Font} for the given text, with all
+	 * font properties applied via {@link java.awt.font.TextAttribute}s.
+	 *
+	 * <p>
+	 * Weight (CSS 100-900) and italic axis are both applied through
+	 * {@link UFontFace#deriveFont(Font)} so that fonts with intermediate weight
+	 * faces (e.g. Helvetica Neue Medium) render at the requested weight. Fonts that
+	 * only provide binary bold/normal fall back gracefully.
+	 */
+	public Font getUnderlayingFont(String text) {
+		return fontStack.getFont(text, face, size);
 	}
 
 	public UFont withSize(float size) {
-		return new UFont(fontStack, this.style, (int) size);
+		return new UFont(fontStack, this.face, (int) size);
 	}
 
-	public UFont withStyle(int style) {
-		return new UFont(fontStack, style, this.size);
+	public UFontFace getFontFace() {
+		return face;
 	}
 
-	public UFont bold() {
-		return withStyle(Font.BOLD);
-	}
-
-	public UFont italic() {
-		return withStyle(Font.ITALIC);
-	}
-
-	public int getStyle() {
-		return style;
+	public UFont withFontFace(UFontFace newFace) {
+		if (newFace == null)
+			return this;
+		return new UFont(fontStack, newFace, this.size);
 	}
 
 	public int getSize() {
@@ -107,27 +100,24 @@ public class UFont {
 		return size;
 	}
 
-	public boolean isBold() {
-		return (style & Font.BOLD) != 0;
-	}
-
-	public boolean isItalic() {
-		return (style & Font.ITALIC) != 0;
-	}
-
 	public String getFamily(String text, UFontContext context) {
-		if (context == UFontContext.EPS) {
-//			if (fontStack.getFamily() == null)
-//				return "Times-Roman";
-			return getUnderlayingFont(text).getPSName();
-		}
-		if (context == UFontContext.SVG) {
-			String result = fontStack.getFullDefinition().replace('\"', '\'');
-			result = result.replaceAll("(?i)sansserif", "sans-serif");
-
-			return result;
+		if (TeaVM.isTeaVM()) {
+			return getTeaVMDefinition();
+		} else {
+			switch (context) {
+			case PDF:
+				return fontStack.getFullDefinition();
+			case EPS:
+				return getUnderlayingFont(text).getPSName();
+			case SVG:
+				return fontStack.getSvgFamily();
+			}
 		}
 		throw new IllegalArgumentException();
+	}
+
+	private String getTeaVMDefinition() {
+		return fontStack.getSvgFamily();
 	}
 
 	// Kludge for testing because font names on some machines (only macOS?) do not
@@ -149,17 +139,21 @@ public class UFont {
 	@Override
 	public String toString() {
 		final StringBuilder sb = new StringBuilder();
-		sb.append(getPortableFontName());
+		if (TeaVM.isTeaVM())
+			sb.append(getTeaVMDefinition());
+		else
+			sb.append(getPortableFontName());
 		sb.append("/");
 		sb.append(getSize());
 		return sb.toString();
 	}
 
-	// ::comment when __HAXE__
-
 	@Override
 	public int hashCode() {
-		return Objects.hash(fontStack, style, size);
+		if (TeaVM.isTeaVM())
+			return Objects.hash(getTeaVMDefinition(), face, size);
+		else
+			return Objects.hash(fontStack, face, size);
 	}
 
 	@Override
@@ -169,9 +163,15 @@ public class UFont {
 		if (!(obj instanceof UFont))
 			return false;
 		UFont other = (UFont) obj;
-		return Objects.equals(fontStack, other.fontStack) && style == other.style && size == other.size;
+		if (TeaVM.isTeaVM())
+			return Objects.equals(getTeaVMDefinition(), other.getTeaVMDefinition()) && Objects.equals(face, other.face)
+					&& size == other.size;
+		else
+			return Objects.equals(fontStack, other.fontStack) && Objects.equals(face, other.face) && size == other.size;
 	}
 
-	// ::done
+	public TextLayout createTextLayout(String text) {
+		return new TextLayout(text, getUnderlayingFont(text), FileFormat.gg.getFontRenderContext());
+	}
 
 }

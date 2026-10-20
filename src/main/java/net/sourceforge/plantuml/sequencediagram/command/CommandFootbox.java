@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,9 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandFootbox extends SingleLineCommand2<SequenceDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"footbox", "hide", "hidefootbox", "show", "showfootbox");
+
 	public static final IRegex HIDE_SHOW_FOOTBOX = RegexConcat.build(CommandFootbox.class.getName(), RegexLeaf.start(), //
 			new RegexLeaf(1, "TYPE", "(hide|show)?"), //
 			RegexLeaf.spaceZeroOrMore(), //
@@ -57,10 +64,28 @@ public class CommandFootbox extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// The footbox is the repetition of the participant heads at the bottom
+		// of the diagram.
+		final boolean show = "show".equalsIgnoreCase(arg.get("TYPE", 0));
+		if (show)
+			return "Showing the participant boxes at the bottom of the diagram";
+
+		return "Hiding the participant boxes at the bottom of the diagram";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
-		final boolean footbox = arg.get("TYPE", 0).equalsIgnoreCase("show");
+		final boolean footbox = "show".equalsIgnoreCase(arg.get("TYPE", 0));
 		diagram.setShowFootbox(footbox);
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

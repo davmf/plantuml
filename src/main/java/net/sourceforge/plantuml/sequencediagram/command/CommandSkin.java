@@ -36,8 +36,11 @@
 package net.sourceforge.plantuml.sequencediagram.command;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -48,6 +51,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandSkin extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("skin");
 
 	public static final CommandSkin ME = new CommandSkin();
 
@@ -63,11 +68,26 @@ public class CommandSkin extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// Loads a named skin (like 'rose') that changes the overall look of
+		// the diagram (see TitledDiagram.loadSkin).
+		return "Loading the skin '" + arg.get("SKIN", 0) + "'";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		try {
 			return diagram.loadSkin(arg.get("SKIN", 0));
 		} catch (IOException e) {
 			return CommandExecutionResult.error("Skin read error");
 		}
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

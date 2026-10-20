@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml;
 
-import java.awt.Color;
+
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -47,25 +47,26 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
 import java.net.URI;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.version.PSystemVersion;
 
 public class Splash extends Window implements MouseListener, MouseMotionListener {
-	// ::remove file when __CORE__
+	
 	// ::remove file when __HAXE__
 
-	private static final Color LINK_NORMAL = Color.BLUE;
-	private static final Color LINK_HOVER = new Color(127, 0, 127);
+	private static final XColor LINK_NORMAL = XColor.BLUE;
+	private static final XColor LINK_HOVER = new XColor(127, 0, 127);
 
 	private static Splash singleton;
 
 	private final int width = 280;
 	private final int height = 80;
-	private final BufferedImage logo;
+	private final PortableImage logo;
 	private final AtomicInteger total = new AtomicInteger();
 	private final AtomicInteger done = new AtomicInteger();
 	private final AtomicInteger errors = new AtomicInteger();
@@ -109,7 +110,7 @@ public class Splash extends Window implements MouseListener, MouseMotionListener
 
 	}
 
-	private Color link = LINK_NORMAL;
+	private XColor link = LINK_NORMAL;
 
 	public void mouseMoved(MouseEvent event) {
 		if (event.getY() > limY && event.getX() < limX) {
@@ -119,7 +120,7 @@ public class Splash extends Window implements MouseListener, MouseMotionListener
 		}
 	}
 
-	private void updateLinkColor(final Color newLink) {
+	private void updateLinkColor(final XColor newLink) {
 		if (link != newLink) {
 			link = newLink;
 			this.setCursor(
@@ -178,23 +179,23 @@ public class Splash extends Window implements MouseListener, MouseMotionListener
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);
-		g.setColor(Color.WHITE);
+		g.setColor(XColor.WHITE.toAwtColor());
 		g.fillRect(0, 0, width, height);
-		g.setColor(Color.BLACK);
+		g.setColor(XColor.BLACK.toAwtColor());
 		g.drawRect(0, 0, width - 1, height - 1);
 		g.drawRect(1, 1, width - 3, height - 3);
 		// g.setColor(Color.RED);
 		// final String status = done + "/" + total;
 		// g.drawString(status, width / 2, height / 2);
-		g.drawImage(logo, width - logo.getWidth() - 4, height - logo.getHeight() - 4, null);
+		g.drawImage(logo.getBufferedImage(), width - logo.getWidth() - 4, height - logo.getHeight() - 4, null);
 		drawProgessBar(g, done.intValue(), total.intValue());
 		final int nbErrors = errors.get();
 		if (nbErrors > 0) {
-			g.setColor(Color.RED);
+			g.setColor(XColor.RED.toAwtColor());
 			final String message = "" + nbErrors + (nbErrors > 1 ? " diagrams" : " diagram") + " contains errors";
 			g.drawString(message, 10, 20);
 		}
-		g.setColor(link);
+		g.setColor(link.toAwtColor());
 		final String urllink = "https://plantuml.com";
 		final Rectangle2D rect = getUsed(g, urllink);
 		g.drawString(urllink, 10, (int) (height - rect.getMaxY()));
@@ -216,10 +217,10 @@ public class Splash extends Window implements MouseListener, MouseMotionListener
 		final int barWidth = 170;
 		final int barHeight = (int) (rect.getHeight() + 2);
 		final int gray = 230;
-		g.setColor(new Color(gray, gray, gray));
+		g.setColor(new XColor(gray, gray, gray).toAwtColor());
 		final int value = barWidth * intValue / totalValue;
 		g.fillRect(x, y, value, barHeight);
-		g.setColor(Color.BLACK);
+		g.setColor(XColor.BLACK.toAwtColor());
 		g.drawRect(x, y, barWidth, barHeight);
 
 		final double xLabel = x + (barWidth - rect.getWidth()) / 2;

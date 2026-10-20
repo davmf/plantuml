@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -53,6 +57,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.utils.Position;
 
 public class CommandNote extends SingleLineCommand2<TimingDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("note");
 
 	public CommandNote() {
 		super(getRegexConcat());
@@ -80,12 +86,34 @@ public class CommandNote extends SingleLineCommand2<TimingDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String code = arg.get("CODE", 0);
+		final String position = arg.get("POSITION", 0);
+		final String note = arg.get("NOTE", 0);
+		final String stereotype = arg.get("STEREO", 0);
+		// The TAGS group is parsed but never read by executeArg
+		final String tags = arg.get("TAGS", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding a note at the ").append(position).append(" of player '").append(code).append("'");
+		if (note != null)
+			sb.append(" labelled \"").append(note).append("\"");
+		if (stereotype != null)
+			sb.append(" stereotyped ").append(stereotype);
+		if (tags != null && tags.isEmpty() == false)
+			sb.append(" tagged ").append(tags).append(" (currently ignored)");
+		// executeArg fails when no player exists with this code; the note is placed at the current diagram time
+		return sb.toString();
+	}
+
+	@Override
 	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String code = arg.get("CODE", 0);
 		final Player player = diagram.getPlayer(code);
 		if (player == null)
-			return CommandExecutionResult.error("Unkown \"" + code + "\"");
+			return CommandExecutionResult.error("Unknown \"" + code + "\"");
 
 		final Display note = Display.getWithNewlines(diagram.getPragma(), arg.get("NOTE", 0));
 		final TimeTick now = diagram.getNow();
@@ -99,6 +127,11 @@ public class CommandNote extends SingleLineCommand2<TimingDiagram> {
 		// diagram.getSkinParam().getIHtmlColorSet());
 		player.addNote(now, note, Position.fromString(arg.get("POSITION", 0)), stereotype);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

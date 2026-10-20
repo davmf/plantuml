@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.LimitFinder;
@@ -53,7 +53,6 @@ import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 
 public class TextBlockUtils {
-	// ::remove file when __HAXE__
 
 	public static final TextBlock EMPTY_TEXT_BLOCK = TextBlockUtils.empty(0, 0);
 
@@ -84,15 +83,18 @@ public class TextBlockUtils {
 	}
 
 	public static TextBlock empty(final double width, final double height) {
-		return new AbstractTextBlock() {
+		return new TextBlock() {
 			public void drawU(UGraphic ug) {
 			}
 
+			@Fast
+			@Override
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
 				return new XDimension2D(width, height);
 			}
 
-			public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
+			@Override
+			public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 				return null;
 			}
 
@@ -124,14 +126,7 @@ public class TextBlockUtils {
 		if (b2 == EMPTY_TEXT_BLOCK)
 			return b1;
 
-		return new TextBlockVertical2(b1, b2, horizontalAlignment);
-	}
-
-	public static TextBlock mergeTB(TextBlock b1, UImage image, HorizontalAlignment horizontalAlignment) {
-		if (b1 == EMPTY_TEXT_BLOCK)
-			throw new IllegalArgumentException();
-
-		return new TextBlockVertical2(b1, image, horizontalAlignment);
+		return new TextBlockVertical(b1, b2, horizontalAlignment);
 	}
 
 	// public static TextBlockBackcolored mergeColoredTB(TextBlockBackcolored b1,
@@ -154,40 +149,6 @@ public class TextBlockUtils {
 		return dim.getHeight() == 0 && dim.getWidth() == 0;
 	}
 
-	public static TextBlock fullInnerPosition(final TextBlock bloc, final String display) {
-		return new TextBlock() {
-
-			public void drawU(UGraphic ug) {
-				bloc.drawU(ug);
-			}
-
-			public XDimension2D calculateDimension(StringBounder stringBounder) {
-				return bloc.calculateDimension(stringBounder);
-			}
-
-			public MinMax getMinMax(StringBounder stringBounder) {
-				return bloc.getMinMax(stringBounder);
-			}
-
-			public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-				if (strategy.check(display, member)) {
-					final XDimension2D dim = calculateDimension(stringBounder);
-					return new XRectangle2D(0, 0, dim.getWidth(), dim.getHeight());
-				}
-				return null;
-			}
-
-			public MagneticBorder getMagneticBorder() {
-				return bloc.getMagneticBorder();
-			}
-
-			public HColor getBackcolor() {
-				return bloc.getBackcolor();
-			}
-
-		};
-	}
-
 	public static TextBlock addBackcolor(final TextBlock text, final HColor backColor) {
 		return new TextBlock() {
 			public void drawU(UGraphic ug) {
@@ -198,10 +159,13 @@ public class TextBlockUtils {
 				return text.getMinMax(stringBounder);
 			}
 
-			public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-				return text.getInnerPosition(member, stringBounder, strategy);
+			@Override
+			public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+				return text.getInnerPosition(member, stringBounder);
 			}
 
+			@Fast
+			@Override
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
 				return text.calculateDimension(stringBounder);
 			}
@@ -213,24 +177,6 @@ public class TextBlockUtils {
 			public MagneticBorder getMagneticBorder() {
 				return text.getMagneticBorder();
 			}
-		};
-	}
-
-	public static TextBlock fromUImage(final UImage image) {
-		return new AbstractTextBlock() {
-
-			public void drawU(UGraphic ug) {
-				ug.draw(image);
-			}
-
-			public XDimension2D calculateDimension(StringBounder stringBounder) {
-				return new XDimension2D(image.getWidth(), image.getHeight());
-			}
-
-			public MinMax getMinMax(StringBounder stringBounder) {
-				return MinMax.fromMax(image.getWidth(), image.getHeight());
-			}
-
 		};
 	}
 

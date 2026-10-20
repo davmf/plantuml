@@ -42,8 +42,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
-import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.PlainDiagram;
+import net.sourceforge.plantuml.UgSimpleDiagram;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.jaws.JawsStrange;
@@ -58,11 +58,12 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFace;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.klimt.sprite.SpriteContainerEmpty;
@@ -71,7 +72,7 @@ import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.text.BackSlash;
 
 // http://www.redblobgames.com/grids/hexagons/
-public class PSystemColors extends PlainDiagram implements UDrawable {
+public class PSystemColors extends UgSimpleDiagram {
 
 	private final double rectangleHeight = 28;
 	private final double rectangleWidth = 175;
@@ -88,13 +89,33 @@ public class PSystemColors extends PlainDiagram implements UDrawable {
 
 	}
 
-	@Override
-	protected UDrawable getRootDrawable(FileFormatOption fileFormatOption) {
-		return this;
-	}
-
 	public DiagramDescription getDescription() {
 		return new DiagramDescription("(Colors)");
+	}
+
+	@Fast
+	@Override
+	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		if (paletteCentralColor != null && colors.getColorOrWhite(paletteCentralColor) instanceof HColorSimple)
+			return calculateDimensionPalette();
+		return calculateDimensionFull();
+	}
+
+	private XDimension2D calculateDimensionFull() {
+		final int totalColors = colors.names().size();
+		final int nbRows = 21;
+		final int nbColumns = (totalColors + nbRows - 1) / nbRows;
+		return new XDimension2D(nbColumns * rectangleWidth, nbRows * rectangleHeight);
+	}
+
+	private XDimension2D calculateDimensionPalette() {
+		final double translateX = (centerHexa(2, 0).getX() + centerHexa(3, 0).getX()) / 2;
+		final double translateY = centerHexa(0, 2).getY() + corner(1).getY();
+		final double maxI = 2;
+		final double maxJ = 2;
+		final double maxCenterX = getWidth() * maxI + getWidth() / 2;
+		final double maxCenterY = size * maxJ * 1.5;
+		return new XDimension2D(translateX + maxCenterX + size + 1, translateY + maxCenterY + size + 1);
 	}
 
 	public void drawU(UGraphic ug) {
@@ -153,7 +174,7 @@ public class PSystemColors extends PlainDiagram implements UDrawable {
 		ug = ug.apply(UTranslate.point(centerHexa(i, j)));
 		ug.draw(hexa);
 
-		final UFont font = UFont.sansSerif(14).bold();
+		final UFont font = UFontFactory.sansSerif(14).withFontFace(UFontFace.bold());
 
 		TextBlock tt = getTextName(font, colorName, color);
 		XDimension2D dimText = tt.calculateDimension(ug.getStringBounder());
@@ -172,11 +193,11 @@ public class PSystemColors extends PlainDiagram implements UDrawable {
 			if (Character.isLowerCase(colorName.charAt(i)))
 				continue;
 
-			final String candidat = colorName.substring(0, i) + BackSlash.BS_BS_N + colorName.substring(i);
-			final TextBlock tt = getTextName(font, candidat, (HColorSimple) HColors.BLACK);
+			final String candidate = colorName.substring(0, i) + BackSlash.BS_BS_N + colorName.substring(i);
+			final TextBlock tt = getTextName(font, candidate, (HColorSimple) HColors.BLACK);
 			final double width = tt.calculateDimension(stringBounder).getWidth();
 			if (width < min) {
-				result = candidat;
+				result = candidate;
 				min = width;
 			}
 		}
@@ -204,9 +225,9 @@ public class PSystemColors extends PlainDiagram implements UDrawable {
 	private List<String> getColorsCloseTo(String other) {
 		final List<String> result = new ArrayList<>(colors.names());
 		for (Iterator<String> it = result.iterator(); it.hasNext();) {
-			final String candidat = it.next();
-			final String similar = candidat.replaceAll("Gray", "Grey");
-			if (candidat.equals(similar))
+			final String candidate = it.next();
+			final String similar = candidate.replaceAll("Gray", "Grey");
+			if (candidate.equals(similar))
 				continue;
 
 			if (result.contains(similar))
@@ -240,7 +261,7 @@ public class PSystemColors extends PlainDiagram implements UDrawable {
 	}
 
 	private void drawFull(UGraphic ug) {
-		final UFont font = UFont.sansSerif(14).bold();
+		final UFont font = UFontFactory.sansSerif(14).withFontFace(UFontFace.bold());
 
 		ug = ug.apply(HColors.BLACK);
 		int i = 0;

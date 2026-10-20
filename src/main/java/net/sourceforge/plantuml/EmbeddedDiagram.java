@@ -35,9 +35,9 @@
  */
 package net.sourceforge.plantuml;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -45,87 +45,54 @@ import java.util.List;
 
 import net.atmp.PixelImage;
 import net.sourceforge.plantuml.core.Diagram;
+import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.klimt.AffineTransformType;
 import net.sourceforge.plantuml.klimt.UShape;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.creole.Neutron;
 import net.sourceforge.plantuml.klimt.creole.atom.Atom;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.Line;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.klimt.shape.UImageSvg;
+import net.sourceforge.plantuml.klimt.shape.UImageTikz;
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.Defines;
 import net.sourceforge.plantuml.security.SImageIO;
 import net.sourceforge.plantuml.style.ISkinSimple;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.teavm.c.PSystemBuilderC;
+import net.sourceforge.plantuml.teavm.js.PSystemBuilderJs;
+import net.sourceforge.plantuml.teavm.js.browser.BrowserLog;
 import net.sourceforge.plantuml.text.StringLocated;
 
-public class EmbeddedDiagram extends AbstractTextBlock implements Line, Atom {
-	// ::remove file when __HAXE__
+public class EmbeddedDiagram extends TextBlockMemoized implements Line, Atom {
 
 	public static final String EMBEDDED_START = "{{";
 	public static final String EMBEDDED_END = "}}";
 
-	public static String getEmbeddedType(CharSequence cs) {
-		if (cs == null)
-			return null;
+	private PortableImage image;
+	private String svg;
+	private UImageTikz imageTikz;
+	private TextBlock textBlock;
 
-		final String s = StringUtils.trin(cs.toString());
-		if (s.startsWith(EMBEDDED_START) == false)
-			return null;
+	private final Diagram diagram;
 
-		if (s.equals(EMBEDDED_START))
-			return "uml";
+	private EmbeddedDiagram(ISkinSimple skinParam, List<StringLocated> strings) {
 
-		if (s.equals(EMBEDDED_START + "ditaa"))
-			return "ditaa";
+		final Previous previous = skinParam == null ? Previous.createEmpty() : Previous.createFrom(skinParam.values());
+		final BlockUml blockUml = new BlockUml(null, PathSystem.fetch(), strings, Defines.createEmpty(), previous,
+				null);
 
-		if (s.equals(EMBEDDED_START + "uml"))
-			return "uml";
+		this.diagram = blockUml.getDiagram();
 
-		if (s.equals(EMBEDDED_START + "wbs"))
-			return "wbs";
-
-		if (s.equals(EMBEDDED_START + "mindmap"))
-			return "mindmap";
-
-		if (s.equals(EMBEDDED_START + "gantt"))
-			return "gantt";
-
-		if (s.equals(EMBEDDED_START + "json"))
-			return "json";
-
-		if (s.equals(EMBEDDED_START + "yaml"))
-			return "yaml";
-
-		if (s.equals(EMBEDDED_START + "wire"))
-			return "wire";
-
-		if (s.equals(EMBEDDED_START + "creole"))
-			return "creole";
-
-		if (s.equals(EMBEDDED_START + "board"))
-			return "board";
-
-		if (s.equals(EMBEDDED_START + "ebnf"))
-			return "ebnf";
-
-		if (s.equals(EMBEDDED_START + "regex"))
-			return "regex";
-
-		if (s.equals(EMBEDDED_START + "files"))
-			return "files";
-
-		if (s.equals(EMBEDDED_START + "chronology"))
-			return "chronology";
-
-		if (s.equals(EMBEDDED_START + "chen"))
-			return "chen";
-
-		return null;
 	}
 
 	public static EmbeddedDiagram createAndSkip(String type, Iterator<CharSequence> it, ISkinSimple skinParam) {
@@ -134,10 +101,9 @@ public class EmbeddedDiagram extends AbstractTextBlock implements Line, Atom {
 		int nested = 1;
 		while (it.hasNext()) {
 			final CharSequence s2 = it.next();
-			if (EmbeddedDiagram.getEmbeddedType(StringUtils.trinNoTrace(s2)) != null)
-				// if (StringUtils.trinNoTrace(s2).startsWith(EmbeddedDiagram.EMBEDDED_START))
+			if (EmbeddedDiagram.getEmbeddedType(s2) != null)
 				nested++;
-			else if (StringUtils.trinNoTrace(s2).equals(EmbeddedDiagram.EMBEDDED_END)) {
+			else if (StringUtils.trim2(s2.toString()).equals(EmbeddedDiagram.EMBEDDED_END)) {
 				nested--;
 				if (nested == 0)
 					break;
@@ -149,15 +115,6 @@ public class EmbeddedDiagram extends AbstractTextBlock implements Line, Atom {
 
 	}
 
-	private final List<StringLocated> list;
-	private final ISkinSimple skinParam;
-	private BufferedImage image;
-
-	private EmbeddedDiagram(ISkinSimple skinParam, List<StringLocated> system) {
-		this.list = system;
-		this.skinParam = skinParam;
-	}
-
 	public static EmbeddedDiagram from(ISkinSimple skinParam, List<String> strings) {
 		return new EmbeddedDiagram(skinParam, BlockUml.convert(strings));
 	}
@@ -166,81 +123,255 @@ public class EmbeddedDiagram extends AbstractTextBlock implements Line, Atom {
 		return 0;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		try {
-			if (stringBounder.matchesProperty("SVG")) {
-				final String imageSvg = getImageSvg();
-				final UImageSvg svg = new UImageSvg(imageSvg, 1);
-				return new XDimension2D(svg.getWidth(), svg.getHeight());
+			if (!TeaVM.isTeaVM()) {
+				if (stringBounder.matchesProperty("SVG")) {
+					final String imageSvg = getImageSvg(stringBounder.getFileFormat());
+					final UImageSvg svg = new UImageSvg(imageSvg, 1);
+					return new XDimension2D(svg.getWidth(), svg.getHeight());
+				}
+				if (stringBounder.matchesProperty("TIKZ")) {
+					final UImageTikz tikz = getImageTikz(stringBounder.getFileFormat());
+					return new XDimension2D(tikz.getWidth(), tikz.getHeight());
+				}
+				final PortableImage im = getImage(stringBounder.getFileFormat());
+				return new XDimension2D(im.getWidth(), im.getHeight());
+			} else {
+				// ::comment when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__ __GPLV2__
+				final TextBlock tb = getInternalTextBlock(stringBounder.getFileFormat());
+				final XDimension2D result = tb.calculateDimension(stringBounder);
+				resetBuilder();
+				return result;
+				// ::done
 			}
-			final BufferedImage im = getImage();
-			return new XDimension2D(im.getWidth(), im.getHeight());
-		} catch (IOException e) {
-			Logme.error(e);
-		} catch (InterruptedException e) {
+		} catch (Exception e) {
 			Logme.error(e);
 		}
 		return new XDimension2D(42, 42);
 	}
 
+	public TextBlock getInternalTextBlock(FileFormat fileFormat) throws Exception {
+		// ::comment when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__ __GPLV2__
+		if (textBlock == null) {
+			resetBuilder();
+			final UgDiagram ugDiagram = (UgDiagram) diagram;
+			textBlock = ugDiagram.getTextBlock(0, new FileFormatOption(fileFormat));
+		}
+		// ::done
+		return textBlock;
+	}
+
+	private static void resetBuilder() {
+		// The JavaScript and the C builds do not embed the same diagram factories
+		if (TeaVM.isC())
+			PSystemBuilderC.getInstance().reset();
+		else
+			PSystemBuilderJs.getInstance().reset();
+	}
+
 	public void drawU(UGraphic ug) {
 		try {
-			final boolean isSvg = ug.matchesProperty("SVG");
-			if (isSvg) {
-				final String imageSvg = getImageSvg();
-				final UImageSvg svg = new UImageSvg(imageSvg, 1);
-				ug.draw(svg);
-				return;
+			final StringBounder stringBounder = ug.getStringBounder();
+			if (!TeaVM.isTeaVM()) {
+				final boolean isSvg = ug.matchesProperty("SVG");
+				if (isSvg) {
+					final String imageSvg = getImageSvg(stringBounder.getFileFormat());
+					final UImageSvg svg = new UImageSvg(imageSvg, 1);
+					ug.draw(svg);
+					return;
+				}
+				if (ug.matchesProperty("TIKZ")) {
+					ug.draw(getImageTikz(stringBounder.getFileFormat()));
+					return;
+				}
+				final PortableImage im = getImage(stringBounder.getFileFormat());
+				final UShape image = new UImage(new PixelImage(im, AffineTransformType.TYPE_BILINEAR));
+				ug.draw(image);
+			} else {
+				// ::comment when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__ __GPLV2__
+				final TextBlock tb = getInternalTextBlock(stringBounder.getFileFormat());
+				ug = ug.apply(HColors.transparent().bg());
+				tb.drawU(ug);
+				resetBuilder();
+				// ::done
 			}
-			final BufferedImage im = getImage();
-			final UShape image = new UImage(new PixelImage(im, AffineTransformType.TYPE_BILINEAR));
-			ug.draw(image);
-		} catch (IOException e) {
-			Logme.error(e);
-		} catch (InterruptedException e) {
+		} catch (Exception e) {
 			Logme.error(e);
 		}
 
 	}
 
-	private String getImageSvg() throws IOException, InterruptedException {
-		final Diagram system = getSystem();
-		final ByteArrayOutputStream os = new ByteArrayOutputStream();
-		system.exportDiagram(os, 0, new FileFormatOption(FileFormat.SVG));
-		os.close();
-		return new String(os.toByteArray());
+	private String getImageSvg(FileFormat fileFormat) throws IOException, InterruptedException {
+		if (svg == null)
+			svg = getImageSvgSlow(fileFormat).replaceAll("<\\?plantuml.+?\\?>", "");
+
+		return svg;
+
 	}
 
-	private BufferedImage getImage() throws IOException, InterruptedException {
-		if (image == null)
-			image = getImageSlow();
+	private String getImageSvgSlow(FileFormat fileFormat) throws IOException, InterruptedException {
+		if (!TeaVM.isTeaVM()) {
+			final ByteArrayOutputStream os = new ByteArrayOutputStream();
+			diagram.exportDiagram(os, 0, new FileFormatOption(fileFormat));
+			os.close();
+			return new String(os.toByteArray());
+		}
+		throw new UnsupportedOperationException("TEAVM4586");
+	}
 
+	private UImageTikz getImageTikz(FileFormat fileFormat) throws IOException, InterruptedException {
+		if (imageTikz == null)
+			imageTikz = getImageTikzSlow(fileFormat);
+
+		return imageTikz;
+	}
+
+	private UImageTikz getImageTikzSlow(FileFormat fileFormat) throws IOException, InterruptedException {
+		final ByteArrayOutputStream os = new ByteArrayOutputStream();
+		final ImageData imageData = diagram.exportDiagram(os, 0, new FileFormatOption(fileFormat));
+		os.close();
+		return new UImageTikz(new String(os.toByteArray(), StandardCharsets.UTF_8), imageData.getWidth(),
+				imageData.getHeight());
+	}
+
+	private PortableImage getImage(FileFormat fileFormat) throws IOException, InterruptedException {
+		BrowserLog.consoleLog(getClass(), "=======getImage");
+		if (image == null)
+			image = getImageSlow(fileFormat);
 		return image;
 	}
 
-	private BufferedImage getImageSlow() throws IOException, InterruptedException {
-		final Diagram system = getSystem();
-		final ByteArrayOutputStream os = new ByteArrayOutputStream();
-		system.exportDiagram(os, 0, new FileFormatOption(FileFormat.PNG));
-		os.close();
-		return SImageIO.read(os.toByteArray());
+	private PortableImage getImageSlow(FileFormat fileFormat) throws IOException, InterruptedException {
+		BrowserLog.consoleLog(getClass(), "=======getImageSlow");
+		if (!TeaVM.isTeaVM()) {
+			final ByteArrayOutputStream os = new ByteArrayOutputStream();
+			diagram.exportDiagram(os, 0, new FileFormatOption(fileFormat));
+			os.close();
+			return SImageIO.read(os.toByteArray());
+		}
+		throw new UnsupportedOperationException("TEAVM4585");
 	}
 
 	public HorizontalAlignment getHorizontalAlignment() {
 		return HorizontalAlignment.LEFT;
 	}
 
-	private Diagram getSystem() throws IOException, InterruptedException {
-		final Previous previous = skinParam == null ? Previous.createEmpty()
-				: Previous.createFrom(skinParam.values());
-		final BlockUml blockUml = new BlockUml(list, Defines.createEmpty(), previous, null, null);
-		return blockUml.getDiagram();
-
-	}
-
 	@Override
 	public List<Neutron> getNeutrons() {
 		return Arrays.asList(Neutron.create(this));
+	}
+
+	public static String getEmbeddedType(CharSequence cs) {
+		if (cs == null)
+			return null;
+
+		final int len = cs.length();
+
+		// Skip leading whitespace
+		int p = 0;
+		while (p < len && Character.isWhitespace(cs.charAt(p)))
+			p++;
+
+		// Must start with "{{"
+		if (p + 2 > len || cs.charAt(p) != '{' || cs.charAt(p + 1) != '{')
+			return null;
+		p += 2;
+
+		// Find end (skip trailing whitespace)
+		int end = len;
+		while (end > p && Character.isWhitespace(cs.charAt(end - 1)))
+			end--;
+
+		final int suffixLen = end - p;
+
+		// "{{" alone -> uml
+		if (suffixLen == 0)
+			return "uml";
+
+		// Dispatch on first char to avoid scanning every keyword
+		switch (cs.charAt(p)) {
+		case 'b':
+			if (match(cs, p, end, "board"))
+				return "board";
+			break;
+		case 'c':
+			if (match(cs, p, end, "creole"))
+				return "creole";
+			if (match(cs, p, end, "chronology"))
+				return "chronology";
+			if (match(cs, p, end, "chen"))
+				return "chen";
+			if (match(cs, p, end, "chart"))
+				return "chart";
+			break;
+		case 'd':
+			if (match(cs, p, end, "ditaa"))
+				return "ditaa";
+			break;
+		case 'e':
+			if (match(cs, p, end, "ebnf"))
+				return "ebnf";
+			break;
+		case 'f':
+			if (match(cs, p, end, "files"))
+				return "files";
+			break;
+		case 'g':
+			if (match(cs, p, end, "gantt"))
+				return "gantt";
+			break;
+		case 'j':
+			if (match(cs, p, end, "json"))
+				return "json";
+			break;
+		case 'm':
+			if (match(cs, p, end, "mindmap"))
+				return "mindmap";
+			break;
+		case 'n':
+			if (match(cs, p, end, "nwdiag"))
+				return "nwdiag";
+			break;
+		case 'p':
+			if (match(cs, p, end, "packetdiag"))
+				return "packetdiag";
+			break;
+		case 'r':
+			if (match(cs, p, end, "regex"))
+				return "regex";
+			break;
+		case 's':
+			if (match(cs, p, end, "salt"))
+				return "salt";
+			break;
+		case 'u':
+			if (match(cs, p, end, "uml"))
+				return "uml";
+			break;
+		case 'w':
+			if (match(cs, p, end, "wbs"))
+				return "wbs";
+			if (match(cs, p, end, "wire"))
+				return "wire";
+			break;
+		case 'y':
+			if (match(cs, p, end, "yaml"))
+				return "yaml";
+			break;
+		}
+		return null;
+	}
+
+	private static boolean match(CharSequence cs, int from, int end, String key) {
+		final int klen = key.length();
+		if (end - from != klen)
+			return false;
+		for (int i = 0; i < klen; i++)
+			if (cs.charAt(from + i) != key.charAt(i))
+				return false;
+		return true;
 	}
 
 }

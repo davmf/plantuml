@@ -40,13 +40,11 @@ import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.font.UFont;
-import net.sourceforge.plantuml.klimt.font.UFontContext;
 import net.sourceforge.plantuml.klimt.font.UnusedSpace;
-import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UCenteredCharacter;
 
 public class DriverCenteredCharacterEps implements UDriver<UCenteredCharacter, EpsGraphics> {
-	// ::remove folder when __CORE__
+	
 
 	public void draw(UCenteredCharacter centeredCharacter, double x, double y, ColorMapper mapper, UParam param,
 			EpsGraphics eps) {
@@ -57,7 +55,7 @@ public class DriverCenteredCharacterEps implements UDriver<UCenteredCharacter, E
 		final double xpos = x - unusedSpace.getCenterX() - 0.5;
 		final double ypos = y - unusedSpace.getCenterY() - 0.5;
 
-		final TextLayout t = UFontContext.EPS.createTextLayout(font, "" + c);
+		final TextLayout t = font.createTextLayout("" + c);
 		eps.setStrokeColor(param.getColor().toColor(mapper));
 		DriverTextEps.drawPathIterator(eps, xpos, ypos, t.getOutline(null));
 	}

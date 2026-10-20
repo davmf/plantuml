@@ -70,6 +70,24 @@ public class LivingSpaces {
 		}
 	}
 
+	// ASCII counterpart of addConstraints(): keeps neighbouring participants at
+	// least ASCII_GAP cells apart, using the dedicated ASCII Real positions
+	// (getAsciiPosE()/getAsciiPosA()) instead of the pixel ones. The gap is a
+	// dedicated ASCII constant (1 cell), not the pixel 10 divided by anything.
+	private static final int ASCII_GAP = 1;
+
+	public void asciiAddConstraints() {
+		LivingSpace previous = null;
+		for (LivingSpace current : all.values()) {
+			if (previous != null) {
+				final Real point1 = previous.getAsciiPosE();
+				final Real point2 = current.getAsciiPosA();
+				point2.ensureBiggerThan(point1.addFixed(ASCII_GAP));
+			}
+			previous = current;
+		}
+	}
+
 	public LivingSpace previous(LivingSpace element) {
 		LivingSpace previous = null;
 		for (LivingSpace current : all.values()) {
@@ -114,7 +132,16 @@ public class LivingSpaces {
 				final XDimension2D dimHead = livingSpace.getHeadPreferredDimension(stringBounder);
 				y = headHeight - dimHead.getHeight();
 			}
-			livingSpace.drawHead(ug.apply(new UTranslate(x, y)), context, verticalAlignment, HorizontalAlignment.LEFT);
+			// TOP means that we are drawing the footboxes at the bottom of the
+			// diagram (the real heads are aligned on BOTTOM): the tail component
+			// is used there, like in Puma (for an actor, the label is displayed
+			// above the stickman)
+			if (verticalAlignment == VerticalAlignment.TOP)
+				livingSpace.drawTail(ug.apply(new UTranslate(x, y)), context, verticalAlignment,
+						HorizontalAlignment.LEFT);
+			else
+				livingSpace.drawHead(ug.apply(new UTranslate(x, y)), context, verticalAlignment,
+						HorizontalAlignment.LEFT);
 		}
 	}
 

@@ -37,19 +37,13 @@ package net.sourceforge.plantuml.klimt.creole.atom;
 
 import java.util.List;
 
-import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.creole.Neutron;
-import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
-import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 
-public interface Atom extends UShape {
-
-	public XDimension2D calculateDimension(StringBounder stringBounder);
+public interface Atom extends TextBlock {
 
 	public double getStartingAltitude(StringBounder stringBounder);
-
-	public void drawU(UGraphic ug);
 
 	public List<Neutron> getNeutrons();
 

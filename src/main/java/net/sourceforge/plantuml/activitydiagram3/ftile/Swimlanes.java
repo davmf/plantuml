@@ -36,8 +36,9 @@
 package net.sourceforge.plantuml.activitydiagram3.ftile;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import net.sourceforge.plantuml.activitydiagram3.Instruction;
@@ -52,6 +53,7 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.FtileFactoryDele
 import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.FtileFactoryDelegatorRepeat;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.FtileFactoryDelegatorSwitch;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.FtileFactoryDelegatorWhile;
+import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.UGraphicInterceptorAllSwimlanes;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.UGraphicInterceptorOneSwimlane;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vcompact.VCompactFactory;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GConnection;
@@ -62,6 +64,7 @@ import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.compress.CompressionMode;
 import net.sourceforge.plantuml.klimt.compress.SlotFinder;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -73,7 +76,6 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
@@ -81,15 +83,17 @@ import net.sourceforge.plantuml.preproc.OptionKey;
 import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.Styleable;
 import net.sourceforge.plantuml.svek.UGraphicForSnake;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.MathUtils;
+import net.sourceforge.plantuml.utils.MyCollections;
 
-public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable {
+public class Swimlanes implements TextBlock, Styleable {
 
 	private final ISkinParam skinParam;
 	private final Pragma pragma;
@@ -106,7 +110,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 	private Style style;
 
 	private List<Swimlane> swimlanes() {
-		return Collections.unmodifiableList(swimlanesRaw);
+		return MyCollections.unmodifiableList(swimlanesRaw);
 	}
 
 	private List<Swimlane> swimlanesSpecial() {
@@ -116,11 +120,12 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 			last.setMinMax(MinMax.getEmpty(true));
 			swimlanesSpecial.add(last);
 		}
-		return Collections.unmodifiableList(swimlanesSpecial);
+		return MyCollections.unmodifiableList(swimlanesSpecial);
 	}
 
-	public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.swimlane);
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_SWIMLANE;
 	}
 
 	public Swimlanes(ISkinParam skinParam, Pragma pragma) {
@@ -130,7 +135,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 
 	protected Style getStyle() {
 		if (style == null)
-			this.style = getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+			this.style = skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
 
 		return style;
 	}
@@ -194,7 +199,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 					final ConnectionCross connectionCross = new ConnectionCross(connection);
 					connectionCross.drawU(getUg());
 				}
-				// ::comment when __CORE__
+
 			} else if (shape instanceof Gtile) {
 				final Gtile tile = (Gtile) shape;
 				tile.drawU(this);
@@ -204,7 +209,6 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 				connection.drawTranslatable(getUg());
 				// connection.drawU(this);
 				// throw new UnsupportedOperationException();
-				// ::done
 			}
 		}
 
@@ -214,46 +218,57 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 
 	}
 
-	public final void computeSize(StringBounder stringBounder) {
-		final SlotFinder ug = SlotFinder.create(CompressionMode.ON_Y, stringBounder);
-		if (swimlanes().size() > 1) {
-			TextBlock full = root.createFtile(getFtileFactory(stringBounder));
-			computeSizeInternal(ug, full);
-		}
+	private boolean sizeComputed;
 
+	private void ensureSizeComputed(StringBounder stringBounder) {
+		if (sizeComputed == false) {
+			sizeComputed = true;
+			if (swimlanes().size() > 1) {
+				try {
+					final SlotFinder ug = SlotFinder.create(CompressionMode.ON_Y, stringBounder);
+					final TextBlock full = root.createFtile(getFtileFactory(stringBounder));
+					computeSizeInternal(ug, full);
+				} catch (NoSuchColorException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	public final void drawU(UGraphic ug) {
-		// ::comment when __CORE__
-		if (Gtile.USE_GTILE) {
-			drawGtile(ug);
-			return;
-		}
-		// ::done
+		try {
+			ensureSizeComputed(ug.getStringBounder());
 
-		TextBlock full = root.createFtile(getFtileFactory(ug.getStringBounder()));
-		final Style style = skinParam.getCurrentStyleBuilder()
-				.getMergedStyle(StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.goto_));
-		final HColor gotoColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
-		final boolean isDebug = Boolean.parseBoolean(skinParam.options().getValue(OptionKey.DEBUG));
+			if (Gtile.USE_GTILE) {
+				drawGtile(ug);
+				return;
+			}
 
-		ug = new UGraphicForSnake(ug);
-		if (swimlanes().size() > 1) {
-			drawWhenSwimlanes(ug, full);
-		} else {
-			// BUG42
-			full = new TextBlockInterceptorUDrawable(full, gotoColor, isDebug);
-			full.drawU(ug);
-			ug.flushUg();
+			TextBlock full = root.createFtile(getFtileFactory(ug.getStringBounder()));
+			final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(
+					StyleQueries.ACTIVITYDIAG_GOTO);
+			final HColor gotoColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
+			final boolean isDebug = Boolean.parseBoolean(skinParam.options().getValue(OptionKey.DEBUG));
+
+			ug = new UGraphicForSnake(ug);
+			if (swimlanes().size() > 1) {
+				drawWhenSwimlanes(ug, full);
+			} else {
+				// BUG42
+				full = new TextBlockInterceptorUDrawable(full, gotoColor, isDebug);
+				full.drawU(ug);
+				ug.flushUg();
+			}
+		} catch (NoSuchColorException e) {
+			e.printStackTrace();
 		}
 	}
 
-	// ::comment when __CORE__
 	private void drawGtile(UGraphic ug) {
 		TextBlock full = root.createGtile(skinParam, ug.getStringBounder());
 
 		final Style style = skinParam.getCurrentStyleBuilder()
-				.getMergedStyle(StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.goto_));
+				.getMergedStyle(StyleQueries.ACTIVITYDIAG_GOTO);
 		final HColor gotoColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 		final boolean isDebug = true;
 
@@ -267,7 +282,6 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 		}
 
 	}
-	// ::done
 
 	private TextBlock getTitle(Swimlane swimlane) {
 		final HorizontalAlignment horizontalAlignment = HorizontalAlignment.LEFT;
@@ -310,7 +324,8 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 
 		final XDimension2D dimensionFull = full.calculateDimension(stringBounder);
 		int i = 0;
-		assert dividers.size() == swimlanes().size() + 1;
+		if (TeaVM.a())
+			assert dividers.size() == swimlanes().size() + 1;
 		for (Swimlane swimlane : swimlanesSpecial()) {
 			final LaneDivider divider1 = dividers.get(i);
 
@@ -364,15 +379,19 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 
 	private void computeDrawingWidths(UGraphic ug, TextBlock full) {
 		final StringBounder stringBounder = ug.getStringBounder();
+		final Map<Swimlane, LimitFinder> finders = new LinkedHashMap<>();
+		final Map<Swimlane, UGraphic> swimlaneToUg = new LinkedHashMap<>();
 		for (Swimlane swimlane : swimlanes()) {
 			final LimitFinder limitFinder = LimitFinder.create(stringBounder, false);
-			final UGraphicInterceptorOneSwimlane interceptor = new UGraphicInterceptorOneSwimlane(
-					new UGraphicForSnake(limitFinder), swimlane, swimlanes());
-			full.drawU(interceptor);
-			interceptor.flushUg();
-			final MinMax minMax = limitFinder.getMinMax();
-			swimlane.setMinMax(minMax);
+			finders.put(swimlane, limitFinder);
+			swimlaneToUg.put(swimlane, new UGraphicForSnake(limitFinder));
 		}
+		final UGraphicInterceptorAllSwimlanes interceptor = new UGraphicInterceptorAllSwimlanes(swimlaneToUg,
+				swimlanes(), stringBounder);
+		full.drawU(interceptor);
+		interceptor.flushUg();
+		for (Swimlane swimlane : swimlanes())
+			swimlane.setMinMax(finders.get(swimlane).getMinMax());
 	}
 
 	private void computeSizeInternal(UGraphic ug, TextBlock full) {
@@ -411,7 +430,8 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 
 			xpos += swimlane.getActualWidth() + laneDivider.getWidth();
 		}
-		assert dividers.size() == swimlanes().size() + 1;
+		if (TeaVM.a())
+			assert dividers.size() == swimlanes().size() + 1;
 	}
 
 	public double getHalfMissingSpace(StringBounder stringBounder, int i, double min) {
@@ -424,7 +444,8 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 		if (titleWidth <= swimlaneActualWidth)
 			return 5;
 
-		assert titleWidth > swimlaneActualWidth;
+		if (TeaVM.a())
+			assert titleWidth > swimlaneActualWidth;
 		return Math.max(5, 5 + (titleWidth - swimlaneActualWidth) / 2);
 	}
 
@@ -433,6 +454,7 @@ public class Swimlanes extends AbstractTextBlock implements TextBlock, Styleable
 	}
 
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		ensureSizeComputed(stringBounder);
 		return getMinMax(stringBounder).getDimension();
 	}
 

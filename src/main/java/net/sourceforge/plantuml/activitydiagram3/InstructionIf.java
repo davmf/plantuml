@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.activitydiagram3;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -53,6 +52,7 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.GtileIfHexagon;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
@@ -61,6 +61,7 @@ import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class InstructionIf extends WithNote implements Instruction, InstructionCollection {
 
@@ -101,8 +102,7 @@ public class InstructionIf extends WithNote implements Instruction, InstructionC
 		this.topInlinkRendering = Objects.requireNonNull(inlinkRendering);
 		this.swimlane = swimlane;
 		this.currentStyleBuilder = skinParam.getCurrentStyleBuilder();
-		this.thens.add(new Branch(currentStyleBuilder, swimlane, whenThen, labelTest, color, LinkRendering.none(),
-				stereotype, skinParam.getIHtmlColorSet()));
+		this.thens.add(new Branch(swimlane, whenThen, labelTest, color, LinkRendering.none(), stereotype));
 		this.current = this.thens.get(0);
 	}
 
@@ -111,7 +111,6 @@ public class InstructionIf extends WithNote implements Instruction, InstructionC
 		return current.add(ins);
 	}
 
-	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		for (Branch branch : thens)
@@ -133,16 +132,15 @@ public class InstructionIf extends WithNote implements Instruction, InstructionC
 			return new GtileIfAlone(swimlane, gtiles.get(0), branches.get(0));
 		return GtileIfHexagon.build(swimlane, gtiles, branches);
 	}
-	// ::done
 
 	@Override
-	public Ftile createFtile(FtileFactory factory) {
+	public Ftile createFtile(FtileFactory factory) throws NoSuchColorException {
 		for (Branch branch : thens)
 			branch.updateFtile(factory);
 
 		if (elseBranch == null)
-			this.elseBranch = new Branch(currentStyleBuilder, swimlane, LinkRendering.none(), Display.NULL, null,
-					LinkRendering.none(), stereotype, skinParam.getIHtmlColorSet());
+			this.elseBranch = new Branch(swimlane, LinkRendering.none(), Display.NULL, null, LinkRendering.none(),
+					stereotype);
 
 		elseBranch.updateFtile(factory);
 		Ftile result = factory.createIf(swimlane, thens, elseBranch, outColor, topInlinkRendering, url,
@@ -165,15 +163,14 @@ public class InstructionIf extends WithNote implements Instruction, InstructionC
 		return parent;
 	}
 
-	public boolean swithToElse2(LinkRendering whenElse, LinkRendering nextLinkRenderer) {
-		this.current.setSpecial(nextLinkRenderer);
+	public boolean switchToElse2(LinkRendering whenElse, LinkRendering nextLinkRenderer) {
+		this.current.setSpecial(nextLinkRenderer, null);
 
 		if (elseBranch != null)
 			return false;
 
 		this.current.setInlinkRendering(nextLinkRenderer);
-		this.elseBranch = new Branch(skinParam.getCurrentStyleBuilder(), swimlane, whenElse, Display.NULL, null,
-				LinkRendering.none(), stereotype, skinParam.getIHtmlColorSet());
+		this.elseBranch = new Branch(swimlane, whenElse, Display.NULL, null, LinkRendering.none(), stereotype);
 		this.current = elseBranch;
 		return true;
 	}
@@ -183,21 +180,20 @@ public class InstructionIf extends WithNote implements Instruction, InstructionC
 		if (elseBranch != null)
 			return false;
 
-		this.current.setSpecial(nextLinkRenderer);
-		this.current = new Branch(skinParam.getCurrentStyleBuilder(), swimlane, whenThen, test, color, inlabel,
-				stereotype, skinParam.getIHtmlColorSet());
+		this.current.setSpecial(nextLinkRenderer, null);
+		this.current = new Branch(swimlane, whenThen, test, color, inlabel, stereotype);
 		this.thens.add(current);
 		return true;
 
 	}
 
-	public void endif(LinkRendering nextLinkRenderer) {
+	public void endif(LinkRendering nextLinkRenderer, Colors colors) {
 		endifCalled = true;
 		if (elseBranch == null)
-			this.elseBranch = new Branch(skinParam.getCurrentStyleBuilder(), swimlane, LinkRendering.none(),
-					Display.NULL, null, LinkRendering.none(), stereotype, skinParam.getIHtmlColorSet());
+			this.elseBranch = new Branch(swimlane, LinkRendering.none(), Display.NULL, null, LinkRendering.none(),
+					stereotype);
 
-		this.elseBranch.setSpecial(nextLinkRenderer);
+		this.elseBranch.setSpecial(nextLinkRenderer, colors);
 		this.current.setInlinkRendering(nextLinkRenderer);
 	}
 
@@ -244,7 +240,7 @@ public class InstructionIf extends WithNote implements Instruction, InstructionC
 		if (elseBranch != null)
 			result.addAll(elseBranch.getSwimlanes());
 
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	@Override

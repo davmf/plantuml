@@ -39,18 +39,18 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.Previous;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.abel.Bag;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityFactory;
@@ -63,6 +63,7 @@ import net.sourceforge.plantuml.abel.Together;
 import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.core.InstallationRequirement;
 import net.sourceforge.plantuml.core.UmlSource;
@@ -78,31 +79,34 @@ import net.sourceforge.plantuml.cucadiagram.MagmaList;
 import net.sourceforge.plantuml.cucadiagram.PortionShower;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
 import net.sourceforge.plantuml.dot.CucaDiagramTxtMaker;
+import net.sourceforge.plantuml.dot.GraphvizRuntimeEnvironment;
 import net.sourceforge.plantuml.elk.CucaDiagramFileMakerElk;
+import net.sourceforge.plantuml.gantt.Failable;
 import net.sourceforge.plantuml.graphml.CucaDiagramGraphmlMaker;
 import net.sourceforge.plantuml.klimt.creole.Display;
-import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.plasma.Plasma;
 import net.sourceforge.plantuml.plasma.Quark;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.project.Failable;
 import net.sourceforge.plantuml.sdot.CucaDiagramFileMakerSmetana;
 import net.sourceforge.plantuml.skin.PragmaKey;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.statediagram.StateDiagram;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.svek.CucaDiagramFileMaker;
 import net.sourceforge.plantuml.svek.CucaDiagramFileMakerSvek;
+import net.sourceforge.plantuml.svek.CucaDiagramFileMakerTeaVM;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.text.Guillemet;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.xmi.CucaDiagramXmiMaker;
 import net.sourceforge.plantuml.xmlsc.StateDiagramScxmlMaker;
 
-public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, PortionShower, EntityFactory {
+public abstract class CucaDiagram extends TitledDiagram implements GroupHierarchy, PortionShower, EntityFactory {
 
 	static class EntityHideOrShow {
 		private final EntityGender gender;
@@ -122,8 +126,8 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 	private final List<HideOrShow> hides2 = new ArrayList<>();
 	private final List<HideOrShow> removed = new ArrayList<>();
 
-	private final AtomicInteger cpt1 = new AtomicInteger(1);
-	private final AtomicInteger cpt2 = new AtomicInteger(1);
+	private final AtomicInteger cpt1 = new AtomicInteger(0);
+	private final AtomicInteger cpt2 = new AtomicInteger(0);
 
 	private List<Bag> stacks = new ArrayList<>();
 
@@ -144,7 +148,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 		this.setSeparator(namespaceSeparator);
 	}
 
-	public CucaDiagram(UmlSource source, UmlDiagramType type, Previous previous, PreprocessingArtifact preprocessing) {
+	public CucaDiagram(UmlSource source, DiagramType type, Previous previous, PreprocessingArtifact preprocessing) {
 		super(source, type, previous, preprocessing);
 		this.namespace = new Plasma<Entity>();
 		this.root = namespace.root();
@@ -156,8 +160,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 	@Override
 	public void startingPass(ParserPass pass) {
 		this.setLastEntity(null);
-		this.cpt1.set(1);
-		this.cpt2.set(1);
+		this.cpt2.set(0);
 		if (stacks.size() > 1)
 			stacks.subList(1, stacks.size()).clear();
 	}
@@ -263,7 +266,8 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 		if (x == -1) {
 			if (reuseExistingChild && this.countByName(full) == 1) {
 				final Quark<Entity> byName = this.firstWithName(full);
-				assert byName != null;
+				if (TeaVM.a())
+					assert byName != null;
 				if (byName != currentQuark)
 					return Failable.ok(byName);
 			}
@@ -410,7 +414,6 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 		return result.toArray(new String[result.size()]);
 	}
 
-	// ::comment when __CORE__
 	private void createFilesGraphml(OutputStream suggestedFile) throws IOException {
 		final CucaDiagramGraphmlMaker maker = new CucaDiagramGraphmlMaker(this);
 		maker.createFiles(suggestedFile);
@@ -419,6 +422,30 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 	private void createFilesXmi(OutputStream suggestedFile, FileFormat fileFormat) throws IOException {
 		final CucaDiagramXmiMaker maker = new CucaDiagramXmiMaker(this, fileFormat);
 		maker.createFiles(suggestedFile);
+	}
+
+	@Override
+	protected ImageData exportXmi(OutputStream os, FileFormat fileFormat) throws IOException {
+		createFilesXmi(os, fileFormat);
+		return ImageDataSimple.ok();
+	}
+
+	@Override
+	protected ImageData exportScxml(OutputStream os) throws IOException {
+		createFilesScxml(os);
+		return ImageDataSimple.ok();
+	}
+
+	@Override
+	protected ImageData exportGraphml(OutputStream os) throws IOException {
+		createFilesGraphml(os);
+		return ImageDataSimple.ok();
+	}
+
+	@Override
+	protected ImageData exportTxt(OutputStream os, int index, FileFormat fileFormat) throws IOException {
+		createFilesTxt(os, index, fileFormat);
+		return ImageDataSimple.ok();
 	}
 
 	private void createFilesScxml(OutputStream suggestedFile) throws IOException {
@@ -430,69 +457,59 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 		final CucaDiagramTxtMaker maker = new CucaDiagramTxtMaker(this, fileFormat);
 		maker.createFiles(os, index);
 	}
-	// ::done
 
 	@Override
-	final public void exportDiagramGraphic(UGraphic ug, FileFormatOption fileFormatOption) {
-		final CucaDiagramFileMaker maker = new CucaDiagramFileMakerSmetana(this);
-		maker.createOneGraphic(ug);
-	}
-
-	@Override
-	final protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-		final FileFormat fileFormat = fileFormatOption.getFileFormat();
-
-		// ::comment when __CORE__
-		if (fileFormat == FileFormat.ATXT || fileFormat == FileFormat.UTXT) {
-			createFilesTxt(os, index, fileFormat);
-			return ImageDataSimple.ok();
-		}
-
-		if (fileFormat == FileFormat.GRAPHML) {
-			createFilesGraphml(os);
-			return ImageDataSimple.ok();
-		}
-
-		if (fileFormat.name().startsWith("XMI")) {
-			createFilesXmi(os, fileFormat);
-			return ImageDataSimple.ok();
-		}
-
-		if (fileFormat == FileFormat.SCXML) {
-			createFilesScxml(os);
-			return ImageDataSimple.ok();
-		}
-		// ::done
-
-		if (getUmlDiagramType() == UmlDiagramType.COMPOSITE)
-			throw new UnsupportedOperationException();
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) throws IOException, InterruptedException {
 
 		this.eventuallyBuildPhantomGroups(null);
 		final CucaDiagramFileMaker maker;
-		// ::comment when __CORE__
-		if (this.isUseElk())
+
+		if (TeaVM.isTeaVM())
+			// In the browser build, "!pragma layout smetana" selects the pure-Java
+			// layout engine; with viz-global.js loaded, the default remains the
+			// Graphviz bridge. When viz-global.js is NOT loaded, the diagram falls
+			// back to Smetana instead of failing, mirroring the dotIsAvailable()
+			// fallback of the JVM branch below (the pragma short-circuits, so the
+			// probe and its one-time console note only run on the default path).
+			// ::revert when JAVA8
+			maker = (TeaVM.isC() || this.isUseSmetana() || net.sourceforge.plantuml.teavm.js.GraphVizEngineJs.vizMissingFallback()) ? new CucaDiagramFileMakerSmetana(this) : new CucaDiagramFileMakerTeaVM(this);
+		// maker = new CucaDiagramFileMakerSmetana(this);
+		// ::done
+		else if (this.isUseElk())
 			maker = new CucaDiagramFileMakerElk(this);
-		else if (this.isUseSmetana())
-			// ::done
+		else if (this.isUseSmetana() || this.dotIsAvailable() == false)
 			maker = new CucaDiagramFileMakerSmetana(this);
-		// ::comment when __CORE__
 		else
 			maker = new CucaDiagramFileMakerSvek(this);
+
+		// ::comment when JAVA8
+		// The browser build renders the diagram again once the Viz.js instance is
+		// ready (PendingResources): an attempt made before is discarded, so it stops
+		// here instead of computing a layout for nothing.
+		if (TeaVM.isTeaVM() && TeaVM.isC() == false && maker instanceof CucaDiagramFileMakerTeaVM
+				&& net.sourceforge.plantuml.teavm.js.GraphVizEngineJs.isAvailable() == false)
+			throw new IOException("Viz is loading");
 		// ::done
 
-		final ImageData result = maker.createFile(os, getDotStrings(), fileFormatOption);
+		return maker.getTextBlock(getDotStrings(), fileFormatOption);
+	}
 
-		if (result == null)
-			return ImageDataSimple.error();
+	private boolean dotIsAvailable() {
+		final GraphvizRuntimeEnvironment gre = GraphvizRuntimeEnvironment.getInstance();
 
-		this.warningOrError = result.getWarningOrError();
-		return result;
+		// An explicit request for VizJs (skinparam or GRAPHVIZ_DOT=vizjs) must be honored
+		// even though Smetana is otherwise preferred over an implicit VizJs fallback.
+		if (gre.useVizJs(getSkinParam()))
+			return true;
+
+		try {
+			final int dotVersion = gre.getDotVersion();
+			return dotVersion != -1;
+		} catch (Exception e) {
+			Logme.error(e);
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	@Override
@@ -507,8 +524,10 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 		return generalWarningOrError + BackSlash.NEWLINE + warningOrError;
 	}
 
+	private static final Pattern NUMBER_PATTERN = Pattern.compile("[+-]?(\\.?\\d+|\\d+\\.\\d*)");
+
 	private static boolean isNumber(String s) {
-		return s.matches("[+-]?(\\.?\\d+|\\d+\\.\\d*)");
+		return NUMBER_PATTERN.matcher(s).matches();
 	}
 
 	public void resetPragmaLabel() {
@@ -636,7 +655,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 	}
 
 	public final Set<VisibilityModifier> getHidesVisibilityModifier() {
-		return Collections.unmodifiableSet(hideVisibilityModifier);
+		return MyCollections.unmodifiableSet(hideVisibilityModifier);
 	}
 
 	final public boolean isStandalone(Entity ent) {
@@ -677,7 +696,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 			if (link.getEntity1().getLeafType() != LeafType.NOTE && link.getEntity2().getLeafType() != LeafType.NOTE) {
 				result.add(link);
 				if (result.size() == 2)
-					return Collections.unmodifiableList(result);
+					return MyCollections.unmodifiableList(result);
 
 			}
 		}
@@ -768,6 +787,9 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 		for (HideOrShow hide : this.hides2)
 			hidden = hide.apply(hidden, leaf);
 
+		if (hidden == false && isOrphanedTransitionLabel(leaf))
+			hidden = true;
+
 		return hidden;
 	}
 
@@ -783,13 +805,38 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 		for (HideOrShow hide : this.removed)
 			result = hide.apply(result, leaf);
 
+		if (result == false && isOrphanedTransitionLabel(leaf))
+			result = true;
+
 		return result;
+	}
+
+	// A "stateDiagramEdgeLabelStyle node" transition label (see
+	// CommandLinkStateCommon.createTransitionWithIntermediateNode) is a node
+	// synthesized between a transition's real source and target; it carries
+	// none of their tags, so a 'remove'/'hide' that only matches one of those
+	// two endpoints would otherwise leave the label floating with a dangling
+	// arrow to nowhere. Once either real endpoint is gone, drop the label too.
+	private boolean isOrphanedTransitionLabel(Entity leaf) {
+		if (leaf.getLeafType() != LeafType.STATE_TRANSITION_LABEL)
+			return false;
+
+		for (Link link : getLinks()) {
+			if (link.contains(leaf) == false)
+				continue;
+			final Entity other = link.getOther(leaf);
+			if (other != leaf && (other.isRemoved() || other.isHidden()))
+				return true;
+		}
+
+		return false;
 	}
 
 	private Entity isNoteWithSingleLinkAttachedTo(Entity note) {
 		if (note.getLeafType() != LeafType.NOTE)
 			return null;
-		assert note.getLeafType() == LeafType.NOTE;
+		if (TeaVM.a())
+			assert note.getLeafType() == LeafType.NOTE;
 		Entity other = null;
 		for (Link link : this.getLinks()) {
 			if (link.getType().isInvisible())
@@ -853,7 +900,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 			if (data != null && data.isGroup() == false)
 				result.add(data);
 		}
-		return Collections.unmodifiableCollection(result);
+		return MyCollections.unmodifiableCollection(result);
 
 	}
 
@@ -867,7 +914,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 			if (data != null && data.isGroup())
 				result.add(data);
 		}
-		return Collections.unmodifiableCollection(result);
+		return MyCollections.unmodifiableCollection(result);
 	}
 
 	public final Collection<Entity> groupsAndRoot() {
@@ -877,7 +924,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 			if (data != null && data.isGroup())
 				result.add(data);
 		}
-		return Collections.unmodifiableCollection(result);
+		return MyCollections.unmodifiableCollection(result);
 	}
 
 	public void incRawLayout() {
@@ -885,7 +932,7 @@ public abstract class CucaDiagram extends UmlDiagram implements GroupHierarchy, 
 	}
 
 	public final List<Link> getLinks() {
-		return Collections.unmodifiableList(this.links);
+		return MyCollections.unmodifiableList(this.links);
 	}
 
 	public void addLink(Link link) {

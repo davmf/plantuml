@@ -40,6 +40,7 @@ import java.awt.image.IndexColorModel;
 import java.awt.image.WritableRaster;
 import java.util.Arrays;
 
+import net.sourceforge.plantuml.png.PngIO;
 import net.sourceforge.plantuml.utils.Log;
 
 /**
@@ -82,7 +83,7 @@ import net.sourceforge.plantuml.utils.Log;
  * <ul>
  * <li>Very fast: one pass to count, one pass to remap pixels.</li>
  * <li>Simple and predictable (no recursion, no complex math).</li>
- * <li>Guaranteed <= 256 colors (or aborts safely).</li>
+ * <li>Guaranteed &lt;= 256 colors (or aborts safely).</li>
  * </ul>
  * 
  * <p>
@@ -104,6 +105,11 @@ import net.sourceforge.plantuml.utils.Log;
  * <li>No dithering: banding artifacts are visible on gradients unless combined
  * with an error-diffusion algorithm (e.g. Floyd–Steinberg).</li>
  * </ul>
+ *
+ * <p>
+ * Ported to C for the TeaVM C build (src/teavm-c/native/plantuml_png.c): keep
+ * both in step.
+ * </p>
  */
 public final class Quantify555 {
 
@@ -112,8 +118,10 @@ public final class Quantify555 {
 	private static final int TRANSPARENT_CUBE = CUBE_COUNT_RGB555; // 32768
 	private static final int TOTAL_CUBE_SLOTS = CUBE_COUNT_RGB555 + 1;
 
+	private static final int MIN_CUBES_THRESHOLD = 32;
+
 	/**
-	 * Attempts to quantize an image to <= 256 colors using the Cube555 structure.
+	 * Attempts to quantize an image to &lt;= 256 colors using the Cube555 structure.
 	 * 
 	 * @param src any {@link BufferedImage}
 	 * @return a new {@link BufferedImage} with an indexed color model, or
@@ -123,37 +131,80 @@ public final class Quantify555 {
 
 		final int w = src.getWidth();
 		final int h = src.getHeight();
-		final int[] pixels = src.getRGB(0, 0, w, h, null, 0, w);
+		final int pixelCount = w * h;
 
-		Log.info(() -> "Using Quantify555.");
+		Log.info(() -> "Quantify555: starting, image " + w + "x" + h + " (" + pixelCount + " pixels), memory: "
+				+ PngIO.getUsedMemoryMB() + " MB");
 
-		int nbCubes = 0;
+		try {
+			// Step 1: Extract pixels
+			final long startExtract = System.currentTimeMillis();
+			final long memBeforeExtract = PngIO.getUsedMemoryMB();
+			final int[] pixels = src.getRGB(0, 0, w, h, null, 0, w);
+			final long extractDuration = System.currentTimeMillis() - startExtract;
+			final long memAfterExtract = PngIO.getUsedMemoryMB();
+			Log.info(() -> "Quantify555: pixel extraction in " + extractDuration + " ms, memory: " + memBeforeExtract
+					+ " -> " + memAfterExtract + " MB (delta: " + (memAfterExtract - memBeforeExtract) + " MB)");
 
-		// Step 1: Fill Cube555 structures with frequency counts
-		final Cube555[] cubes = new Cube555[TOTAL_CUBE_SLOTS];
-		for (int argb : pixels) {
-			final int cubeIndex = getCubeIndex(argb);
+			int nbCubes = 0;
 
-			Cube555 cube = cubes[cubeIndex];
-			if (cube == null) {
-				// Abort if too many distinct cubes are found
-				if (nbCubes++ > 255) {
-					Log.info(() -> "...abort, too many colors");
-					return null;
+			// Step 2: Fill Cube555 structures with frequency counts
+			final long startCubes = System.currentTimeMillis();
+			final long memBeforeCubes = PngIO.getUsedMemoryMB();
+			final Cube555[] cubes = new Cube555[TOTAL_CUBE_SLOTS];
+			for (int argb : pixels) {
+				final long packed = cubeAndSub(argb);
+				final int cubeIndex = (int) (packed >>> 32);
+				final int sub = (int) packed;
+
+				Cube555 cube = cubes[cubeIndex];
+				if (cube == null) {
+					// Abort if too many distinct cubes are found
+					if (nbCubes++ > 255) {
+						final int finalNbCubes = nbCubes;
+						Log.info(() -> "Quantify555: abort, too many colors (" + finalNbCubes + " cubes)");
+						return null;
+					}
+					cube = new Cube555(cubeIndex);
+					cubes[cubeIndex] = cube;
 				}
-				cube = new Cube555(cubeIndex);
-				cubes[cubeIndex] = cube;
+
+				cube.increment(sub);
+
+			}
+			final long cubesDuration = System.currentTimeMillis() - startCubes;
+			final long memAfterCubes = PngIO.getUsedMemoryMB();
+			final int finalNbCubes = nbCubes;
+			Log.info(() -> "Quantify555: cube analysis in " + cubesDuration + " ms, found " + finalNbCubes
+					+ " cubes, memory: " + memBeforeCubes + " -> " + memAfterCubes + " MB (delta: "
+					+ (memAfterCubes - memBeforeCubes) + " MB)");
+
+			// Abort if there are not enough cubes, risk of over-quantization
+			if (nbCubes < MIN_CUBES_THRESHOLD) {
+				Log.info(() -> "Quantify555: abort, not enough distinct colors (" + finalNbCubes + " < "
+						+ MIN_CUBES_THRESHOLD + ")");
+				return null;
 			}
 
-			// for transparent pixels, we don't care about sub-color distribution;
-			// just increment bucket 0 (or any fixed slot).
-			final int sub = cubeIndex == TRANSPARENT_CUBE ? 0 : subColorIndex512(argb);
-			cube.increment(sub);
+			// Step 3: Build the final indexed image
+			final long startBuild = System.currentTimeMillis();
+			final long memBeforeBuild = PngIO.getUsedMemoryMB();
+			final BufferedImage result = buildIndexedImageFromCubes(src, cubes, pixels);
+			final long buildDuration = System.currentTimeMillis() - startBuild;
+			final long memAfterBuild = PngIO.getUsedMemoryMB();
+			Log.info(() -> "Quantify555: indexed image built in " + buildDuration + " ms, memory: " + memBeforeBuild
+					+ " -> " + memAfterBuild + " MB (delta: " + (memAfterBuild - memBeforeBuild) + " MB)");
 
+			return result;
+
+		} catch (Throwable t) {
+			// Swallowing all throwables is intentional here: any unexpected failure
+			// during pixel extraction or packing (including OutOfMemoryError or JVM-level
+			// errors) prevents safe recovery. Returning null signals that the packed
+			// representation could not be produced.
+			Log.info(() -> "Quantify555: exception caught: " + t.getClass().getSimpleName() + " - " + t.getMessage());
+			return null;
 		}
-
-		// Step 2: Build the final indexed image
-		return buildIndexedImageFromCubes(src, cubes);
 	}
 
 	public static boolean isTransparent(int argb) {
@@ -163,11 +214,12 @@ public final class Quantify555 {
 	/**
 	 * Builds an indexed image from the set of populated cubes.
 	 *
-	 * @param src   original ARGB image
-	 * @param cubes array of Cube555 (null for empty cubes)
+	 * @param src    original ARGB image
+	 * @param cubes  array of Cube555 (null for empty cubes)
+	 * @param pixels source ARGB pixels in row-major order
 	 * @return an indexed (8-bit) {@link BufferedImage}
 	 */
-	private static BufferedImage buildIndexedImageFromCubes(BufferedImage src, Cube555[] cubes) {
+	private static BufferedImage buildIndexedImageFromCubes(BufferedImage src, Cube555[] cubes, int[] pixels) {
 		final int w = src.getWidth();
 		final int h = src.getHeight();
 
@@ -197,11 +249,9 @@ public final class Quantify555 {
 		final WritableRaster raster = dst.getRaster();
 
 		// Step 3: Replace each pixel in the source with its palette index
-		final int[] line = new int[w];
 		for (int y = 0; y < h; y++) {
-			src.getRGB(0, y, w, 1, line, 0, w);
 			for (int x = 0; x < w; x++) {
-				final int argb = line[x];
+				final int argb = pixels[y * w + x];
 				final int cubeIndex = getCubeIndex(argb);
 				final int p = cubeToPal[cubeIndex];
 				if (p < 0)
@@ -268,45 +318,44 @@ public final class Quantify555 {
 		return (0xFF << 24) | (r8 << 16) | (g8 << 8) | b8;
 	}
 
+	/**
+	 * Computes both the cube index (RGB555) and sub-color index (9-bit) in a
+	 * single pass over the ARGB components.
+	 * <p>
+	 * Returns a packed {@code long}: cube index in the upper 32 bits,
+	 * sub-color index in the lower 32 bits.
+	 * </p>
+	 *
+	 * @param argb 32-bit ARGB color
+	 * @return packed long: {@code (cubeIndex << 32) | subColorIndex}
+	 */
+	private static long cubeAndSub(int argb) {
+
+		if (isTransparent(argb))
+			return ((long) TRANSPARENT_CUBE << 32);
+
+		final int r8 = (argb >>> 16) & 0xFF;
+		final int g8 = (argb >>> 8) & 0xFF;
+		final int b8 = argb & 0xFF;
+
+		// Upper 5 bits of each channel -> cube index (15-bit RGB555)
+		final int cubeIndex = ((r8 >>> 3) << 10) | ((g8 >>> 3) << 5) | (b8 >>> 3);
+
+		// Lower 3 bits of each channel -> sub-color index (9-bit)
+		final int sub = ((r8 & 0x07) << 6) | ((g8 & 0x07) << 3) | (b8 & 0x07);
+
+		return ((long) cubeIndex << 32) | sub;
+	}
+
 	private static int getCubeIndex(int argb) {
 
 		if (isTransparent(argb))
 			return TRANSPARENT_CUBE;
 
-		/*
-		 * Compacts a 24-bit ARGB color into a 15-bit RGB555 index.
-		 * 
-		 * Formula: r5:g5:b5 -> (r5 << 10) | (g5 << 5) | b5 </p>
-		 */
-
 		final int r5 = (argb >>> 19) & 0x1F; // bits 23..19
 		final int g5 = (argb >>> 11) & 0x1F; // bits 15..11
 		final int b5 = (argb >>> 3) & 0x1F; // bits 7..3
 		return (r5 << 10) | (g5 << 5) | b5;
-	}
-
-	/**
-	 * Computes the 9-bit sub-color index (0..511) of a pixel inside its RGB555
-	 * cube.
-	 * <p>
-	 * Takes the 3 least significant bits of each 8-bit channel:
-	 * 
-	 * sub = (rLow3 << 6) | (gLow3 << 3) | bLow3
-	 * </p>
-	 *
-	 * @param argb 32-bit ARGB color
-	 * @return sub-color index (0..511)
-	 */
-	private static int subColorIndex512(int argb) {
-		final int r8 = (argb >>> 16) & 0xFF;
-		final int g8 = (argb >>> 8) & 0xFF;
-		final int b8 = argb & 0xFF;
-
-		final int rLow3 = r8 & 0x07; // 3 least significant bits
-		final int gLow3 = g8 & 0x07;
-		final int bLow3 = b8 & 0x07;
-
-		return (rLow3 << 6) | (gLow3 << 3) | bLow3; // 0..511
 	}
 
 }

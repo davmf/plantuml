@@ -68,7 +68,8 @@ public class Bullet extends AbstractAtom implements Atom {
 
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		if (order == 0)
 			return new XDimension2D(12, 5);
 		return new XDimension2D(8 + 8 * order, 3);

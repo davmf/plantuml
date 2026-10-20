@@ -34,8 +34,11 @@
  */
 package net.sourceforge.plantuml.klimt.color;
 
-import java.awt.Color;
+
 import java.util.Objects;
+
+import net.sourceforge.plantuml.klimt.awt.XColor;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class HColorGradient extends HColor {
 
@@ -63,12 +66,12 @@ public class HColorGradient extends HColor {
 		return color2;
 	}
 
-	public final Color getColor(ColorMapper mapper, double coeff, int alpha) {
+	public final XColor getColor(ColorMapper mapper, double coeff, int alpha) {
 		if (coeff > 1 || coeff < 0)
 			throw new IllegalArgumentException("c=" + coeff);
 
-		final Color c1 = color1.toColor(mapper);
-		final Color c2 = color2.toColor(mapper);
+		final XColor c1 = color1.toColor(mapper);
+		final XColor c2 = color2.toColor(mapper);
 
 		final int diffRed = c2.getRed() - c1.getRed();
 		final int diffGreen = c2.getGreen() - c1.getGreen();
@@ -82,8 +85,14 @@ public class HColorGradient extends HColor {
 		final int green = c1.getGreen() + vGreen;
 		final int blue = c1.getBlue() + vBlue;
 
-		return new Color(red, green, blue, alpha);
+		return new XColor(red, green, blue, alpha);
 
+	}
+
+	public final int getRGB(ColorMapper mapper, double coeff, int alpha) {
+		if (TeaVM.isTeaVM())
+			return 0;
+		return getColor(mapper, coeff, alpha).getRGB();
 	}
 
 	public final char getPolicy() {
@@ -91,7 +100,7 @@ public class HColorGradient extends HColor {
 	}
 
 	@Override
-	public Color toColor(ColorMapper mapper) {
+	public XColor toColor(ColorMapper mapper) {
 		return color1.toColor(mapper);
 	}
 

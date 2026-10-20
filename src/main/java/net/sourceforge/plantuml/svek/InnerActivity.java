@@ -35,15 +35,15 @@
  */
 package net.sourceforge.plantuml.svek;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 
-public final class InnerActivity extends AbstractTextBlock implements IEntityImage {
+public final class InnerActivity implements IEntityImage {
 
 	private final IEntityImage im;
 	private final HColor borderColor;
@@ -74,6 +74,8 @@ public final class InnerActivity extends AbstractTextBlock implements IEntityIma
 		return im.getBackcolor();
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final XDimension2D img = im.calculateDimension(stringBounder);
 		return img;

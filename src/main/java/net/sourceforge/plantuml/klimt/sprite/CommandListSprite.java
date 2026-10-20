@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.klimt.sprite;
 
-import net.sourceforge.plantuml.UmlDiagram;
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -45,7 +49,10 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandListSprite extends SingleLineCommand2<UmlDiagram> {
+public class CommandListSprite extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"listsprite", "listsprites");
 
 	public CommandListSprite() {
 		super(getRegexConcat());
@@ -59,8 +66,19 @@ public class CommandListSprite extends SingleLineCommand2<UmlDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(UmlDiagram system, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		return "Accepted but ignored: 'listsprites' has no effect";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram system, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

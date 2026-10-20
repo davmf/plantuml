@@ -50,27 +50,27 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import net.sourceforge.plantuml.GeneratedImage;
-import net.sourceforge.plantuml.Option;
 import net.sourceforge.plantuml.SourceFileReader;
+import net.sourceforge.plantuml.cli.CliFlag;
+import net.sourceforge.plantuml.cli.CliOptions;
 import net.sourceforge.plantuml.file.FileWatcher;
 import net.sourceforge.plantuml.log.Logme;
-import net.sourceforge.plantuml.preproc.FileWithSuffix;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class DirWatcher2 {
-	// ::remove file when __CORE__
 
 	final private File dir;
-	final private Option option;
+	final private CliOptions option;
 	final private String pattern;
 
 	final private Map<File, FileWatcher> modifieds = new ConcurrentHashMap<File, FileWatcher>();
 	final private ExecutorService executorService;
 
-	public DirWatcher2(File dir, Option option, String pattern) {
+	public DirWatcher2(File dir, CliOptions option, String pattern) {
 		this.dir = dir;
 		this.option = option;
 		this.pattern = pattern;
-		final int nb = Option.defaultNbThreads();
+		final int nb = CliOptions.defaultNbThreads();
 		this.executorService = Executors.newFixedThreadPool(nb);
 
 	}
@@ -88,8 +88,8 @@ public class DirWatcher2 {
 				final FileWatcher watcher = modifieds.get(f);
 
 				if (watcher == null || watcher.hasChanged()) {
-					final SourceFileReader sourceFileReader = new SourceFileReader(option.getDefaultDefines(f), f,
-							option.getOutputDir(), option.getConfig(), option.getCharset(),
+					final SourceFileReader sourceFileReader = new SourceFileReader(option.isTrue(CliFlag.IGNORE_STARTUML_FILENAME), option.getDefaultDefines(f), f,
+							option.getOutputDir(), option.getConfig(), option.getString(CliFlag.CHARSET),
 							option.getFileFormatOption());
 					modifieds.put(f, new FileWatcher(Collections.singleton(f)));
 					final Future<List<GeneratedImage>> value = executorService
@@ -98,11 +98,10 @@ public class DirWatcher2 {
 									try {
 										final List<GeneratedImage> generatedImages = sourceFileReader
 												.getGeneratedImages();
-										final Set<File> files = FileWithSuffix
-												.convert(sourceFileReader.getIncludedFiles());
+										final Set<File> files = sourceFileReader.getIncludedFiles();
 										files.add(f);
 										modifieds.put(f, new FileWatcher(files));
-										return Collections.unmodifiableList(generatedImages);
+										return MyCollections.unmodifiableList(generatedImages);
 									} catch (Exception e) {
 										Logme.error(e);
 										return Collections.emptyList();
@@ -112,7 +111,7 @@ public class DirWatcher2 {
 					result.put(f, value);
 				}
 			}
-		return Collections.unmodifiableMap(result);
+		return MyCollections.unmodifiableMap(result);
 	}
 
 	private boolean fileToProcess(String name) {

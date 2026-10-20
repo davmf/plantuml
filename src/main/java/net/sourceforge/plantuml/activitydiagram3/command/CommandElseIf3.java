@@ -35,13 +35,19 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.descdiagram.command.CommandLinkElement;
 import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -51,9 +57,14 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexOr;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandElseIf3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"#", "(", "else", "elseif");
 
 	public CommandElseIf3() {
 		super(getRegexConcat());
@@ -98,14 +109,57 @@ public class CommandElseIf3 extends SingleLineCommand2<ActivityDiagram3> {
 										new RegexLeaf("\\)"))) //
 						)), //
 				new RegexLeaf(";?"), //
+				RegexLeaf.spaceZeroOrMore(), //
+				Stereogroup.optionalStereogroup(), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'elseif (test) is (value) then' adds a new conditional branch to the
+		// enclosing 'if'; the value labels the branch arrow. Unlike the plain
+		// 'elseif (test) then (label)' form, the 'then (...)' group may only
+		// carry a color.
+		sb.append("Adding an 'else if' branch to the enclosing if");
+
+		final String test = arg.get("TEST", 0);
+		if (test.length() > 0)
+			sb.append(", testing \"").append(test).append("\" is \"").append(arg.get("WHEN", 0)).append("\"");
+		else
+			sb.append(", when the value is \"").append(arg.get("WHEN", 0)).append("\"");
+
+		final String whenColor = arg.get("WHEN_COLOR", 0);
+		if (whenColor != null)
+			sb.append(", 'then' arrow color or style '").append(whenColor).append("'");
+
+		CommandBackward3.appendArrow(sb, arg, "INCOMING", "incoming");
+
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		if (stereogroup.isEmpty() == false)
+			sb.append(", stereotyped ").append(arg.get("STEREOGROUP", 0));
+
+		// Mirror the deprecation warning emitted by executeArg: the leading
+		// color is parsed but no longer applied.
+		if (arg.get("COLOR", 0) != null)
+			sb.append(" (deprecated and ignored color syntax: write <<").append(arg.get("COLOR", 0))
+					.append(">> at the end of the line)");
+
+		return sb.toString();
 	}
 
 	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
-		final String s = arg.get("COLOR", 0);
-		final HColor color = s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s);
+		if (arg.get("COLOR", 0) != null)
+			diagram.addWarning(new Warning("This syntax is deprecated, you must add <<" + arg.get("COLOR", 0)
+					+ ">> at the end of the line"));
+
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		final Colors colors = stereogroup.getInnerColors(diagram.getSkinParam().getIHtmlColorSet());
+		final HColor color = colors.getColor(ColorType.BACK);
 
 		String test = arg.get("TEST", 0);
 		if (test.length() == 0) {
@@ -116,6 +170,11 @@ public class CommandElseIf3 extends SingleLineCommand2<ActivityDiagram3> {
 		final LinkRendering when = CommandBackward3.getBackRendering(diagram, arg, "WHEN");
 
 		return diagram.elseIf(incoming, Display.getWithNewlines(diagram.getPragma(), test), when, color);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

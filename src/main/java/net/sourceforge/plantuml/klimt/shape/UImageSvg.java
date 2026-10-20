@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.klimt.UShapeKind;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,10 +44,11 @@ import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.utils.SignatureUtils;
 
 public class UImageSvg implements UShape {
-	// ::remove file when __HAXE__
 
 	private final String svg;
 	private final double scale;
+	private int cachedWidth = -1;
+	private int cachedHeight = -1;
 
 	public UImageSvg(String svg, double scale) {
 		this.svg = Objects.requireNonNull(svg);
@@ -119,12 +121,16 @@ public class UImageSvg implements UShape {
 		if (m2.find()) {
 			if ("width".equals(name)) {
 				final String s = m2.group(3);
-				final int width = (int) Double.parseDouble(s);
+				// Round up (not down): a floor here understates the declared box, and
+				// that undersized box is later reused as a hard viewport when this
+				// embedded SVG is re-wrapped without its own viewBox, clipping up to
+				// 1 unit of real content (see issue #2735, embedded-diagram overflow).
+				final int width = (int) Math.ceil(Double.parseDouble(s));
 				return width;
 			}
 			if ("height".equals(name)) {
 				final String s = m2.group(4);
-				final int result = (int) Double.parseDouble(s);
+				final int result = (int) Math.ceil(Double.parseDouble(s));
 				return result;
 			}
 		}
@@ -139,15 +145,24 @@ public class UImageSvg implements UShape {
 	}
 
 	public double getHeight() {
-		return this.getData("height") * scale;
+		if (cachedHeight == -1)
+			cachedHeight = getData("height");
+		return cachedHeight * scale;
 	}
 
 	public double getWidth() {
-		return this.getData("width") * scale;
+		if (cachedWidth == -1)
+			cachedWidth = getData("width");
+		return cachedWidth * scale;
 	}
 
 	public double getScale() {
 		return scale;
+	}
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.IMAGE_SVG;
 	}
 
 }

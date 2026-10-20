@@ -64,7 +64,7 @@ public class EbnfEngine {
 	public EbnfEngine(ISkinParam skinParam, ConfigurationStore<OptionKey> option) {
 		this.skinParam = skinParam;
 		this.option = option;
-		this.style = ETile.getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		this.style = skinParam.getCurrentStyleBuilder().getMergedStyle(ETile.getStyleQuery());
 		this.fontConfiguration = style.getFontConfiguration(skinParam.getIHtmlColorSet());
 		this.colorSet = skinParam.getIHtmlColorSet();
 		this.lineColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
@@ -98,8 +98,11 @@ public class EbnfEngine {
 
 	public void repetitionSymbol() {
 		final ETile arg1 = stack.removeFirst();
-		final String arg2 = stack.removeFirst().getRepetitionLabel() + "\u00D7";
-		stack.addFirst(new ETileOneOrMore(arg1, arg2, fontConfiguration.bigger(-2), skinParam));
+		final String repetitionLabel = stack.removeFirst().getRepetitionLabel();
+		ETile tile = new ETileOneOrMore(arg1, repetitionLabel + "\u00D7", fontConfiguration.bigger(-2), skinParam);
+		if ("0".equals(repetitionLabel))
+			tile = new ETileOptional2(tile, skinParam);
+		stack.addFirst(tile);
 
 	}
 

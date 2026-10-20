@@ -35,16 +35,20 @@
  */
 package net.sourceforge.plantuml.klimt.creole.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.klimt.creole.Parser;
 import net.sourceforge.plantuml.klimt.creole.legacy.StripeSimple;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
+import net.sourceforge.plantuml.style.ISkinSimple;
 
 public class CommandCreoleEmoji implements Command {
 
 	@Override
-	public String startingChars() {
-		return "<";
+	public Collection<String> starters() {
+		return Arrays.asList("<#", "<:");
 	}
 
 	private static final Pattern2 pattern = Pattern2.cmpile("^(" + Splitter.emojiPattern + ")");
@@ -56,29 +60,31 @@ public class CommandCreoleEmoji implements Command {
 		return new CommandCreoleEmoji();
 	}
 
-	public int matchingSize(String line) {
-		final Matcher2 m = pattern.matcher(line);
+	@Override
+	public int matchingSize(String line, int pos) {
+		final Matcher2 m = pattern.matcher(line, pos);
 		if (m.find() == false)
 			return 0;
 
 		return m.group(1).length();
 	}
 
-	public String executeAndGetRemaining(String line, StripeSimple stripe) {
-		final Matcher2 m = pattern.matcher(line);
+	@Override
+	public int executeAndAdvance(ISkinSimple skinSimple, String line, int pos, StripeSimple stripe) {
+		final Matcher2 m = pattern.matcher(line, pos);
 		if (m.find() == false)
 			throw new IllegalStateException();
 
-		final String colorName1 = m.group(2);
-		final String emoji = m.group(3);
-		final double scale = Parser.getScale(m.group(4), 1);
-		final String colorName2 = Parser.getColor(m.group(4));
-		
-		final String colorName = colorName1 == null ? colorName2 : colorName1;
+		if (stripe != null) {
+			final String colorName1 = m.group(2);
+			final String emoji = m.group(3);
+			final double scale = Parser.getScale(m.group(4), 1);
+			final String colorName2 = Parser.getColor(m.group(4));
+			final String colorName = colorName1 == null ? colorName2 : colorName1;
+			stripe.addEmoji(emoji, scale, colorName);
+		}
 
-
-		stripe.addEmoji(emoji, scale, colorName);
-		return line.substring(m.group(1).length());
+		return m.group(1).length();
 	}
 
 }

@@ -34,7 +34,6 @@
  */
 package net.sourceforge.plantuml.timingdiagram;
 
-import java.util.List;
 import java.util.Objects;
 
 import net.sourceforge.plantuml.klimt.UStroke;
@@ -53,10 +52,10 @@ import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.utils.Direction;
 
 public class TimeConstraint {
@@ -109,22 +108,25 @@ public class TimeConstraint {
 		ug = ug.apply(arrowColor).apply(arrowColor.bg());
 		final double x1 = ruler.getPosInPixel(tick1) + marginx;
 		final double x2 = ruler.getPosInPixel(tick2) - marginx;
-		ug = ug.apply(UTranslate.dx(x1));
-		final double len = x2 - x1;
-		ug.apply(getUStroke()).draw(ULine.hline(len));
 
-		if (len > 10) {
-			ug.draw(getPolygon(Direction.LEFT, new XPoint2D(0, 0)));
-			ug.draw(getPolygon(Direction.RIGHT, new XPoint2D(len, 0)));
+		if (x2 - x1 > 20) {
+			drawLine(ug, x1 + 3, x2 - 3);
+			ug.apply(UStroke.simple()).draw(getPolygon(Direction.LEFT, new XPoint2D(x1, 0)));
+			ug.apply(UStroke.simple()).draw(getPolygon(Direction.RIGHT, new XPoint2D(x2, 0)));
 		} else {
-			ug.draw(getPolygon(Direction.RIGHT, new XPoint2D(0, 0)));
-			ug.draw(getPolygon(Direction.LEFT, new XPoint2D(len, 0)));
+			drawLine(ug, x1 - 1, x2 + 1);
+			ug.apply(UStroke.simple()).draw(getPolygon(Direction.RIGHT, new XPoint2D(x1, 0)));
+			ug.apply(UStroke.simple()).draw(getPolygon(Direction.LEFT, new XPoint2D(x2, 0)));
 		}
 
 		final TextBlock text = getTextBlock(label);
 		final XDimension2D dimText = text.calculateDimension(ug.getStringBounder());
-		final double x = (len - dimText.getWidth()) / 2;
+		final double x = x1 + (x2 - x1 - dimText.getWidth()) / 2;
 		text.drawU(ug.apply(new UTranslate(x, -getConstraintHeight(ug.getStringBounder()))));
+	}
+
+	private void drawLine(UGraphic ug, final double x1, final double x2) {
+		ug.apply(UTranslate.dx(x1)).apply(getUStroke()).draw(ULine.hline(x2 - x1));
 	}
 
 	private HColor getArrowColor() {
@@ -135,15 +137,15 @@ public class TimeConstraint {
 	}
 
 	private Style getStyle() {
-		return getStyleSignature().getMergedStyle(styleBuilder);
+		return styleBuilder.getMergedStyle(getStyleSignature());
 	}
 
 	private UStroke getUStroke() {
 		return getStyle().getStroke();
 	}
 
-	private StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram, SName.constraintArrow);
+	private StyleQuery getStyleSignature() {
+		return StyleQueries.TIMINGDIAG_CONSTRAINTARROW;
 	}
 
 	public double getConstraintHeight(StringBounder stringBounder) {
@@ -176,17 +178,6 @@ public class TimeConstraint {
 		polygon.addPoint(end);
 
 		return polygon;
-	}
-
-	public static double getHeightForConstraints(StringBounder stringBounder, List<TimeConstraint> constraints) {
-		if (constraints.size() == 0)
-			return 0;
-
-		double result = 0;
-		for (TimeConstraint constraint : constraints)
-			result = Math.max(result, constraint.getConstraintHeight(stringBounder));
-
-		return result;
 	}
 
 }

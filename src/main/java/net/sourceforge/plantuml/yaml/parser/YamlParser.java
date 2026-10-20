@@ -42,7 +42,6 @@ import net.sourceforge.plantuml.utils.PeekerUtils;
 public class YamlParser {
 
 	public Monomorph parse(List<String> lines) {
-		final IndentationStack indentationStack = new IndentationStack();
 		final YamlBuilder yamlBuilder = new YamlBuilder();
 
 		for (Peeker<String> peeker = PeekerUtils.peeker(lines); peeker.peek(0) != null; peeker.jump()) {
@@ -59,49 +58,35 @@ public class YamlParser {
 				continue;
 			}
 
-			if (indentationStack.size() == 0)
-				indentationStack.push(yamlLine.getIndent());
+			yamlBuilder.adjustIndentation(yamlLine.getIndent());
 
-			if (yamlLine.getIndent() > indentationStack.peek()) {
-				yamlBuilder.increaseIndentation();
-				indentationStack.push(yamlLine.getIndent());
-			} else
-				while (yamlLine.getIndent() < indentationStack.peek()) {
-					yamlBuilder.decreaseIndentation();
-					indentationStack.pop();
-				}
-
-			if (yamlLine.getIndent() == indentationStack.peek()) {
-				if (yamlLine.isListItem()) {
-					if (yamlLine.getType() == YamlLineType.KEY_ONLY)
-						yamlBuilder.onListItemOnlyKey(yamlLine.getKey());
-					else if (yamlLine.getType() == YamlLineType.PLAIN_ELEMENT_LIST)
-						yamlBuilder.onListItemOnlyValue(yamlLine.getValue());
-					else if (yamlLine.getType() == YamlLineType.KEY_AND_VALUE)
-						yamlBuilder.onListItemKeyAndValue(yamlLine.getKey(), yamlLine.getValue());
-					else if (yamlLine.getType() == YamlLineType.KEY_AND_FLOW_SEQUENCE)
-						yamlBuilder.onListItemKeyAndFlowSequence(yamlLine.getKey(), yamlLine.getValues());
-					else
-						throw new UnsupportedOperationException("wip3 " + yamlLine);
-				} else if (yamlLine.getType() == YamlLineType.KEY_ONLY) {
-					final YamlLine next = peekNext(peeker);
-					if (next == null || next.getIndent() <= yamlLine.getIndent())
-						yamlBuilder.onKeyAndValue(yamlLine.getKey(), "");
-					else if (next.getType() == YamlLineType.NO_KEY_ONLY_TEXT)
-						yamlBuilder.onKeyAndValue(yamlLine.getKey(), peekNextOnlyText(peeker));
-					else
-						yamlBuilder.onOnlyKey(yamlLine.getKey());
-				} else if (yamlLine.getType() == YamlLineType.KEY_AND_VALUE)
-					yamlBuilder.onKeyAndValue(yamlLine.getKey(), yamlLine.getValue());
-				else if (yamlLine.getType() == YamlLineType.KEY_AND_BLOCK_STYLE)
-					yamlBuilder.onKeyAndValue(yamlLine.getKey(), getBlockStyleString(yamlLine.getIndent(), peeker));
+			if (yamlLine.isListItem()) {
+				if (yamlLine.getType() == YamlLineType.KEY_ONLY)
+					yamlBuilder.onListItemOnlyKey(yamlLine.getKey());
+				else if (yamlLine.getType() == YamlLineType.PLAIN_ELEMENT_LIST)
+					yamlBuilder.onListItemOnlyValue(yamlLine.getValue());
+				else if (yamlLine.getType() == YamlLineType.KEY_AND_VALUE)
+					yamlBuilder.onListItemKeyAndValue(yamlLine.getKey(), yamlLine.getValue());
 				else if (yamlLine.getType() == YamlLineType.KEY_AND_FLOW_SEQUENCE)
-					yamlBuilder.onKeyAndFlowSequence(yamlLine.getKey(), yamlLine.getValues());
+					yamlBuilder.onListItemKeyAndFlowSequence(yamlLine.getKey(), yamlLine.getValues());
 				else
-					throw new UnsupportedOperationException("wip4 " + yamlLine);
-
-			} else
-				throw new UnsupportedOperationException("wip5 " + yamlLine);
+					throw new UnsupportedOperationException("wip3 " + yamlLine);
+			} else if (yamlLine.getType() == YamlLineType.KEY_ONLY) {
+				final YamlLine next = peekNext(peeker);
+				if (next == null || next.getIndent() <= yamlLine.getIndent())
+					yamlBuilder.onKeyAndValue(yamlLine.getKey(), "");
+				else if (next.getType() == YamlLineType.NO_KEY_ONLY_TEXT)
+					yamlBuilder.onKeyAndValue(yamlLine.getKey(), peekNextOnlyText(peeker));
+				else
+					yamlBuilder.onOnlyKey(yamlLine.getKey());
+			} else if (yamlLine.getType() == YamlLineType.KEY_AND_VALUE)
+				yamlBuilder.onKeyAndValue(yamlLine.getKey(), yamlLine.getValue());
+			else if (yamlLine.getType() == YamlLineType.KEY_AND_BLOCK_STYLE)
+				yamlBuilder.onKeyAndValue(yamlLine.getKey(), getBlockStyleString(yamlLine.getIndent(), peeker));
+			else if (yamlLine.getType() == YamlLineType.KEY_AND_FLOW_SEQUENCE)
+				yamlBuilder.onKeyAndFlowSequence(yamlLine.getKey(), yamlLine.getValues());
+			else
+				throw new UnsupportedOperationException("wip4 " + yamlLine);
 		}
 
 		return yamlBuilder.getResult();

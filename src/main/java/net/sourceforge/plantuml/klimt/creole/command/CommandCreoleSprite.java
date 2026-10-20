@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.klimt.creole.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.Parser;
 import net.sourceforge.plantuml.klimt.creole.legacy.StripeSimple;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.style.ISkinSimple;
@@ -45,8 +49,8 @@ import net.sourceforge.plantuml.style.ISkinSimple;
 public class CommandCreoleSprite implements Command {
 
 	@Override
-	public String startingChars() {
-		return "<";
+	public Collection<String> starters() {
+		return Arrays.asList("<#", "<$");
 	}
 
 	private static final Pattern2 pattern = Pattern2.cmpile("^(" + Splitter.spritePattern + ")");
@@ -58,32 +62,36 @@ public class CommandCreoleSprite implements Command {
 		return new CommandCreoleSprite();
 	}
 
-	public int matchingSize(String line) {
-		final Matcher2 m = pattern.matcher(line);
+	@Override
+	public int matchingSize(String line, int pos) {
+		final Matcher2 m = pattern.matcher(line, pos);
 		if (m.find() == false)
 			return 0;
 
 		return m.group(1).length();
 	}
 
-	public String executeAndGetRemaining(String line, StripeSimple stripe) {
-		final Matcher2 m = pattern.matcher(line);
+	@Override
+	public int executeAndAdvance(ISkinSimple skinSimple, String line, int pos, StripeSimple stripe) {
+		final Matcher2 m = pattern.matcher(line, pos);
 		if (m.find() == false)
 			throw new IllegalStateException();
 
+		final FontConfiguration fc = stripe.getActualFontConfiguration();
 		final String src = m.group(3);
-		final double scale = Parser.getScale(m.group(4), 1);
+		final double scale = Parser.getScale(m.group(4), 1) * fc.getSize2D() / 13.0;
+
 		String colorName = m.group(2);
 		if (colorName == null)
 			colorName = Parser.getColor(m.group(4));
-		
+
 		HColor color = null;
 		if (colorName != null) {
 			final ISkinSimple skinParam = stripe.getSkinParam();
 			color = skinParam.getIHtmlColorSet().getColorOrWhite(colorName);
 		}
 		stripe.addSprite(src, scale, color);
-		return line.substring(m.group(1).length());
+		return m.group(1).length();
 	}
 
 }

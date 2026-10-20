@@ -35,10 +35,12 @@
  */
 package net.sourceforge.plantuml.mindmap;
 
-import java.awt.geom.Line2D;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+
+import net.sourceforge.plantuml.klimt.geom.XLine2D;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class Tetris {
 
@@ -121,19 +123,19 @@ public class Tetris {
 
 	private void addInternal(SymetricalTeePositioned result) {
 		this.elements.add(result);
-		final Line2D b1 = result.getSegmentB1();
+		final XLine2D b1 = result.getSegmentB1();
 		frontier.addSegment(b1.getX1(), b1.getX2(), b1.getY1());
-		assert b1.getY1() == b1.getY2();
+		if (TeaVM.a()) assert b1.getY1() == b1.getY2();
 
-		final Line2D b2 = result.getSegmentB2();
+		final XLine2D b2 = result.getSegmentB2();
 		if (b2.getX1() != b2.getX2())
 			frontier.addSegment(b2.getX1(), b2.getX2(), b2.getY1());
 
-		assert b2.getY1() == b2.getY2();
+		if (TeaVM.a()) assert b2.getY1() == b2.getY2();
 	}
 
 	public List<SymetricalTeePositioned> getElements() {
-		return Collections.unmodifiableList(elements);
+		return MyCollections.unmodifiableList(elements);
 	}
 
 }

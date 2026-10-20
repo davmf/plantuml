@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.klimt.Shadowable;
@@ -45,55 +46,50 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
-import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 
 public class EntityImageSynchroBar extends AbstractEntityImage {
 
-    // private final SName styleName;
+	public EntityImageSynchroBar(Entity entity) {
+		super(entity);
+	}
 
-    public EntityImageSynchroBar(Entity entity, ISkinParam skinParam, SName styleName) {
-        super(entity);
-        // this.styleName = styleName;
-    }
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITYBAR;
+	}
 
-    private StyleSignatureBasic getStyleSignature() {
-        return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activityBar);
-    }
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
+		if (getSkinParam().getRankdir() == Rankdir.LEFT_TO_RIGHT)
+			return new XDimension2D(8, 80);
 
-    public XDimension2D calculateDimension(StringBounder stringBounder) {
-        if (getSkinParam().getRankdir() == Rankdir.LEFT_TO_RIGHT)
-            return new XDimension2D(8, 80);
+		return new XDimension2D(80, 8);
+	}
 
-        return new XDimension2D(80, 8);
-    }
+	final public void drawU(UGraphic ug) {
+		final XDimension2D dim = calculateDimension(ug.getStringBounder());
+		final Shadowable rect = URectangle.build(dim.getWidth(), dim.getHeight());
 
-    final public void drawU(UGraphic ug) {
-        final XDimension2D dim = calculateDimension(ug.getStringBounder());
-        final Shadowable rect = URectangle.build(dim.getWidth(), dim.getHeight());
+		final Style style = getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(getStyleQuery().withStereotype(getEntity().getStereotype()));
+		HColor color = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+		if (getEntity().getLeafType() == LeafType.STATE_FORK_JOIN_HIDDEN)
+			color = HColors.transparent();
 
-        final Style style = getStyleSignature().withTOBECHANGED(getEntity().getStereotype())
-                .getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		final double shadowing = style.getShadowing();
 
-        HColor color = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+		rect.setDeltaShadow(shadowing);
+		ug.apply(HColors.none()).apply(color.bg()).draw(rect);
+	}
 
-        if (getEntity().getLeafType() == LeafType.STATE_FORK_JOIN_HIDDEN) {
-            color = HColors.transparent();
-        }
-
-        final double shadowing = style.getShadowing(); // Use MASTER's improved shadowing method
-
-        rect.setDeltaShadow(shadowing);
-        ug.apply(HColors.none()).apply(color.bg()).draw(rect);
-    }
-
-    public ShapeType getShapeType() {
-        return ShapeType.RECTANGLE;
-    }
+	public ShapeType getShapeType() {
+		return ShapeType.RECTANGLE;
+	}
 
 }

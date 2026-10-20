@@ -46,10 +46,9 @@ import net.sourceforge.plantuml.security.SecurityProfile;
 import net.sourceforge.plantuml.security.SecurityUtils;
 
 public class GraphvizUtils {
-	// ::remove file when __CORE__
+	
 
 	private static int DOT_VERSION_LIMIT = 226;
-
 
 	private static final ThreadLocal<Integer> limitSize = new ThreadLocal<>();
 
@@ -81,7 +80,6 @@ public class GraphvizUtils {
 		return SecurityUtils.getenv("PLANTUML_LOGDATA");
 	}
 
-
 	static public int addDotStatus(ReportLog result, boolean withRichText) {
 		String red = "";
 		String bold = "";
@@ -104,13 +102,13 @@ public class GraphvizUtils {
 			} catch (Exception e) {
 				result.add(red + e.toString());
 				Logme.error(e);
-				error = -1;
+				error = 11;
 			}
 			return error;
 		}
 
 		final File dotExe = GraphvizRuntimeEnvironment.getInstance().getDotExe();
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE) {
+		if (SecurityUtils.getSecurityProfile() == SecurityProfile.INSECURE) {
 			final String ent = GraphvizRuntimeEnvironment.getInstance().getenvGraphvizDot();
 			if (ent == null)
 				result.add("The environment variable GRAPHVIZ_DOT has not been set");
@@ -124,40 +122,44 @@ public class GraphvizUtils {
 		if (exeState == ExeState.OK) {
 			try {
 				final String version = GraphvizRuntimeEnvironment.getInstance().dotVersion();
-				result.add("Dot version: " + version);
+				if (withRichText)
+					result.add("<b>GraphViz</b> \"\"" + version + "\"\"");
+				else
+					result.add("GraphViz: " + version);
 				final int v = GraphvizRuntimeEnvironment.getInstance().getDotVersion();
 				if (v == -1) {
 					result.add("Warning : cannot determine dot version");
-					error = -2;
+					error = 12;
 				} else if (v < DOT_VERSION_LIMIT) {
 					result.add(bold + "Warning : Your dot installation seems old");
 					result.add(bold + "Some diagrams may have issues");
-					error = -3;
+					error = 13;
 				} else {
 					final String err = getTestCreateSimpleFile();
 					if (err == null) {
 						result.add(bold + "Installation seems OK. File generation OK");
 					} else {
 						result.add(red + err);
-						error = -4;
+						error = 14;
 					}
 				}
 			} catch (Exception e) {
 				result.add(red + e.toString());
 				Logme.error(e);
-				error = -5;
+				error = 15;
 			}
 		} else {
 			result.add(red + "Error: " + exeState.getTextMessage());
 			result.add("Error: only sequence diagrams will be generated");
-			error = -6;
+			error = 16;
 		}
 
 		return error;
 	}
 
 	static String getTestCreateSimpleFile() throws IOException {
-		final Graphviz graphviz2 = GraphvizRuntimeEnvironment.getInstance().create(null, "digraph foo { test; }", "svg");
+		final Graphviz graphviz2 = GraphvizRuntimeEnvironment.getInstance().create(null, "digraph foo { test; }",
+				"svg");
 		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		final ProcessState state = graphviz2.createFile3(baos);
 		if (state.differs(ProcessState.TERMINATED_OK()))

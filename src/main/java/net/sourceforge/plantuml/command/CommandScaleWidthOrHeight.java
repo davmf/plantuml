@@ -35,16 +35,22 @@
  */
 package net.sourceforge.plantuml.command;
 
-import net.sourceforge.plantuml.AbstractPSystem;
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.ScaleHeight;
 import net.sourceforge.plantuml.ScaleWidth;
+import net.sourceforge.plantuml.annotation.Explain;
+import net.sourceforge.plantuml.core.AbstractDiagram;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandScaleWidthOrHeight extends SingleLineCommand2<AbstractPSystem> {
+public class CommandScaleWidthOrHeight extends SingleLineCommand2<AbstractDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("scale");
 
 	public static final CommandScaleWidthOrHeight ME = new CommandScaleWidthOrHeight();
 
@@ -62,7 +68,19 @@ public class CommandScaleWidthOrHeight extends SingleLineCommand2<AbstractPSyste
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(AbstractPSystem diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'scale N width' (or 'scale N height') resizes the final image so
+		// that the given dimension is exactly N pixels, keeping the aspect
+		// ratio; unlike the 'scale max' forms, it may enlarge a smaller image.
+		final boolean width = "width".equalsIgnoreCase(arg.get("WIDTH", 0));
+		return "Resizing the diagram so that its " + (width ? "width" : "height") + " is " + arg.get("VALUE", 0)
+				+ " pixels";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(AbstractDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final double size = Double.parseDouble(arg.get("VALUE", 0));
 		final boolean width = "width".equalsIgnoreCase(arg.get("WIDTH", 0));
 		if (width) {
@@ -71,6 +89,11 @@ public class CommandScaleWidthOrHeight extends SingleLineCommand2<AbstractPSyste
 			diagram.setScale(new ScaleHeight(size));
 		}
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

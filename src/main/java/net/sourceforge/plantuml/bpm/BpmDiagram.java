@@ -34,29 +34,23 @@
  */
 package net.sourceforge.plantuml.bpm;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-import net.atmp.ImageBuilder;
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.skin.SkinParam;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
-public class BpmDiagram extends UmlDiagram {
-	// ::remove folder when __CORE__
-
+public class BpmDiagram extends TitledDiagram {
 	private void cleanGrid(Grid grid) {
 		while (true) {
 			final boolean v1 = new CleanerEmptyLine().clean(grid);
@@ -78,29 +72,18 @@ public class BpmDiagram extends UmlDiagram {
 	}
 
 	public BpmDiagram(UmlSource source, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.BPM, null, preprocessing);
+		super(source, DiagramType.BPM, null, preprocessing);
 	}
 
-	@Override
-	public ImageBuilder createImageBuilder(FileFormatOption fileFormatOption) throws IOException {
-		return super.createImageBuilder(fileFormatOption).annotations(false);
-	}
-
-	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-
-		return createImageBuilder(fileFormatOption).drawable(getUDrawable()).write(os);
-	}
-
-	private UDrawable getUDrawable() {
-		final Grid grid = createGrid();
-		cleanGrid(grid);
-		final GridArray gridArray = grid.toArray(SkinParam.create(getUmlDiagramType(), getPragma(), getPreprocessingArtifact().getOption()));
-		// gridArray.addEdges(edges);
-		// System.err.println("gridArray=" + gridArray);
-		return gridArray;
-	}
+//	private UDrawable getUDrawable() {
+//		final Grid grid = createGrid();
+//		cleanGrid(grid);
+//		final GridArray gridArray = grid.toArray(SkinParam.create(PathSystem.fetch(), getDiagramType(), getPragma(),
+//				getPreprocessingArtifact().getOption()));
+//		// gridArray.addEdges(edges);
+//		// System.err.println("gridArray=" + gridArray);
+//		return gridArray;
+//	}
 
 	public CommandExecutionResult addEvent(BpmEvent event) {
 		this.events.add(event);
@@ -195,7 +178,10 @@ public class BpmDiagram extends UmlDiagram {
 	}
 
 	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		throw new UnsupportedOperationException();
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
+		final Grid grid = createGrid();
+		cleanGrid(grid);
+		return grid.toArray(SkinParam.create(getMd5map(), PathSystem.fetch(), getDiagramType(), getPragma(),
+				getPreprocessingArtifact().getOption()));
 	}
 }

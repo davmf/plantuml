@@ -36,9 +36,9 @@
 package net.sourceforge.plantuml.klimt.drawing.g2d;
 
 import java.awt.BasicStroke;
-import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Shape;
+import java.awt.Paint;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;
 
@@ -46,6 +46,7 @@ import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorGradient;
+import net.sourceforge.plantuml.klimt.color.HColorLinearGradient;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.geom.EnsureVisible;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
@@ -63,8 +64,8 @@ public class DriverEllipseG2d extends DriverShadowedG2d implements UDriver<UElli
 
 	public void draw(UEllipse ellipse, double x, double y, ColorMapper mapper, UParam param, Graphics2D g2d) {
 		g2d.setStroke(new BasicStroke((float) param.getStroke().getThickness()));
-		visible.ensureVisible(x, y);
-		visible.ensureVisible(x + ellipse.getWidth(), y + ellipse.getHeight());
+		visible.ensureVisible(x, y, param.getClip());
+		visible.ensureVisible(x + ellipse.getWidth(), y + ellipse.getHeight(), param.getClip());
 		final HColor color = param.getColor();
 		if (ellipse.getStart() == 0 && ellipse.getExtend() == 0) {
 			final Shape shape = new Ellipse2D.Double(x, y, ellipse.getWidth(), ellipse.getHeight());
@@ -75,15 +76,15 @@ public class DriverEllipseG2d extends DriverShadowedG2d implements UDriver<UElli
 			}
 
 			final HColor back = param.getBackcolor();
-			if (back instanceof HColorGradient) {
-				final GradientPaint paint = DriverRectangleG2d.getPaintGradient(x, y, mapper, ellipse.getWidth(),
-						ellipse.getHeight(), back);
+			if (back instanceof HColorGradient || back instanceof HColorLinearGradient) {
+				final Paint paint = DriverRectangleG2d.getPaintGradient(x, y, mapper, ellipse.getWidth(),
+							ellipse.getHeight(), back);
 				g2d.setPaint(paint);
 				g2d.fill(shape);
 				DriverRectangleG2d.drawBorder(param, color, mapper, ellipse, shape, g2d, x, y);
 			} else {
 				if (back.isTransparent() == false) {
-					g2d.setColor(param.getBackcolor().toColor(mapper));
+					g2d.setColor(param.getBackcolor().toColor(mapper).toAwtColor());
 					DriverRectangleG2d.managePattern(param, g2d);
 					g2d.fill(shape);
 				}
@@ -95,7 +96,7 @@ public class DriverEllipseG2d extends DriverShadowedG2d implements UDriver<UElli
 			final Shape arc = new Arc2D.Double(x, y, ellipse.getWidth(), ellipse.getHeight(), round(ellipse.getStart()),
 					round(ellipse.getExtend()), Arc2D.OPEN);
 			if (color.isTransparent() == false) {
-				g2d.setColor(color.toColor(mapper));
+				g2d.setColor(color.toColor(mapper).toAwtColor());
 				g2d.draw(arc);
 			}
 		}

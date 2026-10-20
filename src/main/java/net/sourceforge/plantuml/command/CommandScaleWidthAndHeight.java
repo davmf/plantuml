@@ -35,15 +35,21 @@
  */
 package net.sourceforge.plantuml.command;
 
-import net.sourceforge.plantuml.AbstractPSystem;
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.ScaleWidthAndHeight;
+import net.sourceforge.plantuml.annotation.Explain;
+import net.sourceforge.plantuml.core.AbstractDiagram;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandScaleWidthAndHeight extends SingleLineCommand2<AbstractPSystem> {
+public class CommandScaleWidthAndHeight extends SingleLineCommand2<AbstractDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("scale");
 
 	public static final CommandScaleWidthAndHeight ME = new CommandScaleWidthAndHeight();
 
@@ -63,11 +69,26 @@ public class CommandScaleWidthAndHeight extends SingleLineCommand2<AbstractPSyst
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(AbstractPSystem diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'scale WxH' resizes the final image to fit within W x H pixels,
+		// keeping its aspect ratio; unlike 'scale max WxH', it may enlarge a
+		// smaller image.
+		return "Resizing the diagram to fit within " + arg.get("WIDTH", 0) + " x " + arg.get("HEIGHT", 0) + " pixels";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(AbstractDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final double width = Double.parseDouble(arg.get("WIDTH", 0));
 		final double height = Double.parseDouble(arg.get("HEIGHT", 0));
 		diagram.setScale(new ScaleWidthAndHeight(width, height));
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

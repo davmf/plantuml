@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -36,14 +36,15 @@
 package net.sourceforge.plantuml.style;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import net.sourceforge.plantuml.stereo.StereotypeDecoration;
+import net.sourceforge.plantuml.style.value.Value;
+import net.sourceforge.plantuml.style.value.ValueImpl;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class FromSkinparamToStyle {
 	// ::remove file when __HAXE__
@@ -72,7 +73,7 @@ public class FromSkinparamToStyle {
 		}
 	}
 
-	private static final Map<String, List<Data>> knowlegde = new HashMap<String, List<Data>>();
+	private static final Map<String, List<Data>> knowledge = new HashMap<String, List<Data>>();
 
 	static {
 		addConvert("participantClickableBackgroundColor", PName.BackGroundColor, SName.participant, SName.clickable);
@@ -189,6 +190,11 @@ public class FromSkinparamToStyle {
 		addConvert("classFontColor", PName.FontColor, SName.element, SName.class_, SName.header);
 		addConvert("classFontName", PName.FontName, SName.element, SName.class_, SName.header);
 
+		addConvert("classStereotypeFontSize", PName.FontSize, SName.element, SName.class_, SName.stereotype);
+		addConvert("classStereotypeFontStyle", PName.FontStyle, SName.element, SName.class_, SName.stereotype);
+		addConvert("classStereotypeFontColor", PName.FontColor, SName.element, SName.class_, SName.stereotype);
+		addConvert("classStereotypeFontName", PName.FontName, SName.element, SName.class_, SName.stereotype);
+
 		addConvert("classAttributeFontSize", PName.FontSize, SName.element, SName.class_);
 		addConvert("classAttributeFontStyle", PName.FontStyle, SName.element, SName.class_);
 		addConvert("classAttributeFontColor", PName.FontColor, SName.element, SName.class_);
@@ -263,6 +269,10 @@ public class FromSkinparamToStyle {
 		addConvert("stereotypeIBorderColor", PName.LineColor, SName.spotInterface);
 		addConvert("stereotypeNBackgroundColor", PName.BackGroundColor, SName.spotAnnotation);
 		addConvert("stereotypeNBorderColor", PName.LineColor, SName.spotAnnotation);
+		addConvert("stereotypeRBackgroundColor", PName.BackGroundColor, SName.spotRecord);
+		addConvert("stereotypeRBorderColor", PName.LineColor, SName.spotRecord);
+		addConvert("stereotypeDBackgroundColor", PName.BackGroundColor, SName.spotDataClass);
+		addConvert("stereotypeDBorderColor", PName.LineColor, SName.spotDataClass);
 	}
 
 	private static void addMagic(SName sname) {
@@ -323,7 +333,7 @@ public class FromSkinparamToStyle {
 		if (value.equalsIgnoreCase("dashed"))
 			value = "7;7";
 
-		final List<Data> datas = knowlegde.get(key.toLowerCase());
+		final List<Data> datas = knowledge.get(key.toLowerCase());
 
 		if (datas == null) {
 			if (key.equalsIgnoreCase("shadowing"))
@@ -394,11 +404,12 @@ public class FromSkinparamToStyle {
 	private void addStyle(PName propertyName, Value value, SName... styleNames) {
 		Map<PName, Value> map = new EnumMap<PName, Value>(PName.class);
 		map.put(propertyName, value);
-		StyleSignatureBasic sig = StyleSignatureBasic.of(styleNames);
+		StyleQuery sig = StyleQuery.of3(styleNames);
 		if (stereo != null) {
-			map = StyleLoader.addPriorityForStereotype(map);
-			for (String s : stereo.split("\\&"))
-				sig = sig.addStereotype(s);
+			final String[] names = stereo.split("\\&");
+			map = StyleLoader.addStereotypeCount(map, names.length);
+			for (String s : names)
+				sig = sig.withStereotype(s);
 		}
 
 		final Style style = new Style(sig, map);
@@ -406,15 +417,15 @@ public class FromSkinparamToStyle {
 	}
 
 	public List<Style> getStyles() {
-		return Collections.unmodifiableList(styles);
+		return MyCollections.unmodifiableList(styles);
 	}
 
 	private static void addConvert(String skinparam, PName propertyName, SName... styleNames) {
 		skinparam = skinparam.toLowerCase();
-		List<Data> datas = knowlegde.get(skinparam);
+		List<Data> datas = knowledge.get(skinparam);
 		if (datas == null) {
 			datas = new ArrayList<>();
-			knowlegde.put(skinparam, datas);
+			knowledge.put(skinparam, datas);
 		}
 		datas.add(new Data(styleNames, propertyName));
 	}

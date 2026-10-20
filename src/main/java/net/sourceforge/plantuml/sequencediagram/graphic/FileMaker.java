@@ -35,17 +35,16 @@
  */
 package net.sourceforge.plantuml.sequencediagram.graphic;
 
-import java.io.IOException;
-import java.io.OutputStream;
-
-import net.sourceforge.plantuml.core.ImageData;
-import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.FileFormatOption;
+import net.sourceforge.plantuml.asciiverse.AsciiBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 
 public interface FileMaker {
 
-	ImageData createOne(OutputStream os, int index, boolean isWithMetadata) throws IOException;
-
-	void createOneGraphic(UGraphic ug);
-
 	public int getNbPages();
+
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormat);
+
+	public AsciiBlock getAsciiBlock(int num, FileFormatOption fileFormat);
+
 }

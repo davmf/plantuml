@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -49,6 +53,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandDelay extends SingleLineCommand2<SequenceDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList(".", "\u2026");
+
 	public CommandDelay() {
 		super(getRegexConcat());
 	}
@@ -60,10 +66,33 @@ public class CommandDelay extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// '...' (or the Unicode ellipsis) inserts a delay in the diagram,
+		// optionally labelled when written as '...label...'.
+		sb.append("Inserting a delay");
+
+		final String label = arg.get("LABEL", 0);
+		if (label != null)
+			sb.append(" labelled \"").append(label).append("\"");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final Display strings = arg.get("LABEL", 0) == null ? Display.empty()
 				: Display.getWithNewlines(diagram.getPragma(), arg.get("LABEL", 0));
 		diagram.delay(strings);
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

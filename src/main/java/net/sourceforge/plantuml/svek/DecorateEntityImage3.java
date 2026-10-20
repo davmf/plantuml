@@ -35,14 +35,14 @@
  */
 package net.sourceforge.plantuml.svek;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 
-public class DecorateEntityImage3 extends AbstractTextBlock {
+public class DecorateEntityImage3 implements TextBlock {
 
 	private final TextBlock original;
 	private final HColor color;
@@ -52,10 +52,13 @@ public class DecorateEntityImage3 extends AbstractTextBlock {
 		this.color = color;
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return original.calculateDimension(stringBounder);
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		original.drawU(ug);
 	}

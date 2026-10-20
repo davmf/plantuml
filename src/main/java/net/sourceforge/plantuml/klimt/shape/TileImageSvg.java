@@ -35,13 +35,12 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
-public class TileImageSvg extends AbstractTextBlock implements TextBlock {
-    // ::remove file when __HAXE__
-
+public class TileImageSvg implements TextBlock {
 	private final UImageSvg svg;
 	private final double scale;
 
@@ -50,6 +49,8 @@ public class TileImageSvg extends AbstractTextBlock implements TextBlock {
 		this.scale = scale;
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(svg.getWidth(), svg.getHeight());
 	}

@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.activitydiagram3.ftile.vcompact;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -75,6 +74,8 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.svek.ConditionStyle;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 class FtileIfLongHorizontal extends AbstractFtile {
 
@@ -113,7 +114,7 @@ class FtileIfLongHorizontal extends AbstractFtile {
 		for (int i = 0; i < diamonds.size(); i++) {
 			Ftile diamond = diamonds.get(i);
 			final double missing = maxOutY - diamond.calculateDimension(stringBounder).getOutY();
-			assert missing >= 0;
+			if (TeaVM.a()) assert missing >= 0;
 			diamond = FtileUtils.addVerticalMargin(diamond, missing / 2, 20);
 			result.add(diamond);
 		}
@@ -136,7 +137,7 @@ class FtileIfLongHorizontal extends AbstractFtile {
 			result.addAll(tile.getSwimlanes());
 
 		result.addAll(tile2.getSwimlanes());
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	public Swimlane getSwimlaneIn() {
@@ -603,7 +604,7 @@ class FtileIfLongHorizontal extends AbstractFtile {
 	public Collection<Ftile> getMyChildren() {
 		final List<Ftile> result = new ArrayList<>(tiles);
 		result.add(tile2);
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	@Override
@@ -653,12 +654,12 @@ class FtileIfLongHorizontal extends AbstractFtile {
 		return trCouple.compose(in);
 	}
 
-	private UTranslate getTranslateCouple1(Ftile candidat, StringBounder stringBounder) {
+	private UTranslate getTranslateCouple1(Ftile candidate, StringBounder stringBounder) {
 		double x1 = 0;
 
 		for (Ftile couple : couples) {
 			final FtileGeometry dim1 = couple.calculateDimension(stringBounder);
-			if (couple == candidat)
+			if (couple == candidate)
 				return new UTranslate(x1, 25);
 
 			x1 += dim1.getWidth() + xSeparation;

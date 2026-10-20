@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.sequencediagram.command;
 
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -85,6 +86,60 @@ public abstract class CommandParticipant extends SingleLineCommand2<SequenceDiag
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// A participant that already exists is not recreated: executeArg just
+		// moves it to the last position. Reflect that early-return case.
+		final String code = arg.get("CODE", 0);
+
+		// 'create participant', 'create actor', etc. set CREATE; a bare 'create'
+		// keyword shows up in TYPE. Either way the participant is created and
+		// activated with a CREATE life event.
+		final String typeCreate = arg.get("CREATE", 0);
+		final String typeString = arg.get("TYPE", 0);
+		final boolean create = typeCreate != null || (typeString != null && typeString.equalsIgnoreCase("create"));
+
+		final String type;
+		if (typeCreate != null)
+			type = typeCreate;
+		else if (typeString != null && typeString.equalsIgnoreCase("create") == false)
+			type = typeString;
+		else
+			type = "participant";
+
+		sb.append(create ? "Creating " : "Declaring ").append(type.toLowerCase());
+
+		if (code != null)
+			sb.append(" '").append(code).append("'");
+
+		final String displayString = arg.get("FULL", 0);
+		if (displayString != null)
+			sb.append(" displayed as \"").append(displayString).append("\"");
+
+		final String orderString = arg.get("ORDER", 0);
+		if (orderString != null)
+			sb.append(", order ").append(orderString);
+
+		final String stereo = arg.get("STEREO", 0);
+		if (stereo != null)
+			sb.append(", stereotype ").append(stereo);
+
+		final String color = arg.get("COLOR", 0);
+		if (color != null)
+			sb.append(", background color ").append(color);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (create)
+			sb.append(" (created on the spot, with a CREATE life event)");
+
+		return sb.toString();
+	}
+
+	@Override
 	final protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
 		final String code = arg.get("CODE", 0);
@@ -129,7 +184,7 @@ public abstract class CommandParticipant extends SingleLineCommand2<SequenceDiag
 		participant.setSpecificColorTOBEREMOVED(ColorType.BACK,
 				s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);

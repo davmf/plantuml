@@ -45,7 +45,7 @@ import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.tikz.TikzGraphics;
 
 public class DriverAtomTextTikz implements UDriver<AtomText, TikzGraphics> {
-	// ::remove folder when __CORE__
+	
 
 	public void draw(AtomText text, double x, double y, ColorMapper mapper, UParam param, TikzGraphics tikz) {
 		final FontConfiguration fontConfiguration = text.getFontConfiguration();
@@ -53,8 +53,8 @@ public class DriverAtomTextTikz implements UDriver<AtomText, TikzGraphics> {
 		final HColor col = fontConfiguration.getColor();
 		tikz.setStrokeColor(col);
 		final boolean underline = fontConfiguration.containsStyle(FontStyle.UNDERLINE);
-		final boolean italic = font.isItalic();
-		final boolean bold = font.isBold();
+		final boolean italic = font.getFontFace().isItalic();
+		final boolean bold = font.getFontFace().isBold();
 		tikz.text(x, y, text.getText(), underline, italic, bold);
 	}
 

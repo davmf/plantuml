@@ -35,38 +35,35 @@
  */
 package net.sourceforge.plantuml.activitydiagram3;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Objects;
 
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.Previous;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Swimlanes;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.compress.CompressionMode;
 import net.sourceforge.plantuml.klimt.compress.CompressionXorYBuilder;
 import net.sourceforge.plantuml.klimt.creole.Display;
-import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
-import net.sourceforge.plantuml.klimt.shape.TextBlockRecentred;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.url.Url;
 
-public class ActivityDiagram3 extends UmlDiagram {
+public class ActivityDiagram3 extends TitledDiagram {
 
 	enum SwimlaneStrategy {
 		SWIMLANE_FORBIDDEN, SWIMLANE_ALLOWED;
@@ -77,7 +74,7 @@ public class ActivityDiagram3 extends UmlDiagram {
 	private final Swimlanes swimlanes = new Swimlanes(getSkinParam(), getPragma());
 
 	public ActivityDiagram3(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.ACTIVITY, previous, preprocessing);
+		super(source, DiagramType.ACTIVITY, previous, preprocessing);
 	}
 
 	private void manageSwimlaneStrategy() {
@@ -109,11 +106,15 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return swimlanes.nextLinkRenderer();
 	}
 
-	public CommandExecutionResult addActivity(Display activity, BoxStyle boxStyle, Url url, Colors colors,
-			Stereotype stereotype) {
+	public CommandExecutionResult addActivity(Display activity, BoxStyle boxStyle, Url url, Stereogroup stereogroup)
+			throws NoSuchColorException {
+
+		final Colors colors = stereogroup.getInnerColors(getSkinParam().getIHtmlColorSet());
+
 		manageSwimlaneStrategy();
 		final InstructionSimple ins = new InstructionSimple(activity, nextLinkRenderer(),
-				swimlanes.getCurrentSwimlane(), boxStyle, url, colors, stereotype, getCurrentStyleBuilder());
+				swimlanes.getCurrentSwimlane(), boxStyle, url, colors, stereogroup.buildStereotype(),
+				getCurrentStyleBuilder());
 		final CommandExecutionResult added = current().add(ins);
 		if (added.isOk() == false)
 			return added;
@@ -149,24 +150,24 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return CommandExecutionResult.ok();
 	}
 
-	public void start() {
+	public void start(Colors colors) {
 		manageSwimlaneStrategy();
-		current().add(new InstructionStart(swimlanes.getCurrentSwimlane(), nextLinkRenderer()));
+		current().add(new InstructionStart(colors, swimlanes.getCurrentSwimlane(), nextLinkRenderer()));
 		setNextLinkRendererInternal(LinkRendering.none());
 	}
 
-	public void stop() {
+	public void stop(Colors colors) {
 		manageSwimlaneStrategy();
-		final InstructionStop ins = new InstructionStop(swimlanes.getCurrentSwimlane(), nextLinkRenderer());
+		final InstructionStop ins = new InstructionStop(colors, swimlanes.getCurrentSwimlane(), nextLinkRenderer());
 		if (manageSpecialStopEndAfterEndWhile(ins))
 			return;
 
 		current().add(ins);
 	}
 
-	public void end() {
+	public void end(Colors colors) {
 		manageSwimlaneStrategy();
-		final InstructionEnd ins = new InstructionEnd(swimlanes.getCurrentSwimlane(), nextLinkRenderer());
+		final InstructionEnd ins = new InstructionEnd(colors, swimlanes.getCurrentSwimlane(), nextLinkRenderer());
 		if (manageSpecialStopEndAfterEndWhile(ins))
 			return;
 
@@ -200,36 +201,22 @@ public class ActivityDiagram3 extends UmlDiagram {
 	}
 
 	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam());
-		final TextBlock result = getTextBlock(stringBounder);
-		return createImageBuilder(fileFormatOption).drawable(result).write(os);
-	}
-
-	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam());
-		return getTextBlock(stringBounder);
-	}
-
-	private TextBlock getTextBlock(final StringBounder stringBounder) {
-		swimlanes.computeSize(stringBounder);
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
 		TextBlock result = swimlanes;
 
 		// BUG42
 		// COMMENT TO DISABLE COMPRESS
-		result = CompressionXorYBuilder.build(CompressionMode.ON_X, result, stringBounder);
-		result = CompressionXorYBuilder.build(CompressionMode.ON_Y, result, stringBounder);
+		result = CompressionXorYBuilder.build(CompressionMode.ON_X, result);
+		result = CompressionXorYBuilder.build(CompressionMode.ON_Y, result);
 
-		result = new TextBlockRecentred(result);
+		result = new Recentred(result);
 		return result;
 	}
 
-	public void fork() {
+	public void fork(Colors colors) {
 		manageSwimlaneStrategy();
-		final InstructionFork instructionFork = new InstructionFork(current(), nextLinkRenderer(), getSkinParam(),
-				swimlanes.getCurrentSwimlane());
+		final InstructionFork instructionFork = new InstructionFork(current(), nextLinkRenderer(),
+				swimlanes.getCurrentSwimlane(), colors);
 		current().add(instructionFork);
 		setNextLinkRendererInternal(LinkRendering.none());
 		setCurrent(instructionFork);
@@ -260,7 +247,7 @@ public class ActivityDiagram3 extends UmlDiagram {
 
 	public void split() {
 		final InstructionSplit instructionSplit = new InstructionSplit(current(), nextLinkRenderer(),
-				swimlanes.getCurrentSwimlane());
+				swimlanes.getCurrentSwimlane(), null);
 		setNextLinkRendererInternal(LinkRendering.none());
 		current().add(instructionSplit);
 		setCurrent(instructionSplit);
@@ -285,10 +272,10 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return CommandExecutionResult.error("Cannot find split");
 	}
 
-	public void startSwitch(Display test, HColor color) {
+	public void startSwitch(Display test, Colors colors) {
 		manageSwimlaneStrategy();
 		final InstructionSwitch instructionSwitch = new InstructionSwitch(swimlanes.getCurrentSwimlane(), current(),
-				test, nextLinkRenderer(), color, getSkinParam());
+				test, nextLinkRenderer(), colors);
 		current().add(instructionSwitch);
 		setNextLinkRendererInternal(LinkRendering.none());
 		setCurrent(instructionSwitch);
@@ -307,9 +294,9 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return CommandExecutionResult.error("Cannot find switch");
 	}
 
-	public CommandExecutionResult endSwitch() {
+	public CommandExecutionResult endSwitch(Colors colors) {
 		if (current() instanceof InstructionSwitch) {
-			((InstructionSwitch) current()).endSwitch(nextLinkRenderer());
+			((InstructionSwitch) current()).endSwitch(nextLinkRenderer(), colors);
 			setNextLinkRendererInternal(LinkRendering.none());
 			setCurrent(((InstructionSwitch) current()).getParent());
 			return CommandExecutionResult.ok();
@@ -340,7 +327,7 @@ public class ActivityDiagram3 extends UmlDiagram {
 
 	public CommandExecutionResult else2(LinkRendering whenElse) {
 		if (current() instanceof InstructionIf) {
-			final boolean result = ((InstructionIf) current()).swithToElse2(whenElse, nextLinkRenderer());
+			final boolean result = ((InstructionIf) current()).switchToElse2(whenElse, nextLinkRenderer());
 			if (result == false)
 				return CommandExecutionResult.error("Cannot find if");
 
@@ -350,10 +337,10 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return CommandExecutionResult.error("Cannot find if");
 	}
 
-	public CommandExecutionResult endif() {
+	public CommandExecutionResult endif(Colors colors) {
 		// System.err.println("Activity3::endif");
 		if (current() instanceof InstructionIf) {
-			((InstructionIf) current()).endif(nextLinkRenderer());
+			((InstructionIf) current()).endif(nextLinkRenderer(), colors);
 			setNextLinkRendererInternal(LinkRendering.none());
 			setCurrent(((InstructionIf) current()).getParent());
 			return CommandExecutionResult.ok();
@@ -361,10 +348,10 @@ public class ActivityDiagram3 extends UmlDiagram {
 		return CommandExecutionResult.error("Cannot find if");
 	}
 
-	public void startRepeat(HColor color, Display label, BoxStyle boxStyleIn, Colors colors, Stereotype stereotype) {
+	public void startRepeat(Display label, BoxStyle boxStyleIn, Colors colors, Stereogroup stereogroup) {
 		manageSwimlaneStrategy();
 		final InstructionRepeat instructionRepeat = new InstructionRepeat(swimlanes, current(), nextLinkRenderer(),
-				color, label, boxStyleIn, colors, stereotype);
+				label, boxStyleIn, colors, stereogroup);
 		current().add(instructionRepeat);
 		setCurrent(instructionRepeat);
 		setNextLinkRendererInternal(LinkRendering.none());
@@ -372,12 +359,13 @@ public class ActivityDiagram3 extends UmlDiagram {
 	}
 
 	public CommandExecutionResult repeatWhile(Display label, Display yes, Display out, Display linkLabel,
-			Rainbow linkColor) {
+			Rainbow linkColor, Stereogroup stereotype) {
 		manageSwimlaneStrategy();
 		if (current() instanceof InstructionRepeat) {
 			final InstructionRepeat instructionRepeat = (InstructionRepeat) current();
 			final LinkRendering back = LinkRendering.create(linkColor).withDisplay(linkLabel);
-			instructionRepeat.setTest(label, yes, out, nextLinkRenderer(), back, swimlanes.getCurrentSwimlane());
+			instructionRepeat.setTest(label, yes, out, nextLinkRenderer(), back, swimlanes.getCurrentSwimlane(),
+					stereotype);
 			setCurrent(instructionRepeat.getParent());
 			this.setNextLinkRendererInternal(LinkRendering.none());
 			return CommandExecutionResult.ok();
@@ -438,7 +426,7 @@ public class ActivityDiagram3 extends UmlDiagram {
 		setCurrent(instructionGroup);
 	}
 
-	public CommandExecutionResult endGroup() {
+	public CommandExecutionResult closeGroup() {
 		if (current() instanceof InstructionGroup) {
 			setCurrent(((InstructionGroup) current()).getParent());
 			return CommandExecutionResult.ok();

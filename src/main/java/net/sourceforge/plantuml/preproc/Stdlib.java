@@ -36,14 +36,15 @@
 package net.sourceforge.plantuml.preproc;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,26 +54,19 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import net.sourceforge.plantuml.FileUtils;
-import net.sourceforge.plantuml.emoji.SvgNanoParser;
+import net.sourceforge.plantuml.json.Json;
+import net.sourceforge.plantuml.json.JsonValue;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.spm.SpmChannel;
+import net.sourceforge.plantuml.svg.parser.ISvgSpriteParser;
+import net.sourceforge.plantuml.svg.parser.SvgSpriteParserFactory;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.Log;
-// ::uncomment when __CORE__
-//import java.io.FileInputStream;
-//import java.io.FileNotFoundException;
-//import static com.plantuml.api.cheerpj.StaticMemory.cheerpjPath;
-// ::done
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class Stdlib {
-
-	// ::uncomment when __CORE__
-//	public static InputStream getResourceAsStream(String fullname) {
-//			return null;
-//	}
-	// ::done
-
-	// ::comment when __CORE__
 
 	private static final ConcurrentMap<String, Stdlib> all = new ConcurrentHashMap<>();
 
@@ -80,8 +74,8 @@ public class Stdlib {
 	private final Map<String, byte[]> puml = new HashMap<>();
 	private final Map<String, byte[]> json = new HashMap<>();
 	private final Map<String, StdlibSprite> sprites = new HashMap<>();
-	private final Map<String, SvgNanoParser> svgs = new HashMap<>();
-	private final List<FutureBufferedImage> images = new ArrayList<>();
+	private final Map<String, ISvgSpriteParser> svgs = new HashMap<>();
+	private final List<FutureImage> images = new ArrayList<>();
 
 	private final String name;
 	private final Map<String, String> info = new HashMap<String, String>();
@@ -118,17 +112,21 @@ public class Stdlib {
 		}
 	}
 
-	public static byte[] getJsonResource(String fullname) {
+	public static JsonValue getJsonResource(String fullname) {
 		final int last = fullname.indexOf('/');
 		if (last == -1)
 			return null;
+
+		if (TeaVM.isTeaVM())
+			return PathSystem.fetch().getTeaVMStdlibJson(fullname);
 
 		try {
 			final Stdlib folder = retrieve(fullname.substring(0, last));
 			if (folder == null || folder.info.size() == 0)
 				return null;
 
-			return folder.loadJsonResource(fullname.substring(last + 1));
+			return Json.parse(new String(folder.loadJsonResource(fullname.substring(last + 1)),
+					java.nio.charset.StandardCharsets.UTF_8));
 
 		} catch (IOException e) {
 			Logme.error(e);
@@ -195,12 +193,12 @@ public class Stdlib {
 		return channel.getInternalInputStream(name);
 	}
 
-	public static void extractStdLib() throws IOException {
-		for (String name : getAllFolderNames()) {
-			final Stdlib folder = Stdlib.retrieve(name);
-			folder.extractMeFull();
-		}
-	}
+//	public static void extractStdLib() throws IOException {
+//		for (String name : getAllFolderNames()) {
+//			final Stdlib folder = Stdlib.retrieve(name);
+//			folder.extractMeFull();
+//		}
+//	}
 
 	public static Collection<String> getAllFolderNames() throws IOException {
 		final InputStream home = SpmChannel.inputStream("stdlib/home.spm");
@@ -282,7 +280,7 @@ public class Stdlib {
 //		final List<String> result = new ArrayList<>();
 //		final DataInputStream dataStream = getDataStream();
 //		if (dataStream == null)
-//			return Collections.unmodifiableList(result);
+//			return MyCollections.unmodifiableList(result);
 //
 //		dataStream.readUTF();
 //		final InputStream spriteStream = getSpriteStream();
@@ -290,7 +288,7 @@ public class Stdlib {
 //			while (true) {
 //				final String filename = dataStream.readUTF();
 //				if (filename.equals(SEPARATOR))
-//					return Collections.unmodifiableList(result);
+//					return MyCollections.unmodifiableList(result);
 //
 //				while (true) {
 //					final String s = dataStream.readUTF();
@@ -352,7 +350,7 @@ public class Stdlib {
 	}
 
 	public Map<String, String> getMetadata() {
-		return Collections.unmodifiableMap(info);
+		return MyCollections.unmodifiableMap(info);
 
 	}
 
@@ -363,7 +361,6 @@ public class Stdlib {
 			System.out.println(s.replace("<b>", ""));
 
 	}
-	// ::done
 
 	public Sprite readSprite(String name) throws IOException {
 		synchronized (sprites) {
@@ -396,7 +393,7 @@ public class Stdlib {
 					for (int i = 0; i < nb; i++) {
 						final String spriteName = dis.readUTF();
 						final String svg = dis.readUTF();
-						svgs.put(spriteName, new SvgNanoParser(svg));
+						svgs.put(spriteName, SvgSpriteParserFactory.create(svg));
 					}
 				}
 			}
@@ -405,7 +402,7 @@ public class Stdlib {
 
 	}
 
-	public FutureBufferedImage readDataImagePng(int num) throws IOException {
+	public FutureImage readDataImagePng(int num) throws IOException {
 		synchronized (images) {
 			if (images.size() == 0) {
 				try (InputStream is = getInternalInputStream(SpmChannel.IMAGE);
@@ -416,7 +413,7 @@ public class Stdlib {
 						final int width = dis.readInt();
 						final int height = dis.readInt();
 						final byte data[] = FileUtils.readExactly(dis, width * height * 2);
-						images.add(new FutureBufferedImage(colors, width, height, data));
+						images.add(new FutureImage(colors, width, height, data));
 					}
 				}
 			}
@@ -435,6 +432,16 @@ public class Stdlib {
 			final int rgb = (alpha << 24) + (red << 16) + (green << 8) + blue;
 			colors.add(rgb);
 		}
+	}
+
+	public InputStream newInputStream(Path path) throws IOException {
+		final String pathString = path.toString().toLowerCase().replace(".puml", "").replace('\\', '/');
+		final byte[] data = loadPumlResource(pathString);
+		return new ByteArrayInputStream(data);
+	}
+
+	public String getName() {
+		return name;
 	}
 
 }

@@ -43,8 +43,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.cli.GlobalConfig;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactoryArrow;
@@ -71,7 +71,7 @@ public enum LinkDecor {
 	NONE(null, null, 2, false, 0), //
 	EXTENDS(decors1("<|", "^"), decors2("|>", "^"), 30, false, 2), //
 	COMPOSITION(decors1("*"), decors2("*"), 15, true, 1.3), //
-	AGREGATION(decors1("o"), decors2("o"), 15, false, 1.3), //
+	AGGREGATION(decors1("o"), decors2("o"), 15, false, 1.3), //
 	NOT_NAVIGABLE(decors1("x"), decors2("x"), 1, false, 0.5), //
 
 	REDEFINES(decors1("<||"), decors2("||>"), 30, false, 2), //
@@ -90,7 +90,7 @@ public enum LinkDecor {
 	CIRCLE(decors1("0"), decors2("0"), 0, false, 0.5), //
 	CIRCLE_FILL(decors1("@"), decors2("@"), 0, false, 0.5), //
 	CIRCLE_CONNECT(decors1("0)"), decors2("(0"), 0, false, 0.5), //
-	PARENTHESIS(decors1(")"), decors2("("), 0, false, OptionFlags.USE_INTERFACE_EYE2 ? 0.5 : 1.0), //
+	PARENTHESIS(decors1(")"), decors2("("), 0, false, GlobalConfig.USE_INTERFACE_EYE2 ? 0.5 : 1.0), //
 	SQUARE(decors1("#"), decors2("#"), 0, false, 0.5), //
 
 	CIRCLE_CROSS(null, null, 0, false, 0.5), //
@@ -204,7 +204,7 @@ public enum LinkDecor {
 			return new ExtremityFactoryArrowAndCircle(backgroundColor);
 		case NOT_NAVIGABLE:
 			return new ExtremityFactoryNotNavigable();
-		case AGREGATION:
+		case AGGREGATION:
 			return new ExtremityFactoryDiamond(false);
 		case COMPOSITION:
 			return new ExtremityFactoryDiamond(true);

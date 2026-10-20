@@ -35,10 +35,9 @@
  */
 package net.sourceforge.plantuml.svek;
 
-import java.awt.geom.AffineTransform;
-
 import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.awt.XAffineTransform;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
@@ -46,8 +45,8 @@ import net.sourceforge.plantuml.klimt.shape.UEllipse;
 
 class CircleAndArrow implements UDrawable {
 
-	private final AffineTransform at;
-	private final AffineTransform at2;
+	private final XAffineTransform at;
+	private final XAffineTransform at2;
 	private int radius;
 	private final XPoint2D center;
 	private final XPoint2D p1;
@@ -57,8 +56,8 @@ class CircleAndArrow implements UDrawable {
 
 	public CircleAndArrow(XPoint2D p1, XPoint2D p2) {
 		this.center = new XPoint2D((p1.getX() + p2.getX()) / 2, (p1.getY() + p2.getY()) / 2);
-		at = AffineTransform.getTranslateInstance(-center.getX(), -center.getY());
-		at2 = AffineTransform.getTranslateInstance(center.getX(), center.getY());
+		at = XAffineTransform.getTranslateInstance(-center.getX(), -center.getY());
+		at2 = XAffineTransform.getTranslateInstance(center.getX(), center.getY());
 		radius = (int) (p1.distance(p2) / 2);
 		if (radius % 2 == 0) {
 			radius--;

@@ -51,6 +51,7 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.Gtiles;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
@@ -64,12 +65,12 @@ public class InstructionFork extends WithNote implements Instruction {
 	private final List<InstructionList> forks = new ArrayList<>();
 	private final Instruction parent;
 	private final LinkRendering inlinkRendering;
-	private final ISkinParam skinParam;
 	private final Swimlane swimlaneIn;
 	private Swimlane swimlaneOut;
 	private ForkStyle style = ForkStyle.FORK;
 	private String label;
 	boolean finished = false;
+	private final Colors colors;
 
 	@Override
 	public boolean containsBreak() {
@@ -80,10 +81,10 @@ public class InstructionFork extends WithNote implements Instruction {
 		return false;
 	}
 
-	public InstructionFork(Instruction parent, LinkRendering inlinkRendering, ISkinParam skinParam, Swimlane swimlane) {
+	public InstructionFork(Instruction parent, LinkRendering inlinkRendering, Swimlane swimlane, Colors colors) {
 		this.parent = parent;
+		this.colors = colors;
 		this.inlinkRendering = Objects.requireNonNull(inlinkRendering);
-		this.skinParam = skinParam;
 		this.swimlaneIn = swimlane;
 		this.swimlaneOut = swimlane;
 		this.forks.add(InstructionList.empty());
@@ -98,7 +99,6 @@ public class InstructionFork extends WithNote implements Instruction {
 		return getLastList().add(ins);
 	}
 
-	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		final List<Gtile> all = new ArrayList<>();
@@ -111,7 +111,6 @@ public class InstructionFork extends WithNote implements Instruction {
 
 		return new GtileSplit(all, swimlaneIn, getInLinkRenderingColor(skinParam).getColor());
 	}
-	// ::done
 
 	private Rainbow getInLinkRenderingColor(ISkinParam skinParam) {
 		Rainbow color;
@@ -120,12 +119,12 @@ public class InstructionFork extends WithNote implements Instruction {
 	}
 
 	@Override
-	public Ftile createFtile(FtileFactory factory) {
+	public Ftile createFtile(FtileFactory factory) throws NoSuchColorException {
 		final List<Ftile> all = new ArrayList<>();
 		for (InstructionList list : forks)
 			all.add(list.createFtile(factory));
 
-		Ftile result = factory.createParallel(all, style, label, swimlaneIn, swimlaneOut);
+		Ftile result = factory.createParallel(all, style, label, swimlaneIn, swimlaneOut, colors);
 		if (getPositionedNotes().size() > 0)
 			result = FtileWithNoteOpale.create(result, getPositionedNotes(), false, VerticalAlignment.CENTER);
 
@@ -152,7 +151,8 @@ public class InstructionFork extends WithNote implements Instruction {
 	}
 
 	@Override
-	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote, Stereotype stereotype) {
+	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote,
+			Stereotype stereotype) {
 		if (finished)
 			return super.addNote(note, position, type, colors, swimlaneNote, stereotype);
 

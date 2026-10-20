@@ -35,10 +35,11 @@
  */
 package net.sourceforge.plantuml.klimt.geom;
 
-// ::comment when __HAXE__
-import java.awt.geom.AffineTransform;
 // ::done
 import java.util.Arrays;
+
+// ::comment when __HAXE__
+import net.sourceforge.plantuml.klimt.awt.XAffineTransform;
 
 public class USegment {
 
@@ -82,19 +83,18 @@ public class USegment {
 		return new USegment(new double[] { coord[0] + dx, coord[1] + dy }, pathType);
 	}
 
-	// ::comment when __HAXE__
 	public USegment rotate(double theta) {
 		if (coord.length != 2)
 			throw new UnsupportedOperationException();
 
 		XPoint2D p1 = new XPoint2D(coord[0], coord[1]);
-		final AffineTransform rotate = AffineTransform.getRotateInstance(theta);
+		final XAffineTransform rotate = XAffineTransform.getRotateInstance(theta);
 		p1 = p1.transform(rotate);
 
 		return new USegment(new double[] { p1.getX(), p1.getY() }, pathType);
 	}
 
-	public USegment affine(AffineTransform transform, double angle, double scale) {
+	public USegment affine(XAffineTransform transform, double angle, double scale) {
 		if (pathType == USegmentType.SEG_ARCTO) {
 			XPoint2D p1 = new XPoint2D(coord[5], coord[6]);
 

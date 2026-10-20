@@ -35,8 +35,6 @@
  */
 package net.sourceforge.plantuml.salt;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -45,26 +43,24 @@ import java.util.List;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.ScaleSimple;
 import net.sourceforge.plantuml.TitledDiagram;
-import net.sourceforge.plantuml.WithSprite;
-import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandFactorySprite;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
-import net.sourceforge.plantuml.crash.CrashReportHandler;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
-import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.salt.element.Element;
 import net.sourceforge.plantuml.salt.factory.AbstractElementFactoryComplex;
@@ -86,21 +82,20 @@ import net.sourceforge.plantuml.salt.factory.ElementFactoryTab;
 import net.sourceforge.plantuml.salt.factory.ElementFactoryText;
 import net.sourceforge.plantuml.salt.factory.ElementFactoryTextField;
 import net.sourceforge.plantuml.salt.factory.ElementFactoryTree;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.Log;
 
-public class PSystemSalt extends TitledDiagram implements WithSprite {
+public class PSystemSalt extends TitledDiagram {
 
 	private final List<String> data;
 	private final SaltDictionary dictionary;
 
 	@Deprecated
 	public PSystemSalt(UmlSource source, List<String> data, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.SALT, null, preprocessing);
-		this.dictionary = new SaltDictionary(preprocessing.getOption());
+		super(source, DiagramType.SALT, null, preprocessing);
+		this.dictionary = new SaltDictionary(source.getPathSystem(), preprocessing.getOption());
 		this.data = data;
 	}
 
@@ -112,37 +107,26 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 		data.addAll(StringLocated.expandsNewline(s));
 	}
 
-	@Override
-	final protected ImageData exportDiagramNow(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-		try {
-			final Element salt = createElement(manageSprite());
-			final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam());
-			final XDimension2D size = salt.getPreferredDimension(stringBounder, 0, 0);
-			return createImageBuilder(fileFormatOption).drawable(getTextBlock(salt, size)).write(os);
-		} catch (Exception e) {
-			Logme.error(e);
-			final CrashReportHandler report = new CrashReportHandler(e, getMetadata(), getFlashData());
-			report.anErrorHasOccured(e, getFlashData());
-			report.addProperties();
-			report.addEmptyLine();
-			report.youShouldSendThisDiagram();
-			report.addEmptyLine();
-			report.exportDiagramError(fileFormatOption, seed(), os);
-			return ImageDataSimple.error(e);
-		}
+	public int size() {
+		return data.size();
 	}
 
 	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
 		final Element salt = createElement(manageSprite());
-		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam());
-		final XDimension2D size = salt.getPreferredDimension(stringBounder, 0, 0);
-		return getTextBlock(salt, size);
-	}
-
-	private TextBlock getTextBlock(final Element salt, final XDimension2D size) {
-		return new AbstractTextBlock() {
+		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(getSkinParam(), getPragma());
+		final XDimension2D preferred = salt.getPreferredDimension(stringBounder, 0, 0);
+		// Only pay for the extra dry-run pass - and only let it influence the
+		// final size - when something in the tree can actually draw beyond
+		// its own preferred dimension. It measures via LimitFinder, a
+		// different (UText-based) code path than getPreferredDimension's own
+		// (creole-aware) text measurement, so it is not always pixel-for-
+		// pixel identical even when nothing truly overflows; gating it here
+		// keeps every ordinary salt diagram byte-identical to before this
+		// existed instead of picking up a stray pixel or two of margin.
+		final XDimension2D size = salt.mayDrawBeyondPreferredDimension() ? withActualExtent(salt, preferred, stringBounder)
+				: preferred;
+		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
 				ug = ug.apply(getBlack());
@@ -160,6 +144,35 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 		};
 	}
 
+	// Some elements (an open salt droplist - see ElementDroplist - is the
+	// current example) deliberately draw beyond their own preferred
+	// dimension, so they can float over / overlap whatever the layout put
+	// after them instead of pushing it down, the way a real UI drop-down
+	// covers whatever is under it. getPreferredDimension() has to stay
+	// unaware of that overflow, since it is also what every grid/row/column
+	// in the diagram is sized from (see ElementPyramid#init) - growing it
+	// would reserve room for the overflow and defeat the "floats over"
+	// behavior. But it means getPreferredDimension() alone is not always
+	// large enough to size the final image: whatever gets drawn past its
+	// edge is clipped outright by raster formats such as PNG, because their
+	// canvas is allocated at exactly that size (see TextBlockExporter);
+	// SVG happens to auto-grow its declared viewBox from the shapes it
+	// actually draws instead, which is why this was never visible there
+	// (see issue #2882). Do a dry run of the real drawU() calls - which,
+	// unlike getPreferredDimension(), walks actual absolute positions - and
+	// grow the canvas to whatever that dry run really touched, without
+	// changing how any element itself gets laid out.
+	private static XDimension2D withActualExtent(final Element salt, final XDimension2D preferred,
+			StringBounder stringBounder) {
+		final MinMax minmax = TextBlockUtils.getMinMax(new UDrawable() {
+			public void drawU(UGraphic ug) {
+				salt.drawU(ug, 0, preferred);
+				salt.drawU(ug, 1, preferred);
+			}
+		}, stringBounder, true);
+		return preferred.atLeast(minmax.getMaxX(), minmax.getMaxY());
+	}
+
 	public DiagramDescription getDescription() {
 		return new DiagramDescription("(Salt)");
 	}
@@ -170,7 +183,7 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 
 	private List<String> manageSprite() {
 
-		final Command<WithSprite> cmd = CommandFactorySprite.ME.createMultiLine(false);
+		final Command<TitledDiagram> cmd = CommandFactorySprite.ME.createMultiLine(false);
 
 		final List<String> result = new ArrayList<>();
 		for (Iterator<String> it = data.iterator(); it.hasNext();) {
@@ -184,13 +197,13 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 				this.setScale(new ScaleSimple(scale));
 				// System.err.println("skipping " + s);
 			} else if (s.startsWith("sprite $")) {
-				BlocLines bloc = BlocLines.singleString(s);
+				BlocLines block = BlocLines.singleString(s);
 				do {
 					s = it.next();
-					bloc = bloc.addString(s);
+					block = block.addString(s);
 				} while (s.equals("}") == false);
 				try {
-					final CommandExecutionResult cmdResult = cmd.execute(this, bloc, ParserPass.ONE);
+					final CommandExecutionResult cmdResult = cmd.execute(this, block, ParserPass.ONE);
 				} catch (NoSuchColorException e) {
 				}
 			} else {
@@ -206,13 +219,28 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 
 		final Collection<AbstractElementFactoryComplex> cpx = new ArrayList<>();
 
+		// A single, shared ElementFactoryTree instance, reused everywhere a tree
+		// table can appear (top-level, and as a child of Pyramid/Scroll/Border/
+		// itself below) instead of creating a fresh one per parent. Tree cells
+		// are themselves dispatched through getNextElement() (see
+		// ElementFactoryTree#create()), so whichever instance ends up handling a
+		// given "{T#...}" block needs its own factories wired up exactly like
+		// Pyramid/Scroll/Border do; sharing one instance guarantees that instead
+		// of leaving every other copy with an empty, unusable factory list.
+		final ElementFactoryTree treeFactory = new ElementFactoryTree(source, dictionary);
+
 		// cpx.add(new ElementFactorySimpleFrame(source, dictionnary));
 		cpx.add(new ElementFactoryPyramid(source, dictionary));
 		cpx.add(new ElementFactoryScroll(source, dictionary));
 		cpx.add(new ElementFactoryBorder(source, dictionary));
+		// A tree table ("{T#...}") must be a top-level candidate too, not only
+		// something reachable once already inside a Pyramid/Scroll/Border body -
+		// otherwise a bare tree table needs a useless extra wrapping "{ ... }"
+		// to render at all (see issue #2730).
+		cpx.add(treeFactory);
 
 		for (AbstractElementFactoryComplex f : cpx)
-			addSimpleFactory(f, source, dictionary);
+			addSimpleFactory(f, source, dictionary, treeFactory);
 
 		for (AbstractElementFactoryComplex f1 : cpx)
 			for (AbstractElementFactoryComplex f2 : cpx)
@@ -220,7 +248,7 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 
 		for (ElementFactory f : cpx) {
 			if (f.ready()) {
-				Log.info(()->"Using " + f);
+				Log.info(() -> "Using " + f);
 				return f.create().getElement();
 			}
 		}
@@ -231,9 +259,9 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 	}
 
 	private static void addSimpleFactory(final AbstractElementFactoryComplex cpxFactory, final DataSource source,
-			SaltDictionary dictionary) {
+			SaltDictionary dictionary, ElementFactoryTree treeFactory) {
 		cpxFactory.addFactory(new ElementFactoryMenu(source, dictionary));
-		cpxFactory.addFactory(new ElementFactoryTree(source, dictionary));
+		cpxFactory.addFactory(treeFactory);
 		cpxFactory.addFactory(new ElementFactoryTab(source, dictionary));
 		cpxFactory.addFactory(new ElementFactoryLine(source));
 		cpxFactory.addFactory(new ElementFactoryTextField(source, dictionary));
@@ -246,16 +274,6 @@ public class PSystemSalt extends TitledDiagram implements WithSprite {
 		cpxFactory.addFactory(new ElementFactoryImage(source, dictionary));
 		cpxFactory.addFactory(new ElementFactoryRetrieveFromDictonnary(source, dictionary));
 		cpxFactory.addFactory(new ElementFactoryText(source, dictionary));
-	}
-
-	private boolean iamSalt;
-
-	public void setIamSalt(boolean iamSalt) {
-		this.iamSalt = true;
-	}
-
-	public final boolean isIamSalt() {
-		return iamSalt;
 	}
 
 	@Override

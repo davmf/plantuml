@@ -38,7 +38,7 @@ package net.sourceforge.plantuml.skin;
 import java.util.Collection;
 import java.util.Map;
 
-import net.sourceforge.plantuml.TikzFontDistortion;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.klimt.Arrows;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
@@ -49,23 +49,26 @@ import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.SheetBuilder;
-import net.sourceforge.plantuml.klimt.drawing.svg.LengthAdjust;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.ConfigurationStore;
 import net.sourceforge.plantuml.preproc.OptionKey;
 import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.LengthAdjust;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.svek.ConditionEndStyle;
 import net.sourceforge.plantuml.svek.ConditionStyle;
 import net.sourceforge.plantuml.svek.PackageStyle;
 import net.sourceforge.plantuml.text.Guillemet;
+import net.sourceforge.plantuml.tikz.TikzFontDistortion;
 
 public class SkinParamDelegator implements ISkinParam {
 
@@ -157,7 +160,7 @@ public class SkinParamDelegator implements ISkinParam {
 	}
 
 	@Override
-	public boolean useSwimlanes(UmlDiagramType type) {
+	public boolean useSwimlanes(DiagramType type) {
 		return skinParam.useSwimlanes(type);
 	}
 
@@ -242,7 +245,7 @@ public class SkinParamDelegator implements ISkinParam {
 	}
 
 	@Override
-	public double getPadding() {
+	public ClockwiseTopRightBottomLeft getPadding() {
 		return skinParam.getPadding();
 	}
 
@@ -312,8 +315,8 @@ public class SkinParamDelegator implements ISkinParam {
 	}
 
 	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return skinParam.getUmlDiagramType();
+	public DiagramType getDiagramType() {
+		return skinParam.getDiagramType();
 	}
 
 	@Override
@@ -322,8 +325,8 @@ public class SkinParamDelegator implements ISkinParam {
 	}
 
 	@Override
-	public double getPadding(PaddingParam param) {
-		return skinParam.getPadding(param);
+	public ClockwiseTopRightBottomLeft getPaddingTOBEREMOVED(PaddingParam param) {
+		return skinParam.getPaddingTOBEREMOVED(param);
 	}
 
 	@Override
@@ -471,6 +474,16 @@ public class SkinParamDelegator implements ISkinParam {
 	@Override
 	public ConfigurationStore<OptionKey> options() {
 		return skinParam.options();
+	}
+
+	@Override
+	public PathSystem getPathSystem() {
+		return skinParam.getPathSystem();
+	}
+
+	@Override
+	public String getFromMd5(String md5) {
+		return skinParam.getFromMd5(md5);
 	}
 
 }

@@ -35,10 +35,14 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.descdiagram.command.CommandLinkElement;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -56,6 +60,11 @@ public class CommandTimeMessage extends SingleLineCommand2<TimingDiagram> {
 
 	public CommandTimeMessage() {
 		super(getRegexConcat());
+	}
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 	private static IRegex getRegexConcat() {
@@ -77,6 +86,35 @@ public class CommandTimeMessage extends SingleLineCommand2<TimingDiagram> {
 								new RegexLeaf(1, "MESSAGE", "(.*)") //
 						)), //
 				RegexLeaf.spaceZeroOrMore(), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String part1 = arg.get("PART1", 0);
+		final String part2 = arg.get("PART2", 0);
+		// TIME1/TIME2 are optional and resolved by parseTimeTick against state; describe them lexically only when present
+		final String style = arg.getLazzy("ARROW_STYLE", 0);
+		final String message = arg.get("MESSAGE", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Drawing a timing message from player '").append(part1).append("'");
+		if (hasTime("TIME1", arg))
+			sb.append(" at ").append(TimeTickBuilder.describeTime("TIME1", arg));
+		sb.append(" to player '").append(part2).append("'");
+		if (hasTime("TIME2", arg))
+			sb.append(" at ").append(TimeTickBuilder.describeTime("TIME2", arg));
+		if (style != null)
+			sb.append(" with arrow style ").append(style);
+		if (message != null && message.isEmpty() == false)
+			sb.append(" labelled \"").append(message).append("\"");
+		// executeArg fails when either player does not exist
+		return sb.toString();
+	}
+
+	private static boolean hasTime(String name, RegexResult arg) {
+		return arg.get(name + "CODE", 0) != null || arg.get(name + "CLOCK", 0) != null || arg.get(name + "HOUR", 0) != null
+				|| arg.get(name + "DATE", 0) != null || arg.get(name + "DIGIT", 1) != null;
 	}
 
 	@Override

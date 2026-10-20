@@ -74,12 +74,14 @@ import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.Margins;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.svek.SvekNode;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.Guillemet;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.MathUtils;
@@ -103,6 +105,12 @@ public class EntityImageDescription extends AbstractEntityImage {
 	private final boolean fixCircleLabelOverlapping;
 	private final Bibliotekon bibliotekon;
 	private final Fashion ctx;
+	private final USymbol symbol;
+
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ELEMENT.add(getStyleName()).addSNames(symbol.getSNames());
+	}
 
 	public EntityImageDescription(Entity entity, PortionShower portionShower, Collection<Link> links,
 			Bibliotekon bibliotekon) {
@@ -112,7 +120,7 @@ public class EntityImageDescription extends AbstractEntityImage {
 		this.fixCircleLabelOverlapping = getSkinParam().fixCircleLabelOverlapping();
 
 		this.links = links;
-		USymbol symbol = getUSymbol(entity);
+		this.symbol = getUSymbol(entity);
 		if (symbol == USymbols.FOLDER || symbol == USymbols.PACKAGE)
 			this.shapeType = ShapeType.FOLDER;
 		else if (symbol == USymbols.HEXAGON)
@@ -131,27 +139,22 @@ public class EntityImageDescription extends AbstractEntityImage {
 
 		final Colors colors = entity.getColors();
 
-		final StyleSignatureBasic signatureTitle;
+		final StyleQuery queryTitle;
 		if (symbol instanceof USymbolActorBusiness)
-			signatureTitle = StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), SName.actor,
-					SName.business, SName.title);
+			queryTitle = StyleQueries.ACTOR_BUSINESS_TITLE.add(getStyleName());
 		else
-			signatureTitle = StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), symbol.getSNames(),
-					SName.title);
+			queryTitle = StyleQueries.ELEMENT.add(getStyleName()).addSNames(symbol.getSNames())
+					.add(SName.title);
 
 		final Stereotype stereotype = entity.getStereotype();
-		final Style styleTitle = signatureTitle.withTOBECHANGED(stereotype)
-				.getMergedStyle(getEntity().getCurrentStyleBuilder()).eventuallyOverride(colors);
+		final Style styleTitle = getEntity().getCurrentStyleBuilder()
+				.getMergedStyle(queryTitle.withStereotype(stereotype)).eventuallyOverride(colors);
 
-		final Style styleStereo = StyleSignatureBasic
-				.of(SName.root, SName.element, getStyleName(), symbol.getSNames(), SName.stereotype)
-				.forStereotypeItself(stereotype).getMergedStyle(getEntity().getCurrentStyleBuilder());
+		final Style styleStereo = getEntity().getCurrentStyleBuilder().getMergedStyle(StyleQueries.STEREOTYPE
+				.add(getStyleName()).addSNames(symbol.getSNames()).forStereotypeItself(stereotype));
 
-		final StyleSignatureBasic signature = StyleSignatureBasic.of(SName.root, SName.element, getStyleName(),
-				symbol.getSNames());
-
-		final Style style = signature.withTOBECHANGED(stereotype).getMergedStyle(getEntity().getCurrentStyleBuilder())
-				.eventuallyOverride(colors);
+		final Style style = getEntity().getCurrentStyleBuilder()
+				.getMergedStyle(getStyleQuery().withStereotype(stereotype)).eventuallyOverride(colors);
 
 		final HColor forecolor = styleTitle.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
 
@@ -168,7 +171,8 @@ public class EntityImageDescription extends AbstractEntityImage {
 		final FontConfiguration fcStereo = styleStereo.getFontConfiguration(getSkinParam().getIHtmlColorSet());
 		final HorizontalAlignment defaultAlign = styleTitle.getHorizontalAlignment();
 
-		assert getStereo() == stereotype;
+		if (TeaVM.a())
+			assert getStereo() == stereotype;
 
 		ctx = new Fashion(backcolor, forecolor).withStroke(stroke).withShadow(deltaShadow).withCorner(roundCorner,
 				diagonalCorner);
@@ -223,7 +227,8 @@ public class EntityImageDescription extends AbstractEntityImage {
 		return name.calculateDimension(stringBounder);
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return asSmall.calculateDimension(stringBounder);
 	}
 

@@ -47,33 +47,36 @@ import net.sourceforge.plantuml.klimt.shape.URectangle;
 public final class RoundedContainer {
 
 	private final XDimension2D dim;
-	private final double titleHeight;
-	private final double attributeHeight;
+	private final double nameHeight;
+	private final double descriptionHeight;
 	private final HColor borderColor;
-	private final HColor backColor;
-	private final HColor imgBackcolor;
+	private final HColor northBackcolor;
+	private final HColor centerBackcolor;
+	private final HColor southBackcolor;
 	private final UStroke stroke;
 	private final double rounded;
 	private final double shadowing;
 
-	public RoundedContainer(XDimension2D dim, double titleHeight, double attributeHeight, HColor borderColor,
-			HColor backColor, HColor imgBackcolor, UStroke stroke, double rounded, double shadowing) {
+	public RoundedContainer(HColor borderColor, XDimension2D dim, double nameHeight, double descriptionHeight,
+			HColor northBackcolor, HColor centerBackcolor, HColor southBackcolor, UStroke stroke, double rounded,
+			double shadowing) {
 		if (dim.getWidth() == 0)
 			throw new IllegalArgumentException();
 
 		this.rounded = rounded;
 		this.dim = dim;
-		this.imgBackcolor = imgBackcolor;
-		this.titleHeight = titleHeight;
+		this.nameHeight = nameHeight;
 		this.borderColor = borderColor;
-		this.backColor = backColor;
-		this.attributeHeight = attributeHeight;
+		this.northBackcolor = northBackcolor;
+		this.centerBackcolor = centerBackcolor;
+		this.southBackcolor = southBackcolor;
+		this.descriptionHeight = descriptionHeight;
 		this.stroke = stroke;
 		this.shadowing = shadowing;
 	}
 
 	public void drawU(UGraphic ug) {
-		ug = ug.apply(backColor.bg()).apply(borderColor).apply(stroke);
+		ug = ug.apply(borderColor).apply(stroke);
 		final URectangle rect = URectangle.build(dim.getWidth(), dim.getHeight()).rounded(rounded);
 
 		if (shadowing > 0) {
@@ -82,19 +85,28 @@ public final class RoundedContainer {
 			rect.setDeltaShadow(0);
 
 		}
-		final double headerHeight = titleHeight + attributeHeight;
 
-		new RoundedNorth(dim.getWidth(), headerHeight, backColor, rounded).drawU(ug);
-		new RoundedSouth(dim.getWidth(), dim.getHeight() - headerHeight, imgBackcolor, rounded)
-				.drawU(ug.apply(UTranslate.dy(headerHeight)));
+		new RoundedNorth(dim.getWidth(), nameHeight, northBackcolor, rounded).drawU(ug);
+		drawCenter(ug);
+		new RoundedSouth(dim.getWidth(), dim.getHeight() - nameHeight - descriptionHeight, southBackcolor, rounded)
+				.drawU(ug.apply(UTranslate.dy(nameHeight + descriptionHeight)));
 
 		ug.apply(HColors.transparent().bg()).draw(rect);
 
-		if (headerHeight > 0)
-			ug.apply(UTranslate.dy(headerHeight)).draw(ULine.hline(dim.getWidth()));
+		if (nameHeight > 0)
+			ug.apply(UTranslate.dy(nameHeight)).draw(ULine.hline(dim.getWidth()));
 
-		if (attributeHeight > 0)
-			ug.apply(UTranslate.dy(titleHeight)).draw(ULine.hline(dim.getWidth()));
+		if (descriptionHeight > 0 && nameHeight + descriptionHeight > 0)
+			ug.apply(UTranslate.dy(nameHeight + descriptionHeight)).draw(ULine.hline(dim.getWidth()));
+
+	}
+
+	private void drawCenter(UGraphic ug) {
+		if (descriptionHeight == 0)
+			return;
+		final URectangle rect = URectangle.build(dim.getWidth(), descriptionHeight);
+		ug = ug.apply(UStroke.simple()).apply(centerBackcolor).apply(centerBackcolor.bg());
+		ug.apply(UTranslate.dy(nameHeight)).draw(rect);
 
 	}
 }

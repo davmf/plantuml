@@ -35,8 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram;
 
+import net.sourceforge.plantuml.warning.Warning;
+
 public interface EventWithNote extends Event {
 
-	public void addNote(Note note);
+	public Warning addNote(Note note);
 
 }

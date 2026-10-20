@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -50,6 +50,7 @@ import java.util.Set;
 
 import net.atmp.CucaDiagram;
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.cucadiagram.Bodier;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
 import net.sourceforge.plantuml.decoration.symbol.USymbols;
@@ -65,7 +66,6 @@ import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockEmpty;
 import net.sourceforge.plantuml.plasma.Quark;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.stereo.Stereostyles;
 import net.sourceforge.plantuml.stereo.Stereotag;
@@ -79,10 +79,12 @@ import net.sourceforge.plantuml.svek.Margins;
 import net.sourceforge.plantuml.svek.PackageStyle;
 import net.sourceforge.plantuml.svek.SingleStrategy;
 import net.sourceforge.plantuml.svek.image.EntityImageStateCommon;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.Guillemet;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.utils.Position;
 
 final public class Entity implements SpecificBackcolorable, Hideable, Removeable, LineConfigurable, Bag {
@@ -130,7 +132,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	private VisibilityModifier visibility;
 	private Neighborhood neighborhood;
 	private Colors colors = Colors.empty();
-	private final Map<String, Display> tips = new LinkedHashMap<String, Display>();
+	private final Map<String, Tip> tips = new LinkedHashMap<String, Tip>();
 
 	//
 	public void addNote(Display note, Position position, Colors colors) {
@@ -143,9 +145,9 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	//
 	public List<CucaNote> getNotes(Position position) {
 		if (position == Position.TOP)
-			return Collections.unmodifiableList(notesTop);
+			return MyCollections.unmodifiableList(notesTop);
 		if (position == Position.BOTTOM)
-			return Collections.unmodifiableList(notesBottom);
+			return MyCollections.unmodifiableList(notesBottom);
 		throw new IllegalArgumentException();
 	}
 
@@ -154,7 +156,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	}
 
 	public Set<Stereotag> stereotags() {
-		return Collections.unmodifiableSet(tags);
+		return MyCollections.unmodifiableSet(tags);
 	}
 
 	// Back to Entity
@@ -168,6 +170,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 			this.uid = "entroot";
 		else
 			this.uid = StringUtils.getUid("ent", diagram.getUniqueSequenceValue());
+
 		this.bodier = bodier;
 		this.rawLayout = rawLayout;
 		this.quark.setData(this);
@@ -209,12 +212,14 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 				return true;
 
 			if (leafType != LeafType.ANNOTATION && leafType != LeafType.ABSTRACT_CLASS && leafType != LeafType.CLASS
-					&& leafType != LeafType.ENUM && leafType != LeafType.INTERFACE) {
+					&& leafType != LeafType.ENUM && leafType != LeafType.INTERFACE && leafType != LeafType.RECORD
+					&& leafType != LeafType.DATACLASS) {
 				return false;
 				// throw new IllegalArgumentException("type=" + leafType);
 			}
 			if (newType != LeafType.ANNOTATION && newType != LeafType.ABSTRACT_CLASS && newType != LeafType.CLASS
-					&& newType != LeafType.ENUM && newType != LeafType.INTERFACE && newType != LeafType.OBJECT) {
+					&& newType != LeafType.ENUM && newType != LeafType.INTERFACE && newType != LeafType.RECORD
+					&& newType != LeafType.DATACLASS && newType != LeafType.OBJECT) {
 				return false;
 				// throw new IllegalArgumentException("newtype=" + newType);
 			}
@@ -375,7 +380,8 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		if (groupType != null && leafType != null)
 			throw new IllegalStateException();
 
-		assert groupType == null || leafType == null;
+		if (TeaVM.a())
+			assert groupType == null || leafType == null;
 		if (groupType != null)
 			return true;
 
@@ -503,12 +509,12 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		return neighborhood;
 	}
 
-	public void putTip(String member, Display display) {
-		tips.put(member, display);
+	public void putTip(String member, Display display, Colors colors, Stereotype stereotype) {
+		tips.put(member, new Tip(display, colors, stereotype));
 	}
 
-	public Map<String, Display> getTips() {
-		return Collections.unmodifiableMap(tips);
+	public Map<String, Tip> getTips() {
+		return MyCollections.unmodifiableMap(tips);
 	}
 
 	public Colors getColors() {
@@ -527,7 +533,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 
 	public Collection<String> getPortShortNames() {
 		checkNotGroup();
-		return Collections.unmodifiableCollection(portShortNames);
+		return MyCollections.unmodifiableCollection(portShortNames);
 	}
 
 	public void addPortShortName(String portShortName) {
@@ -585,7 +591,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		final List<Kal> result = kals.get(position);
 		if (result == null)
 			return Collections.emptyList();
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public CucaDiagram getDiagram() {
@@ -602,9 +608,10 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 
 	// For group
 
-	public TextBlock getStateHeader(ISkinParam skinParam) {
+	public TextBlock getStateDescription(ISkinParam skinParam) {
 		checkGroup();
-		final Style style = EntityImageStateCommon.getStyleStateHeader(this, skinParam);
+		final Style style = EntityImageStateCommon.getStyleStateDescription(this.getStereotype(),
+				skinParam.getCurrentStyleBuilder());
 		final List<CharSequence> details = getBodier().getRawBody();
 
 		if (details.size() == 0)
@@ -647,7 +654,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 			if (data != null && data.isGroup() == false)
 				result.add(data);
 		}
-		return Collections.unmodifiableCollection(result);
+		return MyCollections.unmodifiableCollection(result);
 	}
 
 	public Collection<Entity> groups() {
@@ -657,7 +664,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 			if (data != null && data.isGroup())
 				result.add(data);
 		}
-		return Collections.unmodifiableCollection(result);
+		return MyCollections.unmodifiableCollection(result);
 	}
 
 	public int countChildren() {
@@ -738,8 +745,8 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		return diagram.getSkinParam();
 	}
 
-	public final UmlDiagramType getUmlDiagramType() {
-		return diagram.getUmlDiagramType();
+	public final DiagramType getDiagramType() {
+		return diagram.getDiagramType();
 	}
 
 	public LineLocation getLocation() {
@@ -749,14 +756,21 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	public StyleBuilder getCurrentStyleBuilder() {
 
 		// See https://github.com/plantuml/plantuml/issues/2171 for background.
-		// If skinParam directive has been used in the diagram, retrieve the latest style builder
+		// If skinParam directive has been used in the diagram, retrieve the latest
+		// style builder
 		// from SkinParam for backward compatibility with previous behavior.
 		if (diagram.isSkinParamUsed())
 			return getSkinParam().getCurrentStyleBuilder();
 
-		// If skinParam directive is not used, support local styles by returning the style builder
+		// If skinParam directive is not used, support local styles by returning the
+		// style builder
 		// that was active when the entity was created (currentStyleBuilder).
 		return currentStyleBuilder;
+	}
+
+	public final CharSequence getBestMatch(CharSequence candidate) {
+		return bodier.getBestMatch(candidate);
+
 	}
 
 }

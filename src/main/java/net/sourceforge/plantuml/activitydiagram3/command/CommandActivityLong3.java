@@ -35,28 +35,41 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines3;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
 import net.sourceforge.plantuml.command.Trim;
 import net.sourceforge.plantuml.klimt.color.ColorParser;
 import net.sourceforge.plantuml.klimt.color.ColorType;
-import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
-import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.stereo.Stereogroup;
+import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.url.UrlBuilder;
+import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.BlocLines;
+import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandActivityLong3 extends CommandMultilines3<ActivityDiagram3> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("#", ":");
+
 	private final static IRegex END = new RegexConcat(//
 			new RegexLeaf(1, "TEXT", "(.*)"), //
-			new RegexLeaf(2, "END", CommandActivity3.endingGroup()), //
+			new RegexLeaf(";"), //
+			RegexLeaf.spaceZeroOrMore(), //
+			Stereogroup.optionalStereogroup(), //
+			RegexLeaf.spaceZeroOrMore(), //
+			UrlBuilder.OPTIONAL, //
 			RegexLeaf.end());
 
 	public CommandActivityLong3() {
@@ -76,24 +89,66 @@ public class CommandActivityLong3 extends CommandMultilines3<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain(comment = "outdated")
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow.
+		lines = lines.removeEmptyColumns();
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		final RegexResult lineLast = getEndingPattern().matcher(lines.getLast().getString());
+		if (line0 == null || lineLast == null)
+			return "Adding a multiline activity";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding an activity spanning ").append(lines.size()).append(lines.size() == 1 ? " line" : " lines")
+				.append(" of text");
+
+		// The stereotypes written after the final ';' carry the colors and may
+		// select a box style (see Stereogroup).
+		final Stereogroup stereogroup = Stereogroup.build(lineLast);
+		if (stereogroup.isEmpty() == false) {
+			sb.append(", stereotyped ").append(lineLast.get("STEREOGROUP", 0));
+			final BoxStyle style = stereogroup.getBoxStyle();
+			if (style != BoxStyle.PLAIN)
+				sb.append(" (box style: ").append(style.name().toLowerCase()).append(")");
+		}
+
+		// Mirror the deprecation warning emitted by executeNow; note that the
+		// leading color is parsed but no longer applied.
+		if (line0.get("COLOR", 0) != null)
+			sb.append(" (deprecated and ignored color syntax: write <<").append(line0.get("COLOR", 0))
+					.append(">> after the ';')");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeNow(ActivityDiagram3 diagram, BlocLines lines) throws NoSuchColorException {
 		lines = lines.removeEmptyColumns();
 		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
-		final Colors colors = color().getColor(line0, diagram.getSkinParam().getIHtmlColorSet());
-
 		final RegexResult lineLast = getEndingPattern().matcher(lines.getLast().getString());
 
-		final String end = lineLast.get("END", 0);
+		if (line0.get("COLOR", 0) != null)
+			diagram.addWarning(new Warning("This syntax is deprecated, you must add <<" + line0.get("COLOR", 0)
+					+ ">> at the end of the line, after the ';'"));
 
-		Stereotype stereotype = null;
-		String stereo = lineLast.get("END", 1);
-		if (stereo != null)
-			stereotype = Stereotype.build(stereo);
+		final Url url;
+		if (lineLast.get(UrlBuilder.URL_KEY, 0) == null) {
+			url = null;
+		} else {
+			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
+			url = urlBuilder.getUrl(lineLast.get(UrlBuilder.URL_KEY, 0));
+		}
 
-		final BoxStyle style = BoxStyle.fromString(end);
-		BoxStyle.checkDeprecatedWarning(diagram, end);
-
-		lines = lines.removeStartingAndEnding(line0.get("DATA", 0), end.length());
-		return diagram.addActivity(lines.toDisplay(), style, null, colors, stereotype);
+		final Stereogroup stereogroup = Stereogroup.build(lineLast);
+		final BoxStyle style = stereogroup.getBoxStyle();
+		lines = lines.removeStartingAndEnding(line0.get("DATA", 0), 0);
+		lines = lines.overrideLastLine(lineLast.get("TEXT", 0));
+		return diagram.addActivity(lines.toDisplay(), style, url, stereogroup);
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

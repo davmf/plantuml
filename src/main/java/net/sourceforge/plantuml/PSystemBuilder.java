@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -30,28 +30,31 @@
  *
  *
  * Original Author:  Arnaud Roques
- * 
- * 
+ *
+ *
  */
 package net.sourceforge.plantuml;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.plantuml.api.cheerpj.WasmLog;
-
 import net.sourceforge.plantuml.activitydiagram.ActivityDiagramFactory;
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagramFactory3;
+import net.sourceforge.plantuml.annotation.DuplicateCode;
 import net.sourceforge.plantuml.api.PSystemFactory;
 import net.sourceforge.plantuml.board.BoardDiagramFactory;
 import net.sourceforge.plantuml.bpm.BpmDiagramFactory;
+import net.sourceforge.plantuml.chart.ChartDiagramFactory;
 import net.sourceforge.plantuml.cheneer.ChenEerDiagramFactory;
-import net.sourceforge.plantuml.chronology.ChronologyDiagramFactory;
 import net.sourceforge.plantuml.classdiagram.ClassDiagramFactory;
+import net.sourceforge.plantuml.cli.GlobalConfig;
+import net.sourceforge.plantuml.cli.GlobalConfigKey;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.crash.CrashDiagramFactory;
 import net.sourceforge.plantuml.dedication.PSystemDedicationFactory;
 import net.sourceforge.plantuml.definition.PSystemDefinitionFactory;
 import net.sourceforge.plantuml.descdiagram.DescriptionDiagramFactory;
@@ -60,38 +63,35 @@ import net.sourceforge.plantuml.ditaa.PSystemDitaaFactory;
 import net.sourceforge.plantuml.donors.PSystemDonorsFactory;
 import net.sourceforge.plantuml.donors.PSystemSkinparameterListFactory;
 import net.sourceforge.plantuml.ebnf.PSystemEbnfFactory;
-import net.sourceforge.plantuml.eggs.PSystemAppleTwoFactory;
-import net.sourceforge.plantuml.eggs.PSystemCharlieFactory;
 import net.sourceforge.plantuml.eggs.PSystemColorsFactory;
-import net.sourceforge.plantuml.eggs.PSystemEggFactory;
 import net.sourceforge.plantuml.eggs.PSystemPathFactory;
-import net.sourceforge.plantuml.eggs.PSystemRIPFactory;
 import net.sourceforge.plantuml.eggs.PSystemWelcomeFactory;
 import net.sourceforge.plantuml.emoji.PSystemListEmojiFactory;
 import net.sourceforge.plantuml.error.PSystemError;
 import net.sourceforge.plantuml.error.PSystemErrorUtils;
 import net.sourceforge.plantuml.error.PSystemUnsupported;
+import net.sourceforge.plantuml.explain.Explanation;
+import net.sourceforge.plantuml.explain.PSystemExplain;
 import net.sourceforge.plantuml.filesdiagram.FilesDiagramFactory;
 import net.sourceforge.plantuml.flowdiagram.FlowDiagramFactory;
 import net.sourceforge.plantuml.font.PSystemListFontsFactory;
+import net.sourceforge.plantuml.gantt.GanttDiagramFactory;
 import net.sourceforge.plantuml.gitlog.GitDiagramFactory;
 import net.sourceforge.plantuml.hcl.HclDiagramFactory;
 import net.sourceforge.plantuml.help.HelpFactory;
-import net.sourceforge.plantuml.jcckit.PSystemJcckitFactory;
 import net.sourceforge.plantuml.jsondiagram.JsonDiagramFactory;
 import net.sourceforge.plantuml.klimt.creole.legacy.PSystemCreoleFactory;
 import net.sourceforge.plantuml.klimt.sprite.ListSpriteDiagramFactory;
 import net.sourceforge.plantuml.klimt.sprite.PSystemListArchimateSpritesFactory;
-import net.sourceforge.plantuml.klimt.sprite.StdlibDiagramFactory;
 import net.sourceforge.plantuml.math.PSystemLatexFactory;
 import net.sourceforge.plantuml.math.PSystemMathFactory;
 import net.sourceforge.plantuml.mindmap.MindMapDiagramFactory;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.nwdiag.NwDiagramFactory;
 import net.sourceforge.plantuml.openiconic.PSystemListOpenIconicFactory;
 import net.sourceforge.plantuml.openiconic.PSystemOpenIconicFactory;
-import net.sourceforge.plantuml.oregon.PSystemOregonFactory;
+import net.sourceforge.plantuml.packetdiag.PacketDiagramFactory;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.project.GanttDiagramFactory;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regexdiagram.PSystemRegexFactory;
 import net.sourceforge.plantuml.salt.PSystemSaltFactory;
@@ -117,73 +117,15 @@ import net.sourceforge.plantuml.yaml.YamlDiagramFactory;
  * Tries each of the factories (enumerated in the static block below) until one
  * succeeds.
  *
- * @see AbstractPSystem
+ * @see Diagram
  */
 public class PSystemBuilder {
-	// ::remove file when __HAXE__
 
-	public static final long startTime = System.currentTimeMillis();
+	private final static PSystemBuilder singleton = new PSystemBuilder();
 
-	final public Diagram createPSystem(List<StringLocated> source, List<StringLocated> rawSource,
-			Previous previous, PreprocessingArtifact preprocessing) {
+	private final List<PSystemFactory> factories = new ArrayList<>();
 
-		WasmLog.log("..compiling diagram...");
-
-		final long now = System.currentTimeMillis();
-
-		Diagram result = null;
-		try {
-			final DiagramType type = DiagramType.getTypeFromArobaseStart(source.get(0).getString());
-			final UmlSource umlSource = UmlSource.createWithRaw(source, type == DiagramType.UML, rawSource);
-
-			for (StringLocated s : source) {
-				if (s.getPreprocessorError() != null) {
-					// Dead code : should not append
-					assert false;
-					Log.error("Preprocessor Error: " + s.getPreprocessorError());
-					final ErrorUml err = new ErrorUml(ErrorUmlType.SYNTAX_ERROR, s.getPreprocessorError(), 0,
-							s.getLocation(), null);
-					return PSystemErrorUtils.buildV2(umlSource, err, Collections.<String>emptyList(), source, preprocessing);
-				}
-			}
-
-			final DiagramType diagramType = umlSource.getDiagramType();
-			if (diagramType == DiagramType.UNKNOWN)
-				return new PSystemUnsupported(umlSource, preprocessing);
-
-			final List<PSystemError> errors = new ArrayList<>();
-			for (PSystemFactory systemFactory : factories) {
-				if (diagramType != systemFactory.getDiagramType())
-					continue;
-
-				// WasmLog.log("...trying " + systemFactory.getClass().getName() + " ...");
-				final Diagram sys = systemFactory.createSystem(umlSource, previous, preprocessing);
-				if (isOk(sys)) {
-					result = sys;
-					return sys;
-				}
-				errors.add((PSystemError) sys);
-			}
-			if (errors.size() == 0)
-				return new PSystemUnsupported(umlSource, preprocessing);
-
-			result = PSystemErrorUtils.merge(errors);
-			return result;
-		} finally {
-			WasmLog.log("...parsing ok...");
-			// ::comment when __CORE__
-			if (result != null && OptionFlags.getInstance().isEnableStats()) {
-				StatsUtilsIncrement.onceMoreParse(System.currentTimeMillis() - now, result.getClass());
-			}
-			Log.info(() -> "Compilation duration " + (System.currentTimeMillis() - now));
-			RegexConcat.printCacheInfo();
-			// ::done
-		}
-	}
-
-	private static final List<PSystemFactory> factories = new ArrayList<>();
-
-	static {
+	private PSystemBuilder() {
 		factories.add(new PSystemWelcomeFactory());
 		factories.add(new PSystemColorsFactory());
 		factories.add(new SequenceDiagramFactory());
@@ -192,15 +134,11 @@ public class PSystemBuilder {
 		factories.add(new DescriptionDiagramFactory());
 		factories.add(new StateDiagramFactory());
 		factories.add(new ActivityDiagramFactory3());
-
-		// ::comment when __CORE__
-		factories.add(new BpmDiagramFactory(DiagramType.BPM));
-		// ::done
+		factories.add(new BpmDiagramFactory());
 
 		// factories.add(new PostIdDiagramFactory());
 		factories.add(new PSystemLicenseFactory());
 		factories.add(new PSystemVersionFactory());
-		// ::comment when __CORE__
 		factories.add(new PSystemDonorsFactory());
 		factories.add(new PSystemSkinparameterListFactory());
 		factories.add(new PSystemListFontsFactory());
@@ -208,78 +146,147 @@ public class PSystemBuilder {
 		factories.add(new PSystemOpenIconicFactory());
 		factories.add(new PSystemListOpenIconicFactory());
 		factories.add(new PSystemListArchimateSpritesFactory());
-		// ::done
-		factories.add(new PSystemSaltFactory(DiagramType.UML));
-		factories.add(new PSystemSaltFactory(DiagramType.SALT));
-		// ::comment when __CORE__
-		factories.add(new PSystemDotFactory(DiagramType.DOT));
-		factories.add(new PSystemDotFactory(DiagramType.UML));
-		// ::done
-		factories.add(new NwDiagramFactory(DiagramType.UML));
-		factories.add(new NwDiagramFactory(DiagramType.NW));
+		factories.add(new PSystemSaltFactory());
+		factories.add(new PSystemDotFactory());
+		factories.add(new NwDiagramFactory());
 		factories.add(new MindMapDiagramFactory());
 		factories.add(new WBSDiagramFactory());
+		factories.add(new ChartDiagramFactory());
+		factories.add(new PacketDiagramFactory());
 
-		// ::uncomment when __CORE__
-		// factories.add(new PSystemSudokuFactory());
-		// ::done
-
-		// ::comment when __CORE__ or __MIT__ or __EPL__ or __BSD__ or __ASL__ or __LGPL__
-		factories.add(new PSystemJcckitFactory());
+		// ::comment when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__
+//		factories.add(new PSystemJcckitFactory());
 		factories.add(new PSystemSudokuFactory());
 		// ::done
-		// ::comment when __CORE__ or __MIT__ or __EPL__ or __BSD__ or __ASL__
+		// ::comment when __MIT__ __EPL__ __BSD__ __ASL__
 		factories.add(new PSystemDitaaFactory());
 		// ::done
 
-		// ::comment when __CORE__
 		factories.add(new PSystemDefinitionFactory());
 		factories.add(new ListSpriteDiagramFactory());
-		factories.add(new StdlibDiagramFactory());
-		factories.add(new PSystemMathFactory(DiagramType.MATH));
-		factories.add(new PSystemLatexFactory(DiagramType.LATEX));
+		factories.add(new PSystemMathFactory());
+		factories.add(new PSystemLatexFactory());
 		factories.add(new PSystemCreoleFactory());
-		factories.add(new PSystemEggFactory());
-		factories.add(new PSystemAppleTwoFactory());
-		factories.add(new PSystemRIPFactory());
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE)
+		if (SecurityUtils.getSecurityProfile() == SecurityProfile.INSECURE)
 			factories.add(new PSystemPathFactory());
-		factories.add(new PSystemOregonFactory());
-		// ::done
-
-		factories.add(new PSystemCharlieFactory());
 
 		factories.add(new GanttDiagramFactory());
-		factories.add(new ChronologyDiagramFactory());
+		// factories.add(new ChronologyDiagramFactory());
 		factories.add(new FlowDiagramFactory());
-
-		// ::comment when __CORE__
 		factories.add(new PSystemDedicationFactory());
-		// ::done
-
 		factories.add(new TimingDiagramFactory());
-
-		// ::comment when __CORE__
 		factories.add(new HelpFactory());
 		factories.add(new WireDiagramFactory());
-		// ::done
-
 		factories.add(new JsonDiagramFactory());
 		factories.add(new GitDiagramFactory());
-		// ::comment when __CORE__
 		factories.add(new FilesDiagramFactory());
 		factories.add(new BoardDiagramFactory());
-		// ::done
 		factories.add(new YamlDiagramFactory());
 		factories.add(new HclDiagramFactory());
 		factories.add(new PSystemEbnfFactory());
 		factories.add(new PSystemRegexFactory());
 
 		factories.add(new ChenEerDiagramFactory());
+		factories.add(new CrashDiagramFactory());
+
+	}
+
+	public static PSystemBuilder getInstance() {
+		return singleton;
+	}
+
+	final public List<Explanation> explain(PathSystem pathSystem, List<StringLocated> source,
+			List<StringLocated> rawSource, Previous previous, PreprocessingArtifact preprocessing) {
+		final Collection<DiagramType> types = DiagramType.findStartTypes(source.get(0).getString());
+		final UmlSource umlSource = UmlSource.createWithRaw(source, types.contains(DiagramType.SEQUENCE), rawSource);
+
+		umlSource.patchBase64();
+
+		final Collection<DiagramType> diagramTypes = umlSource.getDiagramTypes();
+
+		for (PSystemFactory systemFactory : factories) {
+			if (!diagramTypes.contains(systemFactory.getDiagramType()))
+				continue;
+
+			final Diagram sys = systemFactory.createSystem(pathSystem, umlSource, previous, preprocessing);
+			if (isOk(sys)) {
+				return systemFactory.explain(pathSystem, umlSource, previous, preprocessing);
+			}
+		}
+
+		return null;
+
+	}
+
+	@DuplicateCode(reference = "PSystemBuilderJs")
+	final public Diagram createPSystem(PathSystem pathSystem, List<StringLocated> source, List<StringLocated> rawSource,
+			Previous previous, PreprocessingArtifact preprocessing) {
+
+		final long now = System.currentTimeMillis();
+
+		Diagram result = null;
+		try {
+			final Collection<DiagramType> types = DiagramType.findStartTypes(source.get(0).getString());
+			final UmlSource umlSource = UmlSource.createWithRaw(source, types.contains(DiagramType.SEQUENCE),
+					rawSource);
+
+			umlSource.patchBase64();
+
+			final Collection<DiagramType> explainTypes = umlSource.getExplainTypes();
+			final Collection<DiagramType> diagramTypes;
+			if (explainTypes == null)
+				diagramTypes = umlSource.getDiagramTypes();
+			else
+				diagramTypes = explainTypes;
+
+			final UgDiagram basicCheck = PSystemErrorUtils.checkBasicError(diagramTypes, source, preprocessing,
+					umlSource);
+			if (basicCheck != null)
+				return basicCheck;
+
+			final List<PSystemError> errors = new ArrayList<>();
+			for (PSystemFactory f : factories) {
+				if (!diagramTypes.contains(f.getDiagramType()))
+					continue;
+
+				try {
+					// WasmLog.log("...trying " + systemFactory.getClass().getName() + " ...");
+					final Diagram sys = f.createSystem(pathSystem, umlSource, previous, preprocessing);
+					if (isOk(sys)) {
+						result = sys;
+						if (explainTypes != null) {
+							final List<Explanation> explanations = f.explain(pathSystem, umlSource, previous,
+									preprocessing);
+							return new PSystemExplain(umlSource, preprocessing, explanations);
+						}
+						return sys;
+					}
+					errors.add((PSystemError) sys);
+				} catch (Throwable t) {
+					final StringLocated s = source.get(0);
+					final ErrorUml err = new ErrorUml(ErrorUmlType.EXECUTION_ERROR,
+							"Fatal crash error, you should send a mail to plantuml@gmail.com with: " + t, 0, s, null);
+					errors.add(PSystemErrorUtils.buildV2(umlSource, err, Collections.<String>emptyList(), source,
+							preprocessing, t));
+				}
+			}
+			if (errors.size() == 0)
+				return new PSystemUnsupported(umlSource, preprocessing);
+
+			result = PSystemErrorUtils.merge(errors);
+			return result;
+		} finally {
+
+			if (result != null && GlobalConfig.getInstance().boolValue(GlobalConfigKey.ENABLE_STATS))
+				StatsUtilsIncrement.onceMoreParse(System.currentTimeMillis() - now, result.getClass());
+
+			Log.info(() -> "Compilation duration " + (System.currentTimeMillis() - now));
+			RegexConcat.printCacheInfo();
+		}
 	}
 
 	private boolean isOk(Diagram ps) {
-		if (ps == null || ps instanceof PSystemError)
+		if (ps == null || ps instanceof PSystemError || ps instanceof PSystemUnsupported)
 			return false;
 
 		return true;

@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.abel.DisplayPositioned;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
@@ -48,6 +52,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandTitle extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("title");
 
 	public static final CommandTitle ME = new CommandTitle();
 
@@ -67,10 +73,25 @@ public class CommandTitle extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// The title may be quoted (TITLE1) or unquoted (TITLE2); executeArg
+		// reads whichever is present through getLazzy("TITLE", 0). It is
+		// displayed centered at the top of the diagram.
+		return "Setting the title of the diagram to \"" + arg.getLazzy("TITLE", 0) + "\"";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final Display s = Display.getWithNewlines(diagram.getPragma(), arg.getLazzy("TITLE", 0));
 		diagram.setTitle(DisplayPositioned.single(location, s, HorizontalAlignment.CENTER, VerticalAlignment.TOP));
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

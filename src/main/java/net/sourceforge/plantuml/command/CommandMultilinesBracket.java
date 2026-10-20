@@ -35,7 +35,10 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Collection;
+
 import net.sourceforge.plantuml.core.Diagram;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.text.StringLocated;
@@ -53,10 +56,6 @@ public abstract class CommandMultilinesBracket<S extends Diagram> implements Com
 		this.starting = Pattern2.cmpile(p);
 	}
 
-	protected boolean isCommandForbidden() {
-		return false;
-	}
-
 	protected CommandControl finalVerification() {
 		return CommandControl.OK;
 	}
@@ -66,10 +65,10 @@ public abstract class CommandMultilinesBracket<S extends Diagram> implements Com
 	}
 
 	final public CommandControl isValid(BlocLines lines) {
-		if (isCommandForbidden())
+		if (isCommandForbidden(lines))
 			return CommandControl.NOT_OK;
 
-		final Matcher2 m1 = starting.matcher(lines.getFirst().getTrimmed().getString());
+		final Matcher2 m1 = starting.matcher(lines.getFirst().getTrimmed().getString(), 0);
 		if (m1.matches() == false)
 			return CommandControl.NOT_OK;
 
@@ -100,4 +99,12 @@ public abstract class CommandMultilinesBracket<S extends Diagram> implements Com
 	}
 
 	protected abstract boolean isLineConsistent(String line, int level);
+
+	// Read from the pattern rather than declared beside it, so that the regex stays the only
+	// place this command says what it accepts.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FirstTokens.from(starting.pattern());
+	}
+
 }

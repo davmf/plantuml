@@ -35,8 +35,6 @@
  */
 package net.sourceforge.plantuml.security;
 
-import java.awt.image.BufferedImage;
-import java.awt.image.RenderedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,41 +45,49 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
+import net.sourceforge.plantuml.teavm.TeaVM;
+
 public class SImageIO {
 
-	// ::comment when __CORE__
+	public static PortableImage read(InputStream is) throws IOException {
+		if (TeaVM.isTeaVM())
+			return null;
+		return PortableImageFactory.build(javax.imageio.ImageIO.read(is));
+	}
+
+	public static PortableImage read(byte[] bytes) throws IOException {
+		if (TeaVM.isTeaVM())
+			return readTeaVM(bytes);
+		return PortableImageFactory.build(javax.imageio.ImageIO.read(new ByteArrayInputStream(bytes)));
+	}
+
+	private static PortableImage readTeaVM(byte[] pngBytes) {
+		final String base64 = new String(net.sourceforge.plantuml.utils.Base64Coder.encode(pngBytes));
+		return PortableImageFactory.buildFromPngBytes(pngBytes, base64);
+	}
+
 	public static ImageOutputStream createImageOutputStream(OutputStream os) throws IOException {
 		return javax.imageio.ImageIO.createImageOutputStream(os);
 	}
-	// ::done
 
-	public static void write(RenderedImage image, String format, OutputStream os) throws IOException {
-		javax.imageio.ImageIO.write(image, format, os);
+	public static void write(PortableImage image, String format, OutputStream os) throws IOException {
+		javax.imageio.ImageIO.write(image.getBufferedImage(), format, os);
 	}
 
-	// ::comment when __CORE__
-	public static void write(RenderedImage image, String format, SFile file) throws IOException {
-		javax.imageio.ImageIO.write(image, format, file.conv());
+	public static void write(PortableImage image, String format, SFile file) throws IOException {
+		javax.imageio.ImageIO.write(image.getBufferedImage(), format, file.conv());
 	}
 
-	public static BufferedImage read(java.io.File file) throws IOException {
-		return javax.imageio.ImageIO.read(file);
+	public static PortableImage read(java.io.File file) throws IOException {
+		return PortableImageFactory.build(javax.imageio.ImageIO.read(file));
 	}
 
-	public static BufferedImage read(SFile file) throws IOException {
-		return javax.imageio.ImageIO.read(file.conv());
-	}
-	// ::done
-
-	public static BufferedImage read(InputStream is) throws IOException {
-		return javax.imageio.ImageIO.read(is);
+	public static PortableImage read(SFile file) throws IOException {
+		return PortableImageFactory.build(javax.imageio.ImageIO.read(file.conv()));
 	}
 
-	public static BufferedImage read(byte[] bytes) throws IOException {
-		return javax.imageio.ImageIO.read(new ByteArrayInputStream(bytes));
-	}
-
-	// ::comment when __CORE__
 	public static ImageInputStream createImageInputStream(SFile file) throws IOException {
 		return javax.imageio.ImageIO.createImageInputStream(file.conv());
 	}
@@ -100,6 +106,5 @@ public class SImageIO {
 	public static Iterator<ImageReader> getImageReaders(ImageInputStream iis) {
 		return javax.imageio.ImageIO.getImageReaders(iis);
 	}
-	// ::done
 
 }

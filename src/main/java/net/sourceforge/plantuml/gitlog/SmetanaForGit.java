@@ -34,6 +34,7 @@
  */
 package net.sourceforge.plantuml.gitlog;
 
+import net.sourceforge.plantuml.style.StyleQueries;
 import static gen.lib.cgraph.attr__c.agsafeset;
 import static gen.lib.cgraph.edge__c.agedge;
 import static gen.lib.cgraph.graph__c.agopen;
@@ -62,54 +63,66 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
 import smetana.core.CString;
 import smetana.core.Globals;
 
 public class SmetanaForGit {
 
-	private final UGraphic ug;
 	private final ISkinParam skinParam;
+	private final StringBounder stringBounder;
 	private int num;
 	private ST_Agraph_s g;
-	private StringBounder stringBounder;
 
 	private final Map<GNode, ST_Agnode_s> nodes = new LinkedHashMap<GNode, ST_Agnode_s>();
 	private final List<ST_Agedge_s> edges = new ArrayList<>();
 	private Mirror yMirror;
 
-	public SmetanaForGit(UGraphic ug, ISkinParam skinParam) {
-		this.stringBounder = ug.getStringBounder();
+	public SmetanaForGit(StringBounder stringBounder, ISkinParam skinParam) {
+		this.stringBounder = stringBounder;
 		this.skinParam = skinParam;
-		this.ug = getStyle().applyStrokeAndLineColor(ug, skinParam.getIHtmlColorSet());
 	}
 
 	private Style getStyle() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.gitDiagram)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.GITDIAG);
 	}
 
 	private HColor arrowColor() {
 		return getStyle().value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 	}
 
-	public void drawMe(Collection<GNode> gnodes) {
+	public void drawMe(UGraphic ug, Collection<GNode> gnodes) {
 		initGraph(gnodes);
+
+		final UGraphic styled = getStyle().applyStrokeAndLineColor(ug, skinParam.getIHtmlColorSet());
 
 		for (Entry<GNode, ST_Agnode_s> ent : nodes.entrySet()) {
 			final ST_Agnode_s node = ent.getValue();
 			final UTranslate pos = getPosition(node);
 
 			final MagicBox magicBox = new MagicBox(skinParam, ent.getKey());
-			magicBox.drawBorder(ug.apply(pos), getSize(node));
+			magicBox.drawBorder(styled.apply(pos), getSize(node));
 		}
 
 		for (ST_Agedge_s edge : edges) {
 			final ST_Agedgeinfo_t data = (ST_Agedgeinfo_t) edge.data;
-			new GitCurve(data, yMirror).drawCurve(arrowColor(), ug);
+			new GitCurve(data, yMirror).drawCurve(arrowColor(), styled);
 		}
+	}
+
+	public XDimension2D calculateDimension(Collection<GNode> gnodes) {
+		initGraph(gnodes);
+
+		double maxX = 0;
+		double maxY = 0;
+		for (ST_Agnode_s node : nodes.values()) {
+			final UTranslate pos = getPosition(node);
+			final XDimension2D size = getSize(node);
+			maxX = Math.max(maxX, pos.getDx() + size.getWidth());
+			maxY = Math.max(maxY, pos.getDy() + size.getHeight());
+		}
+		return new XDimension2D(maxX, maxY);
 	}
 
 	private XDimension2D getSize(ST_Agnode_s node) {

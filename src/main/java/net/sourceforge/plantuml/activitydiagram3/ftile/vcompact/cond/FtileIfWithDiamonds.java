@@ -62,9 +62,9 @@ import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.skin.AlignmentParam;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.image.Opale;
 
 public class FtileIfWithDiamonds extends FtileIfNude {
@@ -111,7 +111,7 @@ public class FtileIfWithDiamonds extends FtileIfNude {
 	}
 
 	public static Opale createOpale(final PositionedNote first, ISkinParam skinParam) {
-		final Style style = getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder())
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleSignature())
 				.eventuallyOverride(first.getColors());
 		final HColor noteBackgroundColor = style.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
 		final HColor borderColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
@@ -144,8 +144,8 @@ public class FtileIfWithDiamonds extends FtileIfNude {
 		};
 	}
 
-	private static StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.note);
+	private static StyleQuery getStyleSignature() {
+		return StyleQueries.ACTIVITYDIAG_NOTE;
 	}
 
 	@Override

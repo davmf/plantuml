@@ -42,7 +42,6 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockLineBefore;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
@@ -50,7 +49,9 @@ import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 
-public abstract class BodyEnhancedAbstract extends AbstractTextBlock implements TextBlock {
+import net.sourceforge.plantuml.annotation.Fast;
+
+public abstract class BodyEnhancedAbstract implements TextBlock {
 
 	protected final HorizontalAlignment align;
 	protected final FontConfiguration titleConfig;
@@ -80,6 +81,7 @@ public abstract class BodyEnhancedAbstract extends AbstractTextBlock implements 
 		return false;
 	}
 
+	@Fast
 	public final XDimension2D calculateDimension(StringBounder stringBounder) {
 		return getArea(stringBounder).calculateDimension(stringBounder);
 	}
@@ -93,7 +95,8 @@ public abstract class BodyEnhancedAbstract extends AbstractTextBlock implements 
 			return null;
 
 		s = StringUtils.trin(s.substring(2, s.length() - 2));
-		return Display.getWithNewlines(spriteContainer.getPragma(), s).create(titleConfig, HorizontalAlignment.LEFT, spriteContainer);
+		return Display.getWithNewlines(spriteContainer.getPragma(), s).create(titleConfig, HorizontalAlignment.LEFT,
+				spriteContainer);
 	}
 
 	abstract protected TextBlock getArea(StringBounder stringBounder);

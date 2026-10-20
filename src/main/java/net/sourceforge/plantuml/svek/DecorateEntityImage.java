@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.svek;
 
 import java.util.Objects;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -46,10 +47,9 @@ import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 
-public class DecorateEntityImage extends AbstractTextBlock {
+public class DecorateEntityImage implements TextBlock {
 
 	private final TextBlock original;
 
@@ -156,6 +156,7 @@ public class DecorateEntityImage extends AbstractTextBlock {
 		return original.getBackcolor();
 	}
 
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final XDimension2D dimOriginal = original.calculateDimension(stringBounder);
 		final XDimension2D dim1 = getTextDim(text1, stringBounder);

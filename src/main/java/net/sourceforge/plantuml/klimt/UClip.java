@@ -34,10 +34,10 @@
  */
 package net.sourceforge.plantuml.klimt;
 
-import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
-
+import net.sourceforge.plantuml.klimt.geom.XLine2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class UClip implements UChange {
 	private final double x;
@@ -91,32 +91,41 @@ public class UClip implements UChange {
 
 	public boolean isInside(double xp, double yp) {
 		if (xp < x) {
-			assert getClippedX(xp) != xp;
+			if (TeaVM.a())
+				assert getClippedX(xp) != xp;
 			return false;
 		}
 		if (xp > x + width) {
-			assert getClippedX(xp) != xp;
+			if (TeaVM.a())
+				assert getClippedX(xp) != xp;
 			return false;
 		}
 		if (yp < y) {
-			assert getClippedY(yp) != yp;
+			if (TeaVM.a())
+				assert getClippedY(yp) != yp;
 			return false;
 		}
 		if (yp > y + height) {
-			assert getClippedY(yp) != yp;
+			if (TeaVM.a())
+				assert getClippedY(yp) != yp;
 			return false;
 		}
-		assert getClippedX(xp) == xp;
-		assert getClippedY(yp) == yp;
+		if (TeaVM.a())
+			assert getClippedX(xp) == xp;
+		if (TeaVM.a())
+			assert getClippedY(yp) == yp;
 		return true;
 	}
 
-	// ::comment when __HAXE__
-	public Rectangle2D.Double getClippedRectangle(Rectangle2D.Double r) {
-		return (Rectangle2D.Double) r.createIntersection(new Rectangle2D.Double(x, y, width, height));
+	public XRectangle2D getClippedRectangle(XRectangle2D r) {
+		final double x1 = Math.max(r.getX(), x);
+		final double y1 = Math.max(r.getY(), y);
+		final double x2 = Math.min(r.getX() + r.getWidth(), x + width);
+		final double y2 = Math.min(r.getY() + r.getHeight(), y + height);
+		return new XRectangle2D(x1, y1, x2 - x1, y2 - y1);
 	}
 
-	public Line2D.Double getClippedLine(Line2D.Double line) {
+	public XLine2D getClippedLine(XLine2D line) {
 		if (isInside(line.x1, line.y1) && isInside(line.x2, line.y2))
 			return line;
 
@@ -125,7 +134,7 @@ public class UClip implements UChange {
 				final double newy1 = getClippedY(line.y1);
 				final double newy2 = getClippedY(line.y2);
 				if (newy1 != newy2)
-					return new Line2D.Double(line.x1, newy1, line.x2, newy2);
+					return new XLine2D(line.x1, newy1, line.x2, newy2);
 
 			}
 			return null;
@@ -133,16 +142,17 @@ public class UClip implements UChange {
 		if (line.x1 != line.x2 && line.y1 != line.y2)
 			return null;
 
-		assert line.x1 == line.x2 || line.y1 == line.y2;
+		if (TeaVM.a())
+			assert line.x1 == line.x2 || line.y1 == line.y2;
 		if (line.y1 == line.y2) {
 			final double newx1 = getClippedX(line.x1);
 			final double newx2 = getClippedX(line.x2);
-			return new Line2D.Double(newx1, line.y1, newx2, line.y2);
+			return new XLine2D(newx1, line.y1, newx2, line.y2);
 		}
 		if (line.x1 == line.x2) {
 			final double newy1 = getClippedY(line.y1);
 			final double newy2 = getClippedY(line.y2);
-			return new Line2D.Double(line.x1, newy1, line.x2, newy2);
+			return new XLine2D(line.x1, newy1, line.x2, newy2);
 		}
 		throw new IllegalStateException();
 	}
@@ -150,7 +160,6 @@ public class UClip implements UChange {
 	public boolean isInside(double x, double y, UPath shape) {
 		return isInside(x + shape.getMinX(), y + shape.getMinY()) && isInside(x + shape.getMaxX(), y + shape.getMaxY());
 	}
-	// ::done
 
 	private double getClippedX(double xp) {
 		if (xp < x)

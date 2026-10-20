@@ -39,10 +39,10 @@ import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.style.ISkinParam;
 
-public abstract class AbstractGtileRoot extends AbstractTextBlock implements Gtile {
+public abstract class AbstractGtileRoot extends TextBlockMemoized implements Gtile {
 
 	protected final StringBounder stringBounder;
 	private final ISkinParam skinParam;

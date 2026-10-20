@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.decoration.symbol;
 
 import java.util.Objects;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.Fashion;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -44,7 +45,6 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphicStencil;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 
 abstract class USymbolSimpleAbstract extends USymbol {
@@ -54,7 +54,7 @@ abstract class USymbolSimpleAbstract extends USymbol {
 			final Fashion symbolContext, final HorizontalAlignment stereoAlignment) {
 		Objects.requireNonNull(stereotype);
 		final TextBlock stickman = getDrawing(symbolContext);
-		return new AbstractTextBlock() {
+		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
 				final StringBounder stringBounder = ug.getStringBounder();
@@ -78,6 +78,8 @@ abstract class USymbolSimpleAbstract extends USymbol {
 				stereotype.drawU(ug.apply(UTranslate.dx(stereoX)));
 			}
 
+			@Fast
+			@Override
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
 				final XDimension2D dimLabel = label.calculateDimension(stringBounder);
 				final XDimension2D dimStereo = stereotype.calculateDimension(stringBounder);

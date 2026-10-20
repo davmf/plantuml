@@ -49,6 +49,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.Date;
@@ -58,9 +59,10 @@ import net.sourceforge.plantuml.BlockUml;
 import net.sourceforge.plantuml.ErrorUml;
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.Option;
 import net.sourceforge.plantuml.SourceStringReader;
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.cli.CliOptions;
+import net.sourceforge.plantuml.cli.CliParser;
 import net.sourceforge.plantuml.code.Transcoder;
 import net.sourceforge.plantuml.code.TranscoderUtil;
 import net.sourceforge.plantuml.core.Diagram;
@@ -76,14 +78,12 @@ import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.syntax.LanguageDescriptor;
 import net.sourceforge.plantuml.text.StringLocated;
-import net.sourceforge.plantuml.utils.LineLocationImpl;
 import net.sourceforge.plantuml.version.Version;
 
 public class PicoWebServer implements Runnable {
-	// ::remove folder when __CORE__
 
 	private final Socket connect;
-	private static boolean enableStop;
+	static boolean enableStop;
 
 	public PicoWebServer(Socket c) {
 		this.connect = c;
@@ -99,14 +99,21 @@ public class PicoWebServer implements Runnable {
 		final InetAddress bindAddress1 = bindAddress == null ? null : InetAddress.getByName(bindAddress);
 		final ServerSocket serverConnect = new ServerSocket(port, 50, bindAddress1);
 		System.err.println("webPort=" + serverConnect.getLocalPort());
+		System.err.println("webAddress=" + (bindAddress == null ? "0.0.0.0" : bindAddress));
 		serverLoop(serverConnect);
 	}
 
 	public static void serverLoop(final ServerSocket serverConnect) throws IOException {
-		while (true) {
-			final PicoWebServer myServer = new PicoWebServer(serverConnect.accept());
-			final Thread thread = new Thread(myServer);
-			thread.start();
+		try {
+			while (serverConnect.isClosed() == false) {
+				final PicoWebServer myServer = new PicoWebServer(serverConnect.accept());
+				final Thread thread = new Thread(myServer);
+				thread.start();
+			}
+		} catch (SocketException e) {
+			if (serverConnect.isClosed())
+				return;
+			throw e;
 		}
 	}
 
@@ -182,18 +189,6 @@ public class PicoWebServer implements Runnable {
 		write(out, "<html>Stoping...</html>");
 
 		out.flush();
-
-		final Thread stop = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					Thread.sleep(3000L);
-				} catch (InterruptedException e) {
-				}
-				System.exit(0);
-			}
-		});
-		stop.start();
 
 		return true;
 	}
@@ -276,7 +271,18 @@ public class PicoWebServer implements Runnable {
 
 	public void handleRenderRequest(RenderRequest renderRequest, BufferedOutputStream out) throws Exception {
 
-		final Option option = new Option(renderRequest.getOptions());
+		// A zero-length array is not "no options": CliOptions' own zero-arg
+		// constructor reads it as "this is a bare `java -jar plantuml.jar`
+		// invocation with nothing after it" and reacts by asking to launch the
+		// graphical UI (GlobalConfigKey.GUI) - a convenience meant for a human
+		// at a terminal, not for an HTTP render request that simply has nothing
+		// extra to configure. RenderRequest.fromJson() returns exactly that
+		// empty array whenever the JSON body omits "options", which is the
+		// common case. Padding with an inert, already-default flag keeps that
+		// unrelated branch from ever firing here.
+		final String[] requestOptions = renderRequest.getOptions();
+		final String[] options = requestOptions.length == 0 ? new String[] { "--charset", "UTF-8" } : requestOptions;
+		final CliOptions option = CliParser.parse(options);
 
 		final String source = renderRequest.getSource().startsWith("@start") ? renderRequest.getSource()
 				: "@startuml\n" + renderRequest.getSource() + "\n@enduml";
@@ -290,9 +296,8 @@ public class PicoWebServer implements Runnable {
 
 		if (ssr.getBlocks().size() == 0) {
 			system = PSystemErrorUtils.buildV2(null,
-					new ErrorUml(SYNTAX_ERROR, "No valid @start/@end found, please check the version", 0,
-							new LineLocationImpl("", null), null),
-					null, Collections.<StringLocated>emptyList(), new PreprocessingArtifact());
+					new ErrorUml(SYNTAX_ERROR, "No valid @start/@end found, please check the version"), null,
+					Collections.<StringLocated>emptyList(), new PreprocessingArtifact());
 			imageData = ssr.noValidStartFound(os, option.getFileFormatOption());
 		} else {
 			system = ssr.getBlocks().get(0).getDiagram();

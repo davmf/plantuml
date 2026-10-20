@@ -35,10 +35,10 @@
 package net.sourceforge.plantuml.yaml.parser;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.annotation.DuplicateCode;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class YamlLine {
 
@@ -70,7 +70,7 @@ public class YamlLine {
 			trimmedLine = trimmedLine.substring(2);
 		}
 
-		final int colonIndex = trimmedLine.indexOf(':');
+		final int colonIndex = findColonSeparator(trimmedLine);
 		if (colonIndex == -1)
 			if (listItem)
 				return new YamlLine(YamlLineType.PLAIN_ELEMENT_LIST, count, null, unquote(trimmedLine), null, listItem);
@@ -94,6 +94,24 @@ public class YamlLine {
 
 		return new YamlLine(type, count, unquote(rawKey), unquote(rawValue), null, listItem);
 
+	}
+
+	// Find the colon that separates key from value,
+	// skipping colons inside quoted strings.
+	private static int findColonSeparator(String line) {
+		char inQuote = '\0';
+		for (int i = 0; i < line.length(); i++) {
+			final char c = line.charAt(i);
+			if (inQuote != '\0') {
+				if (c == inQuote)
+					inQuote = '\0';
+			} else if (c == '"' || c == '\'') {
+				inQuote = c;
+			} else if (c == ':') {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	private static List<String> toList(String rawValue) {
@@ -231,7 +249,7 @@ public class YamlLine {
 
 	public List<String> getValues() {
 		if (type == YamlLineType.KEY_AND_FLOW_SEQUENCE)
-			return Collections.unmodifiableList(values);
+			return MyCollections.unmodifiableList(values);
 		throw new IllegalStateException(type.name());
 	}
 

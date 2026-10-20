@@ -69,7 +69,7 @@ class LicenseWindow extends JFrame {
 		super();
 		setIconImage(PSystemVersion.getPlantumlSmallIcon2());
 
-		this.setTitle("Licence PlantUML (" + Version.versionString() + ")");
+		this.setTitle("License PlantUML (" + Version.versionString() + ")");
 
 		getContentPane().add(getNorthLabel(), BorderLayout.NORTH);
 		final List<String> list = new ArrayList<>(License.getCurrent().getTextFull());
@@ -89,7 +89,7 @@ class LicenseWindow extends JFrame {
 		final JPanel ptext = new JPanel();
 		ptext.add(text);
 
-		final JLabel icon = new JLabel(new ImageIcon(PSystemVersion.getPlantumlImage()));
+		final JLabel icon = new JLabel(new ImageIcon(PSystemVersion.getPlantumlImage().getBufferedImage()));
 
 		final JPanel result = new JPanel(new BorderLayout());
 		result.add(ptext, BorderLayout.CENTER);

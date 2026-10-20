@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.svek;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -67,6 +67,8 @@ public class EntityImageDegenerated implements IEntityImage {
 		return backcolor;
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return orig.calculateDimension(stringBounder).delta(delta * 2, delta * 2);
 	}
@@ -77,8 +79,9 @@ public class EntityImageDegenerated implements IEntityImage {
 		// return orig.getMinMax(stringBounder).appendToMax(delta, delta);
 	}
 
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		return orig.getInnerPosition(member, stringBounder, strategy);
+	@Override
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		return orig.getInnerPosition(member, stringBounder);
 	}
 
 	public void drawU(UGraphic ug) {

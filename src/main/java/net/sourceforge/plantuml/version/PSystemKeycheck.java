@@ -34,34 +34,31 @@
  */
 package net.sourceforge.plantuml.version;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.List;
 
 import net.atmp.PixelImage;
-import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.PlainDiagram;
+import net.sourceforge.plantuml.UgSimpleDiagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.flashcode.FlashCodeFactory;
 import net.sourceforge.plantuml.flashcode.FlashCodeUtils;
 import net.sourceforge.plantuml.klimt.AffineTransformType;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.utils.SignatureUtils;
 
-public class PSystemKeycheck extends PlainDiagram {
-	// ::remove file when __CORE__
+public class PSystemKeycheck extends UgSimpleDiagram {
 
 	final private String key;
 	final private String sig;
@@ -72,37 +69,59 @@ public class PSystemKeycheck extends PlainDiagram {
 		this.key = key;
 	}
 
+	/**
+	 * Checks a key alone: distributor, or named for this machine. Nothing is
+	 * installed.
+	 */
+	public PSystemKeycheck(UmlSource source, String key, PreprocessingArtifact preprocessing) {
+		this(source, null, key, preprocessing);
+	}
+
 	@Override
-	protected UDrawable getRootDrawable(FileFormatOption fileFormatOption) {
-		return new UDrawable() {
-			public void drawU(UGraphic ug) {
-				try {
-					drawInternal(ug);
-				} catch (Exception e) {
-					Logme.error(e);
-				}
-			}
-		};
+	public void drawU(UGraphic ug) {
+		try {
+			getTextBlock().drawU(ug);
+		} catch (Exception e) {
+			Logme.error(e);
+		}
+
 	}
 
 	public DiagramDescription getDescription() {
 		return new DiagramDescription("(Key)");
 	}
 
-	private void drawInternal(UGraphic ug) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+	@Override
+	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		return getTextBlock().calculateDimension(stringBounder);
+	}
+
+	private TextBlock getTextBlock() {
 		final List<String> strings = header();
 		try {
-			final LicenseInfo info = PLSSignature.retrieveNamed(sig, key, false);
+			final LicenseInfo info = sig == null ? LicenseInfo.retrieveDistributorOrNamed(key)
+					: PLSSignature.retrieveNamed(sig, key, false);
 			strings.add("<u>Provided license information</u>:");
 			License.addLicenseInfo(strings, info);
+			if (info.isNone())
+				strings.add("No valid license found. A named license is bound to the machine it was issued for.");
+			else if (sig == null)
+				addDetails(strings, info);
 			strings.add(" ");
 		} catch (Exception e) {
 			Logme.error(e);
 			strings.add("<i>Error:</i> " + e);
 		}
+		return GraphicStrings.createBlackOnWhite(strings);
+	}
 
-		final TextBlock disp = GraphicStrings.createBlackOnWhite(strings);
-		disp.drawU(ug);
+	private void addDetails(final List<String> strings, LicenseInfo info) {
+		strings.add("|      TYPE : " + info.getLicenseType());
+		strings.add("|      GENERATED : " + info.getGenerationDate());
+		if (info.getLicenseType() == LicenseType.DISTRIBUTOR)
+			strings.add("|      LOGO SHA-512 : " + info.getShaStart() + "...");
+		strings.add("|      STATUS : " + (info.isValid() ? "valid" : "expired"));
+		strings.add("|  ");
 	}
 
 	private ArrayList<String> header() {
@@ -126,9 +145,9 @@ public class PSystemKeycheck extends PlainDiagram {
 
 		ug = ug.apply(UTranslate.dy(disp.calculateDimension(ug.getStringBounder()).getHeight()));
 		final FlashCodeUtils utils = FlashCodeFactory.getFlashCodeUtils();
-		final BufferedImage im = utils.exportFlashcode(
-				Version.versionString() + "\n" + SignatureUtils.toHexString(PLSSignature.signature()), Color.BLACK,
-				Color.WHITE);
+		final PortableImage im = utils.exportFlashcode(
+				Version.versionString() + "\n" + SignatureUtils.toHexString(PLSSignature.signature()), XColor.BLACK,
+				XColor.WHITE);
 		if (im != null) {
 			final UImage flash = new UImage(new PixelImage(im, AffineTransformType.TYPE_NEAREST_NEIGHBOR)).scale(4);
 			ug.draw(flash);
@@ -145,4 +164,5 @@ public class PSystemKeycheck extends PlainDiagram {
 		}
 
 	}
+
 }

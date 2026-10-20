@@ -34,12 +34,13 @@
  */
 package net.sourceforge.plantuml.bpm;
 
-import net.atmp.InnerStrategy;
+
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileBox;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileCircleStart;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileDiamond;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -47,19 +48,19 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.skin.ColorParam;
 import net.sourceforge.plantuml.skin.SkinParamUtils;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class BpmElement extends AbstractConnectorPuzzle implements ConnectorPuzzle {
 
@@ -95,7 +96,7 @@ public class BpmElement extends AbstractConnectorPuzzle implements ConnectorPuzz
 
 	public TextBlock toTextBlock(ISkinParam skinParam) {
 		final TextBlock raw = toTextBlockInternal(skinParam);
-		return new AbstractTextBlock() {
+		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
 				raw.drawU(ug);
@@ -107,8 +108,9 @@ public class BpmElement extends AbstractConnectorPuzzle implements ConnectorPuzz
 				}
 			}
 
-			public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-				return raw.getInnerPosition(member, stringBounder, strategy);
+			@Override
+			public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+				return raw.getInnerPosition(member, stringBounder);
 			}
 
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
@@ -138,17 +140,17 @@ public class BpmElement extends AbstractConnectorPuzzle implements ConnectorPuzz
 		}
 	}
 
-	private StyleSignatureBasic getSignatureCircle() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.circle);
+	private StyleQuery getSignatureCircle() {
+		return StyleQueries.ACTIVITYDIAG_CIRCLE;
 	}
 
 	private Style getStyle(ISkinParam skinParam) {
-		return getSignatureCircle().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(getSignatureCircle());
 	}
 
 	public TextBlock toTextBlockInternal(ISkinParam skinParam) {
 		if (type == BpmElementType.START) {
-			return new FtileCircleStart(skinParam, null, getStyle(skinParam));
+			return new FtileCircleStart(skinParam, null, getStyle(skinParam), Colors.empty());
 		}
 		if (type == BpmElementType.MERGE) {
 			final HColor borderColor = SkinParamUtils.getColor(skinParam, null, ColorParam.activityBorder);
@@ -156,13 +158,14 @@ public class BpmElement extends AbstractConnectorPuzzle implements ConnectorPuzz
 			return new FtileDiamond(skinParam, backColor, borderColor, null);
 		}
 		if (type == BpmElementType.DOCKED_EVENT) {
-			final UFont font = UFont.serif(14);
+			final UFont font = UFontFactory.serif(14);
 			return FtileBox.create(skinParam, display, null, BoxStyle.PLAIN, null, null);
 		}
-		final UFont font = UFont.serif(14);
+		final UFont font = UFontFactory.serif(14);
 		final FontConfiguration fc = FontConfiguration.create(font, HColors.RED, HColors.RED, null);
 		if (Display.isNull(display)) {
-			return Display.getWithNewlines(skinParam.getPragma(), type.toString()).create(fc, HorizontalAlignment.LEFT, skinParam);
+			return Display.getWithNewlines(skinParam.getPragma(), type.toString()).create(fc, HorizontalAlignment.LEFT,
+					skinParam);
 		}
 		return display.create(fc, HorizontalAlignment.LEFT, skinParam);
 	}

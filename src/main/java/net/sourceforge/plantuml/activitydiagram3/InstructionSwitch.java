@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.activitydiagram3;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -49,7 +48,7 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.Gtile;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GtileIfHexagon;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.klimt.color.Colors;
-import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
@@ -57,12 +56,12 @@ import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class InstructionSwitch extends WithNote implements Instruction, InstructionCollection {
 	// ::remove folder when __HAXE__
 
 	private final List<Branch> switches = new ArrayList<>();
-	private final ISkinParam skinParam;
 
 	private final Instruction parent;
 
@@ -72,6 +71,9 @@ public class InstructionSwitch extends WithNote implements Instruction, Instruct
 	private final Display labelTest;
 
 	private final Swimlane swimlane;
+
+	private final Colors colors;
+	private Colors endColors;
 
 	@Override
 	public boolean containsBreak() {
@@ -83,12 +85,12 @@ public class InstructionSwitch extends WithNote implements Instruction, Instruct
 	}
 
 	public InstructionSwitch(Swimlane swimlane, Instruction parent, Display labelTest, LinkRendering inlinkRendering,
-			HColor color, ISkinParam skinParam) {
+			Colors colors) {
 		this.topInlinkRendering = Objects.requireNonNull(inlinkRendering);
 		this.parent = parent;
-		this.skinParam = skinParam;
 		this.labelTest = labelTest;
 		this.swimlane = swimlane;
+		this.colors = colors;
 	}
 
 	@Override
@@ -99,7 +101,6 @@ public class InstructionSwitch extends WithNote implements Instruction, Instruct
 		return current.add(ins);
 	}
 
-	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		for (Branch branch : switches)
@@ -114,13 +115,13 @@ public class InstructionSwitch extends WithNote implements Instruction, Instruct
 
 		return GtileIfHexagon.build(swimlane, gtiles, switches);
 	}
-	// ::done
 
-	public Ftile createFtile(FtileFactory factory) {
+	public Ftile createFtile(FtileFactory factory) throws NoSuchColorException {
 		for (Branch branch : switches)
 			branch.updateFtile(factory);
 
-		Ftile result = factory.createSwitch(swimlane, switches, afterEndwhile, topInlinkRendering, labelTest);
+		Ftile result = factory.createSwitch(swimlane, switches, afterEndwhile, topInlinkRendering, labelTest, colors,
+				colors.mergeWith(endColors));
 		result = eventuallyAddNote(factory, result, getSwimlaneIn(), VerticalAlignment.TOP);
 		return result;
 	}
@@ -144,7 +145,7 @@ public class InstructionSwitch extends WithNote implements Instruction, Instruct
 		for (Branch branch : switches)
 			result.addAll(branch.getSwimlanes());
 
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	@Override
@@ -164,10 +165,9 @@ public class InstructionSwitch extends WithNote implements Instruction, Instruct
 
 	public boolean switchCase(Display labelCase, LinkRendering nextLinkRenderer) {
 		if (this.current != null)
-			this.current.setSpecial(nextLinkRenderer);
-		this.current = new Branch(skinParam.getCurrentStyleBuilder(), swimlane,
-				LinkRendering.none().withDisplay(labelCase), labelCase, null,
-				LinkRendering.none().withDisplay(labelCase), null, skinParam.getIHtmlColorSet());
+			this.current.setSpecial(nextLinkRenderer, null);
+		this.current = new Branch(swimlane, LinkRendering.none().withDisplay(labelCase), labelCase, null,
+				LinkRendering.none().withDisplay(labelCase), null);
 		this.switches.add(this.current);
 		return true;
 	}
@@ -176,9 +176,10 @@ public class InstructionSwitch extends WithNote implements Instruction, Instruct
 		return parent;
 	}
 
-	public void endSwitch(LinkRendering nextLinkRenderer) {
+	public void endSwitch(LinkRendering nextLinkRenderer, Colors endColors) {
+		this.endColors = endColors;
 		if (this.current != null)
-			this.current.setSpecial(nextLinkRenderer);
+			this.current.setSpecial(nextLinkRenderer, endColors);
 	}
 
 	@Override

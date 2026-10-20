@@ -52,7 +52,7 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.LimitFinder;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
-import net.sourceforge.plantuml.klimt.drawing.UGraphicInterceptorUDrawable;
+import net.sourceforge.plantuml.klimt.drawing.UGraphicDispatchDrawable;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
@@ -65,7 +65,8 @@ import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.UGraphicForSnake;
 import net.sourceforge.plantuml.utils.MathUtils;
 
@@ -82,13 +83,8 @@ public class FtileGroup extends AbstractFtile {
 	private final USymbol type;
 	private final double roundCorner;
 
-	final public StyleSignatureBasic getStyleSignature() {
-		return getStyleSignature(type);
-	}
-
-	final static public StyleSignatureBasic getStyleSignature(USymbol symbol) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, symbol.getSNames(),
-				SName.composite);
+	final static public StyleQuery getStyleQuery(USymbol symbol) {
+		return StyleQueries.ACTIVITYDIAG.addSNames(symbol.getSNames()).add(SName.composite);
 	}
 
 	public FtileGroup(Ftile inner, Display title, HColor backColor, ISkinParam skinParam, USymbol type, Style style) {
@@ -150,7 +146,7 @@ public class FtileGroup extends AbstractFtile {
 	private MinMax getInnerMinMax(StringBounder stringBounder) {
 		final LimitFinder limitFinder = LimitFinder.create(stringBounder, false);
 		final UGraphicForSnake interceptor = new UGraphicForSnake(limitFinder);
-		final UGraphicInterceptorUDrawable interceptor2 = new UGraphicInterceptorUDrawable(interceptor);
+		final UGraphicDispatchDrawable interceptor2 = new UGraphicDispatchDrawable(interceptor);
 
 		inner.drawU(interceptor2);
 		interceptor2.flushUg();

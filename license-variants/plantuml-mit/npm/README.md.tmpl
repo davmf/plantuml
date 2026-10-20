@@ -1,0 +1,154 @@
+# @npmName@
+
+The [PlantUML](https://plantuml.com/) diagram engine, compiled to JavaScript
+with [TeaVM](https://github.com/konsoletyper/teavm). It renders UML and many
+other diagrams **entirely in the browser** -- no server, no Java, no Graphviz
+binary required.
+
+This package is generated from the official PlantUML build (issue
+[#2715](https://github.com/plantuml/plantuml/issues/2715)).
+
+## Install
+
+```sh
+@cdnInstall@
+```
+
+Or import straight from a CDN:
+
+```html
+<script src="https://unpkg.com/@npmName@@@npmVersion@/viz-global.js"></script>
+<script type="module">
+  import { render } from "https://unpkg.com/@npmName@@@npmVersion@/plantuml.js";
+  render("@startuml\nAlice -> Bob : Hello\n@enduml".split("\n"), "out");
+</script>
+<div id="out"></div>
+```
+
+## API
+
+The public surface is two functions exported from the `plantuml.js`
+ES2015 module. `viz-global.js` (the Graphviz layout engine) must be loaded
+as a classic script beforehand.
+
+If you bundle your host into a single file, `viz-global.js` (a UMD) attaches
+`Viz` to your bundle's exports instead of `globalThis`, and the engine does
+not see it. Hand it over yourself, before the first render:
+`globalThis.PLANTUML_VIZ = Viz;` (where `Viz` is however you obtained it,
+for example `@viz-js/viz`). It takes precedence over a global `Viz`.
+
+- `render(lines, targetId)` -- render into the DOM element with that `id`.
+  `lines` is an `Array<string>`.
+- `render(lines, targetId, { dark: true })` -- same, in dark mode.
+- `renderToString(lines, onSuccess, onError)` -- deliver the SVG as a string
+  to `onSuccess(svg)`; errors go to `onError(message)`. Calls may overlap:
+  each is queued, and exactly one of its callbacks is called, once, in the
+  order of the calls. (`render()` keeps only the latest waiting call.)
+- `renderToString(lines, onSuccess, onError, options)` -- same, with the
+  optional `options` object that `render()` also accepts as its last argument:
+  `dark` (boolean, default `false`) for a dark-mode SVG, and `maxSvgSize`
+  (pixels, default `8192`) above which a diagram fails with an error instead of
+  producing a huge SVG; `0` disables the check.
+
+Rendering is asynchronous: `render()` returns immediately and writes the SVG
+into the target element later. See
+[GITHUB_INTEGRATION.md](./GITHUB_INTEGRATION.md) for details and a full
+GitHub-style integration example.
+
+## WebAssembly build (experimental)
+
+The same engine is also shipped compiled to WebAssembly (Wasm GC).
+`plantuml-wasm.js` exports the same `render()` and `renderToString()` as
+`plantuml.js`, so switching is a one-line change:
+
+```js
+import { render, isWasmGCSupported } from "@npmName@/plantuml-wasm.js";
+// or: import { render } from "https://unpkg.com/@npmName@@@npmVersion@/plantuml-wasm.js";
+```
+
+- It needs a runtime with Wasm GC: Chrome 119+, Firefox 120+, Safari 18.2+
+  (a browser is needed, not bare Node.js, as for `plantuml.js`). Test
+  `isWasmGCSupported()` and fall back to `plantuml.js` on older ones.
+  `ready()` fetches and compiles the module ahead of the first render.
+- It is usually faster than the JS engine, by an amount that depends on the
+  browser and on the diagram: measure it on yours.
+- `plantuml-wasm.js`, `plantuml.wasm` and `plantuml.wasm-runtime.js` must stay
+  side by side: the wrapper imports the runtime and fetches the module by
+  relative URL. Serve `plantuml.wasm` as `application/wasm`. The companion
+  files (`viz-global.js`, `themes.js`...) are the same as for `plantuml.js`.
+- The engine builds functions at load time: a Content Security Policy needs
+  `'wasm-unsafe-eval'` **and** `'unsafe-eval'` in `script-src`.
+- If the engine crashes (for example on a very long statement which overflows
+  the stack of the browser), the pending `renderToString()` calls fail with an
+  explicit message, the elements waiting for `render()` show it, and the next
+  call loads a fresh instance. This also works in a Web Worker.
+- By default the module is fetched from `plantuml.wasm` next to
+  `plantuml-wasm.js`. `ready()` also accepts the module from elsewhere, or with
+  an integrity check (the first call decides, before anything is loaded):
+
+  ```js
+  import { ready, renderToString } from "@npmName@/plantuml-wasm.js";
+
+  // Subresource Integrity: the load fails if the file does not match.
+  await ready({ integrity: "sha384-..." });
+
+  // Or give the bytes yourself (ArrayBuffer, typed array, Blob, Response, or a
+  // Promise of one): downloaded from your own storage, checked with your own
+  // code, or embedded in your bundle. Then no URL is needed for the module.
+  await ready({ wasm: fetch("/assets/plantuml.wasm") });
+  ```
+
+  The integrity is only checked when the module is fetched by URL; check the
+  bytes yourself if you pass them. After a crash, the fresh instance comes from
+  the same source.
+- Not supported yet: importing `plantuml-wasm.js` itself from a `Blob` URL or a
+  classic Web Worker (its relative imports do not resolve there). The engine's
+  other files (`viz-global.js`...) are still loaded as for `plantuml.js`.
+
+## What's included
+
+- `plantuml.js` -- the engine
+- `plantuml-wasm.js`, `plantuml.wasm`, `plantuml.wasm-runtime.js` -- the
+  WebAssembly flavour of the engine (see above)
+- `viz-global.js` -- Graphviz / Viz.js layout engine (required)
+- `themes.js` -- the bundled `!theme` definitions, fetched on demand from the
+  same directory as the page; serve it next to the engine, or register
+  `globalThis.PLANTUML_THEMES` yourself, e.g. inside a Web Worker. Without it,
+  `!theme` renders the diagram unthemed and warns on the console; an unknown
+  theme name in a loaded themes.js still reports "Cannot load theme"
+- demo pages: `index.html` (playground, with its `main.js`,
+  `plantuml-codec.js`, `zoom.js` and `vendor/fflate`), `index-basic.html`,
+  `index-basic-dark.html`, `index-collection.html`, and two GitHub
+  integration proofs of concept
+
+Heavy optional sprite libraries (IBM, tupadr3, material, AWS...) are **not**
+bundled here to keep the package small. To use them (and the rest of the
+standard library: `!include <C4/C4_Context>`, azure, kubernetes, ...), point
+the engine at wherever the bundles are hosted before rendering; they are
+fetched lazily, one bundle per library, only when a diagram includes it:
+
+```html
+<script>
+  window.PLANTUML_STDLIB_BASE = "https://plantuml.github.io/plantuml/js-plantuml/";
+</script>
+```
+
+(Note the trailing slash: the value is a plain URL prefix.) For production,
+self-host the bundles your diagrams use and point the base at your own
+assets. Hosts that cannot load scripts at all (Web Workers, browser
+extensions) set a `PLANTUML_STDLIB_LOADER` callback instead -- see
+[GITHUB_INTEGRATION.md](./GITHUB_INTEGRATION.md).
+
+The engine has no file system, so a local `!include styles/common.puml`
+fails unless the host delivers the file: set a `PLANTUML_FILE_LOADER`
+callback, which also decides which files may be read -- see
+[GITHUB_INTEGRATION.md](./GITHUB_INTEGRATION.md).
+
+## License
+
+[MIT](https://opensource.org/license/mit/).
+
+**Versions ≥ 1.2026.6 are MIT-licensed; earlier versions are
+GPL-3.0-or-later.** npm only displays the license of the latest version,
+so if you are pinned to an older release, check the license of that
+specific version.

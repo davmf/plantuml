@@ -45,11 +45,10 @@ import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.skin.AlignmentParam;
 import net.sourceforge.plantuml.style.ISkinParam;
 
-public abstract class AbstractFtile extends AbstractTextBlock implements Ftile {
+public abstract class AbstractFtile implements Ftile {
 
 	protected final boolean TRACE = false;
 
@@ -67,6 +66,15 @@ public abstract class AbstractFtile extends AbstractTextBlock implements Ftile {
 			throw new IllegalStateException();
 
 		return skinParam;
+	}
+
+	@Override
+	public String toString() {
+		final String s = super.toString();
+		final int x = s.lastIndexOf('.');
+		if (x != -1)
+			return s.substring(x + 1);
+		return s;
 	}
 
 	final public HColorSet getIHtmlColorSet() {
@@ -108,6 +116,10 @@ public abstract class AbstractFtile extends AbstractTextBlock implements Ftile {
 			cachedGeometry = calculateDimensionFtile(stringBounder);
 
 		return cachedGeometry;
+	}
+
+	protected void invalidateGeometryCache() {
+		cachedGeometry = null;
 	}
 
 	abstract protected FtileGeometry calculateDimensionFtile(StringBounder stringBounder);

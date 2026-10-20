@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.regex;
 
 import java.util.Iterator;
-import java.util.Map;
 
 import net.sourceforge.plantuml.text.StringLocated;
 
@@ -46,7 +45,18 @@ public interface IRegex {
 
 	public int count();
 
-	public Map<String, RegexPartialMatch> createPartialMatch(Iterator<String> it);
+	/**
+	 * Consumes from {@code it} the groups this node accounts for, and puts into {@code result} an
+	 * entry for each named part it holds.
+	 *
+	 * Filling a map the caller owns, rather than returning one, is what keeps a match to a single
+	 * map: the tree a command is built from is deep, and a node that returned its own map had
+	 * every entry re-hashed once more at each level on the way up.
+	 *
+	 * {@code it} must be advanced by exactly {@link #count()} groups whether or not anything is
+	 * recorded, so that the groups stay aligned with the pattern for whatever comes next.
+	 */
+	public void fillPartialMatch(Iterator<String> it, RegexResult result);
 
 	public boolean match(StringLocated full);
 

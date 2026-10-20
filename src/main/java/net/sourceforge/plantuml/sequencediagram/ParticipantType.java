@@ -35,8 +35,9 @@
  */
 package net.sourceforge.plantuml.sequencediagram;
 
-import net.sourceforge.plantuml.style.SName;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.Styleable;
 
 public enum ParticipantType implements Styleable {
@@ -51,31 +52,32 @@ public enum ParticipantType implements Styleable {
 
 	private ParticipantType() {
 	}
-
-	public StyleSignatureBasic getStyleSignature() {
+	
+	@Override
+	public StyleQuery getStyleQuery() {
 		if (this == PARTICIPANT)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.participant);
+			return StyleQueries.SEQUENCEDIAG_PARTICIPANT;
 
 		if (this == ACTOR)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.actor);
+			return StyleQueries.SEQUENCEDIAG_ACTOR;
 
 		if (this == BOUNDARY)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.boundary);
+			return StyleQueries.SEQUENCEDIAG_BOUNDARY;
 
 		if (this == CONTROL)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.control);
+			return StyleQueries.SEQUENCEDIAG_CONTROL;
 
 		if (this == ENTITY)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.entity);
+			return StyleQueries.SEQUENCEDIAG_ENTITY;
 
 		if (this == QUEUE)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.queue);
+			return StyleQueries.SEQUENCEDIAG_QUEUE;
 
 		if (this == DATABASE)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.database);
+			return StyleQueries.SEQUENCEDIAG_DATABASE;
 
 		if (this == COLLECTIONS)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.collections);
+			return StyleQueries.SEQUENCEDIAG_COLLECTIONS;
 
 		return null;
 	}

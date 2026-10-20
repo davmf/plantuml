@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2024, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program.
+ * This translation is distributed under the same License as the original C program.
  * 
  * THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC
  * LICENSE ("AGREEMENT"). [Eclipse Public License - v 1.0]
@@ -46,6 +46,14 @@ public abstract class CFunctionAbstract extends UnsupportedC implements CFunctio
 	
 	public String getName() {
 		return name;
+	}
+
+	public int exeCmpInt(Globals zz, Object a0, Object a1, Object a2, Object a3) {
+		return (Integer) exe(zz, a0, a1, a2, a3);
+	}
+
+	public Object exeSearch(Globals zz, Object a0, Object a1, int type) {
+		return exe(zz, a0, a1, type);
 	}
 
 }

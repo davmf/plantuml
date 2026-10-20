@@ -35,10 +35,13 @@
  */
 package net.sourceforge.plantuml.salt;
 
-import net.sourceforge.plantuml.StringUtils;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -50,6 +53,11 @@ public class CommandAnything extends SingleLineCommand2<PSystemSalt> {
 	public CommandAnything() {
 		super(false, getRegexConcat());
 	}
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
+	}
 
 	static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandAnything.class.getName(), RegexLeaf.start(), //
@@ -58,14 +66,17 @@ public class CommandAnything extends SingleLineCommand2<PSystemSalt> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(PSystemSalt diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		return null;
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(PSystemSalt diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final String s = arg.get("ALL", 0);
-		if (diagram.isIamSalt() == false) {
-			if (StringUtils.isEmpty(s)) {
-				return CommandExecutionResult.ok();
-			}
-			return CommandExecutionResult.error("Not ready");
-		}
+		if (diagram.size() == 0 && s.trim().equals("salt"))
+			return CommandExecutionResult.error("This is not needed anymore.");
 		diagram.add(s);
 		return CommandExecutionResult.ok();
 	}

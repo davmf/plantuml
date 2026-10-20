@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -46,7 +50,8 @@ import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandHideUnlinked extends SingleLineCommand2<SequenceDiagram> {
-    // ::remove folder when __HAXE__
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("hide", "show");
 
 	public CommandHideUnlinked() {
 		super(getRegexConcat());
@@ -61,9 +66,28 @@ public class CommandHideUnlinked extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// Unlinked participants are those not involved in any message, note or
+		// other event; when hidden, they are removed from the diagram at the
+		// end of the parsing (see SequenceDiagram.removeHiddenParticipants).
+		final boolean hide = arg.get("HIDE", 0).equalsIgnoreCase("hide");
+		if (hide)
+			return "Hiding the participants that are not linked to any event";
+
+		return "Showing the participants that are not linked to any event";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		diagram.setHideUnlinkedData(arg.get("HIDE", 0).equalsIgnoreCase("hide"));
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

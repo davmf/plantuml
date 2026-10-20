@@ -74,7 +74,7 @@ public class XmiDescriptionDiagramStandard extends XmiDescriptionDiagramAbstract
 		if (link.getType().getDecor2() == LinkDecor.COMPOSITION)
 			end1.setAttribute("aggregation", "composite");
 
-		if (link.getType().getDecor2() == LinkDecor.AGREGATION)
+		if (link.getType().getDecor2() == LinkDecor.AGGREGATION)
 			end1.setAttribute("aggregation", "aggregate");
 
 		end1.appendChild(endparticipant1);
@@ -91,7 +91,7 @@ public class XmiDescriptionDiagramStandard extends XmiDescriptionDiagramAbstract
 		if (link.getType().getDecor1() == LinkDecor.COMPOSITION)
 			end2.setAttribute("aggregation", "composite");
 
-		if (link.getType().getDecor1() == LinkDecor.AGREGATION)
+		if (link.getType().getDecor1() == LinkDecor.AGGREGATION)
 			end2.setAttribute("aggregation", "aggregate");
 
 		end2.appendChild(endparticipant2);

@@ -35,11 +35,15 @@
  */
 package net.sourceforge.plantuml.command.note;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.atmp.CucaDiagram;
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.CucaNote;
 import net.sourceforge.plantuml.abel.Link;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
@@ -65,6 +69,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.utils.Position;
 
 public final class CommandFactoryNoteOnLink implements SingleMultiFactoryCommand<CucaDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("note");
 
 	private final ParserPass selectedpass;
 
@@ -114,6 +120,28 @@ public final class CommandFactoryNoteOnLink implements SingleMultiFactoryCommand
 				Trim.BOTH, END) {
 
 			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
+
+			@Override
+			@Explain
+			protected String explainNow(BlocLines lines) {
+				// Mirror executeNow: the lines between 'note on link' and 'end
+				// note' are the text of the note.
+				final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+				if (line0 == null)
+					return "Adding a note on the last link";
+
+				final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+				if (bodyCount == 0)
+					return explainInternal(line0, " (rejected at execution: no note defined)");
+
+				return explainInternal(line0,
+						" with " + bodyCount + (bodyCount == 1 ? " line" : " lines") + " of text");
+			}
+
+			@Override
 			protected CommandExecutionResult executeNow(final CucaDiagram system, BlocLines lines,
 					ParserPass currentPass) throws NoSuchColorException {
 				final String line0 = lines.getFirst().getTrimmed().getString();
@@ -139,6 +167,17 @@ public final class CommandFactoryNoteOnLink implements SingleMultiFactoryCommand
 		return new SingleLineCommand2<CucaDiagram>(getRegexConcatSingleLine()) {
 
 			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
+
+			@Override
+			@Explain
+			protected String explainArg(LineLocation location, RegexResult arg) {
+				return explainInternal(arg, " labelled \"" + arg.get("NOTE", 0) + "\"");
+			}
+
+			@Override
 			protected CommandExecutionResult executeArg(final CucaDiagram diagram, LineLocation location,
 					RegexResult arg, ParserPass currentPass) throws NoSuchColorException {
 				final Display display = Display.getWithNewlines(diagram.getPragma(), arg.get("NOTE", 0));
@@ -152,6 +191,29 @@ public final class CommandFactoryNoteOnLink implements SingleMultiFactoryCommand
 		};
 	}
 
+	/**
+	 * Builds the explanation shared by the single line and the multiline
+	 * flavors, mirroring the fields read by executeInternal. The note is
+	 * attached to the last link drawn, and executing fails when there is no
+	 * link yet; the default position is at the bottom.
+	 */
+	@Explain
+	private String explainInternal(RegexResult arg, String contentClause) {
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding a note");
+
+		final String position = arg.get("POSITION", 0);
+		if (position != null && position.isEmpty() == false)
+			sb.append(" on the ").append(position);
+
+		sb.append(" of the last link").append(contentClause);
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		return sb.toString();
+	}
+
 	private CommandExecutionResult executeInternal(CucaDiagram diagram, final RegexResult arg, Display display)
 			throws NoSuchColorException {
 		final Link link = diagram.getLastLink();
@@ -163,9 +225,9 @@ public final class CommandFactoryNoteOnLink implements SingleMultiFactoryCommand
 			position = Position.valueOf(StringUtils.goUpperCase(arg.get("POSITION", 0)));
 
 		Url url = null;
-		if (arg.get("URL", 0) != null) {
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
-			url = urlBuilder.getUrl(arg.get("URL", 0));
+			url = urlBuilder.getUrl(arg.get(UrlBuilder.URL_KEY, 0));
 		}
 		final Colors colors = color().getColor(arg, diagram.getSkinParam().getIHtmlColorSet());
 		link.addNote(CucaNote.build(display, position, colors));

@@ -52,7 +52,8 @@ public class AtomWithMargin extends AbstractAtom implements Atom {
 		this.marginY2 = marginY2;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return atom.calculateDimension(stringBounder).delta(0, marginY1 + marginY2);
 	}
 
@@ -60,6 +61,7 @@ public class AtomWithMargin extends AbstractAtom implements Atom {
 		return atom.getStartingAltitude(stringBounder);
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		atom.drawU(ug.apply(UTranslate.dy(marginY1)));
 	}

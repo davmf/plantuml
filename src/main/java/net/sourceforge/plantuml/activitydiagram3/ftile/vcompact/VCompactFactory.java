@@ -50,6 +50,7 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.FtileAssemblySimple;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileFactory;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Swimlane;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileBox;
+import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileBoxEmoji;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileCircleEndCross;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileCircleSpot;
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileCircleStart;
@@ -64,12 +65,13 @@ import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.url.Url;
 
 public class VCompactFactory implements FtileFactory {
@@ -91,50 +93,53 @@ public class VCompactFactory implements FtileFactory {
 		this.stringBounder = stringBounder;
 	}
 
-	private StyleSignatureBasic getSignatureCircleEnd() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.circle, SName.end);
+	private StyleQuery getSignatureCircleEnd() {
+		return StyleQueries.ACTIVITYDIAG_CIRCLE_END;
 	}
 
-	private StyleSignatureBasic getSignatureCircleStop() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.circle, SName.stop);
+	private StyleQuery getSignatureCircleStop() {
+		return StyleQueries.ACTIVITYDIAG_CIRCLE_STOP;
 	}
 
-	private StyleSignatureBasic getSignatureCircleSpot() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.circle, SName.spot);
+	private StyleQuery getSignatureCircleSpot() {
+		return StyleQueries.ACTIVITYDIAG_CIRCLE_SPOT;
 	}
 
-	private StyleSignatureBasic getSignatureCircleStart() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.circle, SName.start);
-	}
-
-	@Override
-	public Ftile start(Swimlane swimlane) {
-		final Style style = getSignatureCircleStart().getMergedStyle(skinParam.getCurrentStyleBuilder());
-		return new FtileCircleStart(skinParam(), swimlane, style);
+	private StyleQuery getSignatureCircleStart() {
+		return StyleQueries.ACTIVITYDIAG_CIRCLE_START;
 	}
 
 	@Override
-	public Ftile stop(Swimlane swimlane) {
-		final Style style = getSignatureCircleStop().getMergedStyle(skinParam.getCurrentStyleBuilder());
-		return new FtileCircleStop(skinParam(), swimlane, style);
+	public Ftile start(Swimlane swimlane, Colors colors) {
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getSignatureCircleStart());
+		return new FtileCircleStart(skinParam(), swimlane, style, colors);
+	}
+
+	@Override
+	public Ftile stop(Swimlane swimlane, Colors colors) {
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getSignatureCircleStop());
+		return new FtileCircleStop(skinParam(), swimlane, style, colors);
 	}
 
 	@Override
 	public Ftile spot(Swimlane swimlane, String spot, HColor color) {
 		final UFont font = skinParam.getFont(null, false, FontParam.ACTIVITY);
-		final Style style = getSignatureCircleSpot().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getSignatureCircleSpot());
 		return new FtileCircleSpot(skinParam(), swimlane, spot, font, color, style);
 	}
 
 	@Override
-	public Ftile end(Swimlane swimlane) {
-		final Style style = getSignatureCircleEnd().getMergedStyle(skinParam.getCurrentStyleBuilder());
-		return new FtileCircleEndCross(skinParam(), swimlane, style);
+	public Ftile end(Swimlane swimlane, Colors colors) {
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getSignatureCircleEnd());
+		return new FtileCircleEndCross(skinParam(), swimlane, style, colors);
 	}
 
 	@Override
 	public Ftile activity(Display label, Swimlane swimlane, BoxStyle boxStyle, Colors colors, Stereotype stereotype,
 			StyleBuilder styleBuilder) {
+		if (stereotype != null && stereotype.isIcon())
+			return FtileBoxEmoji.create(colors.mute(skinParam), label, swimlane, stereotype, styleBuilder);
+
 		return FtileBox.create(colors.mute(skinParam), label, swimlane, boxStyle, stereotype, styleBuilder);
 	}
 
@@ -155,9 +160,10 @@ public class VCompactFactory implements FtileFactory {
 	}
 
 	@Override
-	public Ftile repeat(BoxStyle boxStyleIn, Stereotype stereotype, Swimlane swimlane, Swimlane swimlaneOut,
-			Display startLabel, Ftile repeat, Display test, Display yes, Display out, Colors colors, Ftile backward,
-			boolean noOut, LinkRendering incoming1, LinkRendering incoming2, StyleBuilder currentStyleBuilder) {
+	public Ftile repeat(Stereogroup stereotype, Stereogroup stereotype2, BoxStyle boxStyleIn, Swimlane swimlane,
+			Swimlane swimlaneOut, Display startLabel, Ftile repeat, Display test, Display yes, Display out,
+			Ftile backward, boolean noOut, LinkRendering incoming1, LinkRendering incoming2,
+			StyleBuilder currentStyleBuilder) {
 		return repeat;
 	}
 
@@ -182,7 +188,7 @@ public class VCompactFactory implements FtileFactory {
 
 	@Override
 	public Ftile createSwitch(Swimlane swimlane, List<Branch> branches, LinkRendering afterEndwhile,
-			LinkRendering topInlinkRendering, Display labelTest) {
+			LinkRendering topInlinkRendering, Display labelTest, Colors colors, Colors endColors) {
 		final List<Ftile> ftiles = new ArrayList<>();
 		for (Branch branch : branches)
 			ftiles.add(branch.getFtile());
@@ -191,7 +197,8 @@ public class VCompactFactory implements FtileFactory {
 	}
 
 	@Override
-	public Ftile createParallel(List<Ftile> all, ForkStyle style, String label, Swimlane in, Swimlane out) {
+	public Ftile createParallel(List<Ftile> all, ForkStyle style, String label, Swimlane in, Swimlane out,
+			Colors colors) {
 		return new FtileForkInner(all);
 	}
 

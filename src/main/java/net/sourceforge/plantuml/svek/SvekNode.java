@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.svek;
 
 import java.util.List;
 
-import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.Link;
@@ -45,6 +44,7 @@ import net.sourceforge.plantuml.abel.Together;
 import net.sourceforge.plantuml.cruise.XNode;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
@@ -160,7 +160,7 @@ public class SvekNode implements XNode {
 		sb.append(",");
 		sb.append("height=" + SvekUtils.pixelToInches(getHeight()));
 		sb.append(",");
-		sb.append("color=\"" + StringUtils.sharp000000(color) + "\"");
+		sb.append("color=\"" + XColor.toHexRGBColor(color) + "\"");
 		sb.append("];");
 		SvekUtils.println(sb);
 	}
@@ -197,7 +197,7 @@ public class SvekNode implements XNode {
 		sb.append("<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"0\">");
 		sb.append("<TR><TD WIDTH=\"" + fullWidth + "\" HEIGHT=\"1\" COLSPAN=\"3\"></TD></TR>");
 		sb.append("<TR><TD></TD><TD FIXEDSIZE=\"TRUE\" PORT=\"P\"  BORDER=\"1\" COLOR=\""
-				+ StringUtils.sharp000000(color) + "\" WIDTH=\"" + (int) getWidth() + "\" HEIGHT=\"" + (int) getHeight()
+				+ XColor.toHexRGBColor(color) + "\" WIDTH=\"" + (int) getWidth() + "\" HEIGHT=\"" + (int) getHeight()
 				+ "\"></TD><TD></TD></TR>");
 		sb.append("<TR><TD WIDTH=\"" + fullWidth + "\" HEIGHT=\"1\" COLSPAN=\"3\"></TD></TR>");
 		sb.append("</TABLE>");
@@ -215,7 +215,7 @@ public class SvekNode implements XNode {
 		sb.append(",");
 		sb.append("height=" + SvekUtils.pixelToInches(getHeight()));
 		sb.append(",");
-		sb.append("color=\"" + StringUtils.sharp000000(color) + "\"");
+		sb.append("color=\"" + XColor.toHexRGBColor(color) + "\"");
 		sb.append("];");
 	}
 
@@ -252,7 +252,7 @@ public class SvekNode implements XNode {
 		sb.append("</TR>");
 		sb.append("<TR>");
 		appendTd(sb, shield().getX1(), 1);
-		sb.append("<TD BGCOLOR=\"" + StringUtils.sharp000000(color) + "\"");
+		sb.append("<TD BGCOLOR=\"" + XColor.toHexRGBColor(color) + "\"");
 		sb.append(" FIXEDSIZE=\"TRUE\" WIDTH=\"" + getWidth() + "\" HEIGHT=\"" + getHeight() + "\"");
 		sb.append(" PORT=\"h\">");
 		sb.append("</TD>");
@@ -274,7 +274,7 @@ public class SvekNode implements XNode {
 		sb.append("shape=plaintext,");
 		// sb.append("color=\"" + StringUtils.getAsHtml(color) + "\",");
 		sb.append("label=<");
-		sb.append("<TABLE BGCOLOR=\"" + StringUtils.sharp000000(color)
+		sb.append("<TABLE BGCOLOR=\"" + XColor.toHexRGBColor(color)
 				+ "\" BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"0\">");
 		int sum = 0;
 		for (PortGeometry geom : ports.getAllPortGeometry()) {
@@ -508,5 +508,12 @@ public class SvekNode implements XNode {
 //			}
 //		};
 	}
+	
+	
+	public final CharSequence getBestMatch(CharSequence candidate) {
+		return leaf.getBestMatch(candidate);
+
+	}
+
 
 }

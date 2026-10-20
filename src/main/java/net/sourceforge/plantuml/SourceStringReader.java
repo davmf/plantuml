@@ -46,19 +46,22 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import net.atmp.ImageBuilder;
+import net.sourceforge.plantuml.cli.ExitStatus;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.TextBlockExporter;
+import net.sourceforge.plantuml.error.PSystemError;
+import net.sourceforge.plantuml.error.PSystemUnsupported;
 import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.preproc.Defines;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class SourceStringReader {
-	// ::remove file when __HAXE__
 
 	final private List<BlockUml> blocks;
 
@@ -119,7 +122,7 @@ public class SourceStringReader {
 		return outputImage(os, 0);
 	}
 
-	// ::comment when __CORE__
+	// ::comment when __TEAVM__
 	/**
 	 * @deprecated Use {@link #outputImage(SFile)} instead
 	 */
@@ -160,7 +163,8 @@ public class SourceStringReader {
 	}
 
 	/**
-	 * @deprecated Use {@link #outputImage(OutputStream, int, FileFormatOption)} instead
+	 * @deprecated Use {@link #outputImage(OutputStream, int, FileFormatOption)}
+	 *             instead
 	 */
 	@Deprecated
 	public String generateImage(OutputStream os, int numImage, FileFormatOption fileFormatOption) throws IOException {
@@ -191,7 +195,7 @@ public class SourceStringReader {
 				// return system.getDescription().getDescription() + BackSlash.BS_N +
 				// imageData.getCMapData("plantuml");
 				// }
-				return system.getDescription();
+				return system.getDescription().withImageData(imageData);
 			}
 			numImage -= nbInSystem;
 		}
@@ -259,11 +263,22 @@ public class SourceStringReader {
 				Arrays.asList("No valid @start/@end found, please check the version"),
 				fileFormatOption.isUseRedForError());
 
-		return ImageBuilder.create(fileFormatOption, error).write(os);
+		return TextBlockExporter.builder(error, fileFormatOption, false).build().exportTo(os);
 	}
 
 	public final List<BlockUml> getBlocks() {
-		return Collections.unmodifiableList(blocks);
+		return MyCollections.unmodifiableList(blocks);
+	}
+
+	public void updateStatus(ExitStatus exitStatus) {
+		exitStatus.goesHasFiles();
+		for (BlockUml blockUml : getBlocks()) {
+			exitStatus.goesHasBlocks();
+			final Diagram system = blockUml.getDiagram();
+			if (system instanceof PSystemError || system instanceof PSystemUnsupported)
+				exitStatus.goesHasErrors();
+		}
+
 	}
 
 }

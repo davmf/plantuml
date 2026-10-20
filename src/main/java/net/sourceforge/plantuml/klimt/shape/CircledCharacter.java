@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -42,8 +43,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
-public class CircledCharacter extends AbstractTextBlock implements TextBlock {
-    // ::remove file when __HAXE__
+public class CircledCharacter implements TextBlock {
 
 	private final String c;
 	private final UFont font;
@@ -81,6 +81,7 @@ public class CircledCharacter extends AbstractTextBlock implements TextBlock {
 		return 2 * radius;
 	}
 
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(getPreferredWidth(stringBounder), getPreferredHeight(stringBounder));
 	}

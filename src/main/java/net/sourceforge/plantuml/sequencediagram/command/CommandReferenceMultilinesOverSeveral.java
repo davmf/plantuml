@@ -36,6 +36,8 @@
 package net.sourceforge.plantuml.sequencediagram.command;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import net.sourceforge.plantuml.StringUtils;
@@ -60,6 +62,8 @@ import net.sourceforge.plantuml.utils.BlocLines;
 
 public class CommandReferenceMultilinesOverSeveral extends CommandMultilines<SequenceDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("ref");
+
 	private static final RegexConcat REGEX_CONCAT = RegexConcat.build(
 			CommandReferenceMultilinesOverSeveral.class.getName(), //
 			RegexLeaf.start(), //
@@ -70,7 +74,7 @@ public class CommandReferenceMultilinesOverSeveral extends CommandMultilines<Seq
 			RegexLeaf.spaceOneOrMore(), //
 			new RegexLeaf(1, "PARTS", "((?:[%pLN_.@]+|[%g][^%g]+[%g])(?:[%s]*,[%s]*(?:[%pLN_.@]+|[%g][^%g]+[%g]))*)"), //
 			RegexLeaf.spaceZeroOrMore(), //
-			new RegexOptional(new RegexLeaf(1, "URL", "(\\[\\[.*?\\]\\])")), //
+			new RegexOptional(new RegexLeaf(1, UrlBuilder.URL_KEY, "(\\[\\[.*?\\]\\])")), //
 			RegexLeaf.spaceZeroOrMore(), //
 			new RegexLeaf(1, "UNUSED", "(#\\w+)?"), //
 			RegexLeaf.end());
@@ -78,6 +82,46 @@ public class CommandReferenceMultilinesOverSeveral extends CommandMultilines<Seq
 	public CommandReferenceMultilinesOverSeveral() {
 		super(Pattern2.cmpile(REGEX_CONCAT.getPattern()),
 				Pattern2.cmpile("^end[%s]?(ref)?$"));
+	}
+
+	@Override
+	public String explain(BlocLines lines) {
+		// CommandMultilines does not dispatch explain() to a helper like
+		// CommandMultilines2.explainNow does, so it is overridden directly.
+		// Mirror execute(): the first line carries the declaration, the lines
+		// up to the closing 'end ref' are the text of the frame.
+		final RegexResult arg = REGEX_CONCAT.matcher(lines.getFirst().getTrimmed().getString());
+		if (arg == null)
+			return "Drawing a reference frame";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Drawing a reference frame over ");
+		final List<String> participants = StringUtils.splitComma(arg.get("PARTS", 0));
+		for (int i = 0; i < participants.size(); i++) {
+			if (i > 0)
+				sb.append(i == participants.size() - 1 ? " and " : ", ");
+			sb.append("'").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(participants.get(i)))
+					.append("'");
+		}
+
+		final String color = arg.get("REF", 0);
+		if (color != null)
+			sb.append(", background color ").append(color);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		// The trailing color is parsed but never applied by execute().
+		final String unused = arg.get("UNUSED", 0);
+		if (unused != null)
+			sb.append(", second color ").append(unused).append(" (currently ignored)");
+
+		// Body: the text lines between the 'ref over' line and 'end ref'.
+		final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+		if (bodyCount > 0)
+			sb.append(", with ").append(bodyCount).append(bodyCount == 1 ? " line" : " lines").append(" of text");
+
+		return sb.toString();
 	}
 
 	public CommandExecutionResult execute(final SequenceDiagram diagram, BlocLines lines, ParserPass currentPass)
@@ -102,7 +146,7 @@ public class CommandReferenceMultilinesOverSeveral extends CommandMultilines<Seq
 		lines = lines.removeEmptyColumns();
 		final Display strings = lines.toDisplay();
 
-		final String url = arg.get("URL", 0);
+		final String url = arg.get(UrlBuilder.URL_KEY, 0);
 		final UrlBuilder b = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 		Url u = null;
 		if (url != null)
@@ -113,6 +157,11 @@ public class CommandReferenceMultilinesOverSeveral extends CommandMultilines<Seq
 				diagram.getSkinParam().getCurrentStyleBuilder());
 		diagram.addReference(ref);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -40,8 +40,8 @@ public class DiagramText extends DiagramComponent {
 	private Color outlineColor = Color.white;
 
 	public DiagramText(int x, int y, String text, Font font){
-		if(text == null) throw new IllegalArgumentException("DiagramText cannot be initialised with a null string");
-		if(font == null) throw new IllegalArgumentException("DiagramText cannot be initialised with a null font");
+		if(text == null) throw new IllegalArgumentException("DiagramText cannot be initialized with a null string");
+		if(font == null) throw new IllegalArgumentException("DiagramText cannot be initialized with a null font");
 
 		this.xPos = x;
 		this.yPos = y;

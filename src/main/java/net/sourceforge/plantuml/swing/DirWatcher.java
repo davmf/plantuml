@@ -45,23 +45,23 @@ import java.util.Map;
 import java.util.Set;
 
 import net.sourceforge.plantuml.GeneratedImage;
-import net.sourceforge.plantuml.Option;
 import net.sourceforge.plantuml.SourceFileReader;
+import net.sourceforge.plantuml.cli.CliFlag;
+import net.sourceforge.plantuml.cli.CliOptions;
 import net.sourceforge.plantuml.file.FileWatcher;
 import net.sourceforge.plantuml.preproc.Defines;
-import net.sourceforge.plantuml.preproc.FileWithSuffix;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 @Deprecated
 public class DirWatcher {
-	// ::remove file when __CORE__
 
 	final private File dir;
-	final private Option option;
+	final private CliOptions option;
 	final private String pattern;
 
 	final private Map<File, FileWatcher> modifieds = new HashMap<File, FileWatcher>();
 
-	public DirWatcher(File dir, Option option, String pattern) {
+	public DirWatcher(File dir, CliOptions option, String pattern) {
 		this.dir = dir;
 		this.option = option;
 		this.pattern = pattern;
@@ -84,10 +84,10 @@ public class DirWatcher {
 				final FileWatcher watcher = modifieds.get(f);
 
 				if (watcher == null || watcher.hasChanged()) {
-					final SourceFileReader sourceFileReader = new SourceFileReader(Defines.createWithFileName(f), f,
-							option.getOutputDir(), option.getConfig(), option.getCharset(),
+					final SourceFileReader sourceFileReader = new SourceFileReader(option.isTrue(CliFlag.IGNORE_STARTUML_FILENAME), Defines.createWithFileName(f), f,
+							option.getOutputDir(), option.getConfig(), option.getString(CliFlag.CHARSET),
 							option.getFileFormatOption());
-					final Set<File> files = FileWithSuffix.convert(sourceFileReader.getIncludedFiles());
+					final Set<File> files = sourceFileReader.getIncludedFiles();
 					files.add(f);
 					for (GeneratedImage g : sourceFileReader.getGeneratedImages()) {
 						result.add(g);
@@ -99,7 +99,7 @@ public class DirWatcher {
 				}
 			}
 		Collections.sort(result);
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public File getErrorFile() throws IOException, InterruptedException {
@@ -114,8 +114,8 @@ public class DirWatcher {
 				final FileWatcher watcher = modifieds.get(f);
 
 				if (watcher == null || watcher.hasChanged()) {
-					final SourceFileReader sourceFileReader = new SourceFileReader(Defines.createWithFileName(f), f,
-							option.getOutputDir(), option.getConfig(), option.getCharset(),
+					final SourceFileReader sourceFileReader = new SourceFileReader(option.isTrue(CliFlag.IGNORE_STARTUML_FILENAME), Defines.createWithFileName(f), f,
+							option.getOutputDir(), option.getConfig(), option.getString(CliFlag.CHARSET),
 							option.getFileFormatOption());
 					if (sourceFileReader.hasError())
 						return f;

@@ -35,7 +35,6 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.gtile;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -45,6 +44,7 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.utils.MathUtils;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class GtileTopDown extends AbstractGtile {
 
@@ -115,7 +115,7 @@ public class GtileTopDown extends AbstractGtile {
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D corner1 = dim1.applyTranslate(getPos1());
 		final XDimension2D corner2 = dim2.applyTranslate(getPos2());
 		return MathUtils.maxDim(corner1, corner2);
@@ -125,7 +125,7 @@ public class GtileTopDown extends AbstractGtile {
 		final Set<Swimlane> result = new HashSet<>();
 		result.addAll(tile1.getSwimlanes());
 		result.addAll(tile2.getSwimlanes());
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 //	public Collection<Gtile> getMyChildren() {

@@ -151,10 +151,10 @@ public class XmiClassDiagramScript extends XmiClassDiagramAbstract implements Xm
 		if (link.getType().getDecor2() == LinkDecor.COMPOSITION) {
 			aggregation = UMLAggregationKind.Composite;
 		}
-		if (link.getType().getDecor1() == LinkDecor.AGREGATION) {
+		if (link.getType().getDecor1() == LinkDecor.AGGREGATION) {
 			aggregation = UMLAggregationKind.Aggregation;
 		}
-		if (link.getType().getDecor2() == LinkDecor.AGREGATION) {
+		if (link.getType().getDecor2() == LinkDecor.AGGREGATION) {
 			aggregation = UMLAggregationKind.Aggregation;
 		}
 

@@ -35,14 +35,15 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.eps;
 
-import java.awt.Color;
+
 import java.awt.geom.PathIterator;
-import java.awt.image.BufferedImage;
 import java.util.List;
-import java.util.Locale;
 import java.util.StringTokenizer;
 
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColorGradient;
 import net.sourceforge.plantuml.klimt.geom.USegment;
@@ -56,8 +57,6 @@ import net.sourceforge.plantuml.utils.MathUtils;
 import net.sourceforge.plantuml.version.Version;
 
 public class EpsGraphics {
-	// ::remove folder when __CORE__
-
 	public static final String END_OF_FILE = "%plantuml done";
 	protected static final long COEF = 100L;
 
@@ -66,8 +65,8 @@ public class EpsGraphics {
 	private final StringBuilder body = new StringBuilder();
 	private final StringBuilder header = new StringBuilder();
 
-	private Color color = Color.BLACK;
-	private Color fillcolor = Color.BLACK;
+	private XColor color = XColor.BLACK;
+	private XColor fillcolor = XColor.BLACK;
 
 	private String strokeWidth = format(1);
 	// private String strokeDasharray = null;
@@ -123,7 +122,7 @@ public class EpsGraphics {
 
 	}
 
-	protected final Color getColor() {
+	protected final XColor getColor() {
 		return color;
 	}
 
@@ -177,12 +176,12 @@ public class EpsGraphics {
 		return body.toString();
 	}
 
-	public final void setStrokeColor(Color c) {
+	public final void setStrokeColor(XColor c) {
 		checkCloseDone();
 		this.color = c;
 	}
 
-	final public void setFillColor(Color c) {
+	final public void setFillColor(XColor c) {
 		checkCloseDone();
 		this.fillcolor = c;
 	}
@@ -336,7 +335,7 @@ public class EpsGraphics {
 
 	}
 
-	private final boolean isNull(Color c) {
+	private final boolean isNull(XColor c) {
 		return c == null || c.getAlpha() == 0;
 	}
 
@@ -572,7 +571,7 @@ public class EpsGraphics {
 
 	}
 
-	final protected void appendColor(Color c) {
+	final protected void appendColor(XColor c) {
 		if (isNull(c))
 			return;
 
@@ -582,7 +581,7 @@ public class EpsGraphics {
 		append(formatSimple2(r) + " " + formatSimple2(g) + " " + formatSimple2(b) + " setrgbcolor", true);
 	}
 
-	final protected void appendColorShort(Color c) {
+	final protected void appendColorShort(XColor c) {
 		if (isNull(c))
 			return;
 
@@ -600,27 +599,11 @@ public class EpsGraphics {
 	}
 
 	public static String formatSimple4(double x) {
-		if (x == 0)
-			return "0";
-
-		String s = String.format(Locale.US, "%1.4f", x);
-		s = s.replaceAll("(\\.\\d*?)0+$", "$1");
-		if (s.endsWith("."))
-			s = s.substring(0, s.length() - 1);
-
-		return s;
+		return StringUtils.formatDecimal(x, 4);
 	}
 
 	private static String formatSimple2(double x) {
-		if (x == 0)
-			return "0";
-
-		String s = String.format(Locale.US, "%1.2f", x);
-		s = s.replaceAll("(\\.\\d*?)0+$", "$1");
-		if (s.endsWith("."))
-			s = s.substring(0, s.length() - 1);
-
-		return s;
+		return StringUtils.formatDecimal(x, 2);
 	}
 
 	protected void append(String s, boolean checkConsistence) {
@@ -693,7 +676,7 @@ public class EpsGraphics {
 
 	}
 
-	final public void drawImage(BufferedImage image, double x, double y) {
+	final public void drawImage(PortableImage image, double x, double y) {
 		final int width = image.getWidth();
 		final int height = image.getHeight();
 		append("gsave", true);

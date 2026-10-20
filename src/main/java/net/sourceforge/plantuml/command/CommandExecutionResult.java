@@ -38,24 +38,26 @@ package net.sourceforge.plantuml.command;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sourceforge.plantuml.AbstractPSystem;
+import net.sourceforge.plantuml.core.AbstractDiagram;
 
 public class CommandExecutionResult {
 
 	private final String error;
-	private final AbstractPSystem newDiagram;
+	private final AbstractDiagram newDiagram;
 	private final List<String> debugLines;
 	private final int score;
+	private final Throwable rootCause;
 
-	private CommandExecutionResult(AbstractPSystem newDiagram, String error, int score, List<String> debugLines) {
+	private CommandExecutionResult(AbstractDiagram newDiagram, String error, int score, Throwable rootCause) {
 		this.error = error;
+		this.rootCause = rootCause;
 		this.newDiagram = newDiagram;
-		this.debugLines = debugLines;
+		this.debugLines = rootCause == null ? null : getStackTrace(rootCause);
 		this.score = score;
 
 	}
 
-	public CommandExecutionResult withDiagram(AbstractPSystem newDiagram) {
+	public CommandExecutionResult withDiagram(AbstractDiagram newDiagram) {
 		return new CommandExecutionResult(newDiagram, error, 0, null);
 	}
 
@@ -64,7 +66,7 @@ public class CommandExecutionResult {
 		return super.toString() + " " + error;
 	}
 
-	public static CommandExecutionResult newDiagram(AbstractPSystem result) {
+	public static CommandExecutionResult newDiagram(AbstractDiagram result) {
 		return new CommandExecutionResult(result, null, 0, null);
 	}
 
@@ -85,7 +87,7 @@ public class CommandExecutionResult {
 	}
 
 	public static CommandExecutionResult error(String error, Throwable t) {
-		return new CommandExecutionResult(null, error, 0, getStackTrace(t));
+		return new CommandExecutionResult(null, error, 0, t);
 	}
 
 	public static List<String> getStackTrace(Throwable exception) {
@@ -120,12 +122,16 @@ public class CommandExecutionResult {
 		return score;
 	}
 
-	public AbstractPSystem getNewDiagram() {
+	public AbstractDiagram getNewDiagram() {
 		return newDiagram;
 	}
 
 	public List<String> getDebugLines() {
 		return debugLines;
+	}
+
+	public Throwable getRootCause() {
+		return rootCause;
 	}
 
 }

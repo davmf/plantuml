@@ -38,18 +38,18 @@ package net.sourceforge.plantuml.code;
 import java.io.IOException;
 
 public class TranscoderSmartProtected implements Transcoder {
-	// ::remove file when __CORE__
+	
 
 	// Legacy encoder
-	private final Transcoder oldOne = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder oldOne = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionHuffman());
-	private final Transcoder zlib = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder zlib = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionZlib());
-	private final Transcoder hexOnly = TranscoderImpl.utf8(new AsciiEncoderHex(), new ArobaseStringCompressor(),
+	private final Transcoder hexOnly = TranscoderImpl.utf8(new AsciiEncoderHex(), new DiagramSourceCompressor(),
 			new CompressionNone());
-	private final Transcoder zip = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder zip = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionZip());
-	private final Transcoder gzip = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder gzip = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionGZip());
 
 	public String decode(String code) throws NoPlantumlCompressionException {

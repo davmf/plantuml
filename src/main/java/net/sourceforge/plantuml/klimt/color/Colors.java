@@ -48,10 +48,11 @@ import net.sourceforge.plantuml.skin.ColorParam;
 import net.sourceforge.plantuml.skin.SkinParamColors;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.PName;
+import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.value.Value;
 
 public class Colors {
-	// ::remove file when __HAXE__
-
 	private final Map<ColorType, HColor> map = new EnumMap<ColorType, HColor>(ColorType.class);
 	private LinkStyle lineStyle = null;
 	private Boolean shadowing = null;
@@ -76,6 +77,18 @@ public class Colors {
 		return result;
 	}
 
+	public Colors mergeWith(Colors other) {
+		if (other == null)
+			return this;
+
+		final Colors result = copy();
+		result.map.putAll(other.map);
+		if (other.lineStyle != null)
+			result.lineStyle = other.lineStyle;
+
+		return result;
+	}
+
 	private Colors() {
 	}
 
@@ -96,7 +109,7 @@ public class Colors {
 					this.shadowing = value.equalsIgnoreCase("true");
 				} else {
 					final ColorType key = ColorType.getType(name);
-					final HColor color = set.getColor(value);
+					final HColor color = set.getColorOrNull(value);
 					map.put(key, color);
 				}
 			}
@@ -203,6 +216,39 @@ public class Colors {
 			return stroke;
 
 		return lineStyle.muteStroke(stroke);
+	}
+
+	public Colors applyStyle(Style style, HColorSet colorSet) {
+		Colors result = this;
+		Value tmp = style.value(PName.BackGroundColor);
+		if (tmp != null)
+			result = result.add(ColorType.BACK, tmp.asColor(colorSet));
+		tmp = style.value(PName.LineColor);
+		if (tmp != null) {
+			result = result.add(ColorType.LINE, tmp.asColor(colorSet));
+			result = result.add(ColorType.ARROW, tmp.asColor(colorSet));
+		}
+		tmp = style.value(PName.FontColor);
+		if (tmp != null)
+			result = result.add(ColorType.TEXT, tmp.asColor(colorSet));
+
+		return result;
+
+	}
+
+	public HColor getColor(Style style, PName name, HColorSet colorSet) {
+		if (name == PName.BackGroundColor) {
+			final HColor color = map.get(ColorType.BACK);
+			if (color != null)
+				return color;
+		}
+		if (name == PName.LineColor) {
+			final HColor color = map.get(ColorType.LINE);
+			if (color != null)
+				return color;
+		}
+		return style.value(name).asColor(colorSet);
+
 	}
 
 }

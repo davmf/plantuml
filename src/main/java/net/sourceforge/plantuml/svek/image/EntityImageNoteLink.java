@@ -41,7 +41,7 @@ import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.skin.Area;
 import net.sourceforge.plantuml.skin.Component;
 import net.sourceforge.plantuml.skin.ComponentType;
@@ -54,23 +54,24 @@ import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.Margins;
 import net.sourceforge.plantuml.svek.ShapeType;
 
-public class EntityImageNoteLink extends AbstractTextBlock implements IEntityImage {
+public class EntityImageNoteLink extends TextBlockMemoized implements IEntityImage {
 
 	private final Component comp;
 
 	public EntityImageNoteLink(Display note, Colors colors, ISkinParam skinParam, StyleBuilder styleBuilder) {
 		final Rose skin = new Rose();
-		comp = skin.createComponentNote(
-				new Style[] { ComponentType.NOTE.getStyleSignature().getMergedStyle(styleBuilder) }, ComponentType.NOTE,
-				skinParam, note, colors);
+		comp = skin.createComponentNote(new Style[] { styleBuilder.getMergedStyle(ComponentType.NOTE.getStyleQuery()) },
+				ComponentType.NOTE, skinParam, note, colors);
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	final public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final double height = comp.getPreferredHeight(stringBounder);
 		final double width = comp.getPreferredWidth(stringBounder);
 		return new XDimension2D(width, height);
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		comp.drawU(ug, new Area(calculateDimension(ug.getStringBounder())), new SimpleContext2D(false));
 	}

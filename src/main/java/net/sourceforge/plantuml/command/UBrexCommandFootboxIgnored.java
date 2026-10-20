@@ -35,15 +35,22 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 import com.plantuml.ubrex.builder.UBrexConcat;
 import com.plantuml.ubrex.builder.UBrexLeaf;
 
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class UBrexCommandFootboxIgnored extends UBrexSingleLineCommand2<UmlDiagram> {
+public class UBrexCommandFootboxIgnored extends UBrexSingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"hide", "hidefootbox", "show", "showfootbox");
 
 	public UBrexCommandFootboxIgnored() {
 		super(getRegexConcat());
@@ -59,7 +66,29 @@ public class UBrexCommandFootboxIgnored extends UBrexSingleLineCommand2<UmlDiagr
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(UmlDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// UBREX twin of CommandFootboxIgnored: swallows 'hide footbox' and
+		// 'show footbox' in diagram types where the footbox does not exist, so
+		// that the line is accepted without any effect; the real handling, for
+		// sequence diagrams, is in CommandFootbox.
+		return "Accepted but ignored: 'footbox' has no effect in this diagram type";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		return CommandExecutionResult.ok();
 	}
+
+	// Declared by hand: FirstTokens only reads regex patterns, and this one is a UBrex expression.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FIRST_TOKENS;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

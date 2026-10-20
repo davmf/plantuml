@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -45,6 +49,9 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandSkinParam extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"skinparam", "skinparamlocked");
 
 	public static final CommandSkinParam ME = new CommandSkinParam();
 
@@ -62,12 +69,42 @@ public class CommandSkinParam extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		final String name = arg.get("NAME", 0);
+		sb.append("Setting the skin parameter '").append(name).append("' to '").append(arg.get("VALUE", 0)).append("'");
+
+		// Mirror the deprecation warnings emitted by executeArg.
+		if ("handwritten".equalsIgnoreCase(name))
+			sb.append(" (deprecated: use '!option handwritten true' instead)");
+		else if ("ParticipantPadding".equalsIgnoreCase(name) || "padding".equalsIgnoreCase(name))
+			sb.append(" (deprecated: use CSS style instead)");
+
+		// The TYPE keyword is captured but not read by executeArg, so the
+		// 'skinparamlocked' variant behaves like a plain 'skinparam'.
+		if ("skinparamlocked".equalsIgnoreCase(arg.get("TYPE", 0)))
+			sb.append(" (the 'skinparamlocked' variant is treated like a plain 'skinparam')");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		try {
 			final String name = arg.get("NAME", 0);
 			if ("handwritten".equalsIgnoreCase(name))
-				diagram.addWarning(new Warning("Please use '!option handwritten true' to enable handwritten "));
+				diagram.addWarning(new Warning("'skinparam handwritten' is deprecated: write '!option handwritten "
+						+ arg.get("VALUE", 0) + "' instead"));
+
+			if ("ParticipantPadding".equalsIgnoreCase(name))
+				diagram.addWarning(new Warning("'skinparam ParticipantPadding' is ignored: use a style instead",
+						"<style>", "participant {", "  Padding " + arg.get("VALUE", 0), "}", "</style>"));
+
+//			if ("padding".equalsIgnoreCase(name))
+//				diagram.addWarning(new Warning("Please use CSS style instead of skinparam padding"));
 
 			diagram.setParam(name, arg.get("VALUE", 0));
 			diagram.setSkinParamUsed(true);
@@ -78,6 +115,11 @@ public class CommandSkinParam extends SingleLineCommand2<TitledDiagram> {
 			return CommandExecutionResult.error("General failure: no style available.");
 		}
 
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

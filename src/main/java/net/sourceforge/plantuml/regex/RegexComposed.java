@@ -36,14 +36,12 @@
 package net.sourceforge.plantuml.regex;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public abstract class RegexComposed implements IRegex {
 
@@ -76,16 +74,13 @@ public abstract class RegexComposed implements IRegex {
 	}
 
 	public RegexComposed(IRegex... partial) {
-		this.partials = Collections.unmodifiableList(Arrays.asList(partial));
+		this.partials = MyCollections.unmodifiableList(Arrays.asList(partial));
 	}
 
-	public Map<String, RegexPartialMatch> createPartialMatch(Iterator<String> it) {
+	public void fillPartialMatch(Iterator<String> it, RegexResult result) {
 		// nbCreateMatches.incrementAndGet();
-		final Map<String, RegexPartialMatch> result = new HashMap<String, RegexPartialMatch>();
 		for (IRegex r : partials)
-			result.putAll(r.createPartialMatch(it));
-
-		return result;
+			r.fillPartialMatch(it, result);
 	}
 
 	final public int count() {
@@ -101,21 +96,19 @@ public abstract class RegexComposed implements IRegex {
 	}
 
 	public RegexResult matcher(String s) {
-		final Matcher2 matcher = getPattern2().matcher(s);
+		final Matcher2 matcher = getPattern2().matcher(s, 0);
 		if (matcher.find() == false)
 			return null;
 
 		final Iterator<String> it = new MatcherIterator(matcher);
-		return new RegexResult(createPartialMatch(it));
+		// The one result of the whole match: every node below fills this same instance.
+		final RegexResult result = new RegexResult();
+		fillPartialMatch(it, result);
+		return result;
 	}
 
 	public boolean match(StringLocated s) {
-		final String tmp = s.getString();
-		final Matcher2 matcher = getPattern2().matcher(tmp);
-		if (matcher == null)
-			return false;
-
-		return matcher.find();
+		return getPattern2().find(s.getString());
 	}
 
 	final public String getPattern() {

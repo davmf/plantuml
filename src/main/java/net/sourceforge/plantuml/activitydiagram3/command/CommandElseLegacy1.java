@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -48,6 +52,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandElseLegacy1 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("else");
     // ::remove folder when __HAXE__
 
 	public CommandElseLegacy1() {
@@ -66,12 +72,27 @@ public class CommandElseLegacy1 extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// Legacy 'else when label' spelling of "else (label)": starts the
+		// alternative branch of the enclosing 'if', the text after 'when'
+		// labelling the branch arrow.
+		return "Starting the 'else' branch of the enclosing if, labelled \"" + arg.get("WHEN", 0)
+				+ "\" (legacy 'else when' syntax)";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		// if (getSystem().getLastEntityConsulted() == null) {
 		// return CommandExecutionResult.error("No if for this endif");
 		// }
 		final Display when = Display.getWithNewlines(diagram.getPragma(), arg.get("WHEN", 0));
 		return diagram.else2(LinkRendering.none().withDisplay(when));
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

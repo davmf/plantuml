@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.skin;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.Fashion;
 import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -43,12 +44,11 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 
-public class ActorStickMan extends AbstractTextBlock implements TextBlock {
+public class ActorStickMan implements TextBlock {
 
 	private final double armsY = 8;
 	private final double armsLenght = 13;
@@ -65,6 +65,7 @@ public class ActorStickMan extends AbstractTextBlock implements TextBlock {
 		this.actorBusiness = actorBusiness;
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 
 		final double startX = Math.max(armsLenght, legsX) - headDiam / 2.0 + thickness();
@@ -120,6 +121,8 @@ public class ActorStickMan extends AbstractTextBlock implements TextBlock {
 		return headDiam + bodyLenght + legsY + 2 * thickness() + fashion.getDeltaShadow() + 1;
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(getPreferredWidth(), getPreferredHeight());
 	}

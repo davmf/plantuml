@@ -43,13 +43,13 @@ import net.sourceforge.plantuml.code.deflate.Decompressor;
 
 public class CompressionZlib implements Compression {
 
-	// ::comment when __CORE__
+	// ::comment when __TEAVM__
 	private static boolean USE_ZOPFLI = false;
 	// ::done
 	private static final int COMPRESSION_LEVEL = 9;
 
 	public byte[] compress(byte[] in) {
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		if (USE_ZOPFLI)
 			return new CompressionZopfliZlib().compress(in);
 		// ::done
@@ -62,13 +62,13 @@ public class CompressionZlib implements Compression {
 			len = 1000;
 
 		// Compress the bytes
-		final Deflater compresser = new Deflater(COMPRESSION_LEVEL, true);
-		compresser.setInput(in);
-		compresser.finish();
+		final Deflater compressor = new Deflater(COMPRESSION_LEVEL, true);
+		compressor.setInput(in);
+		compressor.finish();
 
 		final byte[] output = new byte[len];
-		final int compressedDataLength = compresser.deflate(output);
-		if (compresser.finished() == false)
+		final int compressedDataLength = compressor.deflate(output);
+		if (compressor.finished() == false)
 			return null;
 
 		return copyArray(output, compressedDataLength);

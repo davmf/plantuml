@@ -34,33 +34,29 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.svg;
 
-import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColorGradient;
+import net.sourceforge.plantuml.klimt.color.HColorLinearGradient;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.drawing.g2d.DriverShadowedG2d;
 
 public class DriverPathSvg extends DriverShadowedG2d implements UDriver<UPath, SvgGraphics> {
-    // ::remove file when __HAXE__
-
-	private final ClipContainer clipContainer;
-
-	public DriverPathSvg(ClipContainer clipContainer) {
-		this.clipContainer = clipContainer;
-	}
+	// ::remove file when __HAXE__
 
 	public void draw(UPath shape, double x, double y, ColorMapper mapper, UParam param, SvgGraphics svg) {
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null && clip.isInside(x, y, shape) == false)
 			return;
 
 		final HColor color = param.getColor();
 		final HColor back = param.getBackcolor();
 
-		if (color != null && back != null && color.equals(back)) {
+		if (color != null && back != null && color.equals(back) && !(color instanceof HColorGradient)
+				&& !(color instanceof HColorLinearGradient)) {
 			svg.setFillColor(color.toSvg(mapper));
 			svg.setStrokeColor("");
 			svg.setStrokeWidth(0, null);

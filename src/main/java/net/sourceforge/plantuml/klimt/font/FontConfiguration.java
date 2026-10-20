@@ -45,6 +45,7 @@ import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.skin.SkinParamUtils;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
@@ -64,8 +65,8 @@ public class FontConfiguration {
 	}
 
 	private static EnumSet<FontStyle> getStyles(UFont font) {
-		final boolean bold = font.isBold();
-		final boolean italic = font.isItalic();
+		final boolean bold = font.getFontFace().isBold();
+		final boolean italic = font.getFontFace().isItalic();
 		if (bold && italic)
 			return EnumSet.of(FontStyle.ITALIC, FontStyle.BOLD);
 
@@ -100,6 +101,39 @@ public class FontConfiguration {
 			result = style.mutateFont(result);
 
 		return fontPosition.mute(result);
+	}
+
+	/**
+	 * Returns the {@link UFontFace} (weight + italic axis) carried by the current
+	 * font of this configuration.  The face is always consistent with the
+	 * underlying font: changing the font (e.g. via {@link #withFontFace(UFontFace)}
+	 * or {@link #changeFamily(String)}) automatically updates the returned value.
+	 *
+	 * @return the font face; never {@code null}
+	 */
+	public UFontFace getFontFace() {
+		return currentFont.getFontFace();
+	}
+
+	/**
+	 * Returns a new {@code FontConfiguration} whose underlying font has been
+	 * updated to reflect the supplied {@link UFontFace} (weight + italic axis).
+	 * All other configuration properties (color, size, tab stop, etc.) are
+	 * preserved unchanged.
+	 *
+	 * <p>This is the preferred way to change bold/italic/weight instead of the
+	 * legacy {@link #bold()} / {@link #italic()} helpers, because it preserves
+	 * CSS font-weight information beyond the binary bold/non-bold distinction.
+	 *
+	 * @param face the new face to apply; if {@code null} the current face is kept
+	 * @return a new {@code FontConfiguration} with the updated face
+	 */
+	public FontConfiguration withFontFace(UFontFace face) {
+		if (face == null)
+			return this;
+		final UFont updatedFont = currentFont.withFontFace(face);
+		return new FontConfiguration(styles, motherFont, motherColor, updatedFont, currentColor,
+				extendedColor, fontPosition, svgAttributes, hyperlinkColor, hyperlinkUnderlineStroke, tabSize);
 	}
 
 	private final EnumSet<FontStyle> styles;
@@ -245,10 +279,18 @@ public class FontConfiguration {
 				fontPosition, svgAttributes, hyperlinkColor, hyperlinkUnderlineStroke, tabSize);
 	}
 
+	/**
+	 * Returns a new {@code FontConfiguration} identical to this one except that
+	 * the font family (typeface name) has been replaced.  The current
+	 * {@link UFontFace} (weight + italic axis) and point size are preserved.
+	 *
+	 * @param family the new font-family string (e.g. {@code "Arial"})
+	 * @return a new {@code FontConfiguration} with the updated family
+	 */
 	public FontConfiguration changeFamily(String family) {
-		return new FontConfiguration(styles, motherFont, motherColor,
-				UFont.build(family, currentFont.getStyle(), currentFont.getSize()), currentColor, extendedColor,
-				fontPosition, svgAttributes, hyperlinkColor, hyperlinkUnderlineStroke, tabSize);
+		final UFont font = UFontFactory.build(family, currentFont.getFontFace(), currentFont.getSize());
+		return new FontConfiguration(styles, motherFont, motherColor, font, currentColor, extendedColor, fontPosition,
+				svgAttributes, hyperlinkColor, hyperlinkUnderlineStroke, tabSize);
 	}
 
 	public FontConfiguration resetFont() {
@@ -302,6 +344,15 @@ public class FontConfiguration {
 		r.remove(style);
 		return new FontConfiguration(r, motherFont, motherColor, currentFont, currentColor, extendedColor, fontPosition,
 				svgAttributes, hyperlinkColor, hyperlinkUnderlineStroke, tabSize);
+	}
+
+	public FontConfiguration adjustColorForBackground(UGraphic ug) {
+		HColor backcolor = ug.getParam().getBackcolor();
+		if (backcolor.isTransparent())
+			backcolor = ug.getDefaultBackground();
+
+		final HColor textColor = getColor().getAppropriateColor(backcolor);
+		return changeColor(textColor);
 	}
 
 	public HColor getColor() {

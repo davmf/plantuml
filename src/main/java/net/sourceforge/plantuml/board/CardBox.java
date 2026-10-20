@@ -41,14 +41,16 @@ import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
-import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.ISkinParam;
 
-public class CardBox extends AbstractTextBlock {
+import net.sourceforge.plantuml.annotation.Fast;
+
+public class CardBox implements TextBlock {
 
 	private final Display label;
 	private final ISkinParam skinParam;
@@ -59,9 +61,10 @@ public class CardBox extends AbstractTextBlock {
 	}
 
 //	private StyleSignature getDefaultStyleDefinitionNode() {
-//		return StyleSignature.of(SName.root, SName.element, SName.mindmapDiagram, SName.node);
+//		return StyleSignature.ofSName(SName.root, SName.element, SName.mindmapDiagram, SName.node);
 //	}
 
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(150, 70);
 	}
@@ -72,7 +75,7 @@ public class CardBox extends AbstractTextBlock {
 
 		ug.apply(HColors.BLACK).apply(HColors.LIGHT_GRAY.bg()).draw(rect);
 
-		label.create(FontConfiguration.blackBlueTrue(UFont.sansSerif(14)), HorizontalAlignment.LEFT, skinParam)
+		label.create(FontConfiguration.blackBlueTrue(UFontFactory.sansSerif(14)), HorizontalAlignment.LEFT, skinParam)
 				.drawU(ug.apply(new UTranslate(3, 3)));
 
 	}

@@ -46,14 +46,17 @@ import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.Participant;
 import net.sourceforge.plantuml.skin.Context2D;
 import net.sourceforge.plantuml.skin.Pragma;
+import net.sourceforge.plantuml.utils.LineLocation;
 
 class ArrowAndNoteBox extends Arrow implements InGroupable {
 
 	private final Arrow arrow;
 	private final List<NoteBox> noteBoxes = new ArrayList<>();
 
-	public ArrowAndNoteBox(AtomicInteger counter, Pragma pragma, StringBounder stringBounder, Arrow arrow, List<NoteBox> noteBoxes) {
-		super(counter, pragma, arrow.getStartingY(), arrow.getSkin(), arrow.getArrowComponent(), arrow.getUrl());
+	public ArrowAndNoteBox(AtomicInteger counter, Pragma pragma, StringBounder stringBounder, Arrow arrow,
+			List<NoteBox> noteBoxes, LineLocation location) {
+		super(counter, pragma, arrow.getStartingY(), arrow.getSkin(), arrow.getArrowComponent(), arrow.getUrl(),
+				location);
 		this.arrow = arrow;
 		this.noteBoxes.addAll(noteBoxes);
 

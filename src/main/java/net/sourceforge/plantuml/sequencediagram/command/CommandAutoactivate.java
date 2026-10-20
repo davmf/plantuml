@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -46,6 +50,8 @@ import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandAutoactivate extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("autoactivate");
 
 	public CommandAutoactivate() {
 		super(getRegexConcat());
@@ -59,9 +65,27 @@ public class CommandAutoactivate extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(SequenceDiagram sequenceDiagram, LineLocation location,
-			RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// Toggles the auto-activation mode: when on, every incoming message
+		// automatically activates the target life line, and every dotted
+		// (return) message deactivates the source one.
+		if ("on".equalsIgnoreCase(arg.get("ON", 0)))
+			return "Turning auto-activation on";
+
+		return "Turning auto-activation off";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(SequenceDiagram sequenceDiagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		sequenceDiagram.setAutoactivate("on".equalsIgnoreCase(arg.get("ON", 0)));
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

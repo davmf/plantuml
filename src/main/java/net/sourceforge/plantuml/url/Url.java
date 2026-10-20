@@ -39,9 +39,8 @@ import java.util.Comparator;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.klimt.geom.BasicEnsureVisible;
-import net.sourceforge.plantuml.klimt.geom.EnsureVisible;
 
-public class Url implements EnsureVisible {
+public class Url {
 	private final String url;
 	private final String tooltip;
 	private final String label;
@@ -50,13 +49,10 @@ public class Url implements EnsureVisible {
 	public Url(String url, String tooltip, String label) {
 		url = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(url, "\"");
 		this.url = url;
-		// ::revert when __HAXE__
 		if (tooltip == null)
 			this.tooltip = url;
 		else
 			this.tooltip = tooltip;
-		// this.tooltip = url;
-		// ::done
 
 		if (label == null || label.length() == 0)
 			this.label = url;
@@ -85,18 +81,14 @@ public class Url implements EnsureVisible {
 		return label;
 	}
 
-	// ::comment when __HAXE__
 	@Override
 	public String toString() {
 		return super.toString() + " " + url + " " + visible.getCoords(1.0);
 	}
-	// ::done
 
 	public String getCoords(double scale) {
-		// ::comment when __CORE__ or __HAXE__
 		if (Check.isJunit() && visible.getCoords(1.0).contains("0,0,0,0"))
 			throw new IllegalStateException(toString());
-		// ::done
 
 		return visible.getCoords(scale);
 	}

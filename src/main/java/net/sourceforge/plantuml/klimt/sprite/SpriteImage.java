@@ -35,40 +35,52 @@
  */
 package net.sourceforge.plantuml.klimt.sprite;
 
-import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.util.Objects;
 
 import net.atmp.PixelImage;
 import net.sourceforge.plantuml.FileUtils;
-import net.sourceforge.plantuml.emoji.SvgNanoParser;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.AffineTransformType;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SImageIO;
+import net.sourceforge.plantuml.svg.parser.ISvgSpriteParser;
+import net.sourceforge.plantuml.svg.parser.SvgSpriteParserFactory;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.Log;
 
 public class SpriteImage implements Sprite {
 
 	private final UImage img;
 
-	public SpriteImage(BufferedImage img) {
+	public SpriteImage(PortableImage img) {
 		this.img = new UImage(new PixelImage(Objects.requireNonNull(img), AffineTransformType.TYPE_BILINEAR));
 	}
 
-	public TextBlock asTextBlock(final HColor fontColor, final HColor forcedColor, final double scale) {
-		return new AbstractTextBlock() {
+	@Override
+	public TextBlock asTextBlock(final HColor fontColor, final HColor forcedColor, final double scale,
+			final HColor backColor) {
+		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
 				final ColorMapper colorMapper = ug.getColorMapper();
 				final HColor usedColor = forcedColor == null ? fontColor : forcedColor;
+
+				if (TeaVM.isTeaVM()) {
+					// Under TeaVM, pixel data is not available for PNG-backed images,
+					// so muteColor/monochrome would produce a blank image.
+					// We draw the original image directly, like AtomImg does.
+					ug.draw(img.scale(scale));
+					return;
+				}
 
 				if (colorMapper == ColorMapper.MONOCHROME)
 					ug.draw(img.monochrome().scale(scale));
@@ -78,6 +90,7 @@ public class SpriteImage implements Sprite {
 					ug.draw(img.muteColor(usedColor.toColor(colorMapper)).scale(scale));
 			}
 
+			@Fast
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
 				return new XDimension2D(img.getWidth() * scale, img.getHeight() * scale);
 			}
@@ -85,14 +98,17 @@ public class SpriteImage implements Sprite {
 	}
 
 	public static Sprite fromInternal(String name) {
+		if (TeaVM.isTeaVM())
+			return null;
 		if (name.endsWith(".png") || name.endsWith(".svg"))
 			throw new IllegalArgumentException();
 
 		try {
-			InputStream is;
-			is = getInternalSprite(name + ".svg");
-			if (is != null)
-				return new SvgNanoParser(FileUtils.readAllBytes(is));
+			InputStream is = getInternalSprite(name + ".svg");
+			if (is != null) {
+				final ISvgSpriteParser parser = SvgSpriteParserFactory.create(FileUtils.readAllBytes(is));
+				return parser;
+			}
 			is = getInternalSprite(name + ".png");
 			if (is != null)
 				return new SpriteImage(SImageIO.read(is));
@@ -102,10 +118,9 @@ public class SpriteImage implements Sprite {
 			Logme.error(e);
 			return null;
 		}
-
 	}
 
-	public static InputStream getInternalSprite(final String inner) {
+	private static InputStream getInternalSprite(final String inner) {
 		final String path = "/sprites/" + inner;
 		Log.info(() -> "Triying " + path);
 		final InputStream is = SpriteImage.class.getResourceAsStream(path);

@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ package net.sourceforge.plantuml.activitydiagram3.ftile.vcompact;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -75,6 +74,7 @@ import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.svek.ConditionStyle;
 import net.sourceforge.plantuml.utils.Direction;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 class FtileRepeat extends AbstractFtile {
 
@@ -112,12 +112,12 @@ class FtileRepeat extends AbstractFtile {
 		result.addAll(diamond2.getSwimlanes());
 		if (backward != null)
 			result.addAll(backward.getSwimlanes());
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	public static Ftile create(Swimlane swimlane, Swimlane swimlaneOut, Ftile entry, Ftile repeat, Display test,
-			Display yes, Display out, HColor borderColor, HColor diamondColor, Rainbow arrowColor,
-			Rainbow endRepeatLinkColor, ConditionStyle conditionStyle, ISkinSimple spriteContainer,
+			Display yes, Display out, HColor borderColor, HColor diamondColor1, HColor diamondColor2,
+			Rainbow arrowColor, Rainbow endRepeatLinkColor, ConditionStyle conditionStyle, ISkinSimple spriteContainer,
 			FontConfiguration fcDiamond, FontConfiguration fcArrow, Ftile backward, boolean noOut,
 			LinkRendering incoming1, LinkRendering incoming2) {
 
@@ -133,7 +133,7 @@ class FtileRepeat extends AbstractFtile {
 		final Ftile diamond1;
 		// assert swimlane == repeat.getSwimlaneIn();
 		if (entry == null)
-			diamond1 = new FtileDiamond(repeat.skinParam(), diamondColor, borderColor, swimlane);
+			diamond1 = new FtileDiamond(repeat.skinParam(), diamondColor1, borderColor, swimlane);
 		else
 			diamond1 = entry;
 
@@ -142,18 +142,24 @@ class FtileRepeat extends AbstractFtile {
 			final Ftile diamond2;
 			if (noOut && Display.isNull(test))
 				diamond2 = new FtileEmpty(repeat.skinParam());
+			else if (backwardExitsOnLeft(backward, swimlaneOut))
+				// The loop-back arrow exits towards the backward activity. When that
+				// activity lives in a swimlane left of the diamond, the arrow leaves on
+				// the left, so its label is placed west of the diamond.
+				diamond2 = new FtileDiamondInside(tbTest, repeat.skinParam(), diamondColor2, borderColor, swimlaneOut)
+						.withWest(yesTb).withSouth(outTb);
 			else
-				diamond2 = new FtileDiamondInside(tbTest, repeat.skinParam(), diamondColor, borderColor, swimlaneOut)
+				diamond2 = new FtileDiamondInside(tbTest, repeat.skinParam(), diamondColor2, borderColor, swimlaneOut)
 						.withEast(yesTb).withSouth(outTb);
 
 			result = new FtileRepeat(repeat, diamond1, diamond2, TextBlockUtils.empty(0, 0), backward);
 		} else if (conditionStyle == ConditionStyle.EMPTY_DIAMOND) {
-			final Ftile diamond2 = new FtileDiamond(repeat.skinParam(), diamondColor, borderColor, swimlane)
+			final Ftile diamond2 = new FtileDiamond(repeat.skinParam(), diamondColor2, borderColor, swimlane)
 					.withEast(tbTest);
 			result = new FtileRepeat(repeat, diamond1, diamond2, tbTest, backward);
 		} else if (conditionStyle == ConditionStyle.INSIDE_DIAMOND) {
-			final Ftile diamond2 = new FtileDiamondSquare(tbTest, repeat.skinParam(), diamondColor, borderColor,
-					swimlane);
+			final Ftile diamond2 = new FtileDiamondSquare(tbTest, repeat.skinParam(), diamondColor2, borderColor,
+					swimlane).withEast(yesTb).withSouth(outTb);
 			result = new FtileRepeat(repeat, diamond1, diamond2, TextBlockUtils.empty(0, 0), backward);
 		} else {
 			throw new IllegalStateException();
@@ -179,8 +185,8 @@ class FtileRepeat extends AbstractFtile {
 					: incoming2.getDisplay().create(fcArrow, HorizontalAlignment.LEFT, spriteContainer);
 			final Rainbow rainbow2 = incoming2.getRainbow(arrowColor);
 			conns.add(result.new ConnectionBackBackward2(rainbow2, backArrowLabel));
-		} else if (repeat.getSwimlaneIn() == null || repeat.getSwimlaneIn() == swimlaneOut) {
-			if (repeat.getSwimlaneIn() != null && repeat.getSwimlaneIn().isSmallerThanAllOthers(repeat.getSwimlanes()))
+		} else if (swimlane == null || swimlane == swimlaneOut) {
+			if (swimlane != null && swimlane.isSmallerThanAllOthers(repeat.getSwimlanes()))
 				conns.add(result.new ConnectionBackSimple1(incoming1.getRainbow(arrowColor), incomingText));
 			else
 				conns.add(result.new ConnectionBackSimple2(incoming1.getRainbow(arrowColor), incomingText));
@@ -196,6 +202,20 @@ class FtileRepeat extends AbstractFtile {
 		final Rainbow tmpColor = endRepeatLinkColor.withDefault(arrowColor);
 		conns.add(result.new ConnectionOut(tmpColor, tbout1));
 		return FtileUtils.addConnection(result, conns);
+	}
+
+	// The loop-back arrow (and its label) leaves the diamond on the side where the
+	// backward activity sits. It exits on the left when the backward activity lives
+	// in a swimlane ordered before the diamond's swimlane.
+	private static boolean backwardExitsOnLeft(Ftile backward, Swimlane swimlaneOut) {
+		if (backward == null)
+			return false;
+
+		final Swimlane swimlaneBackward = backward.getSwimlaneIn();
+		if (swimlaneBackward == null || swimlaneOut == null)
+			return false;
+
+		return swimlaneBackward.compareTo(swimlaneOut) < 0;
 	}
 
 	class ConnectionIn extends AbstractConnection implements ConnectionTranslatable {
@@ -419,10 +439,14 @@ class FtileRepeat extends AbstractFtile {
 
 		private void drawSnake(UGraphic ug, final XPoint2D p1, final XPoint2D p2) {
 			final XDimension2D dimDiamond2 = diamond2.calculateDimension(ug.getStringBounder());
-			final double x1 = p1.getX() + dimDiamond2.getWidth();
-			final double y1 = p1.getY() + dimDiamond2.getHeight() / 2;
 			final double x2 = p2.getX();
 			final double y2 = p2.getY();
+			// The loop-back arrow leaves the diamond on the side where the backward
+			// activity sits: if the activity (x2) is left of the diamond center, the
+			// arrow exits by the left edge, otherwise by the right edge.
+			final double diamondCenterX = p1.getX() + dimDiamond2.getWidth() / 2;
+			final double x1 = x2 < diamondCenterX ? p1.getX() : p1.getX() + dimDiamond2.getWidth();
+			final double y1 = p1.getY() + dimDiamond2.getHeight() / 2;
 
 			final Snake snake = Snake.create(skinParam(), arrowColor, skinParam().arrows().asToUp()).withLabel(tbback,
 					arrowHorizontalAlignment());

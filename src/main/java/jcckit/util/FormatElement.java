@@ -106,8 +106,8 @@ class FormatElement {
   /**
    *  Format a number in accordance of the format string
    *  given at the initialisation of this instance.
-   *  @param buffer Buffer to which the formated output will be appended.
-   *  @param number Number to be formated.
+   *  @param buffer Buffer to which the formatted output will be appended.
+   *  @param number Number to be formatted.
    */
   public void form(StringBuffer buffer, long number) {
     if (_descriptorType == FLOAT_DESCRIPTOR) {
@@ -125,8 +125,8 @@ class FormatElement {
   /**
    *  Format a number in accordance of the format string
    *  given at the initialisation of this instance.
-   *  @param buffer Buffer to which the formated output will be appended.
-   *  @param number Number to be formated.
+   *  @param buffer Buffer to which the formatted output will be appended.
+   *  @param number Number to be formatted.
    */
   public void form(StringBuffer buffer, double number) {
     if (_descriptorType == INT_DESCRIPTOR) {

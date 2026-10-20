@@ -48,6 +48,7 @@ import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
@@ -56,12 +57,13 @@ import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.skin.rose.Rose;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.url.Url;
 
 public class FtileFactoryDelegator implements FtileFactory {
@@ -70,29 +72,29 @@ public class FtileFactoryDelegator implements FtileFactory {
 
 	private final Rose rose = new Rose();
 
-	final public StyleSignatureBasic getDefaultStyleDefinitionActivity() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity);
+	final public StyleQuery getDefaultStyleDefinitionActivity() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY;
 	}
 
-	final public StyleSignatureBasic getDefaultStyleDefinitionDiamond() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
+	final protected StyleQuery getDefaultStyleDefinitionDiamond() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY_DIAMOND;
 	}
 
-	final public StyleSignatureBasic getDefaultStyleDefinitionArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	final protected StyleQuery getDefaultStyleDefinitionArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 	protected final Rainbow getInLinkRenderingColor(Ftile tile) {
 		Rainbow color;
 		final LinkRendering linkRendering = tile.getInLinkRendering();
 		if (linkRendering == null) {
-			final Style style = getDefaultStyleDefinitionArrow().getMergedStyle(skinParam().getCurrentStyleBuilder());
+			final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow());
 			return Rainbow.build(style, skinParam().getIHtmlColorSet());
 		} else {
 			color = linkRendering.getRainbow();
 		}
 		if (color.size() == 0) {
-			final Style style = getDefaultStyleDefinitionArrow().getMergedStyle(skinParam().getCurrentStyleBuilder());
+			final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow());
 			return Rainbow.build(style, skinParam().getIHtmlColorSet());
 		}
 		return color;
@@ -103,7 +105,7 @@ public class FtileFactoryDelegator implements FtileFactory {
 		if (Display.isNull(display))
 			return null;
 
-		final Style style = getDefaultStyleDefinitionArrow().getMergedStyle(skinParam().getCurrentStyleBuilder());
+		final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow());
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(skinParam().getIHtmlColorSet());
 
 		return display.create7(fontConfiguration, HorizontalAlignment.LEFT, skinParam(), CreoleMode.SIMPLE_LINE);
@@ -122,18 +124,18 @@ public class FtileFactoryDelegator implements FtileFactory {
 	}
 
 	@Override
-	public Ftile start(Swimlane swimlane) {
-		return factory.start(swimlane);
+	public Ftile start(Swimlane swimlane, Colors colors) {
+		return factory.start(swimlane, colors);
 	}
 
 	@Override
-	public Ftile end(Swimlane swimlane) {
-		return factory.end(swimlane);
+	public Ftile end(Swimlane swimlane, Colors colors) {
+		return factory.end(swimlane, colors);
 	}
 
 	@Override
-	public Ftile stop(Swimlane swimlane) {
-		return factory.stop(swimlane);
+	public Ftile stop(Swimlane swimlane, Colors colors) {
+		return factory.stop(swimlane, colors);
 	}
 
 	@Override
@@ -142,7 +144,8 @@ public class FtileFactoryDelegator implements FtileFactory {
 	}
 
 	@Override
-	public Ftile activity(Display label, Swimlane swimlane, BoxStyle style, Colors colors, Stereotype stereotype, StyleBuilder styleBuilder) {
+	public Ftile activity(Display label, Swimlane swimlane, BoxStyle style, Colors colors, Stereotype stereotype,
+			StyleBuilder styleBuilder) {
 		return factory.activity(label, swimlane, style, colors, stereotype, styleBuilder);
 	}
 
@@ -173,17 +176,18 @@ public class FtileFactoryDelegator implements FtileFactory {
 	}
 
 	@Override
-	public Ftile repeat(BoxStyle boxStyleIn, Stereotype stereotype, Swimlane swimlane, Swimlane swimlaneOut, Display startLabel, Ftile repeat,
-			Display test, Display yes, Display out, Colors colors, Ftile backward, boolean noOut,
-			LinkRendering incoming1, LinkRendering incoming2, StyleBuilder currentStyleBuilder) {
-		return factory.repeat(boxStyleIn, stereotype, swimlane, swimlaneOut, startLabel, repeat, test, yes, out, colors, backward,
-				noOut, incoming1, incoming2, currentStyleBuilder);
+	public Ftile repeat(Stereogroup stereotype, Stereogroup stereotype2, BoxStyle boxStyleIn, Swimlane swimlane,
+			Swimlane swimlaneOut, Display startLabel, Ftile repeat, Display test, Display yes, Display out,
+			Ftile backward, boolean noOut, LinkRendering incoming1, LinkRendering incoming2,
+			StyleBuilder currentStyleBuilder) throws NoSuchColorException {
+		return factory.repeat(stereotype, stereotype2, boxStyleIn, swimlane, swimlaneOut, startLabel, repeat, test, yes,
+				out, backward, noOut, incoming1, incoming2, currentStyleBuilder);
 	}
 
 	@Override
 	public Ftile createWhile(LinkRendering outColor, Swimlane swimlane, Ftile whileBlock, Display test, Display yes,
 			HColor color, Instruction specialOut, Ftile back, LinkRendering incoming1, LinkRendering incoming2,
-			StyleBuilder styleBuilder) {
+			StyleBuilder styleBuilder) throws NoSuchColorException {
 		return factory.createWhile(outColor, swimlane, whileBlock, test, yes, color, specialOut, back, incoming1,
 				incoming2, styleBuilder);
 	}
@@ -198,13 +202,15 @@ public class FtileFactoryDelegator implements FtileFactory {
 
 	@Override
 	public Ftile createSwitch(Swimlane swimlane, List<Branch> branches, LinkRendering afterEndwhile,
-			LinkRendering topInlinkRendering, Display labelTest) {
-		return factory.createSwitch(swimlane, branches, afterEndwhile, topInlinkRendering, labelTest);
+			LinkRendering topInlinkRendering, Display labelTest, Colors colors, Colors endColors) {
+		return factory.createSwitch(swimlane, branches, afterEndwhile, topInlinkRendering, labelTest, colors,
+				endColors);
 	}
 
 	@Override
-	public Ftile createParallel(List<Ftile> all, ForkStyle style, String label, Swimlane in, Swimlane out) {
-		return factory.createParallel(all, style, label, in, out);
+	public Ftile createParallel(List<Ftile> all, ForkStyle style, String label, Swimlane in, Swimlane out,
+			Colors colors) {
+		return factory.createParallel(all, style, label, in, out, colors);
 	}
 
 	@Override

@@ -42,6 +42,7 @@ import net.sourceforge.plantuml.SourceStringReader;
 import net.sourceforge.plantuml.core.Diagram;
 
 public class PlantumlUtils {
+	
 
 	public static boolean hasCMapData(String uml) {
 		List<BlockUml> blocks = new SourceStringReader(uml).getBlocks();

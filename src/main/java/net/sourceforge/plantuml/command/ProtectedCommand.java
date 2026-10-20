@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Collection;
 import java.util.Objects;
 
 import net.sourceforge.plantuml.core.Diagram;
@@ -43,7 +44,7 @@ import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.Log;
 import net.sourceforge.plantuml.version.Version;
 
-public class ProtectedCommand<S extends Diagram> implements Command<S> {
+public final class ProtectedCommand<S extends Diagram> implements Command<S> {
 
 	private final Command<S> cmd;
 
@@ -57,18 +58,29 @@ public class ProtectedCommand<S extends Diagram> implements Command<S> {
 			final CommandExecutionResult result = cmd.execute(system, lines, currentPass);
 			// if (result.isOk()) {
 			// // TRACECOMMAND
-			// System.err.println("CMD = " + cmd.getClass() + " " + currentPass);
+			// ::uncomment when __TEAVM__
+			// // System.err.println("CMD = " + cmd.getClass() + " " + currentPass);
+			// ::done
 			// }
 			return result;
 		} catch (Throwable t) {
 			Log.error("Error " + t);
 			Logme.error(t);
-			String msg = "You should send a mail to plantuml@gmail.com or post to https://plantuml.com/qa with this log (V"
-					+ Version.versionString() + ")";
+			String msg;
+			if (Logme.MODE_VEGA)
+				msg = "You should send a mail to plantuml@gmail.com with this log";
+			else
+				msg = "You should send a mail to plantuml@gmail.com with this log (V" + Version.versionString() + ")";
+
 			Log.error(msg);
 			msg += " " + t.toString();
 			return CommandExecutionResult.error(msg, t);
 		}
+	}
+	
+	@Override
+	public String explain(BlocLines lines) {
+		return cmd.explain(lines);
 	}
 
 	public CommandControl isValid(BlocLines lines) {
@@ -79,5 +91,23 @@ public class ProtectedCommand<S extends Diagram> implements Command<S> {
 	public boolean isEligibleFor(ParserPass pass) {
 		return cmd.isEligibleFor(pass);
 	}
+
+	@Override
+	public final boolean isCommandForbidden(BlocLines lines) {
+		return cmd.isCommandForbidden(lines);
+	}
+	
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return cmd.mandatoryFirstTokensSlow();
+	}
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return cmd.mandatoryFirstTokensFast();
+	}
+
+
 
 }

@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -45,8 +45,6 @@
  */
 package h;
 
-import static smetana.core.Macro.ND_order;
-import static smetana.core.Macro.ND_rank;
 
 import smetana.core.__ptr__;
 import smetana.core.__struct__;

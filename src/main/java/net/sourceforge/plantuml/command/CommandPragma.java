@@ -35,19 +35,25 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.StringTokenizer;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.dot.GraphvizRuntimeEnvironment;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("!");
 
 	public static final CommandPragma ME = new CommandPragma();
 
@@ -68,6 +74,35 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String name = StringUtils.goLowerCase(arg.get("NAME", 0));
+		final String value = arg.get("VALUE", 0);
+
+		// Mirror the special cases of executeArg.
+		if (name.equals("svgsize")) {
+			if (value != null && value.contains(" "))
+				return "Setting the SVG size to '" + value + "'";
+
+			return "Setting the SVG size (ignored: two space-separated values are expected)";
+		}
+
+		if (name.equals("graphviz_dot"))
+			return "Selecting the layout engine (rejected at execution: "
+					+ "this directive has been renamed to '!pragma layout ...')";
+
+		if (name.equals("layout") && value != null)
+			return "Selecting the '" + value + "' layout engine";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Defining the pragma '").append(name).append("'");
+		if (value != null)
+			sb.append(" with value '").append(value).append("'");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram system, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String name = StringUtils.goLowerCase(arg.get("NAME", 0));
@@ -79,27 +114,35 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 			}
 		} else {
 			system.getPragma().define(name, value);
-			// ::comment when __CORE__
-			if (name.equalsIgnoreCase("graphviz_dot") && value.equalsIgnoreCase("jdot"))
-				return CommandExecutionResult.error(
-						"This directive has been renamed to '!pragma layout smetana'. Please update your diagram.");
 
-			if (name.equalsIgnoreCase("graphviz_dot"))
-				return CommandExecutionResult.error("This directive has been renamed to '!pragma layout " + value
-						+ "'. Please update your diagram.");
-
+			// Honored in every build: the browser (TeaVM) build uses it to lay out
+			// class/component/deployment/state/usecase diagrams without viz-global.js.
 			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("smetana"))
 				system.setUseSmetana(true);
 
-			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("elk"))
-				system.setUseElk(true);
+			if (!TeaVM.isTeaVM()) {
+				if (name.equalsIgnoreCase("graphviz_dot") && value.equalsIgnoreCase("jdot"))
+					return CommandExecutionResult.error(
+							"This directive has been renamed to '!pragma layout smetana'. Please update your diagram.");
 
-			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase(GraphvizRuntimeEnvironment.VIZJS))
-				system.getSkinParam().setUseVizJs(true);
-			// ::done
+				if (name.equalsIgnoreCase("graphviz_dot"))
+					return CommandExecutionResult.error("This directive has been renamed to '!pragma layout " + value
+							+ "'. Please update your diagram.");
+
+				if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("elk"))
+					system.setUseElk(true);
+
+				if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase(GraphvizRuntimeEnvironment.VIZJS))
+					system.getSkinParam().setUseVizJs(true);
+			}
 
 		}
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

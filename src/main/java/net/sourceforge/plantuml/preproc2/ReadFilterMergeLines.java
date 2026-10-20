@@ -56,11 +56,11 @@ public class ReadFilterMergeLines implements ReadFilter {
 
 			public StringLocated readLine() throws IOException {
 				StringLocated result = source.readLine();
-				if (result != null && StartUtils.isArobaseStartDiagram(result.getString())
+				if (result != null && StartUtils.isStartDirective(result.getString())
 						&& isDitaa(result.getString())) {
 					this.manageEndingBackslash = false;
 				}
-				if (result != null && StartUtils.isArobaseEndDiagram(result.getString())) {
+				if (result != null && StartUtils.isEndDirective(result.getString())) {
 					this.manageEndingBackslash = true;
 				}
 
@@ -81,7 +81,8 @@ public class ReadFilterMergeLines implements ReadFilter {
 			}
 
 			private boolean isDitaa(String string) {
-				return DiagramType.getTypeFromArobaseStart(StringUtils.trinNoTrace((string))) == DiagramType.DITAA;
+				return DiagramType.findStartTypes(StringUtils.trim2((string)))
+						.contains(DiagramType.DITAA);
 			}
 		};
 	}

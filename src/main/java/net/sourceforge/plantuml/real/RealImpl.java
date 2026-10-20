@@ -39,8 +39,8 @@ class RealImpl extends RealMoveable implements RealOrigin {
 
 	private double currentValue;
 
-	public RealImpl(String name, RealLine line, double currentValue) {
-		super(line, name);
+	public RealImpl(RealLine line, double currentValue) {
+		super(line);
 		this.currentValue = currentValue;
 	}
 
@@ -54,7 +54,7 @@ class RealImpl extends RealMoveable implements RealOrigin {
 	}
 
 	public Real addAtLeast(double delta) {
-		final RealImpl result = new RealImpl(getName() + ".addAtLeast" + delta, getLine(), this.currentValue + delta);
+		final RealImpl result = new RealImpl(getLine(), this.currentValue + delta);
 		getLine().addForce(new PositiveForce(this, result, delta));
 		return result;
 	}

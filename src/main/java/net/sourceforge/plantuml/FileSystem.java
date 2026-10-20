@@ -37,12 +37,12 @@ package net.sourceforge.plantuml;
 
 import java.io.IOException;
 
+import net.sourceforge.plantuml.nio.NFolder;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.utils.Log;
 
 public class FileSystem {
-	// ::remove file when __HAXE__
 
 	private final static FileSystem singleton = new FileSystem();
 
@@ -66,21 +66,14 @@ public class FileSystem {
 	}
 
 	public SFile getCurrentDir() {
-		// ::comment when __CORE__
 		final String path = this.currentDir.get();
 		if (path != null)
 			return new SFile(path);
-		// ::done
 
 		return null;
 	}
 
 	public SFile getFile(String nameOrPath) throws IOException {
-		// ::uncomment when __CORE__
-		// return null;
-		// ::done
-
-		// ::comment when __CORE__
 		if (isAbsolute(nameOrPath)) {
 			final SFile result = new SFile(nameOrPath);
 			Log.info(() -> "Trying " + result.getAbsolutePath());
@@ -97,13 +90,13 @@ public class FileSystem {
 				return filecurrent.getCanonicalFile();
 
 		}
-		for (SFile d : SecurityUtils.getPath(SecurityUtils.PATHS_INCLUDES)) {
+		for (SFile d : SecurityUtils.getPath(NFolder.PATHS_INCLUDES)) {
 			assert d.isDirectory();
 			final SFile file = d.file(nameOrPath);
 			if (file.exists())
 				return file.getCanonicalFile();
 		}
-		for (SFile d : SecurityUtils.getPath(SecurityUtils.PATHS_CLASSES)) {
+		for (SFile d : SecurityUtils.getPath(NFolder.PATHS_CLASSES)) {
 			assert d.isDirectory();
 			final SFile file = d.file(nameOrPath);
 			if (file.exists())
@@ -116,15 +109,12 @@ public class FileSystem {
 		}
 		assert filecurrent != null;
 		return filecurrent;
-		// ::done
 	}
 
-	// ::comment when __CORE__
 	private boolean isAbsolute(String nameOrPath) {
 		final SFile f = new SFile(nameOrPath);
 		return f.isAbsolute();
 	}
-	// ::done
 
 	public void reset() {
 		setCurrentDir(new SFile("."));

@@ -36,101 +36,55 @@
 package net.sourceforge.plantuml.svek;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 import net.atmp.CucaDiagram;
-import net.sourceforge.plantuml.AnnotatedBuilder;
-import net.sourceforge.plantuml.AnnotatedWorker;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.abel.Link;
-import net.sourceforge.plantuml.core.ImageData;
-import net.sourceforge.plantuml.crash.GraphvizCrash;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.dot.CucaDiagramSimplifierActivity;
 import net.sourceforge.plantuml.dot.CucaDiagramSimplifierState;
 import net.sourceforge.plantuml.dot.DotData;
-import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
-import net.sourceforge.plantuml.log.Logme;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
 public final class CucaDiagramFileMakerSvek extends CucaDiagramFileMaker {
-	// ::remove file when __CORE__
 
 	public CucaDiagramFileMakerSvek(CucaDiagram diagram) throws IOException {
 		super(diagram);
 
 	}
 
-	public ImageData createFile(OutputStream os, List<String> dotStrings, FileFormatOption fileFormatOption)
-			throws IOException {
-		try {
-			return createFileInternal(os, dotStrings, fileFormatOption);
-		} catch (InterruptedException e) {
-			Logme.error(e);
-			throw new IOException(e);
-		}
-	}
-
 	@Override
-	public void createOneGraphic(UGraphic ug) {
-		throw new UnsupportedOperationException();
-	}
-
-	private ImageData createFileInternal(OutputStream os, List<String> dotStrings, FileFormatOption fileFormatOption)
+	public TextBlock getTextBlock(List<String> dotStrings, FileFormatOption fileFormatOption)
 			throws IOException, InterruptedException {
 
-		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(diagram.getSkinParam());
+		final StringBounder stringBounder = fileFormatOption.getDefaultStringBounder(diagram.getSkinParam(),
+				diagram.getPragma());
 
-		if (diagram.getUmlDiagramType() == UmlDiagramType.ACTIVITY)
+		if (diagram.getDiagramType() == DiagramType.ACTIVITY)
 			new CucaDiagramSimplifierActivity().simplify(diagram, stringBounder, DotMode.NORMAL);
-		else if (diagram.getUmlDiagramType() == UmlDiagramType.STATE)
+		else if (diagram.getDiagramType() == DiagramType.STATE)
 			new CucaDiagramSimplifierState().simplify(diagram, stringBounder, DotMode.NORMAL);
 
 		final DotStringFactory dotStringFactory = new DotStringFactory(bibliotekon, clusterManager.getCurrent(),
-				diagram.getUmlDiagramType(), diagram.getSkinParam());
+				diagram.getDiagramType(), diagram.getSkinParam());
 
 		final DotData dotData = new DotData(diagram, diagram.getRootGroup(), getOrderedLinks(), diagram.leafs(),
 				diagram, diagram);
 
 		GraphvizImageBuilder imageBuilder = new GraphvizImageBuilder(dotData, diagram.getSource(), diagram.getPragma(),
-				diagram.getUmlDiagramType().getStyleName(), DotMode.NORMAL, dotStringFactory, clusterManager);
+				diagram.getDiagramType().getStyleName(), DotMode.NORMAL, dotStringFactory, clusterManager);
 		BaseFile basefile = null;
-		if (fileFormatOption.isDebugSvek() && os instanceof NamedOutputStream)
-			basefile = ((NamedOutputStream) os).getBasefile();
+//		if (fileFormatOption.isDebugSvek() && os instanceof NamedOutputStream)
+//			basefile = ((NamedOutputStream) os).getBasefile();
 
 		TextBlock result = imageBuilder.buildImage(stringBounder, basefile, diagram.getDotStringSkek(),
 				fileFormatOption.isDebugSvek());
-		if (result instanceof GraphvizCrash) {
-			imageBuilder = new GraphvizImageBuilder(dotData, diagram.getSource(), diagram.getPragma(),
-					diagram.getUmlDiagramType().getStyleName(), DotMode.NO_LEFT_RIGHT_AND_XLABEL, dotStringFactory,
-					clusterManager);
-			result = imageBuilder.buildImage(stringBounder, basefile, diagram.getDotStringSkek(),
-					fileFormatOption.isDebugSvek());
-		}
-		// TODO There is something strange with the left margin of mainframe, I think
-		// because AnnotatedWorker is used here
-		// It can be looked at in another PR
-		final AnnotatedBuilder builder = new AnnotatedBuilder(diagram, diagram.getSkinParam(), stringBounder);
-		result = new AnnotatedWorker(diagram, builder).addAdd(result);
 
-		// TODO UmlDiagram.getWarningOrError() looks similar so this might be
-		// simplified? - will leave for a separate PR
-		final String widthwarning = diagram.getSkinParam().getValue("widthwarning");
-		String warningOrError = null;
-		if (widthwarning != null && widthwarning.matches("\\d+"))
-			warningOrError = imageBuilder.getWarningOrError(Integer.parseInt(widthwarning));
+		return result;
 
-		// Sorry about this hack. There is a side effect in
-		// SvekResult::calculateDimension()
-		result.calculateDimension(stringBounder); // Ensure text near the margins is not cut off
-
-		return diagram.createImageBuilder(fileFormatOption).annotations(false) // backwards compatibility
-																				// (AnnotatedWorker is used above)
-				.drawable(result).status(result instanceof GraphvizCrash ? 503 : 0).warningOrError(warningOrError)
-				.write(os);
 	}
 
 	private List<Link> getOrderedLinks() {

@@ -35,29 +35,30 @@
  */
 package net.sourceforge.plantuml.ebnf;
 
+
 import net.sourceforge.plantuml.klimt.CopyForegroundColorToBackgroundColor;
 import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.ULine;
-import net.sourceforge.plantuml.style.SName;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
-public abstract class ETile extends AbstractTextBlock {
+public abstract class ETile extends TextBlockMemoized {
 
 	protected final boolean TRACE = false;
 
-	public static StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.ebnf);
+	public static StyleQuery getStyleQuery() {
+		return StyleQueries.EBNF;
 	}
 
 	public abstract void push(ETile tile);
 
 	@Override
-	final public XDimension2D calculateDimension(StringBounder stringBounder) {
+	final public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final double width = getWidth(stringBounder);
 		final double h1 = getH1(stringBounder);
 		final double h2 = getH2(stringBounder);
@@ -74,7 +75,8 @@ public abstract class ETile extends AbstractTextBlock {
 		ug.apply(new UTranslate(x1, y)).draw(ULine.hline(x2 - x1));
 	}
 
-	protected final void drawHlineDirected(UGraphic ug, double y, double x1, double x2, double coef, double minimunSizeForArrow) {
+	protected final void drawHlineDirected(UGraphic ug, double y, double x1, double x2, double coef,
+			double minimunSizeForArrow) {
 		ug.apply(new UTranslate(x1, y)).draw(ULine.hline(x2 - x1));
 		if (x2 > x1 + minimunSizeForArrow)
 			ug.apply(new CopyForegroundColorToBackgroundColor())

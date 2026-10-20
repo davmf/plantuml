@@ -88,6 +88,7 @@ public class CreoleHorizontalLine extends AbstractAtom implements Atom {
 		return tb;
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		// ug = ug.apply(UChangeColor.nnn(fontConfiguration.getColor()));
 		final XDimension2D dim = calculateDimension(ug.getStringBounder());
@@ -95,7 +96,8 @@ public class CreoleHorizontalLine extends AbstractAtom implements Atom {
 		ug.draw(getHorizontalLine());
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		if (line.length() == 0)
 			return new XDimension2D(10, 10);
 

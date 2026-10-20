@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.flowdiagram;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.golem.Tile;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UStroke;
@@ -45,14 +46,14 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.klimt.sprite.SpriteContainerEmpty;
 
-public class ActivityBox extends AbstractTextBlock {
+public class ActivityBox implements TextBlock {
 
 	private static final int CORNER = 25;
 	private static final int MARGIN = 10;
@@ -66,7 +67,7 @@ public class ActivityBox extends AbstractTextBlock {
 		this.tile = tile;
 		this.id = id;
 		this.label = label;
-		final UFont font = UFont.serif(14);
+		final UFont font = UFontFactory.serif(14);
 		final FontConfiguration fc = FontConfiguration.blackBlueTrue(font);
 		tb = Display.create(label).create(fc, HorizontalAlignment.LEFT, new SpriteContainerEmpty());
 	}
@@ -83,6 +84,7 @@ public class ActivityBox extends AbstractTextBlock {
 		return label;
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		final XDimension2D dimTotal = calculateDimension(ug.getStringBounder());
 		// final Dimension2D dimDesc = tb.calculateDimension(ug.getStringBounder());
@@ -97,10 +99,12 @@ public class ActivityBox extends AbstractTextBlock {
 		tb.drawU(ug.apply(new UTranslate(MARGIN, MARGIN)));
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final XDimension2D dim = tb.calculateDimension(stringBounder);
 
-		return dim.delta((2 * MARGIN), (2 * MARGIN));
+		return dim.delta(2 * MARGIN, 2 * MARGIN);
 	}
 
 }

@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandAutonumberIncrement extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("autonumber");
 
 	public CommandAutonumberIncrement() {
 		super(getConcat());
@@ -66,6 +72,28 @@ public class CommandAutonumberIncrement extends SingleLineCommand2<SequenceDiagr
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Increments one component of the current dotted autonumber (like
+		// '1.2.3') and resets the following components to 1 (see
+		// DottedNumber.incrementIntermediate).
+		final String position = arg.get("POS", 0);
+		if (position == null) {
+			// Default: the second-to-last component, or the only one.
+			sb.append("Incrementing the intermediate component of the message autonumber");
+		} else {
+			final int pos = StringUtils.goLowerCase(position.charAt(0)) - 'a';
+			sb.append("Incrementing component '").append(position).append("' (number ").append(pos + 1)
+					.append(") of the message autonumber");
+		}
+		sb.append(", resetting the following components to 1");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String position = arg.get("POS", 0);
@@ -76,6 +104,11 @@ public class CommandAutonumberIncrement extends SingleLineCommand2<SequenceDiagr
 			diagram.getAutoNumber().incrementIntermediate(pos);
 		}
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

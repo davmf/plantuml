@@ -36,9 +36,9 @@
 package net.sourceforge.plantuml.klimt.creole.legacy;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.jaws.Jaws;
@@ -48,12 +48,16 @@ import net.sourceforge.plantuml.klimt.creole.Stripe;
 import net.sourceforge.plantuml.klimt.creole.StripeStyle;
 import net.sourceforge.plantuml.klimt.creole.StripeStyleType;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.utils.CharHidder;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class CreoleStripeSimpleParser {
+
+	private static final Pattern BLOCK_NEWLINE = Pattern.compile("" + Jaws.BLOCK_E1_NEWLINE);
 
 	final private String line;
 	final private StripeStyle style;
@@ -88,27 +92,27 @@ public class CreoleStripeSimpleParser {
 			return;
 		}
 
-		final Matcher2 m4 = SECTION_HEADER_PATTERN.matcher(line);
+		final Matcher2 m4 = SECTION_HEADER_PATTERN.matcher(line, 0);
 		if (m4.find()) {
 			this.line = m4.group(1);
 			this.style = new StripeStyle(StripeStyleType.HORIZONTAL_LINE, 0, '-');
 			return;
 		}
 
-		final Matcher2 m5 = SECTION_TITLE_PATTERN.matcher(line);
+		final Matcher2 m5 = SECTION_TITLE_PATTERN.matcher(line, 0);
 		if (m5.find()) {
 			this.line = m5.group(1);
 			this.style = new StripeStyle(StripeStyleType.HORIZONTAL_LINE, 0, '=');
 			return;
 		}
-		final Matcher2 m5b = SECTION_SEPARATOR_PATTERN.matcher(line);
+		final Matcher2 m5b = SECTION_SEPARATOR_PATTERN.matcher(line, 0);
 		if (m5b.find()) {
 			this.line = "";
 			this.style = new StripeStyle(StripeStyleType.HORIZONTAL_LINE, 0, '=');
 			return;
 		}
 
-		final Matcher2 m7 = DOUBLE_DOT_DELIMITED_LINE.matcher(line);
+		final Matcher2 m7 = DOUBLE_DOT_DELIMITED_LINE.matcher(line, 0);
 		if (m7.find()) {
 			this.line = m7.group(1);
 			this.style = new StripeStyle(StripeStyleType.HORIZONTAL_LINE, 0, '.');
@@ -116,7 +120,7 @@ public class CreoleStripeSimpleParser {
 		}
 
 		if (mode == CreoleMode.FULL) {
-			final Matcher2 m1 = ASTERISK_PREFIXED_LINE_PATTERN.matcher(line);
+			final Matcher2 m1 = ASTERISK_PREFIXED_LINE_PATTERN.matcher(line, 0);
 			if (m1.find()) {
 				this.line = StringUtils.trin(m1.group(2));
 				final int order = m1.group(1).length() - 1;
@@ -126,7 +130,7 @@ public class CreoleStripeSimpleParser {
 		}
 
 		if (mode == CreoleMode.FULL) {
-			final Matcher2 m1 = ASTERISK_HEADER_LINE_PATTERN.matcher(line);
+			final Matcher2 m1 = ASTERISK_HEADER_LINE_PATTERN.matcher(line, 0);
 			if (m1.find()) {
 				this.line = StringUtils.trin(m1.group(2));
 				final int order = m1.group(1).length() - 1;
@@ -136,7 +140,7 @@ public class CreoleStripeSimpleParser {
 		}
 
 		if (mode == CreoleMode.FULL) {
-			final Matcher2 m2 = HASH_HEADING_PATTERN.matcher(CharHidder.hide(line));
+			final Matcher2 m2 = HASH_HEADING_PATTERN.matcher(CharHidder.hide(line), 0);
 			if (m2.find()) {
 				this.line = StringUtils.trin(CharHidder.unhide(m2.group(2)));
 				final int order = CharHidder.unhide(m2.group(1)).length() - 1;
@@ -145,7 +149,7 @@ public class CreoleStripeSimpleParser {
 			}
 		}
 
-		final Matcher2 m3 = EQUALS_HEADING_PATTERN.matcher(line);
+		final Matcher2 m3 = EQUALS_HEADING_PATTERN.matcher(line, 0);
 		if (m3.find()) {
 			this.line = StringUtils.trin(m3.group(2));
 			final int order = m3.group(1).length() - 1;
@@ -158,14 +162,15 @@ public class CreoleStripeSimpleParser {
 
 	}
 
-	public List<Stripe> createStripes(CreoleContext context) {
+	public List<Stripe> createStripes(CreoleContext context, HorizontalAlignment align) {
 		final List<Stripe> result = new ArrayList<>();
-		for (String singleLine : line.split("" + Jaws.BLOCK_E1_NEWLINE)) {
+		for (String singleLine : BLOCK_NEWLINE.split(line)) {
 			final StripeSimple stripe = new StripeSimple(fontConfiguration, style, context, skinParam, modeSimpleLine);
+			stripe.setCellAlignment(align);
 			stripe.analyzeAndAdd(singleLine);
 			result.add(stripe);
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 }

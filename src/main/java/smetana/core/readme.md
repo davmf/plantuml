@@ -18,7 +18,7 @@ This package is part of Smetana: the internal port (from `C` to `Java`) of [Grap
 ## Credit
 - :octocat:  [plantuml/smetana](https://github.com/plantuml/smetana)
 
-## Internaly use by
+## Internally use by
 - [`plantuml/sdot`](../net/sourceforge/plantuml/sdot)
 - [`plantuml/gitlog/SmetanaForGit.java`](../net/sourceforge/plantuml/gitlog/SmetanaForGit.java)
 - [`plantuml/jsondiagram/SmetanaForJson.java`](../net/sourceforge/plantuml/jsondiagram/SmetanaForJson.java)

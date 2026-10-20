@@ -48,9 +48,10 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.UText;
 
-public class StripeCode implements StripeRaw {
+public class StripeCode extends TextBlockMemoized implements StripeRaw {
 
 	final private FontConfiguration fontConfiguration;
 	private final List<String> raw = new ArrayList<>();
@@ -84,7 +85,8 @@ public class StripeCode implements StripeRaw {
 		return terminated;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		double width = 0;
 		double height = 0;
 		for (String s : raw) {
@@ -102,7 +104,11 @@ public class StripeCode implements StripeRaw {
 	public void drawU(UGraphic ug) {
 		double y = 0;
 		for (String s : raw) {
-			final UText shape = UText.build(s, fontConfiguration);
+			
+			final FontConfiguration useFontConfiguration = fontConfiguration.adjustColorForBackground(ug);
+
+			
+			final UText shape = UText.build(s, useFontConfiguration);
 			final StringBounder stringBounder = ug.getStringBounder();
 			final XDimension2D dim = stringBounder.calculateDimension(fontConfiguration.getFont(), s);
 			y += dim.getHeight();

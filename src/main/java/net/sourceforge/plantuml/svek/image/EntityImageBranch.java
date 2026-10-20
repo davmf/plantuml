@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
@@ -45,68 +46,64 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
-import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 
 public class EntityImageBranch extends AbstractEntityImage {
 
-    final private static int SIZE = 12;
+	final private static int SIZE = 12;
 
-    public EntityImageBranch(Entity entity, ISkinParam skinParam) {
-        super(entity);
-    }
+	public EntityImageBranch(Entity entity) {
+		super(entity);
+	}
 
-    public StyleSignatureBasic getDefaultStyleDefinition() {
-        return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
-    }
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY_DIAMOND;
+	}
 
-    public XDimension2D calculateDimension(StringBounder stringBounder) {
-        return new XDimension2D(SIZE * 2, SIZE * 2);
-    }
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
+		return new XDimension2D(SIZE * 2, SIZE * 2);
+	}
 
-    final public void drawU(UGraphic ug) {
-        final UPolygon diams = new UPolygon();
-        diams.addPoint(SIZE, 0);
-        diams.addPoint(SIZE * 2, SIZE);
-        diams.addPoint(SIZE, SIZE * 2);
-        diams.addPoint(0, SIZE);
-        diams.addPoint(SIZE, 0);
+	final public void drawU(UGraphic ug) {
+		final UPolygon diams = new UPolygon();
+		diams.addPoint(SIZE, 0);
+		diams.addPoint(SIZE * 2, SIZE);
+		diams.addPoint(SIZE, SIZE * 2);
+		diams.addPoint(0, SIZE);
+		diams.addPoint(SIZE, 0);
 
-        final Style style = getDefaultStyleDefinition().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
-        
-        // Keep HEAD's entity color handling approach but fallback to style
-        HColor border = getEntity().getColors().getColor(ColorType.LINE);
-        if (border == null)
-            border = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
+		final Style style = getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
+		HColor border = getEntity().getColors().getColor(ColorType.LINE);
+		if (border == null)
+			border = style.value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
 
-        HColor back = getEntity().getColors().getColor(ColorType.BACK);
-        if (back == null)
-            back = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+		HColor back = getEntity().getColors().getColor(ColorType.BACK);
+		if (back == null)
+			back = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+		final UStroke stroke = style.getStroke();
+		final double shadowing = style.getShadowing();
 
-        final UStroke stroke = style.getStroke();
-        final double shadowing = style.getShadowing(); // Use MASTER's improved shadowing
+		diams.setDeltaShadow(shadowing);
+		final UGroup group = new UGroup();
+		group.put(UGroupType.CLASS, "entity");
+		group.put(UGroupType.ID, "entity_" + getEntity().getName());
+		group.put(UGroupType.DATA_ENTITY, getEntity().getName());
+		group.put(UGroupType.DATA_UID, getEntity().getUid());
+		group.put(UGroupType.DATA_QUALIFIED_NAME, getEntity().getQuark().getQualifiedName());
+		ug.startGroup(group);
+		ug.apply(border).apply(back.bg()).apply(stroke).draw(diams);
+		ug.closeGroup();
+	}
 
-        diams.setDeltaShadow(shadowing);
-        
-        // Use MASTER's enhanced UGroup system with metadata
-        final UGroup group = new UGroup();
-        group.put(UGroupType.CLASS, "entity");
-        group.put(UGroupType.ID, "entity_" + getEntity().getName());
-        group.put(UGroupType.DATA_ENTITY, getEntity().getName());
-        group.put(UGroupType.DATA_UID, getEntity().getUid());
-        group.put(UGroupType.DATA_QUALIFIED_NAME, getEntity().getQuark().getQualifiedName());
-        ug.startGroup(group);
-        ug.apply(border).apply(back.bg()).apply(stroke).draw(diams);
-        ug.closeGroup();
-    }
-
-    public ShapeType getShapeType() {
-        return ShapeType.DIAMOND;
-    }
+	public ShapeType getShapeType() {
+		return ShapeType.DIAMOND;
+	}
 
 }

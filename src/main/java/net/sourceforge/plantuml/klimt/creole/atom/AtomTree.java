@@ -58,7 +58,8 @@ public class AtomTree extends AbstractAtom implements Atom {
 		this.lineColor = lineColor;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final Skeleton2 skeleton = new Skeleton2();
 		double width = 0;
 		double height = 0;

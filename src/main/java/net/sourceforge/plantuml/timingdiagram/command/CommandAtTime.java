@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -48,6 +52,8 @@ import net.sourceforge.plantuml.timingdiagram.TimingDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandAtTime extends SingleLineCommand2<TimingDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("@");
 
 	public CommandAtTime() {
 		super(getRegexConcat());
@@ -68,6 +74,22 @@ public class CommandAtTime extends SingleLineCommand2<TimingDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// The actual TimeTick is resolved by TimeTickBuilder.parseTimeTick against clock/diagram state,
+		// so here we only describe the raw time expression from the matched sub-pattern.
+		final String time = TimeTickBuilder.describeTime("TIME", arg);
+		final String code = arg.get("CODE", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding a time mark at ").append(time);
+		if (code != null)
+			sb.append(" labelled '").append(code).append("'");
+		// executeArg fails when the time expression cannot be resolved ("What time?")
+		return sb.toString();
+	}
+
+	@Override
 	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final TimeTick timeTick = TimeTickBuilder.parseTimeTick("TIME", arg, diagram);
@@ -77,6 +99,11 @@ public class CommandAtTime extends SingleLineCommand2<TimingDiagram> {
 		final String code = arg.get("CODE", 0);
 		diagram.addTime(timeTick, code);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

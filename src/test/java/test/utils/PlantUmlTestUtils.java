@@ -1,9 +1,9 @@
 package test.utils;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import java.awt.image.BufferedImage;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,12 +17,13 @@ import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.SourceStringReader;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.error.PSystemError;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.security.SImageIO;
 
 public class PlantUmlTestUtils {
 
 	public static ExportDiagram exportDiagram(String... source) {
-		final SourceStringReader ssr = new SourceStringReader(StringTestUtils.join("\n", source));
+		final SourceStringReader ssr = new SourceStringReader(String.join("\n", source));
 
 		final List<BlockUml> blocks = ssr.getBlocks();
 		if (blocks.isEmpty()) throw new AssertionError("There is no diagram");
@@ -46,14 +47,14 @@ public class PlantUmlTestUtils {
 
 		public ExportDiagram assertDiagramType(Class<? extends Diagram> klass) {
 			assertNoError();
-			assertThat(diagram).isInstanceOf(klass);
+			assertInstanceOf(klass, diagram);
 			return this;
 		}
 
 		public ExportDiagram assertNoError() {
 			if (diagram instanceof PSystemError) {
 				final PSystemError error = (PSystemError) this.diagram;
-				throw new AssertionError("Diagram has an error: " + StringTestUtils.join("\n", error.getPureAsciiFormatted()));
+				throw new AssertionError("Diagram has an error: " + String.join("\n", error.getPureAsciiFormatted()));
 			}
 			return this;
 		}
@@ -64,11 +65,11 @@ public class PlantUmlTestUtils {
 			return os.toByteArray();
 		}
 
-		public BufferedImage asImage() throws IOException {
+		public PortableImage asImage() throws IOException {
 			return asImage(FileFormat.PNG);
 		}
 
-		public BufferedImage asImage(FileFormat fileFormat) throws IOException {
+		public PortableImage asImage(FileFormat fileFormat) throws IOException {
 			return SImageIO.read(asByteArray(fileFormat));
 		}
 

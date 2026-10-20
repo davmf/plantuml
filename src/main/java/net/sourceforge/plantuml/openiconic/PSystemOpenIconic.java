@@ -35,50 +35,27 @@
  */
 package net.sourceforge.plantuml.openiconic;
 
-import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.PlainDiagram;
+import net.sourceforge.plantuml.UgSimpleDiagram;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.color.HColors;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 
-public class PSystemOpenIconic extends PlainDiagram {
-	// ::remove file when __CORE__
+public class PSystemOpenIconic extends UgSimpleDiagram {
 
-	private final String iconName;
-	private final double factor;
+	private final TextBlock textBlock;
 
 	public PSystemOpenIconic(UmlSource source, String iconName, double factor, PreprocessingArtifact preprocessing) {
 		super(source, preprocessing);
-		this.iconName = iconName;
-		this.factor = factor;
+		final OpenIconic icon = OpenIconic.retrieve(iconName);
+		this.textBlock = icon.asTextBlock(HColors.BLACK, factor);
 	}
-
-	@Override
-	protected UDrawable getRootDrawable(FileFormatOption fileFormatOption) {
-		final OpenIcon icon = OpenIcon.retrieve(iconName);
-		// final Dimension2D dim = new Dimension2DDouble(100, 100);
-
-		return icon.asTextBlock(HColors.BLACK, factor);
-
-		// UGraphic2 ug = fileFormat.createUGraphic(dim);
-		// ug = (UGraphic2) ug.apply(new UTranslate(10, 10));
-		// // ug = ug.apply(UChangeColor.nnn(HtmlColorUtils.BLACK));
-		// // ug.draw(URectangle.build(7, 6));
-		// icon.asTextBlock(HtmlColorUtils.BLACK, factor).drawU(ug);
-		// ug.writeImageTOBEMOVED(os, null, 96);
-		// return new ImageDataSimple(dim);
-	}
-
-	// private GraphicStrings getGraphicStrings() throws IOException {
-	// final UFont font = new UFont("SansSerif", Font.PLAIN, 12);
-	// final GraphicStrings result = new GraphicStrings(strings, font,
-	// HtmlColorUtils.BLACK, HtmlColorUtils.WHITE,
-	// UAntiAliasing.ANTI_ALIASING_ON);
-	// return result;
-	// }
 
 	public DiagramDescription getDescription() {
 		return new DiagramDescription("(Open iconic)");
@@ -87,6 +64,17 @@ public class PSystemOpenIconic extends PlainDiagram {
 	@Override
 	public ClockwiseTopRightBottomLeft getDefaultMargins() {
 		return ClockwiseTopRightBottomLeft.same(5);
+	}
+
+	@Override
+	@Fast
+	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		return textBlock.calculateDimension(stringBounder);
+	}
+
+	@Override
+	public void drawU(UGraphic ug) {
+		textBlock.drawU(ug);
 	}
 
 }

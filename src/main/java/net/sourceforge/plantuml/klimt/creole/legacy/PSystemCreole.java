@@ -39,8 +39,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.PlainDiagram;
+import net.sourceforge.plantuml.UgDiagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
@@ -49,15 +50,16 @@ import net.sourceforge.plantuml.klimt.creole.Sheet;
 import net.sourceforge.plantuml.klimt.creole.SheetBlock1;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.skin.SkinParam;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
+import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 
-public class PSystemCreole extends PlainDiagram {
-	// ::remove file when __CORE__
+public class PSystemCreole extends UgDiagram {
 
 	private final List<String> lines = new ArrayList<>();
 
@@ -74,21 +76,16 @@ public class PSystemCreole extends PlainDiagram {
 	}
 
 	@Override
-	protected UDrawable getRootDrawable(FileFormatOption fileFormatOption) {
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
 		final Display display = Display.create(lines);
-		final UFont font = UFont.serif(14);
+		final UFont font = UFontFactory.serif(14);
 		final FontConfiguration fontConfiguration = FontConfiguration.blackBlueTrue(font);
-		final SkinParam skinParam = SkinParam.create(UmlDiagramType.SEQUENCE, Pragma.createEmpty(), getPreprocessingArtifact().getOption());
+		final SkinParam skinParam = SkinParam.create(getMd5map(), PathSystem.fetch(), DiagramType.SEQUENCE,
+				Pragma.createEmpty(), getPreprocessingArtifact().getOption());
 		final Sheet sheet = skinParam.sheet(fontConfiguration, HorizontalAlignment.LEFT, CreoleMode.FULL)
 				.createSheet(display);
-		return new SheetBlock1(sheet, LineBreakStrategy.NONE, 0);
+		return new SheetBlock1(sheet, LineBreakStrategy.NONE, ClockwiseTopRightBottomLeft.none());
 
-		// final Dimension2D dim = TextBlockUtils.getDimension(sheetBlock);
-		// final UGraphic2 ug = fileFormat.createUGraphic(ColorMapper.IDENTITY, 1,
-		// dim, null, false);
-		// // sheetBlock.drawU(ug.apply(UTranslate.dy(10)));
-		// sheetBlock.drawU(ug);
-		// ug.writeImageTOBEMOVED(os, null, 96);
-		// return new ImageDataSimple(dim);
 	}
+
 }

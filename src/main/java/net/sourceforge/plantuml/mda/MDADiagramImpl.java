@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.mda;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.BlockUml;
@@ -47,9 +46,10 @@ import net.sourceforge.plantuml.api.mda.option2.MDADiagram;
 import net.sourceforge.plantuml.api.mda.option2.MDAPackage;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.core.Diagram;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class MDADiagramImpl implements MDADiagram {
-	// ::remove folder when __CORE__
+	
 	public static MDADiagram create(String uml) {
 		List<BlockUml> blocks = new SourceStringReader(uml).getBlocks();
 		if (blocks.size() == 0) {
@@ -77,7 +77,7 @@ public class MDADiagramImpl implements MDADiagram {
 	}
 
 	public Collection<MDAPackage> getPackages() {
-		return Collections.unmodifiableCollection(packages);
+		return MyCollections.unmodifiableCollection(packages);
 	}
 
 }

@@ -38,7 +38,7 @@ package net.sourceforge.plantuml.abel;
 import java.util.Objects;
 
 import net.atmp.CucaDiagram;
-import net.sourceforge.plantuml.OptionFlags;
+import net.sourceforge.plantuml.cli.GlobalConfig;
 import net.sourceforge.plantuml.cucadiagram.EntityPort;
 import net.sourceforge.plantuml.cucadiagram.LinkConstraint;
 import net.sourceforge.plantuml.decoration.LinkDecor;
@@ -100,7 +100,7 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	public LinkStrategy getLinkStrategy() {
 		// return LinkStrategy.LEGACY;
-		return LinkStrategy.SIMPLIER;
+		return LinkStrategy.SIMPLEST;
 	}
 
 	public String idCommentForSvg() {
@@ -239,7 +239,7 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 			return new LinkType(LinkDecor.NONE, LinkDecor.NONE);
 
 		LinkType result = type;
-		if (OptionFlags.USE_INTERFACE_EYE1) {
+		if (GlobalConfig.USE_INTERFACE_EYE1) {
 			if (isLollipopInterfaceEye(cl1))
 				type = type.withLollipopInterfaceEye1();
 
@@ -274,7 +274,7 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 			return new LinkType(LinkDecor.NONE, LinkDecor.NONE);
 
 		LinkType result = type;
-		if (OptionFlags.USE_INTERFACE_EYE1) {
+		if (GlobalConfig.USE_INTERFACE_EYE1) {
 			if (isLollipopInterfaceEye(cl1))
 				type = type.withLollipopInterfaceEye1();
 
@@ -307,6 +307,14 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	public String getQuantifier2() {
 		return getLinkArg().getQuantifier2();
+	}
+
+	public String getRole1() {
+		return getLinkArg().getRole1();
+	}
+
+	public String getRole2() {
+		return getLinkArg().getRole2();
 	}
 
 	public final double getWeight() {

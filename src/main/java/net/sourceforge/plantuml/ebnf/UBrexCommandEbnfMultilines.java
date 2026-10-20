@@ -35,18 +35,22 @@
  */
 package net.sourceforge.plantuml.ebnf;
 
+import java.util.Collection;
+
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 import com.plantuml.ubrex.builder.UBrexConcat;
 import com.plantuml.ubrex.builder.UBrexLeaf;
 import com.plantuml.ubrex.builder.UBrexNamed;
 
 import net.sourceforge.plantuml.Lazy;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.Trim;
 import net.sourceforge.plantuml.command.UBrexCommandMultilines2;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.utils.BlocLines;
 
 public class UBrexCommandEbnfMultilines extends UBrexCommandMultilines2<PSystemEbnf> {
@@ -57,8 +61,12 @@ public class UBrexCommandEbnfMultilines extends UBrexCommandMultilines2<PSystemE
 		super(getRegexConcat(), MultilinesStrategy.KEEP_STARTING_QUOTE, Trim.BOTH, END);
 	}
 
-	static UnicodeBracketedExpression getRegexConcat() {
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
+	}
 
+	static UnicodeBracketedExpression getRegexConcat() {
 		return new UBrexNamed("LINE", //
 				UBrexConcat.build( //
 						new UBrexLeaf("「〴an_」"), //
@@ -71,9 +79,23 @@ public class UBrexCommandEbnfMultilines extends UBrexCommandMultilines2<PSystemE
 	}
 
 	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// executeNow hands the whole block to addBlocLines without extracting fields; the rule body runs
+		// until a line ending in ';', so every line carries content
+		return "Declaring an EBNF rule with " + lines.size() + " lines";
+	}
+
+	@Override
 	protected CommandExecutionResult executeNow(PSystemEbnf diagram, BlocLines lines, ParserPass currentPass)
 			throws NoSuchColorException {
 		return diagram.addBlocLines(lines, null, null);
 	}
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FirstTokens.ANYTHING;
+	}
+
 
 }

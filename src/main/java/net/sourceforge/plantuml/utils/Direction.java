@@ -36,23 +36,22 @@
 package net.sourceforge.plantuml.utils;
 
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.regex.RegexResult;
 
 public enum Direction {
 	RIGHT, LEFT, DOWN, UP;
 
 	public Direction getInv() {
-		if (this == RIGHT)
+		switch (this) {
+		case RIGHT:
 			return LEFT;
-
-		if (this == LEFT)
+		case LEFT:
 			return RIGHT;
-
-		if (this == DOWN)
+		case DOWN:
 			return UP;
-
-		if (this == UP)
+		case UP:
 			return DOWN;
-
+		}
 		throw new IllegalStateException();
 	}
 
@@ -61,41 +60,50 @@ public enum Direction {
 	}
 
 	public static Direction fromChar(char c) {
-		if (c == '<') {
-			return Direction.LEFT;
+		switch (c) {
+		case '<':
+			return LEFT;
+		case '>':
+			return RIGHT;
+		case '^':
+			return UP;
+		default:
+			return DOWN;
 		}
-		if (c == '>') {
-			return Direction.RIGHT;
-		}
-		if (c == '^') {
-			return Direction.UP;
-		}
-		return Direction.DOWN;
+	}
+
+	public static Direction getWBSDirection(RegexResult arg) {
+		final String type = arg.get(Constant.WBS_TYPE, 0);
+		Direction direction = type.contains("-") ? LEFT : RIGHT;
+		
+		final String dir = arg.getLazzy(Constant.WBS_DIRECTION, 0);
+		if ("<".equals(dir))
+			direction = LEFT;
+		else if (">".equals(dir))
+			direction = RIGHT;
+
+		return direction;
 	}
 
 	public Direction clockwise() {
-		if (this == RIGHT) {
+		switch (this) {
+		case RIGHT:
 			return DOWN;
-		}
-		if (this == LEFT) {
+		case LEFT:
 			return UP;
-		}
-		if (this == DOWN) {
+		case DOWN:
 			return LEFT;
-		}
-		if (this == UP) {
+		case UP:
 			return RIGHT;
 		}
 		throw new IllegalStateException();
 	}
 
 	public static Direction leftOrRight(XPoint2D p1, XPoint2D p2) {
-		if (p1.getX() < p2.getX()) {
-			return Direction.LEFT;
-		}
-		if (p1.getX() > p2.getX()) {
-			return Direction.RIGHT;
-		}
+		if (p1.getX() < p2.getX())
+			return LEFT;
+		if (p1.getX() > p2.getX())
+			return RIGHT;
 		throw new IllegalArgumentException();
 	}
 
@@ -104,20 +112,18 @@ public enum Direction {
 		final double y1 = p1.getY();
 		final double x2 = p2.getX();
 		final double y2 = p2.getY();
-		if (x1 == x2 && y1 == y2) {
+		if (x1 == x2 && y1 == y2)
 			return null;
-		}
+
 		if (x1 == x2) {
-			if (y2 > y1) {
-				return Direction.DOWN;
-			}
-			return Direction.UP;
+			if (y2 > y1)
+				return DOWN;
+			return UP;
 		}
 		if (y1 == y2) {
-			if (x2 > x1) {
-				return Direction.RIGHT;
-			}
-			return Direction.LEFT;
+			if (x2 > x1)
+				return RIGHT;
+			return LEFT;
 		}
 		throw new IllegalArgumentException("Not a H or V line!");
 
@@ -126,9 +132,9 @@ public enum Direction {
 	public static Direction lazzyValueOf(String s) {
 		s = s.toUpperCase();
 		if ("TOP".equals(s))
-			return Direction.UP;
+			return UP;
 		if ("BOTTOM".equals(s))
-			return Direction.DOWN;
+			return DOWN;
 		return valueOf(s);
 	}
 }

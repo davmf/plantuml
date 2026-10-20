@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
 import net.sourceforge.plantuml.activitydiagram3.ftile.BoxStyle;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines3;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
@@ -47,14 +51,19 @@ import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.utils.BlocLines;
 
 public class CommandBackwardLong3 extends CommandMultilines3<ActivityDiagram3> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("backward");
+
 	private final static IRegex END = new RegexConcat(//
 			new RegexLeaf(1, "TEXT", "(.*)"), //
-			new RegexLeaf(2, "END", CommandActivity3.endingGroup()), //
+			new RegexLeaf(";"), //
+			RegexLeaf.spaceZeroOrMore(), //
+			Stereogroup.optionalStereogroup(), //
 			RegexLeaf.end());
 
 	public CommandBackwardLong3() {
@@ -73,25 +82,54 @@ public class CommandBackwardLong3 extends CommandMultilines3<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: 'backward :text...' defines a multiline activity
+		// drawn on the return edge of the enclosing repeat loop. Unlike the
+		// single line form, no '(...)' arrow decoration is available here.
+		lines = lines.removeEmptyColumns();
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		final RegexResult lineLast = getEndingPattern().matcher(lines.getLast().getString());
+		if (line0 == null || lineLast == null)
+			return "Defining a backward activity on the return edge of the repeat loop";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Defining a backward activity of ").append(lines.size())
+				.append(lines.size() == 1 ? " line" : " lines")
+				.append(" of text on the return edge of the repeat loop");
+
+		final Stereogroup stereogroup = Stereogroup.build(lineLast);
+		if (stereogroup.isEmpty() == false) {
+			sb.append(", stereotyped ").append(lineLast.get("STEREOGROUP", 0));
+			final BoxStyle style = stereogroup.getBoxStyle();
+			if (style != BoxStyle.PLAIN)
+				sb.append(" (box style: ").append(style.name().toLowerCase()).append(")");
+		}
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeNow(ActivityDiagram3 diagram, BlocLines lines) throws NoSuchColorException {
 		lines = lines.removeEmptyColumns();
 		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
 		final RegexResult lineLast = getEndingPattern().matcher(lines.getLast().getString());
-		final String end = lineLast.get("END", 0);
-		final String stereo = lineLast.get("END", 1);
+		final Stereogroup stereogroup = Stereogroup.build(lineLast);
+		final Stereotype stereotype = stereogroup.buildStereotype();
 
-		Stereotype stereotype = null;
-		if (stereo != null)
-			stereotype = Stereotype.build(stereo);
-
-		final BoxStyle style = BoxStyle.fromString(end);
-		BoxStyle.checkDeprecatedWarning(diagram, end);
-
-		lines = lines.removeStartingAndEnding(line0.get("DATA", 0), end.length());
+		final BoxStyle style = stereogroup.getBoxStyle();
+		lines = lines.removeStartingAndEnding(line0.get("DATA", 0), 0);
+		lines = lines.overrideLastLine(lineLast.get("TEXT", 0));
 
 		final LinkRendering in = LinkRendering.none();
 		final LinkRendering out = LinkRendering.none();
 
 		return diagram.backward(lines.toDisplay(), style, in, out, stereotype);
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

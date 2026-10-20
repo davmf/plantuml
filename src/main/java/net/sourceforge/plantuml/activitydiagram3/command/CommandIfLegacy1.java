@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandIfLegacy1 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("if");
 
 	public CommandIfLegacy1() {
 		super(getRegexConcat());
@@ -70,12 +76,27 @@ public class CommandIfLegacy1 extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// Legacy 'if (test) then when label' spelling of
+		// "if (test) then (label)": opens a conditional block, closed by
+		// 'endif', the text after 'when' labelling the 'then' arrow.
+		return "Starting an 'if', testing \"" + arg.get("TEST", 0) + "\", 'then' arrow labelled \""
+				+ arg.get("WHEN", 0) + "\" (legacy 'then when' syntax)";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 
 		diagram.startIf(Display.getWithNewlines(diagram.getPragma(), arg.get("TEST", 0)), Display.getWithNewlines(diagram.getPragma(), arg.get("WHEN", 0)), null,
 				null, null);
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

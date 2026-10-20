@@ -34,48 +34,46 @@
  */
 package net.sourceforge.plantuml.jsondiagram;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sourceforge.plantuml.AbstractPSystem;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.PerformanceIssue;
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandControl;
 import net.sourceforge.plantuml.command.CommonCommands;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.json.JsonArray;
 import net.sourceforge.plantuml.json.JsonValue;
-import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.drawing.hand.UGraphicHandwritten;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
-import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.yaml.Highlighted;
 
-public class JsonDiagram extends TitledDiagram {
+public class JsonDiagram extends TitledDiagram implements TextBlock {
 
 	private final JsonValue root;
 	private final List<Highlighted> highlighted;
 	private final boolean handwritten;
+	private XDimension2D cachedDimension;
+	private Class<? extends StringBounder> lastCaller;
 
-	public JsonDiagram(UmlSource source, UmlDiagramType type, JsonValue json, List<Highlighted> highlighted,
+	public JsonDiagram(UmlSource source, DiagramType type, JsonValue json, List<Highlighted> highlighted,
 			StyleExtractor styleExtractor, PreprocessingArtifact preprocessing) {
 		super(source, type, null, preprocessing);
 		this.handwritten = styleExtractor.isHandwritten();
@@ -97,34 +95,28 @@ public class JsonDiagram extends TitledDiagram {
 			final BlocLines lines = BlocLines.singleString(scale);
 			for (Command cmd : cmds)
 				if (cmd.isValid(lines) == CommandControl.OK)
-					((SingleLineCommand2<AbstractPSystem>) cmd).execute(this, lines, ParserPass.ONE);
+					((SingleLineCommand2<Diagram>) cmd).execute(this, lines, ParserPass.ONE);
 		}
 	}
 
 	public DiagramDescription getDescription() {
-		if (getUmlDiagramType() == UmlDiagramType.YAML)
+		if (getDiagramType() == DiagramType.YAML)
 			return new DiagramDescription("(Yaml)");
 
-		if (getUmlDiagramType() == UmlDiagramType.HCL)
+		if (getDiagramType() == DiagramType.HCL)
 			return new DiagramDescription("(HCL)");
 
 		return new DiagramDescription("(Json)");
 	}
 
 	@Override
-	protected ImageData exportDiagramNow(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-
-		return createImageBuilder(fileFormatOption).drawable(getTextMainBlock(fileFormatOption)).write(os);
-	}
-
-	private void drawInternal(UGraphic ug) {
+	public void drawU(UGraphic ug) {
 		if (handwritten)
 			ug = new UGraphicHandwritten(ug);
 		if (root == null) {
 			final Display display = Display.getWithNewlines(getSkinParam().getPragma(),
-					"Your data does not sound like " + getUmlDiagramType() + " data");
-			final FontConfiguration fontConfiguration = FontConfiguration.blackBlueTrue(UFont.courier(14));
+					"Your data does not sound like " + getDiagramType() + " data");
+			final FontConfiguration fontConfiguration = FontConfiguration.blackBlueTrue(UFontFactory.monospace(14));
 			TextBlock result = display.create(fontConfiguration, HorizontalAlignment.LEFT, getSkinParam());
 			result = TextBlockUtils.withMargin(result, 5, 2);
 			result.drawU(ug);
@@ -134,17 +126,19 @@ public class JsonDiagram extends TitledDiagram {
 	}
 
 	@Override
-	protected TextBlock getTextMainBlock(final FileFormatOption fileFormatOption) {
-		return new AbstractTextBlock() {
+	@PerformanceIssue
+	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		final Class<? extends StringBounder> currentCaller = stringBounder.getClass();
+		if (cachedDimension == null || lastCaller != currentCaller) {
+			cachedDimension = TextBlockUtils.getMinMax(this, stringBounder, true).getDimension();
+			lastCaller = currentCaller;
+		}
+		return cachedDimension;
+	}
 
-			public void drawU(UGraphic ug) {
-				drawInternal(ug);
-			}
-
-			public XDimension2D calculateDimension(StringBounder stringBounder) {
-				return TextBlockUtils.getMinMax(getTextMainBlock(fileFormatOption), stringBounder, true).getDimension();
-			}
-		};
+	@Override
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
+		return this;
 	}
 
 }

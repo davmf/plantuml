@@ -36,8 +36,6 @@
  */
 package net.sourceforge.plantuml.regexdiagram;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -47,7 +45,7 @@ import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.ebnf.ETile;
 import net.sourceforge.plantuml.ebnf.ETileAlternation;
@@ -62,17 +60,16 @@ import net.sourceforge.plantuml.ebnf.ETileRegexGroupAllBut;
 import net.sourceforge.plantuml.ebnf.ETileZeroOrMore;
 import net.sourceforge.plantuml.ebnf.Symbol;
 import net.sourceforge.plantuml.jsondiagram.StyleExtractor;
+import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
@@ -83,7 +80,7 @@ import net.sourceforge.plantuml.utils.CharInspector;
 public class PSystemRegex extends TitledDiagram {
 
 	public PSystemRegex(UmlSource source, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.REGEX, null, preprocessing);
+		super(source, DiagramType.REGEX, null, preprocessing);
 		final StyleExtractor styleExtractor = new StyleExtractor(source.iterator2());
 
 		final ISkinParam skinParam = getSkinParam();
@@ -93,7 +90,7 @@ public class PSystemRegex extends TitledDiagram {
 			e.printStackTrace();
 		}
 
-		this.style = ETile.getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		this.style = skinParam.getCurrentStyleBuilder().getMergedStyle(ETile.getStyleQuery());
 		this.fontConfiguration = style.getFontConfiguration(skinParam.getIHtmlColorSet());
 		this.colorSet = skinParam.getIHtmlColorSet();
 		this.lineColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
@@ -110,36 +107,21 @@ public class PSystemRegex extends TitledDiagram {
 	private final HColor lineColor;
 
 	@Override
-	protected ImageData exportDiagramNow(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-		return createImageBuilder(fileFormatOption).drawable(getTextMainBlock(fileFormatOption)).write(os);
-	}
-
-//	public CommandExecutionResult changeLanguage(String lang) {
-//		setParam("language", lang);
-//		return CommandExecutionResult.ok();
-//	}
-//
-//	public CommandExecutionResult useDescriptiveNames(String useDescriptive) {
-//		setParam("descriptive", useDescriptive);
-//		return CommandExecutionResult.ok();
-//	}
-
-	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
 //		while (stack.size() > 1)
 //			concatenation();
 		final ETile peekFirst = stack.peekFirst();
-		final TextBlock tb = new AbstractTextBlock() {
+		final TextBlock tb = new TextBlock() {
 
 			@Override
 			public void drawU(UGraphic ug) {
+				ug = ug.apply(new UTranslate(5, 5));
 				peekFirst.drawU(ug.apply(lineColor));
 			}
 
 			@Override
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
-				return peekFirst.calculateDimension(stringBounder);
+				return peekFirst.calculateDimension(stringBounder).delta(10);
 			}
 		};
 		return TextBlockUtils.addBackcolor(tb, null);
@@ -171,9 +153,9 @@ public class PSystemRegex extends TitledDiagram {
 				else if (token.getType() == ReTokenType.NAMED_GROUP)
 					namedGroup(token.getData());
 				else if (token.getType() == ReTokenType.CLASS)
-					pushEtileBox(token, Symbol.LITTERAL);
+					pushEtileBox(token, Symbol.LITERAL);
 				else if (token.getType() == ReTokenType.ANCHOR)
-					pushEtileBox(token, Symbol.LITTERAL);
+					pushEtileBox(token, Symbol.LITERAL);
 				else if (token.getType() == ReTokenType.CONCATENATION_IMPLICIT)
 					concatenation();
 				else if (token.getType() == ReTokenType.ALTERNATIVE)
@@ -185,7 +167,7 @@ public class PSystemRegex extends TitledDiagram {
 				else if (token.getType() == ReTokenType.QUANTIFIER && token.getData().startsWith("?"))
 					optional();
 				else if (token.getType() == ReTokenType.QUANTIFIER && token.getData().startsWith("{"))
-					repetitionOneOrMore(token.getData());
+					repetitionBraced(token.getData());
 				else
 					throw new RegexParsingException(token.toString());
 		} catch (RegexParsingException ex) {
@@ -248,6 +230,78 @@ public class PSystemRegex extends TitledDiagram {
 		final ETile arg1 = stack.removeFirst();
 		stack.addFirst(new ETileOneOrMore(arg1, repetition, fontConfiguration.bigger(-2), getSkinParam()));
 
+	}
+
+	private void repetitionBraced(String repetition) {
+		// repetition is of the form "{N}", "{N,}" or "{N,M}" (optionally followed by '?')
+		final int min = parseBracedMin(repetition);
+		final boolean unboundedOrZeroMax = isBracedMaxUnbounded(repetition) || parseBracedMax(repetition) == 0;
+		if (min == 0 && unboundedOrZeroMax) {
+			// {0,} is equivalent to *
+			repetitionZeroOrMore();
+			return;
+		}
+		if (min == 0) {
+			final int max = parseBracedMax(repetition);
+			if (max == 1) {
+				// {0,1} is equivalent to ?
+				optional();
+				return;
+			}
+			// {0,N} with N >= 2: wrap a OneOrMore (labeled) into an Optional
+			final ETile arg1 = stack.removeFirst();
+			final ETile inner = new ETileOneOrMore(arg1, repetition, fontConfiguration.bigger(-2), getSkinParam());
+			stack.addFirst(new ETileOptional2(inner, getSkinParam()));
+			return;
+		}
+		repetitionOneOrMore(repetition);
+	}
+
+	private static String stripBraces(String repetition) {
+		String s = repetition;
+		if (s.endsWith("?"))
+			s = s.substring(0, s.length() - 1);
+		if (s.startsWith("{") && s.endsWith("}"))
+			s = s.substring(1, s.length() - 1);
+		return s;
+	}
+
+	private static int parseBracedMin(String repetition) {
+		final String inside = stripBraces(repetition);
+		final int comma = inside.indexOf(',');
+		final String minStr = (comma == -1 ? inside : inside.substring(0, comma)).trim();
+		if (minStr.length() == 0)
+			return 0;
+		try {
+			return Integer.parseInt(minStr);
+		} catch (NumberFormatException ex) {
+			return -1;
+		}
+	}
+
+	private static int parseBracedMax(String repetition) {
+		final String inside = stripBraces(repetition);
+		final int comma = inside.indexOf(',');
+		if (comma == -1) {
+			// {N} : max == min
+			return parseBracedMin(repetition);
+		}
+		final String maxStr = inside.substring(comma + 1).trim();
+		if (maxStr.length() == 0)
+			return -1;
+		try {
+			return Integer.parseInt(maxStr);
+		} catch (NumberFormatException ex) {
+			return -1;
+		}
+	}
+
+	private static boolean isBracedMaxUnbounded(String repetition) {
+		final String inside = stripBraces(repetition);
+		final int comma = inside.indexOf(',');
+		if (comma == -1)
+			return false;
+		return inside.substring(comma + 1).trim().length() == 0;
 	}
 
 	private void alternation() {

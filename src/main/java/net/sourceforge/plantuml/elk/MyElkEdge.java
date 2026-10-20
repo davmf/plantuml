@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.elk;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -74,8 +75,10 @@ import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
@@ -85,8 +88,9 @@ import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.svek.RoleLabels;
 import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactoryExtends;
@@ -101,6 +105,8 @@ public class MyElkEdge implements UDrawable {
 	private final TextBlock centerLabel;
 	private final TextBlock headLabel;
 	private final TextBlock tailLabel;
+	private final TextBlock tailRole;
+	private final TextBlock headRole;
 
 	private final SName styleName;
 
@@ -113,7 +119,8 @@ public class MyElkEdge implements UDrawable {
 	private final UTranslate translate;
 
 	public MyElkEdge(CucaDiagram diagram, SName styleName, Link link, ElkEdge edge, TextBlock centerLabel,
-			TextBlock tailLabel, TextBlock headLabel, double magicY2, Map<Entity, MyElkCluster> elkClusters,
+			TextBlock tailLabel, TextBlock headLabel, TextBlock tailRole, TextBlock headRole,
+			double magicY2, Map<Entity, MyElkCluster> elkClusters,
 			UTranslate translate, Map<Entity, IEntityImage> nodeImages) {
 		this.link = link;
 		this.edge = edge;
@@ -124,6 +131,8 @@ public class MyElkEdge implements UDrawable {
 		this.centerLabel = centerLabel;
 		this.tailLabel = tailLabel;
 		this.headLabel = headLabel;
+		this.tailRole = tailRole;
+		this.headRole = headRole;
 		this.styleName = styleName;
 		this.magicY2 = magicY2;
 		this.elkClusters = elkClusters;
@@ -131,10 +140,9 @@ public class MyElkEdge implements UDrawable {
 	}
 
 	private Style getStyle() {
-		final StyleSignature result = StyleSignatureBasic
-				.of(SName.root, SName.element, diagram.getUmlDiagramType().getStyleName(), SName.arrow)
-				.withTOBECHANGED(link.getStereotype());
-		return result.getMergedStyle(diagram.getSkinParam().getCurrentStyleBuilder());
+		final StyleQuery result = StyleQueries.ARROW.add(diagram.getDiagramType().getStyleName())
+				.withStereotype(link.getStereotype());
+		return diagram.getSkinParam().getCurrentStyleBuilder().getMergedStyle(result);
 	}
 
 	@DuplicateCode(reference = "SvekEdge")
@@ -232,6 +240,8 @@ public class MyElkEdge implements UDrawable {
 	}
 
 	private void drawLabels(UGraphic ug) {
+		XPoint2D tailLabelPos = null;
+		XPoint2D headLabelPos = null;
 		for (ElkLabel label : edge.getLabels()) {
 			final double x = label.getX();
 			final double y = label.getY();
@@ -240,15 +250,40 @@ public class MyElkEdge implements UDrawable {
 			final String type = label.getText();
 			if ("X".equals(type))
 				labelLink = centerLabel;
-			else if ("1".equals(type))
+			else if ("1".equals(type)) {
 				labelLink = tailLabel;
-			else if ("2".equals(type))
+				tailLabelPos = new XPoint2D(x, y);
+			} else if ("2".equals(type)) {
 				labelLink = headLabel;
-			else
+				headLabelPos = new XPoint2D(x, y);
+			} else
 				continue;
 
 			labelLink.drawU(ug.apply(new UTranslate(x, y)));
 		}
+
+		// Draw role labels at reflected positions
+		final List<ElkEdgeSection> sections = edge.getSections();
+		if (sections.size() > 0) {
+			final ElkEdgeSection section = sections.get(0);
+			final XPoint2D startPt = new XPoint2D(section.getStartX(), section.getStartY());
+			final XPoint2D endPt = new XPoint2D(section.getEndX(), section.getEndY());
+
+			if (tailRole != null && tailLabelPos != null)
+				drawRoleLabel(ug, tailRole, tailLabel, tailLabelPos, startPt, endPt);
+
+			if (headRole != null && headLabelPos != null)
+				drawRoleLabel(ug, headRole, headLabel, headLabelPos, endPt, startPt);
+		}
+	}
+
+	private void drawRoleLabel(UGraphic ug, TextBlock role, TextBlock quantifier,
+			XPoint2D quantifierPos, XPoint2D thisEndpoint, XPoint2D otherEndpoint) {
+		final StringBounder stringBounder = ug.getStringBounder();
+		final XPoint2D pos = RoleLabels.getPosition(quantifier.calculateDimension(stringBounder),
+				role.calculateDimension(stringBounder), quantifierPos, thisEndpoint, otherEndpoint, null,
+				Collections.<RectangleArea>emptyList());
+		role.drawU(ug.apply(new UTranslate(pos.getX(), pos.getY())));
 	}
 
 	private void drawSections(UGraphic ug, final Collection<ElkEdgeSection> sections, MagneticBorder magneticBorder1,

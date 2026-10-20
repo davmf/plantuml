@@ -38,6 +38,7 @@ package net.sourceforge.plantuml.sequencediagram;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
 import net.sourceforge.plantuml.style.StyleBuilder;
+import net.sourceforge.plantuml.utils.LineLocation;
 
 public class MessageExo extends AbstractMessage {
 
@@ -46,8 +47,8 @@ public class MessageExo extends AbstractMessage {
 	final private boolean shortArrow;
 
 	public MessageExo(StyleBuilder styleBuilder, Participant p, MessageExoType type, Display label,
-			ArrowConfiguration arrowConfiguration, String messageNumber, boolean shortArrow) {
-		super(styleBuilder, label, arrowConfiguration, messageNumber);
+			ArrowConfiguration arrowConfiguration, String messageNumber, boolean shortArrow, LineLocation location) {
+		super(styleBuilder, label, arrowConfiguration, messageNumber, location);
 		this.participant = p;
 		this.type = type;
 		this.shortArrow = shortArrow;

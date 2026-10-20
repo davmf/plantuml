@@ -62,6 +62,10 @@ public class TextNavigator implements CharSequence {
 		return sb.toString();
 	}
 
+	public TextNavigator copy() {
+		return new TextNavigator(content, p1, p2, reversed);
+	}
+
 	private TextNavigator(CharSequence content, int p1, int p2, boolean reversed) {
 		if (p2 < p1)
 			throw new IllegalArgumentException();

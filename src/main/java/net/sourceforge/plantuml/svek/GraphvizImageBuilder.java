@@ -46,18 +46,18 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
+import net.sourceforge.plantuml.annotation.Fast;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.crash.GraphvizCrash;
 import net.sourceforge.plantuml.decoration.symbol.USymbolHexagon;
 import net.sourceforge.plantuml.dot.DotData;
 import net.sourceforge.plantuml.dot.ExeState;
-import net.sourceforge.plantuml.dot.GraphvizRuntimeEnvironment;
 import net.sourceforge.plantuml.dot.UnparsableGraphvizException;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -75,16 +75,16 @@ import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.skin.SkinParam;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.image.EntityImageClass;
 import net.sourceforge.plantuml.svek.image.EntityImageNote;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.utils.Log;
 
@@ -113,19 +113,18 @@ public final class GraphvizImageBuilder {
 
 	}
 
-	final public StyleSignature getDefaultStyleDefinitionArrow(Stereotype stereotype) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, styleName, SName.arrow);
+	final public StyleQuery getDefaultStyleDefinitionArrow(Stereotype stereotype) {
+		StyleQuery result = StyleQueries.ARROW.add(styleName);
 		if (stereotype != null)
-			result = result.withTOBECHANGED(stereotype);
+			result = result.withStereotype(stereotype);
 
 		return result;
 	}
 
-	final public StyleSignature getStyleArrowCardinality(Stereotype stereotype) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, styleName, SName.arrow,
-				SName.cardinality);
+	final public StyleQuery getStyleArrowCardinality(Stereotype stereotype) {
+		StyleQuery result = StyleQueries.ARROW_CARDINALITY.add(styleName);
 		if (stereotype != null)
-			result = result.withTOBECHANGED(stereotype);
+			result = result.withStereotype(stereotype);
 
 		return result;
 	}
@@ -163,6 +162,8 @@ public final class GraphvizImageBuilder {
 			return backColor;
 		}
 
+		@Fast
+		@Override
 		public XDimension2D calculateDimension(StringBounder stringBounder) {
 			return new XDimension2D(10, 10);
 		}
@@ -171,7 +172,7 @@ public final class GraphvizImageBuilder {
 			return MinMax.fromDim(calculateDimension(stringBounder));
 		}
 
-		public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
+		public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 			return null;
 		}
 
@@ -199,18 +200,17 @@ public final class GraphvizImageBuilder {
 
 	// Duplicate SvekResult / GeneralImageBuilder
 	private HColor getBackcolor() {
-		final Style style = StyleSignatureBasic.of(SName.root, SName.document)
-				.getMergedStyle(dotData.getSkinParam().getCurrentStyleBuilder());
+		final Style style = dotData.getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.DOCUMENT);
 		return style.value(PName.BackGroundColor).asColor(dotData.getSkinParam().getIHtmlColorSet());
 	}
 
 	public IEntityImage buildImage(StringBounder stringBounder, BaseFile basefile, String dotStrings[],
 			boolean fileFormatOptionIsDebugSvek) {
-		// ::comment when __CORE__
 		if (dotData.isDegeneratedWithFewEntities(0))
 			return new EntityImageSimpleEmpty(dotData.getSkinParam().getBackgroundColor());
 
-		if (dotData.isDegeneratedWithFewEntities(1) && dotData.getUmlDiagramType() != UmlDiagramType.STATE) {
+		if (dotData.isDegeneratedWithFewEntities(1) && dotData.geDiagramType() != DiagramType.STATE) {
 			final Entity single = dotData.getLeafs().iterator().next();
 			final Entity group = single.getParentContainer();
 			if (group.isRoot() && single.getUSymbol() instanceof USymbolHexagon == false) {
@@ -229,12 +229,24 @@ public final class GraphvizImageBuilder {
 			if (link.isRemoved())
 				continue;
 
+			if (link.getRole1() != null || link.getRole2() != null)
+				SvekEdge.reserveRoomForRoles(link, dotData.getSkinParam(), stringBounder,
+						link.getStyleBuilder().getMergedStyle(getStyleArrowCardinality(link.getStereotype()))
+								.getFontConfiguration(dotData.getSkinParam().getIHtmlColorSet()));
+		}
+
+		for (Link link : dotData.getLinks()) {
+			if (link.isRemoved())
+				continue;
+
 			try {
 				final ISkinParam skinParam = dotData.getSkinParam();
-				final FontConfiguration labelFont = getDefaultStyleDefinitionArrow(link.getStereotype())
-						.getMergedStyle(link.getStyleBuilder()).getFontConfiguration(skinParam.getIHtmlColorSet());
-				final FontConfiguration cardinalityFont = getStyleArrowCardinality(link.getStereotype())
-						.getMergedStyle(link.getStyleBuilder()).getFontConfiguration(skinParam.getIHtmlColorSet());
+				final FontConfiguration labelFont = link.getStyleBuilder()
+						.getMergedStyle(getDefaultStyleDefinitionArrow(link.getStereotype()))
+						.getFontConfiguration(skinParam.getIHtmlColorSet());
+				final FontConfiguration cardinalityFont = link.getStyleBuilder()
+						.getMergedStyle(getStyleArrowCardinality(link.getStereotype()))
+						.getFontConfiguration(skinParam.getIHtmlColorSet());
 
 				final SvekEdge line = new SvekEdge(link, skinParam, stringBounder, labelFont, cardinalityFont,
 						dotStringFactory.getBibliotekon(), pragma, dotStringFactory.getGraphvizVersion());
@@ -261,11 +273,12 @@ public final class GraphvizImageBuilder {
 			}
 		}
 
-		if (dotStringFactory.illegalDotExe())
-			return error(dotStringFactory.getDotExe());
-
+		if (!TeaVM.isTeaVM()) {
+			if (dotStringFactory.illegalDotExe())
+				return error(dotStringFactory.getDotExe());
+		}
 		if (basefile == null && (fileFormatOptionIsDebugSvek || isSvekTrace())
-				&& (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE
+				&& (SecurityUtils.getSecurityProfile() == SecurityProfile.INSECURE
 						|| SecurityUtils.getSecurityProfile() == SecurityProfile.LEGACY
 						|| SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX))
 			basefile = new BaseFile(null);
@@ -274,12 +287,11 @@ public final class GraphvizImageBuilder {
 		try {
 			svg = dotStringFactory.getSvg(stringBounder, dotMode, basefile, dotStrings);
 		} catch (IOException e) {
-			return GraphvizCrash.build(source.getPlainString(BackSlash.lineSeparator()),
-					GraphvizRuntimeEnvironment.getInstance().graphviz244onWindows(), e);
+			return GraphvizCrash.build(source.getPlainString(BackSlash.lineSeparator()), false, e);
 		}
 		if (svg.length() == 0)
-			return GraphvizCrash.build(source.getPlainString(BackSlash.lineSeparator()),
-					GraphvizRuntimeEnvironment.getInstance().graphviz244onWindows(), new EmptySvgException());
+			return GraphvizCrash.build(source.getPlainString(BackSlash.lineSeparator()), false,
+					new EmptySvgException());
 
 		final String graphvizVersion = extractGraphvizVersion(svg);
 		try {
@@ -292,10 +304,6 @@ public final class GraphvizImageBuilder {
 			throw new UnparsableGraphvizException(e, graphvizVersion, svg,
 					source.getPlainString(BackSlash.lineSeparator()));
 		}
-		// ::done
-		// ::uncomment when __CORE__
-		// return null;
-		// ::done
 
 	}
 
@@ -328,7 +336,7 @@ public final class GraphvizImageBuilder {
 		return single;
 	}
 
-	// ::comment when __CORE__
+	// ::comment when __TEAVM__
 	private IEntityImage error(File dotExe) {
 		final List<String> msg = new ArrayList<>();
 		msg.add("Dot Executable: " + dotExe);

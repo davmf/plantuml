@@ -34,37 +34,34 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.eps;
 
-import java.awt.Color;
+
 import java.awt.Shape;
 import java.awt.font.TextLayout;
 import java.awt.geom.PathIterator;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontStyle;
-import net.sourceforge.plantuml.klimt.font.UFontContext;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.shape.UText;
 
 public class DriverTextEps implements UDriver<UText, EpsGraphics> {
 
-	private final ClipContainer clipContainer;
 	private final EpsStrategy strategy;
 
-	public DriverTextEps(ClipContainer clipContainer, EpsStrategy strategy) {
-		this.clipContainer = clipContainer;
+	public DriverTextEps(EpsStrategy strategy) {
 		this.strategy = strategy;
 	}
 
 	public void draw(UText shape, double x, double y, ColorMapper mapper, UParam param, EpsGraphics eps) {
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null && clip.isInside(x, y) == false)
 			return;
 
@@ -77,12 +74,12 @@ public class DriverTextEps implements UDriver<UText, EpsGraphics> {
 			return;
 		}
 
-		final TextLayout textLayout = UFontContext.EPS.createTextLayout(shape);
+		final TextLayout textLayout = shape.createTextLayout();
 
 		MinMax dim = null;
 
 		if (fontConfiguration.containsStyle(FontStyle.BACKCOLOR)) {
-			final Color extended = fontConfiguration.getExtendedColor().toColor(mapper);
+			final XColor extended = fontConfiguration.getExtendedColor().toColor(mapper);
 			if (extended != null) {
 				eps.setStrokeColor(extended);
 				eps.setFillColor(extended);

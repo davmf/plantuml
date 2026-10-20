@@ -49,6 +49,7 @@ import net.sourceforge.plantuml.skin.Context2D;
 import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.LineLocation;
 
 class MessageSelfArrow extends Arrow {
 
@@ -61,8 +62,8 @@ class MessageSelfArrow extends Arrow {
 
 	public MessageSelfArrow(AtomicInteger counter, Pragma pragma, double startingY, Rose skin, ArrowComponent arrow,
 			LivingParticipantBox p1, double deltaY, Url url, double deltaX, boolean isReverse, int currentLevel,
-			double halfLifeWidth) {
-		super(counter, pragma, startingY, skin, arrow, url);
+			double halfLifeWidth, LineLocation location) {
+		super(counter, pragma, startingY, skin, arrow, url, location);
 		this.p1 = p1;
 		this.deltaY = deltaY;
 		this.deltaX = deltaX;

@@ -34,8 +34,9 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.svg;
 
-import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.klimt.ClipContainer;
+import java.util.ArrayList;
+import java.util.List;
+
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
@@ -47,25 +48,39 @@ import net.sourceforge.plantuml.klimt.font.FontStyle;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.font.UFontContext;
+import net.sourceforge.plantuml.klimt.font.UFontFace;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.UText;
-import net.sourceforge.plantuml.project.lang.Words;
 
 public class DriverTextSvg implements UDriver<UText, SvgGraphics> {
-	// ::remove file when __HAXE__
+
+	// Collects extra colored lines (underline/strikethrough) that cannot be
+	// expressed as simple CSS text-decoration because they use a custom color.
+	static class ExtraLines {
+		private final List<HColor> colors = new ArrayList<>();
+		private final List<Double> deltaYs = new ArrayList<>();
+
+		void add(HColor color, double deltaY) {
+			colors.add(color);
+			deltaYs.add(deltaY);
+		}
+
+		void drawAll(double x, double y, double width, UFont font, ColorMapper mapper, SvgGraphics svg) {
+			for (int i = 0; i < colors.size(); i++) {
+				svg.setStrokeColor(colors.get(i).toSvg(mapper));
+				svg.setStrokeWidth(font.getSize2D() / 28.0, null);
+				svg.svgLine(x, y + deltaYs.get(i), x + width, y + deltaYs.get(i), 0);
+			}
+		}
+	}
 
 	private final StringBounder stringBounder;
-	private final ClipContainer clipContainer;
-
-	public DriverTextSvg(StringBounder stringBounder, ClipContainer clipContainer) {
-		if (stringBounder == null)
-			System.err.println("stringBounder=" + stringBounder);
+	public DriverTextSvg(StringBounder stringBounder) {
 		this.stringBounder = stringBounder;
-		this.clipContainer = clipContainer;
 	}
 
 	public void draw(UText shape, double x, double y, ColorMapper mapper, UParam param, SvgGraphics svg) {
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null && clip.isInside(x, y) == false)
 			return;
 
@@ -74,12 +89,21 @@ public class DriverTextSvg implements UDriver<UText, SvgGraphics> {
 			return;
 
 		final UFont font = fontConfiguration.getFont();
+		final UFontFace face = fontConfiguration.getFontFace();
+
+		// Emit full numeric CSS weight (e.g. "300", "500", "700") so that weights
+		// parsed by SvgSaxParser and set via FontWeight style property are preserved
+		// in SVG output rather than being collapsed to binary bold/normal.
 		String fontWeight = null;
-		if (fontConfiguration.containsStyle(FontStyle.BOLD) || font.isBold())
-			fontWeight = "bold";
+		if (fontConfiguration.containsStyle(FontStyle.BOLD))
+			// Explicit BOLD decoration: honour face weight if already >= 700, else force 700
+			fontWeight = (face.getCssWeight() >= 700) ? face.toCssWeightString() : "700";
+		else if (face.getCssWeight() != 400)
+			// Non-default weight from FontWeight style property or parsed SVG input
+			fontWeight = face.toCssWeightString();
 
 		String fontStyle = null;
-		if (fontConfiguration.containsStyle(FontStyle.ITALIC) || font.isItalic())
+		if (fontConfiguration.containsStyle(FontStyle.ITALIC) || face.isItalic())
 			fontStyle = "italic";
 
 		String text = shape.getText();
@@ -93,36 +117,42 @@ public class DriverTextSvg implements UDriver<UText, SvgGraphics> {
 				text = text.substring(1);
 			}
 		}
-		text = StringUtils.trin(text);
+		// Not StringUtils.trin(), which removes U+00A0 as well: a blank-only text has just been
+		// turned into non-breaking spaces precisely so that it survives this trim.
+		text = text.trim();
 		final XDimension2D dim = stringBounder.calculateDimension(font, text);
 		final double width = dim.getWidth();
 		final double height = dim.getHeight();
 
-		HColor extraLine = null;
+		final ExtraLines extraLines = new ExtraLines();
 
-		double deltaLineY = 0;
-		String textDecoration = null;
+		final StringBuilder decorations = new StringBuilder();
+
 		if (fontConfiguration.containsStyle(FontStyle.UNDERLINE)
 				&& fontConfiguration.getUnderlineStroke().getThickness() > 0) {
 			if (fontConfiguration.getExtendedColor() == null)
-				textDecoration = "underline";
-			else {
-				extraLine = fontConfiguration.getExtendedColor();
-				deltaLineY = font.getSize2D() / 14.0;
-			}
-		} else if (fontConfiguration.containsStyle(FontStyle.STRIKE)) {
+				decorations.append("underline ");
+			else
+				extraLines.add(fontConfiguration.getExtendedColor(), font.getSize2D() / 14.0);
+
+		}
+
+		if (fontConfiguration.containsStyle(FontStyle.STRIKE)) {
 			if (fontConfiguration.getExtendedColor() == null)
-				textDecoration = "line-through";
-			else {
-				extraLine = fontConfiguration.getExtendedColor();
-				deltaLineY = -font.getSize2D() / 4.0;
-			}
-		} else if (fontConfiguration.containsStyle(FontStyle.WAVE)) {
+				decorations.append("line-through ");
+			else
+				extraLines.add(fontConfiguration.getExtendedColor(), -font.getSize2D() / 4.0);
+
+		}
+
+		if (fontConfiguration.containsStyle(FontStyle.WAVE)) {
 			// Beware that some current SVG implementations do not render the wave properly
 			// (e.g. Chrome just draws a straight line)
 			// Works ok on Firefox 85.
-			textDecoration = "wavy underline";
+			decorations.append("wavy underline ");
 		}
+
+		final String textDecoration = decorations.length() > 0 ? decorations.toString().trim() : null;
 
 		String backColor = null;
 		if (fontConfiguration.containsStyle(FontStyle.BACKCOLOR)) {
@@ -143,14 +173,10 @@ public class DriverTextSvg implements UDriver<UText, SvgGraphics> {
 
 		final HColor textColor = fontConfiguration.getColor();
 		svg.setFillColor(textColor.toSvg(mapper));
-		svg.text(text, x, y, font.getFamily(text, UFontContext.SVG), font.getSize(), fontWeight, fontStyle, textDecoration,
-				width, fontConfiguration.getAttributes(), backColor);
+		svg.text(text, x, y, font.getFamily(text, UFontContext.SVG), font.getSize(), fontWeight, fontStyle,
+				textDecoration, width, fontConfiguration.getAttributes(), backColor, shape.getOrientation());
 
-		if (extraLine != null) {
-			svg.setStrokeColor(extraLine.toSvg(mapper));
-			svg.setStrokeWidth(font.getSize2D() / 28.0, null);
-			svg.svgLine(x, y + deltaLineY, x + width, y + deltaLineY, 0);
-		}
+		extraLines.drawAll(x, y, width, font, mapper, svg);
 
 	}
 }

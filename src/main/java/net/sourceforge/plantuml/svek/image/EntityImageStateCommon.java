@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LineConfigurable;
 import net.sourceforge.plantuml.klimt.color.ColorType;
@@ -46,18 +47,22 @@ import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
-import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleBuilder;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.url.Url;
 
 public abstract class EntityImageStateCommon extends AbstractEntityImage {
 
-	final protected TextBlock title;
+	public static final StyleQuery STYLE = StyleQueries.STATEDIAG_STATE;
+
+	final protected TextBlock name;
 	final protected Url url;
 
 	final protected LineConfigurable lineConfig;
@@ -67,42 +72,47 @@ public abstract class EntityImageStateCommon extends AbstractEntityImage {
 
 		this.lineConfig = entity;
 
-		final FontConfiguration titleFontConfiguration = getStyleStateTitle(entity, getSkinParam())
+		final FontConfiguration nameFc = getStyleStateName(entity.getStereotype(),
+				getSkinParam().getCurrentStyleBuilder())
 				.getFontConfiguration(getSkinParam().getIHtmlColorSet(), entity.getColors());
 
-		final HorizontalAlignment horizontalAlignment = getStyleState(entity, getSkinParam()).getHorizontalAlignment();
-		this.title = entity.getDisplay().create8(titleFontConfiguration, horizontalAlignment, getSkinParam(),
-				CreoleMode.FULL, getStyleState().wrapWidth());
+		final HorizontalAlignment horizontalAlignment = getStyleState(entity.getStereotype(),
+				getSkinParam().getCurrentStyleBuilder()).getHorizontalAlignment();
+		this.name = entity.getDisplay().create8(nameFc, horizontalAlignment, getSkinParam(), CreoleMode.FULL,
+				getStyleState().wrapWidth());
 		this.url = entity.getUrl99();
 
 	}
 
-	public static Style getStyleStateTitle(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.stateDiagram, SName.state, SName.title)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+	@Override
+	public StyleQuery getStyleQuery() {
+		return STYLE;
 	}
 
-	public static Style getStyleStateHeader(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.stateDiagram, SName.state, SName.header)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+	public static Style getStyleStateName(Stereotype stereotype, StyleBuilder styleBuilder) {
+		final StyleQuery toto1 = STYLE.add(SName.name);
+		return styleBuilder.getMergedStyle(toto1.withStereotype(stereotype));
 	}
 
-	public static Style getStyleState(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.stateDiagram, SName.state)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+	public static Style getStyleStateDescription(Stereotype stereotype, StyleBuilder styleBuilder) {
+		return styleBuilder.getMergedStyle(STYLE.add(SName.description).withStereotype(stereotype));
 	}
 
-	public static Style getStyleStateBody(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.stateDiagram, SName.stateBody)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+	public static Style getStyleState(Stereotype stereotype, StyleBuilder styleBuilder) {
+		return styleBuilder.getMergedStyle(STYLE.withStereotype(stereotype));
+	}
+
+	public static Style getStyleStateBody(Stereotype stereotype, StyleBuilder styleBuilder) {
+		return styleBuilder.getMergedStyle(STYLE.add(SName.body).withStereotype(stereotype));
 	}
 
 	final protected Style getStyleState() {
-		return getStyleState(getEntity(), getSkinParam());
+		return getStyleState(getEntity().getStereotype(), getSkinParam().getCurrentStyleBuilder());
 	}
 
-	final protected Style getStyleStateHeader() {
-		return getStyleStateHeader(getEntity(), getSkinParam());
+	final protected Style getStyleStateDescription() {
+		return getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(STYLE.add(SName.name).withStereotype(getEntity().getStereotype()));
 	}
 
 	final public ShapeType getShapeType() {
@@ -119,20 +129,25 @@ public abstract class EntityImageStateCommon extends AbstractEntityImage {
 		return rect;
 	}
 
-	final protected UGraphic applyColor(UGraphic ug) {
+	final protected UGraphic applyColor(UGraphic ug, Style style) {
 
-		HColor border = lineConfig.getColors().getColor(ColorType.LINE);
-		if (border == null)
-			border = getStyleState().value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
+		HColor border = getBorderColor();
 
 		ug = ug.apply(border);
 		HColor backcolor = lineConfig.getColors().getColor(ColorType.BACK);
 		if (backcolor == null)
-			backcolor = getStyleState().value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
+			backcolor = style.value(PName.BackGroundColor).asColor(getSkinParam().getIHtmlColorSet());
 
 		ug = ug.apply(backcolor.bg());
 
 		return ug;
+	}
+
+	final protected HColor getBorderColor() {
+		HColor border = lineConfig.getColors().getColor(ColorType.LINE);
+		if (border == null)
+			border = getStyleState().value(PName.LineColor).asColor(getSkinParam().getIHtmlColorSet());
+		return border;
 	}
 
 }

@@ -40,7 +40,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -54,7 +53,6 @@ import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.text.StringLocated;
 
 public class BlocLines implements Iterable<StringLocated> {
-	// ::remove file when __HAXE__
 
 	private List<StringLocated> lines;
 
@@ -67,6 +65,14 @@ public class BlocLines implements Iterable<StringLocated> {
 			sb.append("]");
 		}
 		return sb.toString();
+	}
+
+	public List<String> asList() {
+		final List<String> result = new ArrayList<>();
+		for (StringLocated line : lines)
+			result.add(line.getString());
+
+		return MyCollections.unmodifiableList(result);
 	}
 
 	@JawsStrange
@@ -111,7 +117,7 @@ public class BlocLines implements Iterable<StringLocated> {
 	}
 
 	private BlocLines(List<StringLocated> lines) {
-		this.lines = Collections.unmodifiableList(lines);
+		this.lines = MyCollections.unmodifiableList(lines);
 	}
 
 	public Display toDisplay() throws NoSuchColorException {
@@ -268,8 +274,10 @@ public class BlocLines implements Iterable<StringLocated> {
 		final List<StringLocated> copy = new ArrayList<>(lines);
 		copy.set(0, new StringLocated(data, null));
 		final int n = copy.size() - 1;
-		final StringLocated s = copy.get(n);
-		copy.set(n, s.substring(0, s.getString().length() - removeAtEnd));
+		if (removeAtEnd > 0) {
+			final StringLocated s = copy.get(n);
+			copy.set(n, s.substring(0, s.getString().length() - removeAtEnd));
+		}
 		return new BlocLines(copy);
 	}
 

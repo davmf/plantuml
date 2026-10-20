@@ -35,12 +35,16 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 
@@ -55,8 +59,10 @@ public abstract class CommandMultilines2<S extends Diagram> implements Command<S
 	private final Lazy<Pattern2> end;
 
 	public CommandMultilines2(IRegex patternStart, MultilinesStrategy strategy, Trim trimEnd, Lazy<Pattern2> end) {
-		assert patternStart.getPatternAsString().startsWith("^") && patternStart.getPatternAsString().endsWith("$");
-		assert end != null;
+		if (TeaVM.a())
+			assert patternStart.getPatternAsString().startsWith("^") && patternStart.getPatternAsString().endsWith("$");
+		if (TeaVM.a())
+			assert end != null;
 
 		this.strategy = strategy;
 		this.starting = patternStart;
@@ -74,7 +80,7 @@ public abstract class CommandMultilines2<S extends Diagram> implements Command<S
 
 	final public CommandControl isValid(BlocLines lines) {
 		lines = lines.cleanList(strategy);
-		if (isCommandForbidden())
+		if (isCommandForbidden(lines))
 			return CommandControl.NOT_OK;
 
 		if (syntaxWithFinalBracket()) {
@@ -98,7 +104,7 @@ public abstract class CommandMultilines2<S extends Diagram> implements Command<S
 		if (lines.size() == 1)
 			return CommandControl.OK_PARTIAL;
 
-		final Matcher2 m1 = end.get().matcher(trimEnd.trim(lines.getLast()));
+		final Matcher2 m1 = end.get().matcher(trimEnd.trim(lines.getLast()), 0);
 		if (m1.matches() == false)
 			return CommandControl.OK_PARTIAL;
 
@@ -117,12 +123,19 @@ public abstract class CommandMultilines2<S extends Diagram> implements Command<S
 		}
 	}
 
+	@Override
+	final public String explain(BlocLines lines) {
+		lines = lines.cleanList(strategy);
+		if (syntaxWithFinalBracket())
+			lines = lines.eventuallyMoveBracket();
+
+		return explainNow(lines);
+	}
+
+	abstract protected String explainNow(BlocLines lines);
+
 	protected abstract CommandExecutionResult executeNow(S system, BlocLines lines, ParserPass currentPass)
 			throws NoSuchColorException;
-
-	protected boolean isCommandForbidden() {
-		return false;
-	}
 
 	protected CommandControl finalVerification(BlocLines lines) {
 		return CommandControl.OK;
@@ -139,6 +152,13 @@ public abstract class CommandMultilines2<S extends Diagram> implements Command<S
 
 	public Pattern2 getEndPattern() {
 		return end.get();
+	}
+
+	// Read from the pattern rather than declared beside it, so that the regex stays the only
+	// place this command says what it accepts.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FirstTokens.from(starting);
 	}
 
 }

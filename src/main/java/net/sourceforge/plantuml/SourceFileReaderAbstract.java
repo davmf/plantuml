@@ -54,49 +54,66 @@ import java.util.List;
 import java.util.Set;
 
 import net.sourceforge.plantuml.api.ImageDataSimple;
+import net.sourceforge.plantuml.cli.ExitStatus;
+import net.sourceforge.plantuml.cli.GlobalConfig;
+import net.sourceforge.plantuml.cli.GlobalConfigKey;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.crash.CrashReportHandler;
 import net.sourceforge.plantuml.error.PSystemError;
+import net.sourceforge.plantuml.error.PSystemUnsupported;
 import net.sourceforge.plantuml.file.SuggestedFile;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.preproc.Defines;
-import net.sourceforge.plantuml.preproc.FileWithSuffix;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public abstract class SourceFileReaderAbstract implements ISourceFileReader {
-	// ::remove file when __CORE__
-	// ::remove file when __HAXE__
 
 	final private File file;
 
 	private FileFormatOption fileFormatOption;
 	private boolean checkMetadata;
-	private boolean noerror;
+	private boolean noErrorImage;
 
 	final private Charset charset;
 
 	private final BlockUmlBuilder builder;
 	private int cpt;
 
+	protected final boolean ignoreSuggestedName;
+
 	protected final SuggestedFile getSuggestedFile(File outputDirectory, String newName) {
 		final File outFile = new File(outputDirectory, newName);
 		return SuggestedFile.fromOutputFile(outFile, getFileFormatOption().getFileFormat(), cpt++);
 	}
 
-	public SourceFileReaderAbstract(File file, FileFormatOption fileFormatOption, Defines defines, List<String> config,
-			String charsetName) throws IOException {
+	public SourceFileReaderAbstract(boolean ignoreSuggestedName, File file, FileFormatOption fileFormatOption,
+			Defines defines, List<String> config, String charsetName) throws IOException {
 
 		if (file.exists() == false)
 			throw new IllegalArgumentException();
 
+		this.ignoreSuggestedName = ignoreSuggestedName;
 		this.file = file;
 		this.charset = charsetOrDefault(charsetName);
 		this.fileFormatOption = fileFormatOption;
 		this.builder = new BlockUmlBuilder(config, charset, defines, getReader(charset),
-				SFile.fromFile(file.getAbsoluteFile().getParentFile()), FileWithSuffix.getFileName(file));
+				SFile.fromFile(file.getAbsoluteFile().getParentFile()), file.getName());
+	}
+
+	@Override
+	final public void updateStatus(ExitStatus errorStatus) {
+		errorStatus.goesHasFiles();
+		for (BlockUml blockUml : builder.getBlockUmls()) {
+			errorStatus.goesHasBlocks();
+			final Diagram system = blockUml.getDiagram();
+			if (system instanceof PSystemError || system instanceof PSystemUnsupported)
+				errorStatus.goesHasErrors();
+		}
+
 	}
 
 	protected final FileFormatOption getFileFormatOption() {
@@ -107,9 +124,9 @@ public abstract class SourceFileReaderAbstract implements ISourceFileReader {
 		this.checkMetadata = checkMetadata;
 	}
 
-	public boolean hasError() {
+	public final boolean hasError() {
 		for (final BlockUml b : builder.getBlockUmls())
-			if (b.getDiagram() instanceof PSystemError)
+			if (b.getDiagram() instanceof PSystemError || b.getDiagram() instanceof PSystemUnsupported)
 				return true;
 		return false;
 	}
@@ -122,7 +139,7 @@ public abstract class SourceFileReaderAbstract implements ISourceFileReader {
 		return new InputStreamReader(new BufferedInputStream(new FileInputStream(file)), charset);
 	}
 
-	public final Set<FileWithSuffix> getIncludedFiles() throws IOException {
+	public final Set<File> getIncludedFiles() throws IOException {
 		return builder.getIncludedFiles();
 	}
 
@@ -137,11 +154,12 @@ public abstract class SourceFileReaderAbstract implements ISourceFileReader {
 	}
 
 	private List<GeneratedImage> getCrashedImage(BlockUml blockUml, Throwable t, SFile outputFile) throws IOException {
-		final GeneratedImage image = new GeneratedImageImpl(outputFile, "Crash Error", blockUml, FileImageData.CRASH);
+		final GeneratedImage image = new GeneratedImageImpl(outputFile, "Crash Error", blockUml, FileImageData.CRASH,
+				t);
 		try (OutputStream os = outputFile.createBufferedOutputStream()) {
 			final String flash = blockUml.getFlashData();
 			final CrashReportHandler report = new CrashReportHandler(t, null, flash);
-			report.anErrorHasOccured(t, flash);
+			report.anErrorHasOccurred(t, flash);
 			report.youShouldSendThisDiagram();
 			report.addEmptyLine();
 			report.exportDiagramError(fileFormatOption, (long) 42, os);
@@ -150,7 +168,7 @@ public abstract class SourceFileReaderAbstract implements ISourceFileReader {
 	}
 
 	protected void exportWarnOrErrIfWord(SFile f, Diagram system) throws FileNotFoundException {
-		if (OptionFlags.getInstance().isWord() && f != null) {
+		if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.WORD) && f != null) {
 			final String warnOrError = system.getWarningOrError();
 			if (warnOrError != null) {
 				final String name = f.getName().substring(0, f.getName().length() - 4) + ".err";
@@ -174,48 +192,52 @@ public abstract class SourceFileReaderAbstract implements ISourceFileReader {
 			final Diagram system;
 			try {
 				system = blockUml.getDiagram();
+
+				if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.SILENTLY_COMPLETELY_IGNORE_ERRORS)
+						&& (system instanceof PSystemError || system instanceof PSystemUnsupported))
+					continue;
+
+				// GlobalConfig.getInstance().logData(SFile.fromFile(file), system);
+				final List<FileImageData> exportDiagrams;
+				if (noErrorImage && (system instanceof PSystemError || system instanceof PSystemUnsupported)) {
+					exportDiagrams = new ArrayList<FileImageData>();
+					exportDiagrams.add(
+							new FileImageData(null, new ImageDataSimple(new XDimension2D(0, 0), FileImageData.ERROR)));
+				} else
+					exportDiagrams = PSystemUtils.exportDiagrams(system, suggested, fileFormatOption, checkMetadata);
+
+				if (exportDiagrams.size() > 1)
+					cpt += exportDiagrams.size() - 1;
+
+				for (FileImageData fdata : exportDiagrams) {
+					final String desc = "[" + file.getName() + "] " + system.getDescription();
+					final SFile f = fdata.getFile();
+					exportWarnOrErrIfWord(f, system);
+					final GeneratedImage generatedImage = new GeneratedImageImpl(f, desc, blockUml, fdata.getStatus(),
+							fdata.getRootCause());
+					result.add(generatedImage);
+				}
+
 			} catch (Throwable t) {
 				Logme.error(t);
-				if (OptionFlags.getInstance().isSilentlyCompletelyIgnoreErrors() || noerror)
+				if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.SILENTLY_COMPLETELY_IGNORE_ERRORS)
+						|| noErrorImage)
 					continue;
 
 				return getCrashedImage(blockUml, t, suggested.getFile(0));
-			}
-
-			if (OptionFlags.getInstance().isSilentlyCompletelyIgnoreErrors() && system instanceof PSystemError)
-				continue;
-
-			OptionFlags.getInstance().logData(SFile.fromFile(file), system);
-			final List<FileImageData> exportDiagrams;
-			if (noerror && system instanceof PSystemError) {
-				exportDiagrams = new ArrayList<FileImageData>();
-				exportDiagrams
-						.add(new FileImageData(null, new ImageDataSimple(new XDimension2D(0, 0), FileImageData.ERROR)));
-			} else
-				exportDiagrams = PSystemUtils.exportDiagrams(system, suggested, fileFormatOption, checkMetadata);
-
-			if (exportDiagrams.size() > 1)
-				cpt += exportDiagrams.size() - 1;
-
-			for (FileImageData fdata : exportDiagrams) {
-				final String desc = "[" + file.getName() + "] " + system.getDescription();
-				final SFile f = fdata.getFile();
-				exportWarnOrErrIfWord(f, system);
-				final GeneratedImage generatedImage = new GeneratedImageImpl(f, desc, blockUml, fdata.getStatus());
-				result.add(generatedImage);
 			}
 
 		}
 
 		Log.info(() -> "Number of image(s): " + result.size());
 
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	abstract protected SuggestedFile getSuggestedFile(BlockUml blockUml) throws FileNotFoundException;
 
-	protected final void setNoerror(boolean noerror) {
-		this.noerror = noerror;
+	protected final void setNoErrorImage(boolean noErrorImage) {
+		this.noErrorImage = noErrorImage;
 
 	}
 

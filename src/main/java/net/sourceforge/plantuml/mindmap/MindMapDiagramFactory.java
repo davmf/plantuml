@@ -44,8 +44,8 @@ import net.sourceforge.plantuml.command.CommonCommands;
 import net.sourceforge.plantuml.command.PSystemCommandFactory;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
 public class MindMapDiagramFactory extends PSystemCommandFactory {
 
@@ -58,22 +58,17 @@ public class MindMapDiagramFactory extends PSystemCommandFactory {
 		CommonCommands.addCommonCommands1(cmds);
 		// cmds.add(new CommandMindMapTabulation());
 		cmds.add(new CommandRankDir());
-		cmds.add(new CommandMindMapOrgmode());
 		cmds.add(new CommandMindMapOrgmodeMultiline());
+		cmds.add(new CommandMindMapOrgmode());
 		cmds.add(new CommandMindMapRoot());
 		cmds.add(new CommandMindMapPlus());
 		cmds.add(new CommandMindMapDirection());
 	}
 
 	@Override
-	public MindMapDiagram createEmptyDiagram(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
+	public MindMapDiagram createEmptyDiagram(PathSystem pathSystem, UmlSource source, Previous previous,
+			PreprocessingArtifact preprocessing) {
 		return new MindMapDiagram(source, preprocessing);
 	}
-	
-	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return UmlDiagramType.MINDMAP;
-	}
-
 
 }

@@ -35,42 +35,27 @@
  */
 package net.sourceforge.plantuml.cucadiagram;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.Style;
 
-public class BodierMap implements Bodier {
+public class BodierMap extends BodierAbstract {
 
-	private final List<CharSequence> rawBody = new ArrayList<>();
 	private final Map<String, String> map = new LinkedHashMap<String, String>();
-	private Entity leaf;
 
 	@Override
 	public void muteClassToObject() {
 		throw new UnsupportedOperationException();
-	}
-
-	public BodierMap() {
-	}
-
-	@Override
-	public void setLeaf(Entity leaf) {
-		this.leaf = Objects.requireNonNull(leaf);
-
 	}
 
 	private static final Pattern p = Pattern.compile("(\\*-+_?\\>)");
@@ -117,12 +102,8 @@ public class BodierMap implements Bodier {
 	public TextBlock getBody(ISkinParam skinParam, final boolean showMethods, final boolean showFields,
 			Stereotype stereotype, Style style, FontConfiguration fontConfiguration) {
 		final LineBreakStrategy wordWrap = style.wrapWidth();
-		return new TextBlockMap(fontConfiguration, skinParam, map, wordWrap);
-	}
-
-	@Override
-	public List<CharSequence> getRawBody() {
-		return Collections.unmodifiableList(rawBody);
+		final HorizontalAlignment horizontalAlignment = style.getHorizontalAlignment();
+		return new TextBlockMap(fontConfiguration, skinParam, map, wordWrap, horizontalAlignment);
 	}
 
 }

@@ -35,7 +35,12 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -52,6 +57,8 @@ import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandUrl extends SingleLineCommand2<AbstractEntityDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("url", "urlfor", "urlof");
 
 	public CommandUrl() {
 		super(getRegexConcat());
@@ -73,7 +80,17 @@ public class CommandUrl extends SingleLineCommand2<AbstractEntityDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(AbstractEntityDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// Attaches a URL link to an already existing element (executeArg fails
+		// if it does not exist).
+		final String code = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.get("CODE", 0));
+		return "Attaching a URL link to '" + code + "': " + arg.get(UrlBuilder.URL_KEY, 0);
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(AbstractEntityDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final String idShort = arg.get("CODE", 0);
 
 		final Quark<Entity> quark = diagram.quarkInContext(true, diagram.cleanId(idShort));
@@ -81,12 +98,17 @@ public class CommandUrl extends SingleLineCommand2<AbstractEntityDiagram> {
 		if (entity == null)
 			return CommandExecutionResult.error(quark.getName() + " does not exist");
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 
 		final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 		final Url url = urlBuilder.getUrl(urlString);
 		entity.addUrl(url);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

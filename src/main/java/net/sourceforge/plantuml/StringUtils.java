@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -48,27 +47,25 @@ import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 // Do not move
 public class StringUtils {
 
 	public static String goUpperCase(String s) {
-		// ::revert when __HAXE__
 		return s.toUpperCase(Locale.ENGLISH);
-		// return s.toUpperCase();
-		// ::done
 	}
 
 	public static String goLowerCase(String s) {
-		// ::revert when __HAXE__
 		return s.toLowerCase(Locale.ENGLISH);
-		// return s.toLowerCase();
-		// ::done
 	}
 
 	public static String eventuallyRemoveStartingAndEndingDoubleQuote(String s, String format) {
 		if (s == null)
 			return null;
+
+		if (s.length() < 2)
+			return s;
 
 		if (format.contains("\"") && s.length() > 1 && isDoubleQuote(s.charAt(0))
 				&& isDoubleQuote(s.charAt(s.length() - 1)))
@@ -97,8 +94,6 @@ public class StringUtils {
 		return c == '\"' || c == '\u201c' || c == '\u201d' || c == '\u00ab' || c == '\u00bb';
 	}
 
-	// ::comment when __HAXE__
-
 	public static final char USER_NEWLINE = '\uEE00';
 	public static final char USER_TAB = '\uEE01';
 
@@ -119,9 +114,6 @@ public class StringUtils {
 
 	public static final char BOLD_START = '\uEEF2';
 	public static final char BOLD_END = '\uEEF1';
-
-	// Used in BackSlash
-	public static final char PRIVATE_BLOCK = '\uE000';
 
 	public static final char INTERNAL_BOLD = '\uE100';
 
@@ -155,7 +147,7 @@ public class StringUtils {
 	}
 
 	final static public List<String> getSplit(Pattern2 pattern, String line) {
-		final Matcher2 m = pattern.matcher(line);
+		final Matcher2 m = pattern.matcher(line, 0);
 		if (m.find() == false)
 			return null;
 
@@ -331,26 +323,43 @@ public class StringUtils {
 		return false;
 	}
 
-	public static char hiddenLesserThan() {
-		return '\u0005';
-	}
+//	public static char hiddenLesserThan() {
+//		return '\u0005';
+//	}
+//
+//	public static char hiddenBiggerThan() {
+//		return '\u0006';
+//	}
+//	public static String hideComparatorCharacters(String s) {
+//		s = s.replace('<', hiddenLesserThan());
+//		s = s.replace('>', hiddenBiggerThan());
+//		return s;
+//	}
 
-	public static char hiddenBiggerThan() {
-		return '\u0006';
-	}
-
-	public static String hideComparatorCharacters(String s) {
-		s = s.replace('<', hiddenLesserThan());
-		s = s.replace('>', hiddenBiggerThan());
-		return s;
-	}
-
-	public static String showComparatorCharacters(String s) {
-		s = s.replace(hiddenLesserThan(), '<');
-		s = s.replace(hiddenBiggerThan(), '>');
-		return s;
-	}
-
+//	public static String showComparatorCharacters(String s) {
+//	    final int len = s.length();
+//	    for (int i = 0; i < len; i++) {
+//	        final char c = s.charAt(i);
+//	        if (c == '\u0005' || c == '\u0006') {
+//	            // First hidden char found at position i.
+//	            // Copy the unchanged prefix and then translate the rest in one pass.
+//	            final char[] buf = new char[len];
+//	            s.getChars(0, i, buf, 0);
+//	            buf[i] = (c == '\u0005') ? '<' : '>';
+//	            for (int j = i + 1; j < len; j++) {
+//	                final char cj = s.charAt(j);
+//	                if (cj == '\u0005')
+//	                    buf[j] = '<';
+//	                else if (cj == '\u0006')
+//	                    buf[j] = '>';
+//	                else
+//	                    buf[j] = cj;
+//	            }
+//	            return new String(buf);
+//	        }
+//	    }
+//	    return s;
+//	}
 //	private static int getWidth(Display stringsToDisplay) {
 //		int result = 1;
 //		for (CharSequence s : stringsToDisplay)
@@ -425,11 +434,11 @@ public class StringUtils {
 	public static List<String> splitComma(String s) {
 		s = trin(s);
 		final List<String> result = new ArrayList<>();
-		final Matcher2 m = SPLIT_COMMA.matcher(s);
+		final Matcher2 m = SPLIT_COMMA.matcher(s, 0);
 		while (m.find())
 			result.add(eventuallyRemoveStartingAndEndingDoubleQuote(m.group(0)));
 
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public static String getUid(String uid1, int uid2) {
@@ -439,7 +448,7 @@ public class StringUtils {
 	public static <O> List<O> merge(List<O> l1, List<O> l2) {
 		final List<O> result = new ArrayList<>(l1);
 		result.addAll(l2);
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public static boolean endsWithBackslash(final String s) {
@@ -465,6 +474,9 @@ public class StringUtils {
 	private static final Pattern UNICODE = Pattern.compile("\\<U\\+([0-9a-fA-F]{4,5})\\>");
 
 	public static String manageUnicodeNotationUplus(String s) {
+		if (s.indexOf("<U+") < 0)
+			return s;
+
 		final Matcher matcher = UNICODE.matcher(s);
 		final StringBuffer result = new StringBuffer(); // Can't be switched to StringBuilder in order to support Java 8
 		while (matcher.find()) {
@@ -477,33 +489,6 @@ public class StringUtils {
 		return result.toString();
 	}
 
-	private static final Pattern AMP_HASH = Pattern.compile("\\&#([0-9]+);");
-
-	public static String manageAmpDiese(String s) {
-		final Matcher matcher = AMP_HASH.matcher(s);
-		final StringBuffer result = new StringBuffer(); // Can't be switched to StringBuilder in order to support Java 8
-		while (matcher.find()) {
-			final int codePoint = Integer.parseInt(matcher.group(1));
-			final String unicode = new String(Character.toChars(codePoint));
-			matcher.appendReplacement(result, unicode);
-		}
-		matcher.appendTail(result);
-		return result.toString();
-	}
-
-	public static String manageTildeArobaseStart(String s) {
-		s = s.replaceAll("~@start", "@start");
-		return s;
-	}
-
-	public static String trinNoTrace(CharSequence s) {
-		return s.toString().trim();
-	}
-
-	public static String manageEscapedTabs(String s) {
-		return s.replace("\\t", "\t");
-	}
-
 	public static long seed(String string) {
 		long h = 1125899906842597L; // prime
 		final int len = string.length();
@@ -514,53 +499,198 @@ public class StringUtils {
 		return h;
 	}
 
-	// ::done
+	private static final double[] POW10 = { 1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14,
+			1e15 };
+
+	// Formats x with at most `decimal` digits after the decimal point, trimming useless
+	// trailing zeros (and the dot if it becomes orphan). Moved out of SvgGraphics#format
+	// so it can be unit-tested and reused; see StringUtilsTest for the edge cases.
+	//
+	// This avoids String.format/Locale/BigDecimal, which are costly on the JVM and even
+	// more so once TeaVM compiles this to JavaScript: x is scaled to an integer, rounded
+	// with plain double/int arithmetic, and the result string is built by hand from its
+	// digits. That scale-and-round step can (extremely rarely) disagree with an exact
+	// decimal rounding when x lands almost exactly on a rounding boundary, so such
+	// near-ties -- and magnitudes too large to scale safely as an int -- fall back to
+	// the slower but always-exact String.format-based path below.
+	public static String formatDecimal(final double x, final int decimal) {
+		if (x == 0.0)
+			return "0";
+
+		if (decimal >= 0 && decimal < POW10.length && Double.isNaN(x) == false && Double.isInfinite(x) == false) {
+			final boolean negative = x < 0;
+			final double abs = negative ? -x : x;
+			final double scaled = abs * POW10[decimal];
+
+			if (scaled < 2_000_000_000.0) {
+				final double floor = Math.floor(scaled);
+				final double frac = scaled - floor;
+				// how far scaled can plausibly be from its true value, given the two
+				// multiplications (abs, POW10) that produced it
+				final double margin = Math.max(scaled, 1.0) * 4e-15;
+				if (Math.abs(frac - 0.5) >= margin) {
+					final int rounded = (int) floor + (frac < 0.5 ? 0 : 1);
+					return buildFixedDecimal(rounded, decimal, negative);
+				}
+				// A true tie: abs is an exact multiple of 2^-(decimal+1) (the scaling by a
+				// power of two is exact), so abs is exactly the decimal number
+				// (2k+1)/(2*10^decimal), scaled is exact, and String.format rounds it half up.
+				// Common with coordinates like 30.5625. Unlike a near-tie (1.005, 0.145...),
+				// there is nothing to decide, so the slow path is not needed.
+				final double dyadic = abs * (double) (1L << (decimal + 1));
+				if (dyadic == Math.floor(dyadic) && frac == 0.5) {
+					final int rounded = (int) floor + 1;
+					return buildFixedDecimal(rounded, decimal, negative);
+				}
+			}
+		}
+
+		final String s = String.format(Locale.US, "%." + decimal + "f", x);
+		return trimZeros(s);
+	}
+
+	// Builds "[-]intPart[.fracPart]" from an already-rounded, non-negative int
+	// (x scaled by 10^decimal), trimming useless trailing fractional zeros.
+	//
+	// The digits are written right to left straight into a single char[], so the
+	// native string is created only once (Integer.toString followed by a StringBuilder
+	// would copy the characters twice, which is costly under TeaVM). Trailing zeros are
+	// dropped arithmetically, before writing anything.
+	private static String buildFixedDecimal(int rounded, int decimal, boolean negative) {
+		if (rounded == 0)
+			return "0";
+
+		while (decimal > 0 && rounded % 10 == 0) {
+			rounded /= 10;
+			decimal--;
+		}
+
+		// Worst case: '-' + "0." + 15 fractional digits = 18 chars
+		final char[] buf = new char[20];
+		int pos = buf.length;
+
+		for (int i = 0; i < decimal; i++) {
+			buf[--pos] = (char) ('0' + rounded % 10);
+			rounded /= 10;
+		}
+		if (decimal > 0)
+			buf[--pos] = '.';
+
+		if (rounded == 0)
+			buf[--pos] = '0';
+		else
+			while (rounded > 0) {
+				buf[--pos] = (char) ('0' + rounded % 10);
+				rounded /= 10;
+			}
+
+		if (negative)
+			buf[--pos] = '-';
+
+		return new String(buf, pos, buf.length - pos);
+	}
+
+	// Removes useless trailing zeros (and the dot if it becomes orphan)
+	public static String trimZeros(String s) {
+		final int dot = s.indexOf('.');
+		if (dot >= 0) {
+			int end = s.length() - 1;
+			while (end > dot && s.charAt(end) == '0')
+				end--;
+
+			if (end == dot)
+				end--;
+
+			s = s.substring(0, end + 1);
+		}
+		// A negative value that rounds down to zero (e.g. "-0.001" formatted with
+		// 2 decimals) must not surface as the confusing "-0".
+		if (s.equals("-0"))
+			return "0";
+
+		return s;
+	}
+
+	/**
+	 * The blanks {@link #trin(String)} removes: every control character, the space, and the
+	 * non-breaking space U+00A0. The last one is there because {@code %s} in a command pattern
+	 * accepts it too, and because it usually comes from a copy-paste rather than from any wish to
+	 * keep it: treating it as a blank here is what lets a line starting with it be read like any
+	 * other.
+	 */
+	public static boolean isTrimmable(char c) {
+		return c <= ' ' || c == '\u00A0';
+	}
 
 	public static String trin(String arg) {
-		if (arg.length() == 0)
+		final int len = arg.length();
+		if (len == 0)
+			return "";
+
+		int start = 0;
+		int end = len - 1;
+
+		while (start <= end) {
+			final char cStart = arg.charAt(start);
+			if (isTrimmable(cStart)) {
+				start++;
+				continue;
+			}
+
+			final char cEnd = arg.charAt(end);
+			if (isTrimmable(cEnd)) {
+				end--;
+				continue;
+			}
+			break;
+		}
+
+		if (start == 0 && end == len - 1)
 			return arg;
 
-		return trinEndingInternal(arg, getPositionStartNonSpace(arg));
+		if (start > end)
+			return "";
+
+		return arg.substring(start, end + 1);
 	}
 
-	private static int getPositionStartNonSpace(String arg) {
-		int i = 0;
-		while (i < arg.length() && isSpaceOrTabOrNull(arg.charAt(i)))
-			i++;
+	public static CharSequence trim2(CharSequence s) {
+	    final int len = s.length();
+	    if (len == 0)
+	        return "";
 
-		return i;
-	}
+	    int start = 0;
+	    int end = len - 1;
 
-	private static String trinEnding(String arg) {
-		if (arg.length() == 0)
-			return arg;
+	    while (start <= end) {
+	        final char cStart = s.charAt(start);
+	        if (isTrimmable(cStart)) {
+	            start++;
+	            continue;
+	        }
 
-		return trinEndingInternal(arg, 0);
-	}
+	        final char cEnd = s.charAt(end);
+	        if (isTrimmable(cEnd)) {
+	            end--;
+	            continue;
+	        }
+	        break;
+	    }
 
-	private static String trinEndingInternal(String arg, int from) {
-		int j = arg.length() - 1;
-		while (j >= from && isSpaceOrTabOrNull(arg.charAt(j)))
-			j--;
+	    if (start > end)
+	        return "";
 
-		if (from == 0 && j == arg.length() - 1)
-			return arg;
+	    if (start == 0 && end == len - 1)
+	        return s;
+	    
 
-		return arg.substring(from, j + 1);
+	    return s.subSequence(start, end + 1);
 	}
 
 	private static boolean isSpaceOrTabOrNull(char c) {
 		return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\0';
 	}
 
-	public static String sharp000000(int color) {
-		final int v = 0xFFFFFF & color;
-		String s = "000000" + Integer.toHexString(v).toUpperCase();
-		s = s.substring(s.length() - 6);
-		return "#" + s;
-	}
-
-	// ::comment when __CORE__ or __HAXE__
 	public static int getWcWidth(Display stringsToDisplay) {
 		int result = 1;
 		for (CharSequence s : stringsToDisplay) {
@@ -574,7 +704,6 @@ public class StringUtils {
 		}
 		return result;
 	}
-	// ::done
 
 	// http://docs.oracle.com/javase/tutorial/i18n/format/dateFormat.html
 }

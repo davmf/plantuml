@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -80,7 +80,7 @@ try {
     final ST_Agraph_s template = new ST_Agraph_s();
     agdtdisc(zz, g, (ST_dt_s) g.g_dict, zz.Ag_subgraph_id_disc);
     AGID(template, id);
-    return (ST_Agraph_s) g.g_dict.searchf.exe(zz, g.g_dict, template, 0000004);
+    return (ST_Agraph_s) g.g_dict.searchf.exeSearch(zz, g.g_dict, template, 0000004);
 } finally {
 LEAVING("11ezyrsjsotjz9b3cyvb4ie8p","agfindsubg_by_id");
 }

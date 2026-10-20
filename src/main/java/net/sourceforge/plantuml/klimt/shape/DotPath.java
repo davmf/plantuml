@@ -36,10 +36,10 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.klimt.UShapeKind;
 import java.awt.Graphics2D;
 import java.awt.geom.CubicCurve2D;
 import java.awt.geom.GeneralPath;
-import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -51,6 +51,7 @@ import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.geom.BezierUtils;
+import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.geom.EnsureVisible;
 import net.sourceforge.plantuml.klimt.geom.MinFinder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
@@ -59,7 +60,10 @@ import net.sourceforge.plantuml.klimt.geom.PointAndAngle;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.USegmentType;
 import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
+import net.sourceforge.plantuml.klimt.geom.XLine2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class DotPath implements UShape, Moveable {
 
@@ -132,7 +136,7 @@ public class DotPath implements UShape, Moveable {
 		for (XCubicCurve2D bez : beziers)
 			sample(bez, result);
 
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	private static void sample(XCubicCurve2D bez, Set<XPoint2D> result) {
@@ -278,7 +282,7 @@ public class DotPath implements UShape, Moveable {
 
 	}
 
-	public Line2D getEndTangeante() {
+	private XLine2D getEndTangeante() {
 		final XCubicCurve2D last = beziers.get(beziers.size() - 1);
 		double dx = last.x2 - last.ctrlx2;
 		double dy = last.y2 - last.ctrly2;
@@ -286,22 +290,22 @@ public class DotPath implements UShape, Moveable {
 			dx = last.x2 - last.x1;
 			dy = last.y2 - last.y1;
 		}
-		return new Line2D.Double(last.x2, last.y2, last.x2 + dx, last.y2 + dy);
+		return new XLine2D(last.x2, last.y2, last.x2 + dx, last.y2 + dy);
 	}
 
 	public double getEndAngle() {
-		final Line2D tan = getEndTangeante();
+		final XLine2D tan = getEndTangeante();
 		final double theta1 = Math.atan2(tan.getY2() - tan.getY1(), tan.getX2() - tan.getX1());
 		return theta1;
 	}
 
 	public double getStartAngle() {
-		final Line2D tan = getStartTangeante();
+		final XLine2D tan = getStartTangeante();
 		final double theta1 = Math.atan2(tan.getY2() - tan.getY1(), tan.getX2() - tan.getX1());
 		return theta1;
 	}
 
-	public Line2D getStartTangeante() {
+	private XLine2D getStartTangeante() {
 		final XCubicCurve2D first = beziers.get(0);
 		double dx = first.ctrlx1 - first.x1;
 		double dy = first.ctrly1 - first.y1;
@@ -309,7 +313,7 @@ public class DotPath implements UShape, Moveable {
 			dx = first.x2 - first.x1;
 			dy = first.y2 - first.y1;
 		}
-		return new Line2D.Double(first.x1, first.y1, first.x1 + dx, first.y1 + dy);
+		return new XLine2D(first.x1, first.y1, first.x1 + dx, first.y1 + dy);
 	}
 
 	public DotPath addBefore(XCubicCurve2D before) {
@@ -346,10 +350,10 @@ public class DotPath implements UShape, Moveable {
 		g2d.draw(p);
 	}
 
-	public void manageEnsureVisible(double x, double y, EnsureVisible visible) {
+	public void manageEnsureVisible(double x, double y, EnsureVisible visible, UClip clip) {
 		for (XCubicCurve2D bez : beziers) {
-			visible.ensureVisible(x + bez.x1, y + bez.y1);
-			visible.ensureVisible(x + bez.x2, y + bez.y2);
+			visible.ensureVisible(x + bez.x1, y + bez.y1, clip);
+			visible.ensureVisible(x + bez.x2, y + bez.y2, clip);
 		}
 
 	}
@@ -411,7 +415,7 @@ public class DotPath implements UShape, Moveable {
 	}
 
 	public final List<XCubicCurve2D> getBeziers() {
-		return Collections.unmodifiableList(beziers);
+		return MyCollections.unmodifiableList(beziers);
 	}
 
 	public DotPath simulateCompound(RectangleArea head, RectangleArea tail) {
@@ -434,14 +438,14 @@ public class DotPath implements UShape, Moveable {
 				if (tail.contains(this.beziers.get(idx).getP2())) {
 					// System.err.println("strange1");
 				} else {
-					assert tail.contains(this.beziers.get(idx).getP1());
-					assert tail.contains(this.beziers.get(idx).getP2()) == false;
+					if (TeaVM.a()) assert tail.contains(this.beziers.get(idx).getP1());
+					if (TeaVM.a()) assert tail.contains(this.beziers.get(idx).getP2()) == false;
 					XCubicCurve2D current = this.beziers.get(idx);
 					for (int k = 0; k < 8; k++) {
 						final XCubicCurve2D part1 = XCubicCurve2D.none();
 						final XCubicCurve2D part2 = XCubicCurve2D.none();
 						current.subdivide(part1, part2);
-						assert part1.getP2().equals(part2.getP1());
+						if (TeaVM.a()) assert part1.getP2().equals(part2.getP1());
 						if (tail.contains(part1.getP2())) {
 							current = part2;
 						} else {
@@ -466,13 +470,13 @@ public class DotPath implements UShape, Moveable {
 						if (head.contains(current.getP1())) {
 							return me;
 						}
-						assert head.contains(current.getP1()) == false;
-						assert head.contains(current.getP2());
+						if (TeaVM.a()) assert head.contains(current.getP1()) == false;
+						if (TeaVM.a()) assert head.contains(current.getP2());
 						for (int k = 0; k < 8; k++) {
 							final XCubicCurve2D part1 = XCubicCurve2D.none();
 							final XCubicCurve2D part2 = XCubicCurve2D.none();
 							current.subdivide(part1, part2);
-							assert part1.getP2().equals(part2.getP1());
+							if (TeaVM.a()) assert part1.getP2().equals(part2.getP1());
 							if (head.contains(part1.getP2())) {
 								current = part1;
 							} else {
@@ -500,6 +504,210 @@ public class DotPath implements UShape, Moveable {
 	public void setCommentAndCodeLine(String comment, String codeLine) {
 		this.comment = comment;
 		this.codeLine = codeLine;
+	}
+
+	/**
+	 * Round corners in orthogonal paths by replacing sharp 90-degree corners
+	 * with smooth curves.
+	 *
+	 * @param radius Corner radius in pixels
+	 */
+	public void muteToRoundOrthogonalPaths(double radius) {
+		if (radius <= 0 || beziers.size() < 2)
+			return;
+
+		if (!isOrthogonalPathInternal())
+			return;
+
+		// Build list of all points in the path
+		final List<XPoint2D> points = new ArrayList<>();
+		if (beziers.size() > 0) {
+			points.add(beziers.get(0).getP1());
+			for (XCubicCurve2D bez : beziers)
+				points.add(bez.getP2());
+		}
+
+		if (points.size() < 3)
+			return;
+
+		// Detect corners
+		final List<Integer> corners = detectCorners(points);
+		if (corners.isEmpty())
+			return;
+
+		// Build new path with rounded corners
+		final List<XPoint2D> newPoints = buildRoundedPath(points, corners, radius);
+
+		// Build beziers from new points
+		final List<XCubicCurve2D> newBeziers = buildBeziersFromPoints(newPoints, points, corners);
+
+		// Replace beziers
+		beziers.clear();
+		beziers.addAll(newBeziers);
+	}
+
+	/**
+	 * Detect corners in the path where segments meet at 90 degrees
+	 */
+	private List<Integer> detectCorners(List<XPoint2D> points) {
+		final List<Integer> corners = new ArrayList<>();
+		for (int i = 1; i < points.size() - 1; i++) {
+			final XPoint2D prev = points.get(i - 1);
+			final XPoint2D curr = points.get(i);
+			final XPoint2D next = points.get(i + 1);
+
+			// Calculate direction vectors
+			double dx1 = curr.getX() - prev.getX();
+			double dy1 = curr.getY() - prev.getY();
+			double dx2 = next.getX() - curr.getX();
+			double dy2 = next.getY() - curr.getY();
+
+			final double len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+			final double len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+			if (len1 < 0.01 || len2 < 0.01)
+				continue;
+
+			// Normalize
+			dx1 /= len1;
+			dy1 /= len1;
+			dx2 /= len2;
+			dy2 /= len2;
+
+			// Check if perpendicular (dot product ≈ 0 for 90 degrees)
+			final double dotProduct = dx1 * dx2 + dy1 * dy2;
+			if (Math.abs(dotProduct) < 0.1)
+				corners.add(i);
+		}
+		return corners;
+	}
+
+	/**
+	 * Build new path with truncated corners ready for rounding
+	 */
+	private List<XPoint2D> buildRoundedPath(List<XPoint2D> points, List<Integer> corners, double radius) {
+		final List<XPoint2D> newPoints = new ArrayList<>();
+		newPoints.add(points.get(0)); // Start point
+
+		for (int i = 1; i < points.size() - 1; i++) {
+			if (corners.contains(i)) {
+				// This is a corner - add truncated points around it
+				final XPoint2D prev = points.get(i - 1);
+				final XPoint2D curr = points.get(i);
+				final XPoint2D next = points.get(i + 1);
+
+				// Direction vectors
+				double dx1 = curr.getX() - prev.getX();
+				double dy1 = curr.getY() - prev.getY();
+				double dx2 = next.getX() - curr.getX();
+				double dy2 = next.getY() - curr.getY();
+
+				final double len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+				final double len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+				dx1 /= len1;
+				dy1 /= len1;
+				dx2 /= len2;
+				dy2 /= len2;
+
+				final double truncDist1 = Math.min(radius, len1 / 2);
+				final double truncDist2 = Math.min(radius, len2 / 2);
+
+				// Add point before corner
+				final double beforeX = curr.getX() - dx1 * truncDist1;
+				final double beforeY = curr.getY() - dy1 * truncDist1;
+				newPoints.add(new XPoint2D(beforeX, beforeY));
+
+				// Add the corner point itself (will be used as control point)
+				newPoints.add(curr);
+
+				// Add point after corner
+				final double afterX = curr.getX() + dx2 * truncDist2;
+				final double afterY = curr.getY() + dy2 * truncDist2;
+				newPoints.add(new XPoint2D(afterX, afterY));
+			} else {
+				// Regular point
+				newPoints.add(points.get(i));
+			}
+		}
+
+		newPoints.add(points.get(points.size() - 1)); // End point
+		return newPoints;
+	}
+
+	/**
+	 * Build bezier curves from the rounded path points
+	 */
+	private List<XCubicCurve2D> buildBeziersFromPoints(List<XPoint2D> newPoints, List<XPoint2D> originalPoints,
+			List<Integer> corners) {
+		final List<XCubicCurve2D> newBeziers = new ArrayList<>();
+		for (int i = 0; i < newPoints.size() - 1; i++) {
+			final XPoint2D p1 = newPoints.get(i);
+			final XPoint2D p2 = newPoints.get(i + 1);
+
+			// Check if next point is a control point (corner)
+			if (i + 2 < newPoints.size()) {
+				final XPoint2D p3 = newPoints.get(i + 2);
+
+				// Check if p2 was originally a corner point
+				boolean isCornerControl = false;
+				for (int cornerIdx : corners) {
+					if (originalPoints.get(cornerIdx).equals(p2)) {
+						isCornerControl = true;
+						break;
+					}
+				}
+
+				if (isCornerControl) {
+					// Create rounded corner with p2 as control point
+					// For circular arc approximation
+					final double dx1 = p2.getX() - p1.getX();
+					final double dy1 = p2.getY() - p1.getY();
+					final double dx2 = p3.getX() - p2.getX();
+					final double dy2 = p3.getY() - p2.getY();
+					final double len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+					final double len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+					final double controlDist = Math.min(len1, len2) * 0.55228;
+
+					final double ctrl1X = p1.getX() + (dx1 / len1) * controlDist;
+					final double ctrl1Y = p1.getY() + (dy1 / len1) * controlDist;
+					final double ctrl2X = p3.getX() - (dx2 / len2) * controlDist;
+					final double ctrl2Y = p3.getY() - (dy2 / len2) * controlDist;
+
+					newBeziers.add(new XCubicCurve2D(p1.getX(), p1.getY(), ctrl1X, ctrl1Y,
+							ctrl2X, ctrl2Y, p3.getX(), p3.getY()));
+
+					i++; // Skip the control point and the next point
+					continue;
+				}
+			}
+
+			// Regular straight segment
+			newBeziers.add(new XCubicCurve2D(p1.getX(), p1.getY(), p1.getX(), p1.getY(),
+					p2.getX(), p2.getY(), p2.getX(), p2.getY()));
+		}
+		return newBeziers;
+	}
+
+	/**
+	 * Check if path consists of orthogonal (horizontal/vertical) segments
+	 */
+	private boolean isOrthogonalPathInternal() {
+		for (XCubicCurve2D curve : beziers) {
+			final double dx = Math.abs(curve.x2 - curve.x1);
+			final double dy = Math.abs(curve.y2 - curve.y1);
+
+			// Check if segment is either horizontal or vertical (not diagonal)
+			if (dx > 0.1 && dy > 0.1)
+				return false;
+		}
+		return true;
+	}
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.DOT_PATH;
 	}
 
 }

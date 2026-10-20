@@ -37,10 +37,13 @@ package net.sourceforge.plantuml.klimt.drawing.g2d;
 
 import java.awt.BasicStroke;
 import java.awt.GradientPaint;
+import java.awt.LinearGradientPaint;
+import java.awt.Paint;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.TexturePaint;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
@@ -51,7 +54,9 @@ import net.sourceforge.plantuml.klimt.UShapeSized;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorGradient;
+import net.sourceforge.plantuml.klimt.color.HColorLinearGradient;
 import net.sourceforge.plantuml.klimt.color.HColorSimple;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.geom.EnsureVisible;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
@@ -76,8 +81,8 @@ public class DriverRectangleG2d extends DriverShadowedG2d implements UDriver<URe
 		else
 			shape = new RoundRectangle2D.Double(x, y, rect.getWidth(), rect.getHeight(), rx, ry);
 
-		visible.ensureVisible(x, y);
-		visible.ensureVisible(x + rect.getWidth(), y + rect.getHeight());
+		visible.ensureVisible(x, y, param.getClip());
+		visible.ensureVisible(x + rect.getWidth(), y + rect.getHeight(), param.getClip());
 
 		final HColor back = param.getBackcolor();
 
@@ -93,14 +98,14 @@ public class DriverRectangleG2d extends DriverShadowedG2d implements UDriver<URe
 		if (color == null) {
 			param.getColor();
 		}
-		if (back instanceof HColorGradient) {
-			final GradientPaint paint = getPaintGradient(x, y, mapper, rect.getWidth(), rect.getHeight(), back);
+		if (back instanceof HColorGradient || back instanceof HColorLinearGradient) {
+			final Paint paint = getPaintGradient(x, y, mapper, rect.getWidth(), rect.getHeight(), back);
 			g2d.setPaint(paint);
 			g2d.fill(shape);
 			drawBorder(param, color, mapper, rect, shape, g2d, x, y);
 		} else {
 			if (param.getBackcolor().isTransparent() == false) {
-				g2d.setColor(param.getBackcolor().toColor(mapper));
+				g2d.setColor(param.getBackcolor().toColor(mapper).toAwtColor());
 				DriverLineG2d.manageStroke(param, g2d);
 				managePattern(param, g2d);
 				g2d.fill(shape);
@@ -116,36 +121,90 @@ public class DriverRectangleG2d extends DriverShadowedG2d implements UDriver<URe
 		if (color.isTransparent())
 			return;
 
-		if (color instanceof HColorGradient) {
-			final GradientPaint paint = getPaintGradient(x, y, mapper, sized.getWidth(), sized.getHeight(), color);
+		if (color instanceof HColorGradient || color instanceof HColorLinearGradient) {
+			final Paint paint = getPaintGradient(x, y, mapper, sized.getWidth(), sized.getHeight(), color);
 			g2d.setPaint(paint);
 		} else {
-			g2d.setColor(color.toColor(mapper));
+			g2d.setColor(color.toColor(mapper).toAwtColor());
 		}
 		DriverLineG2d.manageStroke(param, g2d);
 		g2d.draw(shape);
 	}
 
-	public static GradientPaint getPaintGradient(double x, double y, ColorMapper mapper, double width, double height,
+	public static Paint getPaintGradient(double x, double y, ColorMapper mapper, double width, double height,
 			final HColor back) {
+		if (back instanceof HColorLinearGradient)
+			return createLinearGradientPaint((HColorLinearGradient) back, mapper, x, y, width, height);
+
 		final HColorGradient gr = (HColorGradient) back;
 		final char policy = gr.getPolicy();
 		final GradientPaint paint;
 		if (policy == '|')
-			paint = new GradientPaint((float) x, (float) (y + height) / 2, gr.getColor1().toColor(mapper),
-					(float) (x + width), (float) (y + height) / 2, gr.getColor2().toColor(mapper));
+			paint = new GradientPaint((float) x, (float) (y + height) / 2, gr.getColor1().toColor(mapper).toAwtColor(),
+					(float) (x + width), (float) (y + height) / 2, gr.getColor2().toColor(mapper).toAwtColor());
 		else if (policy == '\\')
-			paint = new GradientPaint((float) x, (float) (y + height), gr.getColor1().toColor(mapper),
-					(float) (x + width), (float) y, gr.getColor2().toColor(mapper));
+			paint = new GradientPaint((float) x, (float) (y + height), gr.getColor1().toColor(mapper).toAwtColor(),
+					(float) (x + width), (float) y, gr.getColor2().toColor(mapper).toAwtColor());
 		else if (policy == '-')
-			paint = new GradientPaint((float) (x + width) / 2, (float) y, gr.getColor1().toColor(mapper),
-					(float) (x + width) / 2, (float) (y + height), gr.getColor2().toColor(mapper));
+			paint = new GradientPaint((float) (x + width) / 2, (float) y, gr.getColor1().toColor(mapper).toAwtColor(),
+					(float) (x + width) / 2, (float) (y + height), gr.getColor2().toColor(mapper).toAwtColor());
 		else
 			// for /
-			paint = new GradientPaint((float) x, (float) y, gr.getColor1().toColor(mapper), (float) (x + width),
-					(float) (y + height), gr.getColor2().toColor(mapper));
+			paint = new GradientPaint((float) x, (float) y, gr.getColor1().toColor(mapper).toAwtColor(), (float) (x + width),
+					(float) (y + height), gr.getColor2().toColor(mapper).toAwtColor());
 
 		return paint;
+	}
+
+	private static Paint createLinearGradientPaint(HColorLinearGradient gr, ColorMapper mapper, double x, double y,
+			double width, double height) {
+		final int size = gr.getStops().size();
+		final float[] fractions = new float[size];
+		final java.awt.Color[] colors = new java.awt.Color[size];
+		int i = 0;
+		for (HColorLinearGradient.Stop stop : gr.getStops()) {
+			fractions[i] = (float) stop.getOffset();
+			final XColor base = stop.getColor().toColor(mapper);
+			int alpha = (int) Math.round(base.getAlpha() * stop.getOpacity());
+			if (alpha < 0)
+				alpha = 0;
+			if (alpha > 255)
+				alpha = 255;
+			colors[i] = new java.awt.Color(base.getRed(), base.getGreen(), base.getBlue(), alpha);
+			i++;
+		}
+
+		final float x1;
+		final float y1;
+		final float x2;
+		final float y2;
+		if (gr.isUserSpaceOnUse()) {
+			x1 = (float) gr.getX1();
+			y1 = (float) gr.getY1();
+			x2 = (float) gr.getX2();
+			y2 = (float) gr.getY2();
+		} else {
+			x1 = (float) (x + gr.getX1() * width);
+			y1 = (float) (y + gr.getY1() * height);
+			x2 = (float) (x + gr.getX2() * width);
+			y2 = (float) (y + gr.getY2() * height);
+		}
+
+		final LinearGradientPaint.CycleMethod cycleMethod;
+		switch (gr.getSpreadMethod()) {
+		case REFLECT:
+			cycleMethod = LinearGradientPaint.CycleMethod.REFLECT;
+			break;
+		case REPEAT:
+			cycleMethod = LinearGradientPaint.CycleMethod.REPEAT;
+			break;
+		case PAD:
+		default:
+			cycleMethod = LinearGradientPaint.CycleMethod.NO_CYCLE;
+			break;
+		}
+		return new LinearGradientPaint(new Point2D.Float(x1, y1), new Point2D.Float(x2, y2), fractions, colors,
+				cycleMethod);
 	}
 
 	public static void managePattern(UParam param, Graphics2D g2d) {

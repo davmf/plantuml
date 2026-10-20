@@ -35,12 +35,12 @@
  */
 package net.sourceforge.plantuml.ebnf;
 
-import com.plantuml.ubrex.UnicodeBracketedExpression;
-import com.plantuml.ubrex.builder.UBrexConcat;
-import com.plantuml.ubrex.builder.UBrexLeaf;
-import com.plantuml.ubrex.builder.UBrexNamed;
-import com.plantuml.ubrex.builder.UBrexUpto;
+import java.util.Arrays;
+import java.util.Collection;
 
+import com.plantuml.ubrex.UnicodeBracketedExpression;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.UBrexSingleLineCommand2;
@@ -50,31 +50,40 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class UBrexCommandComment extends UBrexSingleLineCommand2<PSystemEbnf> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("(");
+
 	public UBrexCommandComment() {
 		super(getRegexConcat());
 	}
 
 	static UnicodeBracketedExpression getRegexConcat() {
-		return UBrexConcat.build( //
-				UBrexLeaf.spaceZeroOrMore(), //
-				new UBrexLeaf("(*"), //
-				new UBrexNamed("COMMENT", //
-						new UBrexUpto(//
-								new UBrexLeaf("〴."), //
-								UBrexConcat.build( //
-										new UBrexLeaf("*)"), //
-										UBrexLeaf.spaceZeroOrMore(), //
-										new UBrexLeaf("〒($)") //
-								))),
-//				new UBrexLeaf("〶$COMMENT=〄+〴.->〘*) 〇*〴s 〒($)〙"), //
-				UBrexLeaf.end());
+		return UnicodeBracketedExpression.build("〇*〴s (* 〶$COMMENT=〄>〘*) 〇*〴s 〒$〙");
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String tmp = arg.get("COMMENT", 0).trim();
+		return "Adding an EBNF comment \"" + tmp + "\"";
 	}
 
 	@Override
 	protected CommandExecutionResult executeArg(PSystemEbnf diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
-		final Display note = Display.getWithNewlines(diagram.getPragma(), arg.get("COMMENT", 0));
+		final String tmp = arg.get("COMMENT", 0).trim();
+		final Display note = Display.getWithNewlines(diagram.getPragma(), tmp);
 		return diagram.addNote(note, null);
+	}
+
+	// Declared by hand: FirstTokens only reads regex patterns, and this one is a UBrex expression.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FIRST_TOKENS;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

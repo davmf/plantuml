@@ -1,0 +1,312 @@
+package net.sourceforge.plantuml.teavm.js.headless;
+
+import java.io.IOException;
+import java.util.List;
+
+import org.teavm.jso.JSExport;
+import org.teavm.jso.JSFunctor;
+import org.teavm.jso.JSObject;
+
+import net.sourceforge.plantuml.explain.DiagramExplainer;
+import net.sourceforge.plantuml.explain.Explanation;
+import net.sourceforge.plantuml.mcp.McpResult;
+import net.sourceforge.plantuml.mcp.SyntaxChecker;
+import net.sourceforge.plantuml.teavm.DiagramRendererTeaVM;
+import net.sourceforge.plantuml.teavm.js.browser.PendingResources;
+import net.sourceforge.plantuml.teavm.js.browser.RenderQueue;
+import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.version.Version;
+
+/**
+ * Headless TeaVM entry point for the PlantUML MCP server (Node/stdio).
+ *
+ * <p>
+ * Unlike {@link net.sourceforge.plantuml.teavm.js.browser.PlantUMLBrowser}, this
+ * class exposes no DOM- or Graphviz-dependent code: just plain text-returning
+ * functions usable from a plain Node process, with no browser and no Java
+ * runtime.
+ *
+ * <p>
+ * The actual work is delegated to the shared MCP classes ({@link SyntaxChecker}
+ * / {@link McpResult}), so the logic is not duplicated between the Java server
+ * and this JS build. This class only adapts their result to a JSON string,
+ * built as a native JS object via {@link JsonJs} and serialized with
+ * {@code JSON.stringify} (escaping handled by the platform). The Node wrapper
+ * simply {@code JSON.parse}s the result.
+ *
+ * <p>
+ * Tools so far:
+ * <ul>
+ * <li>{@link #version()} &mdash; the embedded PlantUML version (validates the
+ * full chain: TeaVM build -&gt; JS artifact -&gt; Node wrapper -&gt; MCP stdio
+ * transport -&gt; tool discovery by the client).</li>
+ * <li>{@link #checkSyntax(String)} &mdash; parses a single diagram and reports
+ * a structured diagnostic, without rendering.</li>
+ * <li>{@link #renderSvg(String, ResultCallback)} &mdash; parses and renders a
+ * single diagram to a deterministic SVG. Asynchronous: the result JSON is
+ * delivered through a callback, because what the diagram needs from JavaScript
+ * (the Viz.js instance for Graphviz layouts...) only arrives
+ * asynchronously; the diagram is rendered again once it is there (see
+ * {@link RenderQueue}, shared with
+ * {@link net.sourceforge.plantuml.teavm.js.browser.PlantUMLBrowser}). No thread
+ * and no TeaVM coroutine are involved.</li>
+ * </ul>
+ */
+public class PlantUMLHeadless {
+	// ::remove file when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__ __GPLV2__
+	// ::remove file when JAVA8
+
+	/**
+	 * Returns the full description of the embedded PlantUML version.
+	 *
+	 * @return the version string, as produced by {@link Version#fullDescription()}
+	 */
+	@JSExport
+	public static String version() {
+		return Version.fullDescription();
+	}
+
+	/**
+	 * Checks the syntax of a single PlantUML diagram, without rendering it.
+	 *
+	 * <p>
+	 * The result is a JSON object with the following shape:
+	 *
+	 * <pre>
+	 * {
+	 *   "valid": true,
+	 *   "diagramType": "SequenceDiagram",
+	 *   "lineCount": 4,
+	 *   "warnings": ["..."]
+	 * }
+	 * </pre>
+	 *
+	 * or, on failure:
+	 *
+	 * <pre>
+	 * {
+	 *   "valid": false,
+	 *   "lineCount": 4,
+	 *   "warnings": [],
+	 *   "errorLine": 2,
+	 *   "errorMessage": "...",
+	 *   "errorContext": "the offending source line"
+	 * }
+	 * </pre>
+	 *
+	 * @param source the raw PlantUML source (a single {@code @start.../@end...}
+	 *               diagram)
+	 * @return a JSON string describing the diagnostic; never {@code null}
+	 */
+	@JSExport
+	public static String checkSyntax(String source) {
+		final McpResult result;
+		try {
+			result = new SyntaxChecker().check(source);
+		} catch (IOException e) {
+			return errorJson("Could not read the diagram source: " + e.getMessage());
+		}
+
+		if (result.isOk())
+			// return okJson(result.getDiagramType(), result.getLineCount(),
+			// result.getWarnings());
+			return okJson(result);
+
+		return errorJson(result);
+//		return errorJson(result.getErrorLineNumber(), result.getErrorMessage(), result.getErrorLine(),
+//				result.getLineCount());
+	}
+
+	/**
+	 * Callback used to deliver the render result JSON back to JavaScript.
+	 */
+	@JSFunctor
+	public interface ResultCallback extends JSObject {
+		void call(String json);
+	}
+
+	/** A {@link #renderSvg} request. */
+	private static final class RenderJob extends RenderQueue.Job {
+		private final String source;
+		private final ResultCallback callback;
+		private String json;
+
+		private RenderJob(String source, ResultCallback callback) {
+			this.source = source;
+			this.callback = callback;
+		}
+
+		@Override
+		protected void attempt() {
+			try {
+				json = renderSvgToJson(source);
+			} catch (Throwable e) {
+				json = errorJson("Could not render the diagram source: " + e);
+			}
+		}
+
+		@Override
+		protected void deliver() {
+			callback.call(json);
+		}
+
+		@Override
+		protected void giveUp(String message) {
+			callback.call(errorJson(message));
+		}
+	}
+
+	/**
+	 * Parses and renders a single PlantUML diagram to a deterministic SVG.
+	 *
+	 * <p>
+	 * Asynchronous: the result is delivered as a JSON string through
+	 * {@code callback}, never before this call returns. Requests are answered
+	 * one at a time, in the order of the calls, each exactly once. On success the JSON has the shape:
+	 *
+	 * <pre>
+	 * {
+	 *   "valid": true,
+	 *   "diagramType": "SequenceDiagram",
+	 *   "lineCount": 4,
+	 *   "warnings": ["..."],
+	 *   "svg": "&lt;svg ...&gt;...&lt;/svg&gt;"
+	 * }
+	 * </pre>
+	 *
+	 * On failure, it has the same error shape as {@link #checkSyntax(String)} (no
+	 * {@code svg} field).
+	 *
+	 * @param source   the raw PlantUML source (a single {@code @start.../@end...}
+	 *                 diagram)
+	 * @param callback invoked once with the result JSON
+	 */
+	@JSExport
+	public static void renderSvg(String source, ResultCallback callback) {
+		RenderQueue.submit(new RenderJob(source, callback));
+	}
+
+	/**
+	 * Synchronous core of {@link #renderSvg(String, ResultCallback)}: one
+	 * rendering attempt. Returns the result JSON string.
+	 */
+	private static String renderSvgToJson(String source) {
+		final McpResult result;
+		try {
+			result = new DiagramRendererTeaVM() {
+				@Override
+				protected boolean isDiscarded() {
+					// The attempt missed a resource: it will be rendered again (RenderQueue)
+					return PendingResources.hasMissing();
+				}
+			}.render(source);
+		} catch (IOException e) {
+			return errorJson("Could not render the diagram source: " + e.getMessage());
+		}
+
+		if (result.isOk())
+			return renderOkJson(result);
+
+		return errorJson(result);
+	}
+
+	/**
+	 * Explains how a single PlantUML diagram is parsed, line by line.
+	 *
+	 * <p>
+	 * The result is a JSON array of objects, each with the shape:
+	 *
+	 * <pre>
+	 * {
+	 *   "input": ["Alice -> Bob"],
+	 *   "explain": "Message from 'Alice' to 'Bob'",
+	 *   "line": 2
+	 * }
+	 * </pre>
+	 *
+	 * where {@code input} is the source line(s) that produced the explanation,
+	 * {@code explain} is the human-readable text, and {@code line} is the 1-based
+	 * line number (omitted when no location applies).
+	 *
+	 * @param source the raw PlantUML source (a single {@code @start.../@end...}
+	 *               diagram)
+	 * @return a JSON array string describing the explanations; never {@code null}
+	 */
+	@JSExport
+	public static String explain(String source) {
+		final List<Explanation> explanations;
+		try {
+			explanations = new DiagramExplainer().explain(source);
+		} catch (IOException e) {
+			final JSObject array = JsonJs.newArray();
+			JsonJs.pushObject(array,
+					explanationToJson(null, "Could not read the diagram source: " + e.getMessage(), -1));
+			return JsonJs.stringify(array);
+		}
+
+		final JSObject array = JsonJs.newArray();
+		for (int i = 0; i < explanations.size(); i++) {
+			final Explanation explanation = explanations.get(i);
+			final LineLocation location = explanation.getLocation();
+			// getPosition() is 0-based; the public contract exposes a 1-based line.
+			final int line = location == null ? -1 : location.getPosition() + 1;
+			JsonJs.pushObject(array, explanationToJson(explanation.getInput(), explanation.getExplain(), line));
+		}
+		return JsonJs.stringify(array);
+	}
+
+	private static JSObject explanationToJson(List<String> input, String explain, int line) {
+		final JSObject json = JsonJs.newObject();
+		JsonJs.putObject(json, "input", input == null ? JsonJs.newArray() : toJsArray(input));
+		JsonJs.putString(json, "explain", explain);
+		if (line > 0)
+			JsonJs.putInt(json, "lineNumber", line);
+		return json;
+	}
+
+	private static String okJson(McpResult result) {
+		final JSObject json = JsonJs.newObject();
+		JsonJs.putBoolean(json, "valid", true);
+		JsonJs.putString(json, "diagramType", result.getDiagramType());
+		JsonJs.putInt(json, "lineCount", result.getLineCount());
+		JsonJs.putObject(json, "warnings", toJsArray(result.getWarnings()));
+		return JsonJs.stringify(json);
+	}
+
+	private static String renderOkJson(McpResult result) {
+		final JSObject json = JsonJs.newObject();
+		JsonJs.putBoolean(json, "valid", true);
+		JsonJs.putString(json, "diagramType", result.getDiagramType());
+		JsonJs.putInt(json, "lineCount", result.getLineCount());
+		JsonJs.putObject(json, "warnings", toJsArray(result.getWarnings()));
+		JsonJs.addStringSafe(json, "svg", result.getSvg());
+		return JsonJs.stringify(json);
+	}
+
+	private static String errorJson(McpResult result) {
+		final JSObject json = JsonJs.newObject();
+		JsonJs.putBoolean(json, "valid", false);
+		JsonJs.putInt(json, "lineCount", result.getLineCount());
+		if (result.getErrorLineNumber() > 0)
+			JsonJs.putInt(json, "errorLineNumber", result.getErrorLineNumber());
+		JsonJs.addStringSafe(json, "errorMessage", result.getErrorMessage());
+		JsonJs.addStringSafe(json, "errorLine", result.getErrorLine());
+		JsonJs.addStringSafe(json, "errorContext", result.getErrorContext());
+		return JsonJs.stringify(json);
+	}
+
+	private static String errorJson(String errorMessage) {
+		final JSObject json = JsonJs.newObject();
+		JsonJs.putBoolean(json, "valid", false);
+		JsonJs.addStringSafe(json, "errorMessage", errorMessage);
+		return JsonJs.stringify(json);
+	}
+
+	private static JSObject toJsArray(List<String> values) {
+		final JSObject array = JsonJs.newArray();
+		for (int i = 0; i < values.size(); i++)
+			JsonJs.push(array, values.get(i));
+		return array;
+	}
+
+}

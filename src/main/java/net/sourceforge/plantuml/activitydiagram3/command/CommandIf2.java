@@ -35,11 +35,17 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -48,14 +54,18 @@ import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.stereo.StereotypePattern;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.warning.Warning;
 
 public class CommandIf2 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("#", "[", "if");
 
 	public CommandIf2() {
 		super(getRegexConcat());
@@ -64,9 +74,10 @@ public class CommandIf2 extends SingleLineCommand2<ActivityDiagram3> {
 	static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandIf2.class.getName(), RegexLeaf.start(), //
 				UrlBuilder.OPTIONAL, //
+				RegexLeaf.spaceZeroOrMore(), //
 				ColorParser.exp4(), //
 				new RegexLeaf("if"), //
-				StereotypePattern.optional("STEREO"), //
+				StereotypePattern.optionalIGNORED(), //
 				new RegexLeaf("\\("), //
 				new RegexLeaf(1, "TEST", "(.*?)"), //
 				new RegexLeaf("\\)"), //
@@ -78,32 +89,82 @@ public class CommandIf2 extends SingleLineCommand2<ActivityDiagram3> {
 								new RegexOptional(new RegexLeaf(1, "WHEN", "\\((.+?)\\)")) //
 						)), //
 				new RegexLeaf(";?"), //
+				RegexLeaf.spaceZeroOrMore(), //
+				Stereogroup.optionalStereogroup(), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'if (test) then (label)' opens a conditional block, closed by
+		// 'endif', with optional 'else' and 'elseif' branches in between.
+		sb.append("Starting an 'if'");
+
+		final String test = arg.get("TEST", 0);
+		if (test.length() > 0)
+			sb.append(", testing \"").append(test).append("\"");
+
+		final String when = arg.get("WHEN", 0);
+		if (when != null)
+			sb.append(", 'then' arrow labelled \"").append(when).append("\"");
+
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		if (stereogroup.isEmpty() == false)
+			sb.append(", stereotyped ").append(arg.get("STEREOGROUP", 0));
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		// The stereotype right after 'if' is parsed but silently ignored by
+		// executeArg; the leading color is ignored with a deprecation warning.
+		if (arg.get("IGNORED", 0) != null)
+			sb.append(" (the stereotype after 'if' is ignored: write it after the ';')");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(" (deprecated and ignored color syntax: write <<").append(arg.get("COLOR", 0))
+					.append(">> at the end of the line)");
+
+		return sb.toString();
 	}
 
 	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
-		final String s = arg.get("COLOR", 0);
-		final HColor color = s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s);
+		if (arg.get("COLOR", 0) != null)
+			diagram.addWarning(new Warning("This syntax is deprecated, you must add <<" + arg.get("COLOR", 0)
+					+ ">> at the end of the line"));
 
 		String test = arg.get("TEST", 0);
 		if (test.length() == 0)
 			test = null;
 
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		final Colors colors = stereogroup.getInnerColors(diagram.getSkinParam().getIHtmlColorSet());
+
 		final Url url;
-		if (arg.get("URL", 0) == null) {
+		if (arg.get(UrlBuilder.URL_KEY, 0) == null) {
 			url = null;
 		} else {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
-			url = urlBuilder.getUrl(arg.get("URL", 0));
+			url = urlBuilder.getUrl(arg.get(UrlBuilder.URL_KEY, 0));
 		}
-		final Stereotype stereotype = Stereotype.build(arg.get("STEREO", 0));
 
+		final Stereotype stereotype = stereogroup.buildStereotype();
+		// final Stereotype stereotype = Stereotype.build(arg.get("STEREO", 0));
+
+		final HColor color = colors.getColor(ColorType.BACK);
 		diagram.startIf(Display.getWithNewlines(diagram.getPragma(), test),
 				Display.getWithNewlines(diagram.getPragma(), arg.get("WHEN", 0)), color, url, stereotype);
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

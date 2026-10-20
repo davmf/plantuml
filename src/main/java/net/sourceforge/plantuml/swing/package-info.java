@@ -4,4 +4,6 @@
  * PlantUML GUI</a>.
  *
  */
+
 package net.sourceforge.plantuml.swing;
+

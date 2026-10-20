@@ -38,8 +38,8 @@ import java.util.List;
 
 public interface UnicodeBracketedExpression {
 
-	public default UMatcher match(String string) {
-		return match(TextNavigator.build(string), 0);
+	public default UMatcher match(String string, int pos) {
+		return match(TextNavigator.build(string), pos);
 	}
 
 	public default UMatcher match(TextNavigator string) {
@@ -93,13 +93,18 @@ public interface UnicodeBracketedExpression {
 					}
 
 					@Override
-					public List<String> getCapture(String path) {
-						return shallWePass.findValuesByKey(path);
+					public List<String> findValuesByKey(String key) {
+						return shallWePass.findValuesByKey(key);
 					}
 
 					@Override
-					public List<String> getKeysToBeRefactored() {
-						return shallWePass.getKeysToBeRefactored();
+					public List<String> findFirstValuesByKeyPrefix(String keyPrefix) {
+						return shallWePass.findFirstValuesByKeyPrefix(keyPrefix);
+					}
+
+					@Override
+					public Capture extractByPrefix(String key) {
+						return shallWePass.extractByPrefix(key);
 					}
 
 				};

@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
@@ -58,11 +62,34 @@ import net.sourceforge.plantuml.utils.Position;
 
 public class CommandNoteLong extends CommandMultilines2<TimingDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("note");
+
 	private final static Lazy<Pattern2> END = new Lazy<>(
 			() -> Pattern2.cmpile("^end[%s]?note$"));
 
 	public CommandNoteLong() {
 		super(getRegexConcat(), MultilinesStrategy.REMOVE_STARTING_QUOTE, Trim.BOTH, END);
+	}
+
+	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Adding a note";
+
+		final String code = line0.get("CODE", 0);
+		final String position = line0.get("POSITION", 0);
+		final String stereotype = line0.get("STEREO", 0);
+		final int bodyLines = lines.size() > 2 ? lines.size() - 2 : 0;
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding a note at the ").append(position).append(" of player '").append(code).append("'");
+		sb.append(" with ").append(bodyLines).append(" lines of text");
+		if (stereotype != null)
+			sb.append(" stereotyped ").append(stereotype);
+		// executeNow fails when no player exists with this code; the note is placed at the current diagram time
+		return sb.toString();
 	}
 
 	@Override
@@ -75,7 +102,7 @@ public class CommandNoteLong extends CommandMultilines2<TimingDiagram> {
 		final String code = line0.get("CODE", 0);
 		final Player player = diagram.getPlayer(code);
 		if (player == null)
-			return CommandExecutionResult.error("Unkown \"" + code + "\"");
+			return CommandExecutionResult.error("Unknown \"" + code + "\"");
 
 		final Display note = lines.toDisplay();
 		final TimeTick now = diagram.getNow();
@@ -105,6 +132,11 @@ public class CommandNoteLong extends CommandMultilines2<TimingDiagram> {
 				StereotypePattern.optional("STEREO"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

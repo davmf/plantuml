@@ -41,7 +41,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SFile;
@@ -49,8 +48,8 @@ import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.utils.Log;
 
 abstract class AbstractGraphviz implements Graphviz {
-	// ::remove file when __CORE__
-
+	
+	
 	private final File dotExe;
 	private final String dotString;
 	private final String[] type;
@@ -164,17 +163,17 @@ abstract class AbstractGraphviz implements Graphviz {
 	}
 
 	final String[] getCommandLine() {
-		if (OptionFlags.ADD_NICE_FOR_DOT) {
-			final String[] result = new String[type.length + 1 + 3];
-			result[0] = "/bin/nice";
-			result[1] = "-n";
-			result[2] = "10";
-			result[3] = getDotExe().getAbsolutePath();
-			for (int i = 0; i < type.length; i++)
-				result[i + 4] = "-T" + type[i];
-
-			return result;
-		}
+//		if (GlobalConfig.ADD_NICE_FOR_DOT) {
+//			final String[] result = new String[type.length + 1 + 3];
+//			result[0] = "/bin/nice";
+//			result[1] = "-n";
+//			result[2] = "10";
+//			result[3] = getDotExe().getAbsolutePath();
+//			for (int i = 0; i < type.length; i++)
+//				result[i + 4] = "-T" + type[i];
+//
+//			return result;
+//		}
 		final String[] result = new String[type.length + 1];
 		result[0] = getDotExe().getAbsolutePath();
 		for (int i = 0; i < type.length; i++)

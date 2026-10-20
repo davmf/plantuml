@@ -35,43 +35,57 @@
  */
 package net.sourceforge.plantuml.wbs;
 
+
 import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileBoxOld;
+import net.sourceforge.plantuml.asciiverse.ATable;
+import net.sourceforge.plantuml.asciiverse.AsciiBlock;
+import net.sourceforge.plantuml.asciiverse.InfinitePlan;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.mindmap.IdeaShape;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
+import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
-abstract class WBSTextBlock extends AbstractTextBlock {
+abstract class WBSTextBlock extends TextBlockMemoized implements AsciiBlock {
 
 	protected final ISkinParam skinParam;
 	private final Stereotype stereotype;
 	private final StyleBuilder styleBuilder;
 	private final int level;
+	private final WElement idea;
 
-	public WBSTextBlock(ISkinParam skinParam, StyleBuilder styleBuilder, int level, Stereotype stereotype) {
+	public WBSTextBlock(ISkinParam skinParam, WElement idea) {
+		this.idea = idea;
 		this.skinParam = skinParam;
-		this.styleBuilder = styleBuilder;
-		this.level = level;
-		this.stereotype = stereotype;
+		this.styleBuilder = idea.getStyleBuilder();
+		this.level = idea.getLevel();
+		this.stereotype = idea.getStereotype();
+	}
+
+	final protected boolean isAutoWidth() {
+		final String width = idea.getStyle().value(PName.Width).asString();
+		return "auto".equalsIgnoreCase(width);
+	}
+
+	final protected WElement getIdea() {
+		return idea;
 	}
 
 	private Style getStyleUsed() {
-		final StyleSignature signature = StyleSignatureBasic.of(SName.root, SName.element, SName.wbsDiagram, SName.arrow)
-				.addLevel(level).withTOBECHANGED(stereotype);
-		return signature.getMergedStyle(styleBuilder);
+		final StyleQuery signature = StyleQueries.WBSDIAG_ARROW.addLevel(level).withStereotype(stereotype);
+		return styleBuilder.getMergedStyle(signature);
 	}
 
 	final protected void drawLine(UGraphic ug, double x1, double y1, double x2, double y2) {
@@ -86,12 +100,23 @@ abstract class WBSTextBlock extends AbstractTextBlock {
 	final protected TextBlock buildMain(WElement idea) {
 		final Display label = idea.getLabel();
 		final Style style = idea.getStyle();
+		if (idea.getShape() == IdeaShape.PSEUDO)
+			return TextBlockUtils.EMPTY_TEXT_BLOCK;
+
 		if (idea.getShape() == IdeaShape.BOX)
 			return FtileBoxOld.createWbs(style, idea.withBackColor(skinParam), label);
 
 		final TextBlock text = label.create0(style.getFontConfiguration(skinParam.getIHtmlColorSet()),
 				style.getHorizontalAlignment(), skinParam, style.wrapWidth(), CreoleMode.FULL, null, null);
 		return TextBlockUtils.withMargin(text, 0, 3, 1, 1);
+	}
+
+	@Override
+	public void asciiDraw(InfinitePlan plan) {
+		final Display label = idea.getLabel();
+		final ATable table = new ATable(1, 1).withLeftPadding(1).withRightPadding(1);
+		table.setCellContent(0, 0, label);
+		table.asciiDraw(plan);
 	}
 
 }

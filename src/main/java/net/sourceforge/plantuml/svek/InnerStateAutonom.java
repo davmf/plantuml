@@ -38,92 +38,121 @@ package net.sourceforge.plantuml.svek;
 import java.util.Objects;
 
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.klimt.UGroup;
+import net.sourceforge.plantuml.klimt.UGroupType;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
+import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.svek.image.EntityImageState;
 import net.sourceforge.plantuml.svek.image.EntityImageStateCommon;
 import net.sourceforge.plantuml.url.Url;
 
-public final class InnerStateAutonom extends AbstractTextBlock implements IEntityImage {
+public final class InnerStateAutonom extends TextBlockMemoized implements IEntityImage {
 
+	private final Entity entity;
 	private final IEntityImage im;
-	private final TextBlock title;
+	private final TextBlock name;
 	private final TextBlock attribute;
 	private HColor borderColor;
-	private HColor backColor;
 	private final Url url;
 	private final boolean withSymbol;
 	private UStroke stroke;
 	private final double rounded;
 	private final double shadowing;
-	private final HColor bodyColor;
-	private final Style styleHeader;
+	private final Style styleDescription;
+	private HColor northBackcolor;
+	private HColor centerBackColor;
+	private HColor southBackcolor;
 
 	public InnerStateAutonom(IEntityImage im, Entity group) {
 		this.im = Objects.requireNonNull(im);
+		this.entity = group;
 		final ISkinParam skinParam = group.getSkinParam();
 
-		final Style styleTitle = EntityImageStateCommon.getStyleStateTitle(group, skinParam);
-		final Style style = EntityImageStateCommon.getStyleState(group, skinParam);
-		final Style styleBody = EntityImageStateCommon.getStyleStateBody(group, skinParam);
-		this.styleHeader = EntityImageStateCommon.getStyleStateHeader(group, skinParam);
+		final StyleBuilder styleBuilder = skinParam.getCurrentStyleBuilder();
+		final Style styleName = EntityImageStateCommon.getStyleStateName(group.getStereotype(), styleBuilder);
+		final Style style = EntityImageStateCommon.getStyleState(group.getStereotype(), styleBuilder);
+		this.styleDescription = EntityImageStateCommon.getStyleStateDescription(group.getStereotype(), styleBuilder);
 
 		this.rounded = style.value(PName.RoundCorner).asDouble();
 		this.shadowing = style.getShadowing();
 
-		final FontConfiguration titleFontConfiguration = styleTitle.getFontConfiguration(skinParam.getIHtmlColorSet());
-		this.title = group.getDisplay().create(titleFontConfiguration, styleTitle.getHorizontalAlignment(), skinParam);
+		final HColorSet colorSet = skinParam.getIHtmlColorSet();
+		final FontConfiguration titleFontConfiguration = styleName.getFontConfiguration(colorSet);
+		this.name = group.getDisplay().create(titleFontConfiguration, styleName.getHorizontalAlignment(), skinParam);
 
-		this.attribute = group.getStateHeader(skinParam);
+		this.attribute = group.getStateDescription(skinParam);
 
 		this.withSymbol = group.getStereotype() != null && group.getStereotype().isWithOOSymbol();
 		this.url = group.getUrl99();
-
-		this.borderColor = group.getColors().getColor(ColorType.LINE);
-		if (this.borderColor == null)
-			this.borderColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
-
-		this.backColor = group.getColors().getColor(ColorType.BACK);
-		if (this.backColor == null)
-			this.backColor = style.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
 
 		this.stroke = group.getColors().getSpecificLineStroke();
 		if (this.stroke == null)
 			this.stroke = style.getStroke();
 
-		this.bodyColor = styleBody.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
+		this.borderColor = group.getColors().getColor(ColorType.LINE);
+		if (this.borderColor == null)
+			this.borderColor = style.value(PName.LineColor).asColor(colorSet);
+
+		this.northBackcolor = group.getColors().getColor(ColorType.BACK);
+		this.centerBackColor = this.northBackcolor;
+		this.southBackcolor = this.northBackcolor;
+
+		if (this.northBackcolor == null) {
+			this.northBackcolor = styleBuilder
+					.getMergedStyle(
+							EntityImageStateCommon.STYLE.add(SName.name).withStereotype(group.getStereotype()))
+					.value(PName.BackGroundColor).asColor(colorSet);
+			this.centerBackColor = styleBuilder.getMergedStyle(EntityImageStateCommon.STYLE.add(SName.description)
+					.withStereotype(group.getStereotype())).value(PName.BackGroundColor).asColor(colorSet);
+			this.southBackcolor = styleBuilder
+					.getMergedStyle(
+							EntityImageStateCommon.STYLE.add(SName.body).withStereotype(group.getStereotype()))
+					.value(PName.BackGroundColor).asColor(colorSet);
+		}
 
 	}
 
 	public void drawU(UGraphic ug) {
-		final XDimension2D text = title.calculateDimension(ug.getStringBounder());
+		final XDimension2D text = name.calculateDimension(ug.getStringBounder());
 		final XDimension2D attr = attribute.calculateDimension(ug.getStringBounder());
 		final XDimension2D total = calculateDimension(ug.getStringBounder());
 		final double marginForFields = attr.getHeight() > 0 ? IEntityImage.MARGIN : 0;
 
-		final double titreHeight = IEntityImage.MARGIN + text.getHeight() + IEntityImage.MARGIN_LINE;
+		final double nameHeight = IEntityImage.MARGIN + text.getHeight() + IEntityImage.MARGIN_LINE;
+		final double descriptionHeight = attr.getHeight() + marginForFields;
 
-		final RoundedContainer r = new RoundedContainer(total, titreHeight, attr.getHeight() + marginForFields,
-				borderColor, backColor, bodyColor, stroke, rounded, shadowing);
+		final RoundedContainer r = new RoundedContainer(borderColor, total, nameHeight, descriptionHeight,
+				northBackcolor, centerBackColor, southBackcolor, stroke, rounded, shadowing);
+
+		final UGroup group = new UGroup(entity.getLocation());
+		group.put(UGroupType.CLASS, "entity");
+		group.put(UGroupType.ID, "entity_" + entity.getName());
+		group.put(UGroupType.DATA_ENTITY, entity.getName());
+		group.put(UGroupType.DATA_UID, entity.getUid());
+		group.put(UGroupType.DATA_QUALIFIED_NAME, entity.getQuark().getQualifiedName());
+		ug.startGroup(group);
 
 		if (url != null)
 			ug.startUrl(url);
 
 		r.drawU(ug);
-		title.drawU(ug.apply(new UTranslate((total.getWidth() - text.getWidth()) / 2, IEntityImage.MARGIN)));
-		final HorizontalAlignment horizontalAlignment = styleHeader.getHorizontalAlignment();
+		name.drawU(ug.apply(new UTranslate((total.getWidth() - text.getWidth()) / 2, IEntityImage.MARGIN)));
+		final HorizontalAlignment horizontalAlignment = styleDescription.getHorizontalAlignment();
 		horizontalAlignment.draw(ug, attribute, IEntityImage.MARGIN,
 				IEntityImage.MARGIN + text.getHeight() + IEntityImage.MARGIN, total.getWidth());
 
@@ -136,10 +165,12 @@ public final class InnerStateAutonom extends AbstractTextBlock implements IEntit
 		if (url != null)
 			ug.closeUrl();
 
+		ug.closeGroup();
+
 	}
 
 	private double getSpaceYforURL(StringBounder stringBounder) {
-		final XDimension2D text = title.calculateDimension(stringBounder);
+		final XDimension2D text = name.calculateDimension(stringBounder);
 		final XDimension2D attr = attribute.calculateDimension(stringBounder);
 		final double marginForFields = attr.getHeight() > 0 ? IEntityImage.MARGIN : 0;
 		final double titreHeight = IEntityImage.MARGIN + text.getHeight() + IEntityImage.MARGIN_LINE;
@@ -151,9 +182,10 @@ public final class InnerStateAutonom extends AbstractTextBlock implements IEntit
 		return null;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D img = im.calculateDimension(stringBounder);
-		final XDimension2D text = title.calculateDimension(stringBounder);
+		final XDimension2D text = name.calculateDimension(stringBounder);
 		final XDimension2D attr = attribute.calculateDimension(stringBounder);
 
 		final XDimension2D dim = text.mergeTB(attr, img);

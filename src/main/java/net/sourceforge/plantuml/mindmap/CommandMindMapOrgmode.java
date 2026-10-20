@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.mindmap;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -50,6 +54,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMindMapOrgmode extends SingleLineCommand2<MindMapDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("#", "*");
+
 	public CommandMindMapOrgmode() {
 		super(false, getRegexConcat());
 	}
@@ -59,8 +65,40 @@ public class CommandMindMapOrgmode extends SingleLineCommand2<MindMapDiagram> {
 				new RegexLeaf(1, "TYPE", "([ \t]*[*#]+)"), //
 				new RegexOptional(new RegexLeaf(1, "BACKCOLOR", "\\[(#\\w+)\\]")), //
 				new RegexLeaf(1, "SHAPE", "(_)?"), //
-				RegexLeaf.spaceOneOrMore(), //
-				new RegexLeaf(1, "LABEL", "([^%s].*)"), RegexLeaf.end());
+				RegexLeaf.spaceZeroOrMore(), //
+				new RegexLeaf(1, "LABEL", "(.*)"), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String type = arg.get("TYPE", 0);
+		final String label = arg.get("LABEL", 0);
+		final String stringColor = arg.get("BACKCOLOR", 0);
+		final String shape = arg.get("SHAPE", 0);
+		// The actual depth is computed by getSmartLevel against org-mode state; report the raw marker count instead
+		final int markers = countMarkers(type);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding a mindmap node at depth ").append(markers);
+		if (label != null && label.isEmpty() == false)
+			sb.append(" labelled \"").append(label).append("\"");
+		// fromDesc maps '_' to NONE (no box); the default (absent) is a box
+		if ("_".equals(shape))
+			sb.append(" without a box outline");
+		if (stringColor != null)
+			sb.append(" with background color ").append(stringColor);
+		return sb.toString();
+	}
+
+	private static int countMarkers(String type) {
+		int count = 0;
+		for (int i = 0; i < type.length(); i++) {
+			final char c = type.charAt(i);
+			if (c == '*' || c == '#')
+				count++;
+		}
+		return count;
 	}
 
 	@Override
@@ -76,4 +114,10 @@ public class CommandMindMapOrgmode extends SingleLineCommand2<MindMapDiagram> {
 		return diagram.addIdea(backColor, diagram.getSmartLevel(type), Display.getWithNewlines(diagram.getPragma(), label),
 				IdeaShape.fromDesc(arg.get("SHAPE", 0)));
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

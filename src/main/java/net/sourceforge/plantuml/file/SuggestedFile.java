@@ -39,7 +39,7 @@ import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.security.SFile;
 
 public class SuggestedFile {
-	// ::remove file when __CORE__
+	
 
 	private final FileFormat fileFormat;
 	private final int initialCpt;
@@ -54,8 +54,8 @@ public class SuggestedFile {
 		this.initialCpt = initialCpt;
 	}
 
-	public SuggestedFile withPreprocFormat() {
-		return new SuggestedFile(outputFile, FileFormat.PREPROC, initialCpt);
+	public SuggestedFile withPreprocFormat(FileFormat format) {
+		return new SuggestedFile(outputFile, format, initialCpt);
 	}
 
 	@Override

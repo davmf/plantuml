@@ -35,8 +35,6 @@
  */
 package net.sourceforge.plantuml.sequencediagram.graphic;
 
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.sourceforge.plantuml.klimt.UGroup;
@@ -48,9 +46,9 @@ import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.Participant;
 import net.sourceforge.plantuml.skin.ArrowComponent;
 import net.sourceforge.plantuml.skin.Pragma;
-import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.LineLocation;
 
 abstract class Arrow extends GraphicalElement implements InGroupable {
 
@@ -61,6 +59,7 @@ abstract class Arrow extends GraphicalElement implements InGroupable {
 	private final Url url;
 	private final Pragma pragma;
 	private final String uid;
+	private final LineLocation location;
 
 	public void setMaxX(double m) {
 		if (maxX != 0)
@@ -78,8 +77,10 @@ abstract class Arrow extends GraphicalElement implements InGroupable {
 
 	public abstract double getActualWidth(StringBounder stringBounder);
 
-	Arrow(AtomicInteger counter, Pragma pragma, double startingY, Rose skin, ArrowComponent arrowComponent, Url url) {
+	Arrow(AtomicInteger counter, Pragma pragma, double startingY, Rose skin, ArrowComponent arrowComponent, Url url,
+			LineLocation location) {
 		super(startingY);
+		this.location = location;
 		this.pragma = pragma;
 		this.skin = skin;
 		this.arrowComponent = arrowComponent;
@@ -92,17 +93,11 @@ abstract class Arrow extends GraphicalElement implements InGroupable {
 	}
 
 	protected final void startGroup(UGraphic ug) {
-		final UGroup typeIdents = new UGroup();
+		final UGroup typeIdents = new UGroup(location);
 		typeIdents.put(UGroupType.CLASS, "message");
-		// Please also remove Pragma from constructor when this will be removed
-		if (pragma.isTrue(PragmaKey.SVGNEWDATA)) {
-			typeIdents.put(UGroupType.DATA_PARTICIPANT_1, getParticipant1().getUid());
-			typeIdents.put(UGroupType.DATA_PARTICIPANT_2, getParticipant2().getUid());
-			typeIdents.put(UGroupType.DATA_UID, uid);
-		} else {
-			typeIdents.put(UGroupType.DATA_PARTICIPANT_1, getParticipant1().getCode());
-			typeIdents.put(UGroupType.DATA_PARTICIPANT_2, getParticipant2().getCode());
-		}
+		typeIdents.put(UGroupType.DATA_PARTICIPANT_1, getParticipant1().getUid());
+		typeIdents.put(UGroupType.DATA_PARTICIPANT_2, getParticipant2().getUid());
+		typeIdents.put(UGroupType.DATA_UID, uid);
 		ug.startGroup(typeIdents);
 	}
 

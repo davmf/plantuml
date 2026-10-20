@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.activitydiagram3.ftile.vcompact;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -72,6 +71,7 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.svek.ConditionStyle;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 class FtileIfLongVertical extends AbstractFtile {
 
@@ -90,7 +90,7 @@ class FtileIfLongVertical extends AbstractFtile {
 	public Collection<Ftile> getMyChildren() {
 		final List<Ftile> result = new ArrayList<>(tiles);
 		result.add(tile2);
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	private FtileIfLongVertical(List<Ftile> diamonds, List<Ftile> tiles, Ftile tile2, Rainbow arrowColor,
@@ -117,7 +117,7 @@ class FtileIfLongVertical extends AbstractFtile {
 			result.addAll(tile.getSwimlanes());
 
 		result.addAll(tile2.getSwimlanes());
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	public Swimlane getSwimlaneIn() {
@@ -456,14 +456,14 @@ class FtileIfLongVertical extends AbstractFtile {
 		return new UTranslate(x, dimTotal.getHeight() - dimLast.getHeight());
 	}
 
-	private UTranslate getTranslate1(Ftile candidat, StringBounder stringBounder) {
-		final int idx = tiles.indexOf(candidat);
+	private UTranslate getTranslate1(Ftile candidate, StringBounder stringBounder) {
+		final int idx = tiles.indexOf(candidate);
 		if (idx == -1)
 			throw new IllegalArgumentException();
 
 		final double y1 = getTranslateDy(idx, stringBounder);
 		final FtileGeometry diam = diamonds.get(idx).calculateDimension(stringBounder);
-		final FtileGeometry dim1 = candidat.calculateDimension(stringBounder);
+		final FtileGeometry dim1 = candidate.calculateDimension(stringBounder);
 		final FtileGeometry dimTotal = calculateDimensionInternal(stringBounder);
 		final double allDiamondsWidth = allDiamondsWidth(stringBounder);
 		final double x = allDiamondsWidth + (dimTotal.getWidth() - allDiamondsWidth - dim1.getWidth()) / 2;

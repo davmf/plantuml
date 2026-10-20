@@ -35,8 +35,10 @@
  */
 package net.sourceforge.plantuml.skin;
 
-import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.annotation.Fast;
+import net.sourceforge.plantuml.klimt.UGroup;
+import net.sourceforge.plantuml.klimt.UGroupType;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
@@ -44,14 +46,14 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
-import net.sourceforge.plantuml.style.SName;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public enum VisibilityModifier {
 	PRIVATE_FIELD(StringUtils.PRIVATE_FIELD, ColorParam.iconPrivate, null),
@@ -71,7 +73,7 @@ public enum VisibilityModifier {
 	private final ColorParam backgroundParam;
 	private final char unicode;
 
-	public static String regexForVisibilityCharacterInClassName() {
+	public static String regexForVisibilityCharacter() {
 		return "[-#+~]";
 	}
 
@@ -84,7 +86,7 @@ public enum VisibilityModifier {
 	public UDrawable getUDrawable(final int size, final HColor foregroundColor, final HColor backgoundColor) {
 		return new UDrawable() {
 			public void drawU(UGraphic ug) {
-				drawInternal(ug, size, foregroundColor, backgoundColor, 0, 0);
+				drawWithGroup(ug, size, foregroundColor, backgoundColor, 0, 0);
 			}
 
 		};
@@ -92,14 +94,16 @@ public enum VisibilityModifier {
 
 	public TextBlock getUBlock(final int size, final HColor foregroundColor, final HColor backgoundColor,
 			final boolean withInvisibleRectanble) {
-		return new AbstractTextBlock() {
+		return new TextBlock() {
 
+			@Fast
+			@Override
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
 				return new XDimension2D(size + 1, size + 1);
 			}
 
 			@Override
-			public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
+			public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 				return null;
 			}
 
@@ -107,9 +111,18 @@ public enum VisibilityModifier {
 				if (withInvisibleRectanble)
 					ug.apply(HColors.none()).draw(URectangle.build(size * 2, size));
 
-				drawInternal(ug, size, foregroundColor, backgoundColor, 0, 0);
+				drawWithGroup(ug, size, foregroundColor, backgoundColor, 0, 0);
 			}
 		};
+	}
+
+	private void drawWithGroup(UGraphic ug, int size, final HColor foregroundColor, final HColor backgoundColor,
+			double x, double y) {
+		final UGroup group = new UGroup();
+		group.put(UGroupType.DATA_VISIBILITY_MODIFIER, this.name());
+		ug.startGroup(group);
+		drawInternal(ug, size, foregroundColor, backgoundColor, x, y);
+		ug.closeGroup();
 	}
 
 	private void drawInternal(UGraphic ug, int size, final HColor foregroundColor, final HColor backgoundColor,
@@ -321,21 +334,21 @@ public enum VisibilityModifier {
 		return false;
 	}
 
-	public StyleSignatureBasic getStyleSignature() {
+	public StyleQuery getStyleSignature() {
 		if (this == IE_MANDATORY)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.visibilityIcon, SName.IEMandatory);
+			return StyleQueries.VISIBILITYICON_IE_MANDATORY;
 
 		if (this == PUBLIC_FIELD || this == PUBLIC_METHOD)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.visibilityIcon, SName.public_);
+			return StyleQueries.VISIBILITYICON_PUBLIC;
 
 		if (this == PRIVATE_FIELD || this == PRIVATE_METHOD)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.visibilityIcon, SName.private_);
+			return StyleQueries.VISIBILITYICON_PRIVATE;
 
 		if (this == PROTECTED_FIELD || this == PROTECTED_METHOD)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.visibilityIcon, SName.protected_);
+			return StyleQueries.VISIBILITYICON_PROTECTED;
 
 		if (this == PACKAGE_PRIVATE_FIELD || this == VisibilityModifier.PACKAGE_PRIVATE_METHOD)
-			return StyleSignatureBasic.of(SName.root, SName.element, SName.visibilityIcon, SName.package_);
+			return StyleQueries.VISIBILITYICON_PACKAGE;
 
 		throw new IllegalStateException();
 	}

@@ -38,11 +38,13 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sourceforge.plantuml.OptionFlags;
+import net.sourceforge.plantuml.cli.GlobalConfig;
+import net.sourceforge.plantuml.cli.GlobalConfigKey;
 import net.sourceforge.plantuml.windowsdot.WindowsDotArchive;
 
 public class License {
-
+	
+	
 	public static void main(String[] args) {
 		List<String> lines = License.getCurrent().getTextFull();
 		for (int line = 0; line < lines.size(); line++) {
@@ -58,10 +60,10 @@ public class License {
 
 	@Override
 	public String toString() {
-		// ::comment when __CORE__ or __MIT__ or __EPL__ or __BSD__ or __ASL__ or __LGPL__ or __GPLV2__
+		// ::comment when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__ __GPLV2__
 		return "GPL";
 		// ::done
-		// ::uncomment when __CORE__ or __MIT__
+		// ::uncomment when __MIT__
 		// return "MIT";
 		// ::done
 		// ::uncomment when __EPL__
@@ -109,15 +111,12 @@ public class License {
 
 	private void header1(final List<String> text, LicenseInfo licenseInfo) {
 
-		// ::comment when __CORE__
 		if (licenseInfo.isNone()) {
-			// ::done
 			text.add("+=======================================================================");
 			text.add("| ");
 			text.add("|      PlantUML : a free UML diagram generator");
 			text.add("| ");
 			text.add("+=======================================================================");
-			// ::comment when __CORE__
 		} else {
 			text.add("+=======================================================================");
 			text.add("| ");
@@ -127,38 +126,34 @@ public class License {
 			addLicenseInfo(text, licenseInfo);
 			text.add("+=======================================================================");
 		}
-		// ::done
 	}
 
 	private void header2(final List<String> text, LicenseInfo licenseInfo, boolean withQrcode) {
 		text.add(" ");
-		text.add("(C) Copyright 2009-2024, Arnaud Roques");
+		text.add("(C) Copyright 2009-2027, Arnaud Roques");
 		text.add(" ");
 		text.add("Project Info:  https://plantuml.com");
 		text.add(" ");
 
-		if (licenseInfo.isValid() == false) {
+		// No support links nor QR codes for a Professional Edition (even an expired one)
+		if (licenseInfo.isNone()) {
 			text.add("If you like this project or if you find it useful, you can support us at:");
 			text.add(" ");
 			text.add("https://plantuml.com/patreon (only 1$ per month!)");
 			text.add("https://plantuml.com/liberapay (only 1\u20ac per month!)");
 			text.add("https://plantuml.com/paypal");
-			// ::comment when __CORE__
 			if (withQrcode) {
 				text.add(
 						"\t<qrcode:https://plantuml.com/patreon>\t\t<qrcode:https://plantuml.com/lp>\t\t<qrcode:https://plantuml.com/paypal>");
 			} else {
-				// ::done
 				text.add("");
 				text.add(" ");
-				// ::comment when __CORE__
 			}
-			// ::done
 		}
 	}
 
 	private void end3(final LicenseInfo licenseInfo, final List<String> text) {
-		// ::comment when __CORE__ or __MIT__ or __EPL__ or __BSD__ or __ASL__ or __LGPL__ or __GPLV2__
+		// ::comment when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__ __GPLV2__
 		text.add("PlantUML is free software; you can redistribute it and/or modify it");
 		text.add("under the terms of the GNU General Public License as published by");
 		text.add("the Free Software Foundation, either version 3 of the License, or");
@@ -173,9 +168,6 @@ public class License {
 		text.add("along with this library.  If not, see <https://www.gnu.org/licenses/>.");
 		// ::done
 
-		// ::uncomment when __CORE__
-		// addCore(licenseInfo, text);
-		// ::done
 		// ::uncomment when __MIT__
 		// addMit(licenseInfo, text);
 		// ::done
@@ -217,8 +209,7 @@ public class License {
 		text.add("by any license, then the generated images are logically covered");
 		text.add("by the very same license.");
 
-		// ::comment when __CORE__
-		if (OptionFlags.getInstance().isEnableStats()) {
+		if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.ENABLE_STATS)) {
 			text.add(" ");
 			text.add("This version of PlantUML records general local statistics about usage.");
 			text.add("(more info on https://plantuml.com/statistics-report)");
@@ -232,7 +223,6 @@ public class License {
 			text.add("You have to install GraphViz and to setup the GRAPHVIZ_DOT environment variable");
 		}
 		text.add("(see https://plantuml.com/graphviz-dot )");
-		// ::done
 		text.add(" ");
 		text.add("Icons provided by OpenIconic :  https://useiconic.com/open");
 		text.add("Archimate sprites provided by Archi :  http://www.archimatetool.com");
@@ -247,35 +237,6 @@ public class License {
 		text.add(" ");
 	}
 
-// ::uncomment when __CORE__
-//	private void addCore(final LicenseInfo licenseInfo, final List<String> text) {
-//		text.add("Powered by CheerpJ, a Leaning Technologies Java tool.");
-//		text.add("This library is running using CheerpJ for PlantUML License provided by Leaning Technologies Limited.");
-//		text.add(" ");
-//		text.add(" ");
-//		text.add("PlantUML is free software; you can redistribute it and/or modify it");
-//		text.add("under the terms of the MIT License.");
-//		text.add(" ");
-//		text.add("See http://opensource.org/licenses/MIT");
-//		text.add(" ");
-//		text.add("Permission is hereby granted, free of charge, to any person obtaining");
-//		text.add("a copy of this software and associated documentation files (the \"Software\"),");
-//		text.add("to deal in the Software without restriction, including without limitation");
-//		text.add("the rights to use, copy, modify, merge, publish, distribute, sublicense,");
-//		text.add("and/or sell copies of the Software, and to permit persons to whom the");
-//		text.add("Software is furnished to do so, subject to the following conditions:");
-//		text.add(" ");
-//		text.add("The above copyright notice and this permission notice shall be included");
-//		text.add("in all copies or substantial portions of the Software.");
-//		text.add(" ");
-//		text.add("THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS");
-//		text.add("OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,");
-//		text.add("FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE");
-//		text.add("AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,");
-//		text.add("WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR");
-//		text.add("IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
-//	}
-// ::done
 
 // ::uncomment when __MIT__
 //	private void addMit(final LicenseInfo licenseInfo, final List<String> text) {
@@ -414,18 +375,23 @@ public class License {
 		if (licenseInfo.getLicenseType() == LicenseType.NAMED) {
 			text.add("| ");
 			text.add("|      LICENSED TO : " + licenseInfo.getOwner());
-			text.add(
-					"|      EXPIRATION DATE : " + DateFormat.getDateInstance().format(licenseInfo.getExpirationDate()));
-			text.add("|  ");
+			addKeyAndExpiration(text, licenseInfo);
 		} else if (licenseInfo.getLicenseType() == LicenseType.DISTRIBUTOR) {
 			text.add("|  ");
 			text.add("|      DISTRIBUTED BY : " + licenseInfo.getOwner());
-			text.add("|  ");
+			addKeyAndExpiration(text, licenseInfo);
 		}
 		if (licenseInfo.getLicenseType() != LicenseType.UNKNOWN && licenseInfo.hasExpired()) {
 			text.add("|      <i>Warning: Your license has expired.");
 			text.add("|  ");
 		}
+	}
+
+	// Always displayed, whether the license is still valid or not
+	private static void addKeyAndExpiration(final List<String> text, LicenseInfo licenseInfo) {
+		text.add("|      LICENSE KEY : " + licenseInfo.getKeyStart() + "...");
+		text.add("|      EXPIRATION DATE : " + DateFormat.getDateInstance().format(licenseInfo.getExpirationDate()));
+		text.add("|  ");
 	}
 
 }

@@ -35,11 +35,15 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.klimt.UShapeKind;
+import java.awt.font.TextLayout;
+
 import net.sourceforge.plantuml.jaws.Jaws;
 import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class UText implements UShape {
 
@@ -53,7 +57,8 @@ public class UText implements UShape {
 	}
 
 	private UText(String text, FontConfiguration font, int orientation) {
-		assert text.indexOf('\t') == -1;
+		if (TeaVM.a())
+			assert text.indexOf('\t') == -1;
 		this.text = text.replace(Jaws.BLOCK_E1_NEWLINE, '\u21b5').replace(Jaws.BLOCK_E1_BREAKLINE, '\u23ce');
 		this.font = font;
 		this.orientation = orientation;
@@ -75,11 +80,9 @@ public class UText implements UShape {
 		return font;
 	}
 
-	// ::comment when __HAXE__
 	public double getDescent(StringBounder stringBounder) {
 		return stringBounder.getDescent(font.getFont(), text);
 	}
-	// ::done
 
 	public final int getOrientation() {
 		return orientation;
@@ -87,6 +90,15 @@ public class UText implements UShape {
 
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return stringBounder.calculateDimension(font.getFont(), text);
+	}
+
+	public TextLayout createTextLayout() {
+		return getFontConfiguration().getFont().createTextLayout(getText());
+	}
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.TEXT;
 	}
 
 }

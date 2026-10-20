@@ -36,124 +36,55 @@ package net.sourceforge.plantuml.tim;
 
 import static java.util.Objects.requireNonNull;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import net.sourceforge.plantuml.DefinitionsContainer;
 import net.sourceforge.plantuml.FileSystem;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
-import net.sourceforge.plantuml.file.AFile;
-import net.sourceforge.plantuml.file.AParentFolder;
-import net.sourceforge.plantuml.file.AParentFolderStdlib;
 import net.sourceforge.plantuml.jaws.Jaws;
 import net.sourceforge.plantuml.jaws.JawsStrange;
 import net.sourceforge.plantuml.json.Json;
 import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.json.JsonValue;
 import net.sourceforge.plantuml.log.Logme;
-import net.sourceforge.plantuml.preproc.Defines;
-import net.sourceforge.plantuml.preproc.FileWithSuffix;
-import net.sourceforge.plantuml.preproc.ImportedFiles;
+import net.sourceforge.plantuml.nio.InputFile;
+import net.sourceforge.plantuml.nio.PathSystem;
+import net.sourceforge.plantuml.preproc.Environment;
+import net.sourceforge.plantuml.preproc.DiagramDetector;
+import net.sourceforge.plantuml.preproc.DiagramExtractor;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.preproc.ReadLine;
 import net.sourceforge.plantuml.preproc.ReadLineList;
 import net.sourceforge.plantuml.preproc.ReadLineReader;
 import net.sourceforge.plantuml.preproc.ReadLineWithYamlHeader;
-import net.sourceforge.plantuml.preproc.StartDiagramExtractReader;
 import net.sourceforge.plantuml.preproc.Sub;
 import net.sourceforge.plantuml.preproc.UncommentReadLine;
 import net.sourceforge.plantuml.preproc2.PreprocessorIncludeStrategy;
 import net.sourceforge.plantuml.preproc2.PreprocessorUtils;
+import net.sourceforge.plantuml.preproc2.ReadFilterMergeLines;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SURL;
 import net.sourceforge.plantuml.skin.Pragma;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.teavm.js.browser.BrowserLog;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.text.TLineType;
 import net.sourceforge.plantuml.theme.Theme;
-import net.sourceforge.plantuml.theme.ThemeUtils;
-import net.sourceforge.plantuml.tim.builtin.AlwaysFalse;
-import net.sourceforge.plantuml.tim.builtin.AlwaysTrue;
-import net.sourceforge.plantuml.tim.builtin.Backslash;
-import net.sourceforge.plantuml.tim.builtin.BoolVal;
-import net.sourceforge.plantuml.tim.builtin.Breakline;
-import net.sourceforge.plantuml.tim.builtin.CallUserFunction;
-import net.sourceforge.plantuml.tim.builtin.Chr;
-import net.sourceforge.plantuml.tim.builtin.Darken;
-import net.sourceforge.plantuml.tim.builtin.DateFunction;
-import net.sourceforge.plantuml.tim.builtin.Dec2hex;
-import net.sourceforge.plantuml.tim.builtin.Dirpath;
-import net.sourceforge.plantuml.tim.builtin.Dollar;
-import net.sourceforge.plantuml.tim.builtin.Eval;
-import net.sourceforge.plantuml.tim.builtin.Feature;
-import net.sourceforge.plantuml.tim.builtin.FileExists;
-import net.sourceforge.plantuml.tim.builtin.Filedate;
-import net.sourceforge.plantuml.tim.builtin.Filename;
-import net.sourceforge.plantuml.tim.builtin.FilenameNoExtension;
-import net.sourceforge.plantuml.tim.builtin.FunctionExists;
-import net.sourceforge.plantuml.tim.builtin.GetAllStdlib;
-import net.sourceforge.plantuml.tim.builtin.GetAllTheme;
-import net.sourceforge.plantuml.tim.builtin.GetCurrentTheme;
-import net.sourceforge.plantuml.tim.builtin.GetJsonKey;
-import net.sourceforge.plantuml.tim.builtin.GetJsonType;
-import net.sourceforge.plantuml.tim.builtin.GetStdlib;
-import net.sourceforge.plantuml.tim.builtin.GetVariableValue;
-import net.sourceforge.plantuml.tim.builtin.GetVersion;
-import net.sourceforge.plantuml.tim.builtin.Getenv;
-import net.sourceforge.plantuml.tim.builtin.Hex2dec;
-import net.sourceforge.plantuml.tim.builtin.HslColor;
-import net.sourceforge.plantuml.tim.builtin.IntVal;
-import net.sourceforge.plantuml.tim.builtin.InvokeProcedure;
-import net.sourceforge.plantuml.tim.builtin.IsDark;
-import net.sourceforge.plantuml.tim.builtin.IsLight;
-import net.sourceforge.plantuml.tim.builtin.JsonAdd;
-import net.sourceforge.plantuml.tim.builtin.JsonKeyExists;
-import net.sourceforge.plantuml.tim.builtin.JsonMerge;
-import net.sourceforge.plantuml.tim.builtin.JsonRemove;
-import net.sourceforge.plantuml.tim.builtin.JsonSet;
-import net.sourceforge.plantuml.tim.builtin.LeftAlign;
-import net.sourceforge.plantuml.tim.builtin.Lighten;
-import net.sourceforge.plantuml.tim.builtin.LoadJson;
-import net.sourceforge.plantuml.tim.builtin.LogicalAnd;
-import net.sourceforge.plantuml.tim.builtin.LogicalNand;
-import net.sourceforge.plantuml.tim.builtin.LogicalNor;
-import net.sourceforge.plantuml.tim.builtin.LogicalNot;
-import net.sourceforge.plantuml.tim.builtin.LogicalNxor;
-import net.sourceforge.plantuml.tim.builtin.LogicalOr;
-import net.sourceforge.plantuml.tim.builtin.LogicalXor;
-import net.sourceforge.plantuml.tim.builtin.Lower;
-import net.sourceforge.plantuml.tim.builtin.Modulo;
-import net.sourceforge.plantuml.tim.builtin.Newline;
-import net.sourceforge.plantuml.tim.builtin.NewlineShort;
-import net.sourceforge.plantuml.tim.builtin.Now;
-import net.sourceforge.plantuml.tim.builtin.Ord;
-import net.sourceforge.plantuml.tim.builtin.Percent;
-import net.sourceforge.plantuml.tim.builtin.RandomFunction;
-import net.sourceforge.plantuml.tim.builtin.RetrieveProcedure;
-import net.sourceforge.plantuml.tim.builtin.ReverseColor;
-import net.sourceforge.plantuml.tim.builtin.ReverseHsluvColor;
-import net.sourceforge.plantuml.tim.builtin.RightAlign;
-import net.sourceforge.plantuml.tim.builtin.SetVariableValue;
-import net.sourceforge.plantuml.tim.builtin.Size;
-import net.sourceforge.plantuml.tim.builtin.SplitStr;
-import net.sourceforge.plantuml.tim.builtin.SplitStrRegex;
-import net.sourceforge.plantuml.tim.builtin.Str2Json;
-import net.sourceforge.plantuml.tim.builtin.StringFunction;
-import net.sourceforge.plantuml.tim.builtin.Strlen;
-import net.sourceforge.plantuml.tim.builtin.Strpos;
-import net.sourceforge.plantuml.tim.builtin.Substr;
-import net.sourceforge.plantuml.tim.builtin.Tabulation;
-import net.sourceforge.plantuml.tim.builtin.Upper;
-import net.sourceforge.plantuml.tim.builtin.VariableExists;
-import net.sourceforge.plantuml.tim.builtin.Xargs;
 import net.sourceforge.plantuml.tim.expression.Knowledge;
 import net.sourceforge.plantuml.tim.expression.TValue;
 import net.sourceforge.plantuml.tim.iterator.CodeIterator;
@@ -170,122 +101,56 @@ import net.sourceforge.plantuml.tim.iterator.CodeIteratorShortComment;
 import net.sourceforge.plantuml.tim.iterator.CodeIteratorSub;
 import net.sourceforge.plantuml.tim.iterator.CodeIteratorWhile;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class TContext {
+
+	private static final Pattern NEWLINE = Pattern.compile("\n");
 
 	private final List<StringLocated> resultList = new ArrayList<>();
 	private final List<StringLocated> debug = new ArrayList<>();
 
-	public final FunctionsSet functionsSet = new FunctionsSet();
+	public final FunctionsSet functionsSet = new FunctionsSet(StandardFunctions.get());
 
-	private ImportedFiles importedFiles;
+	private final Environment environment;
+
 	private final Charset charset;
 
 	private final Map<String, Sub> subs = new HashMap<String, Sub>();
 	private final DefinitionsContainer definitionsContainer;
 
-	// private final Set<FileWithSuffix> usedFiles = new HashSet<>();
-	private final Set<FileWithSuffix> filesUsedCurrent = new HashSet<>();
+	private final Set<File> filesUsedCurrent = new HashSet<>();
+	/**
+	 * What the include strategies count as included: a file with its selector,
+	 * as FileWithSuffix did, so that two diagrams of one file
+	 * (<code>file!0</code>, <code>file!1</code>) are two includes. A local file
+	 * is its canonical path; a file the browser host delivered is the
+	 * identifier the host gave it, a string compared as it is, which a File
+	 * would normalise.
+	 */
+	private final Set<List<String>> includedCurrent = new HashSet<>();
 
 	private final PreprocessingArtifact preprocessingArtifact = new PreprocessingArtifact();
+	private PathSystem pathSystem;
 
-	public Set<FileWithSuffix> getFilesUsedCurrent() {
-		return Collections.unmodifiableSet(filesUsedCurrent);
+	public Set<File> getFilesUsedCurrent() {
+		return MyCollections.unmodifiableSet(filesUsedCurrent);
 	}
 
-	private void addStandardFunctions(Defines defines) {
-		functionsSet.addFunction(new AlwaysFalse());
-		functionsSet.addFunction(new AlwaysTrue());
-		functionsSet.addFunction(new Backslash());
-		functionsSet.addFunction(new BoolVal());
-		functionsSet.addFunction(new Breakline());
-		functionsSet.addFunction(new CallUserFunction());
-		functionsSet.addFunction(new Chr());
-		functionsSet.addFunction(new Darken());
-		functionsSet.addFunction(new DateFunction());
-		functionsSet.addFunction(new Dec2hex());
-		functionsSet.addFunction(new Dirpath(defines));
-		functionsSet.addFunction(new Dollar());
-		functionsSet.addFunction(new Eval());
-		functionsSet.addFunction(new Feature());
-		functionsSet.addFunction(new Filedate(defines));
-		functionsSet.addFunction(new FileExists());
-		functionsSet.addFunction(new Filename(defines));
-		functionsSet.addFunction(new FilenameNoExtension(defines));
-		functionsSet.addFunction(new FunctionExists());
-		functionsSet.addFunction(new GetAllStdlib());
-		functionsSet.addFunction(new GetAllTheme());
-		functionsSet.addFunction(new GetCurrentTheme());
-		functionsSet.addFunction(new GetJsonKey());
-		functionsSet.addFunction(new GetJsonType());
-		functionsSet.addFunction(new GetStdlib());
-		functionsSet.addFunction(new GetVariableValue());
-		functionsSet.addFunction(new GetVersion());
-		functionsSet.addFunction(new Getenv());
-		functionsSet.addFunction(new Hex2dec());
-		functionsSet.addFunction(new HslColor());
-		functionsSet.addFunction(new IntVal());
-		functionsSet.addFunction(new InvokeProcedure());
-		functionsSet.addFunction(new IsDark());
-		functionsSet.addFunction(new IsLight());
-		functionsSet.addFunction(new JsonAdd());
-		functionsSet.addFunction(new JsonKeyExists());
-		functionsSet.addFunction(new JsonMerge());
-		functionsSet.addFunction(new JsonRemove());
-		functionsSet.addFunction(new JsonSet());
-		functionsSet.addFunction(new LeftAlign());
-		functionsSet.addFunction(new Lighten());
-		functionsSet.addFunction(new LoadJson());
-		// functionsSet.addFunction(new LoadJsonLegacy());
-		functionsSet.addFunction(new LogicalAnd());
-		functionsSet.addFunction(new LogicalNand());
-		functionsSet.addFunction(new LogicalNor());
-		functionsSet.addFunction(new LogicalNot());
-		functionsSet.addFunction(new LogicalNxor());
-		functionsSet.addFunction(new LogicalOr());
-		functionsSet.addFunction(new LogicalXor());
-		functionsSet.addFunction(new Lower());
-		functionsSet.addFunction(new Modulo());
-		functionsSet.addFunction(new Newline());
-		functionsSet.addFunction(new NewlineShort());
-		functionsSet.addFunction(new Now());
-		functionsSet.addFunction(new Ord());
-		functionsSet.addFunction(new Percent());
-		functionsSet.addFunction(new RandomFunction());
-		functionsSet.addFunction(new RetrieveProcedure());
-		functionsSet.addFunction(new ReverseColor());
-		functionsSet.addFunction(new ReverseHsluvColor());
-		functionsSet.addFunction(new RightAlign());
-		functionsSet.addFunction(new SetVariableValue());
-		functionsSet.addFunction(new Size());
-		functionsSet.addFunction(new SplitStr());
-		functionsSet.addFunction(new SplitStrRegex());
-		functionsSet.addFunction(new Str2Json());
-		functionsSet.addFunction(new StringFunction());
-		functionsSet.addFunction(new Strlen());
-		functionsSet.addFunction(new Strpos());
-		functionsSet.addFunction(new Substr());
-		functionsSet.addFunction(new Tabulation());
-		functionsSet.addFunction(new Upper());
-		functionsSet.addFunction(new VariableExists());
-		functionsSet.addFunction(new Xargs());
-		// %standard_exists_function
-		// %str_replace
-		// !exit
-		// !log
-		// %min
-		// %max
-		// Regexp
-		// %time
-		// %trim
-	}
-
-	public TContext(ImportedFiles importedFiles, Defines defines, Charset charset,
+	public TContext(PathSystem pathSystem, Environment environment, Charset charset,
 			DefinitionsContainer definitionsContainer) {
+		this.environment = requireNonNull(environment);
+		this.pathSystem = pathSystem;
 		this.definitionsContainer = definitionsContainer;
-		this.importedFiles = importedFiles;
 		this.charset = requireNonNull(charset);
-		this.addStandardFunctions(defines);
+	}
+
+	/**
+	 * Returns a value of the environment (see {@link Environment}), or
+	 * <code>null</code> if there is none.
+	 */
+	public String getEnvironmentValue(String key) {
+		return environment.get(key);
 	}
 
 	public Knowledge asKnowledge(final TMemory memory, final LineLocation location) {
@@ -335,16 +200,19 @@ public class TContext {
 
 	public TValue executeLines(TMemory memory, List<StringLocated> body, TFunctionType ftype, boolean modeSpecial)
 			throws EaterException {
+		BrowserLog.consoleLog(TContext.class, "executeLines start (" + body.size() + " lines)");
 		final CodeIterator it = buildCodeIterator(memory, body);
 
 		StringLocated s = null;
 		while ((s = it.peek()) != null) {
 			final TValue result = executeOneLineSafe(memory, s, ftype, modeSpecial);
-			if (result != null)
+			if (result != null) {
+				BrowserLog.consoleLog(TContext.class, "executeLines ok -> " + result);
 				return result;
-
+			}
 			it.next();
 		}
+		BrowserLog.consoleLog(TContext.class, "executeLines return null");
 		return null;
 
 	}
@@ -433,12 +301,14 @@ public class TContext {
 		} else if (type == TLineType.LOG) {
 			this.executeLog(memory, s);
 			return null;
-		} else if (s.getString().matches("^\\s+$")) {
+		} else if (ONLY_WHITESPACE_NON_EMPTY.matcher(s.getString()).matches()) {
 			return null;
 		} else {
 			throw new EaterException("Compile Error " + ftype + " " + type, s);
 		}
 	}
+
+	private static final Pattern ONLY_WHITESPACE_NON_EMPTY = Pattern.compile("^\\s+$");
 
 	private void addPlain(TMemory memory, StringLocated s) throws EaterException {
 		final StringLocated tmp[] = applyFunctionsAndVariablesInternal(memory, s);
@@ -490,15 +360,12 @@ public class TContext {
 	@JawsStrange
 	private StringLocated[] applyFunctionsAndVariablesInternal(TMemory memory, StringLocated located)
 			throws EaterException {
-		if (memory.isEmpty() && functionsSet.size() == 0)
-			return new StringLocated[] { located };
-
 		final String result = applyFunctionsAndVariables(memory, located);
 		if (result == null)
 			return null;
 
 		if (Pragma.legacyReplaceBackslashNByNewline()) {
-			final String[] splited = result.split("\n");
+			final String[] splited = NEWLINE.split(result);
 			final StringLocated[] tab = new StringLocated[splited.length];
 			for (int i = 0; i < splited.length; i++)
 				tab[i] = new StringLocated(splited[i], located.getLocation());
@@ -520,10 +387,10 @@ public class TContext {
 		// https://en.wikipedia.org/wiki/String-searching_algorithm
 		// https://www.quora.com/What-is-the-most-efficient-algorithm-to-replace-all-occurrences-of-a-pattern-P-in-a-string-with-a-pattern-P
 		// https://en.wikipedia.org/wiki/Trie
-		if (memory.isEmpty() && functionsSet.size() == 0)
-			return str.getString();
-
 		final StringBuilder result = new StringBuilder();
+		// One VariableManager for the whole line: it only holds final references, and building
+		// two of them per character was a visible share of the preprocessor allocations.
+		final VariableManager variableManager = new VariableManager(this, memory, str);
 		for (int i = 0; i < str.length(); i++) {
 			final char c = str.charAt(i);
 			final String presentFunction = getFunctionNameAt(str.getString(), i);
@@ -553,8 +420,9 @@ public class TContext {
 					executeVoid3(str, memory, function, call);
 					return null;
 				}
-				assert function.getFunctionType() == TFunctionType.RETURN_FUNCTION
-						|| function.getFunctionType() == TFunctionType.LEGACY_DEFINE;
+				if (TeaVM.a())
+					assert function.getFunctionType() == TFunctionType.RETURN_FUNCTION
+							|| function.getFunctionType() == TFunctionType.LEGACY_DEFINE;
 				final TValue functionReturn = function.executeReturnFunction(this, memory, str, call.getValues(),
 						call.getNamedArguments());
 				String tmp = functionReturn.toString();
@@ -569,8 +437,8 @@ public class TContext {
 				// }
 				result.append(tmp);
 				i += call.getCurrentPosition() - 1;
-			} else if (new VariableManager(this, memory, str).getVarnameAt(str.getString(), i) != null) {
-				i = new VariableManager(this, memory, str).replaceVariables(str.getString(), i, result);
+			} else if (variableManager.getVarnameAt(str.getString(), i) != null) {
+				i = variableManager.replaceVariables(str.getString(), i, result);
 			} else {
 				result.append(c);
 			}
@@ -589,21 +457,27 @@ public class TContext {
 	}
 
 	private void executeImport(TMemory memory, StringLocated s) throws EaterException {
-		final EaterImport _import = new EaterImport(s.getTrimmed());
-		_import.analyze(this, memory);
+		if (!TeaVM.isTeaVM()) {
+			final EaterImport _import = new EaterImport(s.getTrimmed());
+			_import.analyze(this, memory);
 
-		try {
-			final SFile file = FileSystem.getInstance()
-					.getFile(applyFunctionsAndVariables(memory, new StringLocated(_import.getWhat(), s.getLocation())));
-			if (file.exists() && file.isDirectory() == false) {
-				importedFiles.addImportFile(file);
-				return;
+			try {
+				final String what = applyFunctionsAndVariables(memory,
+						new StringLocated(_import.getWhat(), s.getLocation()));
+				// Same lookup as !include (relative to the directory of the current diagram)
+				// and only then the historical one, based on the global current directory.
+				final boolean special = what.startsWith("<") || what.startsWith("http://") || what.startsWith("https://");
+				final InputFile found = special ? null : pathSystem.getInputFile(what);
+				final SFile file = found instanceof SFile ? (SFile) found : FileSystem.getInstance().getFile(what);
+				if (file.exists() && file.isDirectory() == false) {
+					pathSystem.addImportFile(file);
+					return;
+				}
+			} catch (IOException e) {
+				Logme.error(e);
+				throw new EaterException("Cannot import " + e.getMessage(), s);
 			}
-		} catch (IOException e) {
-			Logme.error(e);
-			throw new EaterException("Cannot import " + e.getMessage(), s);
 		}
-
 		throw new EaterException("Cannot import", s);
 	}
 
@@ -612,15 +486,16 @@ public class TContext {
 		log.analyze(this, memory);
 	}
 
-	public FileWithSuffix getFileWithSuffix(String from, String realName) throws IOException {
-		final String s = ThemeUtils.getFullPath(from, realName);
-		final FileWithSuffix file = importedFiles.getFile(s, null);
-		return file;
-
-	}
+//	public FileWithSuffix getFileWithSuffix(String from, String realName) throws IOException {
+//		throw new IOException("to be finished");
+////		final String s = ThemeUtils.getFullPath(from, realName);
+////		final FileWithSuffix file = importedFiles.getFile(s, null);
+////		return file;
+//
+//	}
 
 	private void executeIncludesub(TMemory memory, StringLocated s) throws EaterException {
-		ImportedFiles saveImportedFiles = null;
+		PathSystem saveImportedFiles = null;
 		try {
 			final EaterIncludesub include = new EaterIncludesub(s.getTrimmed());
 			include.analyze(this, memory);
@@ -631,10 +506,10 @@ public class TContext {
 				final String filename = what.substring(0, idx);
 				final String blocname = what.substring(idx + 1);
 				try {
-					final FileWithSuffix f2 = importedFiles.getFile(filename, null);
-					if (f2.fileOk()) {
-						saveImportedFiles = this.importedFiles;
-						this.importedFiles = this.importedFiles.withCurrentDir(f2.getParentFile());
+					final InputFile f2 = pathSystem.getInputFile(filename, PathSystem.KIND_INCLUDESUB);
+					if (f2 != null) {
+						saveImportedFiles = this.pathSystem;
+						this.pathSystem = this.pathSystem.withCurrentDir(f2.getParentFolder());
 						final Reader reader = f2.getReader(charset);
 						if (reader == null)
 							throw new EaterException("cannot include " + what, s);
@@ -642,6 +517,7 @@ public class TContext {
 						try {
 							ReadLine readerline = ReadLineReader.create(reader, what, s.getLocation());
 							readerline = new UncommentReadLine(readerline);
+							readerline = new ReadFilterMergeLines().applyFilter(readerline);
 							sub = Sub.fromFile(readerline, blocname, this, memory);
 						} finally {
 							reader.close();
@@ -661,36 +537,39 @@ public class TContext {
 			executeLinesInternal(memory, sub.lines(), null);
 		} finally {
 			if (saveImportedFiles != null)
-				this.importedFiles = saveImportedFiles;
+				this.pathSystem = saveImportedFiles;
 
 		}
 	}
 
 	private void executeIncludeDef(TMemory memory, StringLocated s) throws EaterException {
-		final EaterIncludeDef include = new EaterIncludeDef(s.getTrimmed());
-		include.analyze(this, memory);
-		final String definitionName = include.getLocation();
-		final List<String> definition = definitionsContainer.getDefinition(definitionName);
-		final ReadLine reader2 = new ReadLineList(definition, s.getLocation());
+		if (!TeaVM.isTeaVM()) {
 
-		try {
-			final List<StringLocated> body = new ArrayList<>();
-			do {
-				final StringLocated sl = reader2.readLine();
-				if (sl == null) {
-					executeLinesInternal(memory, body, null);
-					return;
-				}
-				body.add(sl);
-			} while (true);
-		} catch (IOException e) {
-			Logme.error(e);
-			throw new EaterException("" + e, s);
-		} finally {
+			final EaterIncludeDef include = new EaterIncludeDef(s.getTrimmed());
+			include.analyze(this, memory);
+			final String definitionName = include.getLocation();
+			final List<String> definition = definitionsContainer.getDefinition(definitionName);
+			final ReadLine reader2 = new ReadLineList(definition, s.getLocation());
+
 			try {
-				reader2.close();
+				final List<StringLocated> body = new ArrayList<>();
+				do {
+					final StringLocated sl = reader2.readLine();
+					if (sl == null) {
+						executeLinesInternal(memory, body, null);
+						return;
+					}
+					body.add(sl);
+				} while (true);
 			} catch (IOException e) {
 				Logme.error(e);
+				throw new EaterException("" + e, s);
+			} finally {
+				try {
+					reader2.close();
+				} catch (IOException e) {
+					Logme.error(e);
+				}
 			}
 		}
 	}
@@ -702,15 +581,22 @@ public class TContext {
 	}
 
 	private void executeTheme(TMemory memory, StringLocated s) throws EaterException {
-		final EaterTheme eater = new EaterTheme(s.getTrimmed(), importedFiles);
+		final EaterTheme eater = new EaterTheme(s.getTrimmed(), pathSystem);
 		eater.analyze(this, memory);
 		final Theme theme = eater.getTheme();
 		if (theme == null)
 			throw new EaterException("No such theme " + eater.getName(), s);
 
-		final ImportedFiles saveImportedFiles = this.importedFiles;
-		this.importedFiles = eater.getNewImportedFiles();
+		final PathSystem saveImportedFiles = this.pathSystem;
+		this.pathSystem = eater.getNewImportedFiles();
+		if (TeaVM.isTeaVM() && eater.isFromLocalFolder() == false)
+			// A bundled theme is the engine's own: a relative include written in it
+			// must not reach the browser host (restored in the finally below). One
+			// read from a local folder came from the host, as an included file does.
+			this.pathSystem = this.pathSystem.withoutHostFiles();
 
+		// Local themes keep the caller's current directory, also in the browser:
+		// includes in their body resolve from the !theme line, not the theme file.
 		try {
 			final List<StringLocated> body = new ArrayList<>();
 			do {
@@ -726,7 +612,7 @@ public class TContext {
 			throw new EaterException("Error reading theme " + e, s);
 		} finally {
 			this.themeMetadata = theme.getMetadata();
-			this.importedFiles = saveImportedFiles;
+			this.pathSystem = saveImportedFiles;
 			try {
 				theme.close();
 			} catch (IOException e) {
@@ -781,49 +667,73 @@ public class TContext {
 		}
 
 		ReadLine reader = null;
-		ImportedFiles saveImportedFiles = null;
+		PathSystem saveImportedFiles = null;
 		try {
-			if (what.startsWith("http://") || what.startsWith("https://")) {
-				final SURL url = SURL.create(what);
-				if (url == null)
-					throw new EaterException("Cannot open URL", s);
-
-				reader = PreprocessorUtils.getReaderIncludeUrl(url, s, suf, charset);
-			} else if (what.startsWith("<") && what.endsWith(">")) {
+			if (what.startsWith("<") && what.endsWith(">")) {
 				final String stdlibPath = what.substring(1, what.length() - 1);
-				final String libname = stdlibPath.substring(0, stdlibPath.indexOf('/'));
-				saveImportedFiles = this.importedFiles;
-				this.importedFiles = this.importedFiles.withCurrentDir(new AParentFolderStdlib(s, libname));
-				reader = PreprocessorUtils.getReaderStdlibInclude(s, stdlibPath);
-				// ::comment when __CORE__
+				saveImportedFiles = this.pathSystem;
+				if (TeaVM.isTeaVM()) {
+					final InputStream is = this.pathSystem.getTeaVMStdlibInputStream(what);
+					if (is != null) {
+						// The library's file is the engine's own: a relative include written
+						// in it must not reach the browser host (restored with the rest).
+						this.pathSystem = this.pathSystem.withoutHostFiles();
+						reader = ReadLineReader.create(new InputStreamReader(is), what);
+					}
+				} else {
+					InputFile tmp = this.pathSystem.getInputFile(what);
+					this.pathSystem = this.pathSystem.changeCurrentDirectory(tmp.getParentFolder());
+					reader = PreprocessorUtils.getReaderStdlibInclude(s, stdlibPath);
+				}
+			} else if (what.startsWith("http://") || what.startsWith("https://")) {
+				if (!TeaVM.isTeaVM()) {
+					final SURL url = SURL.create(what);
+					if (url == null)
+						throw new EaterException("Cannot open URL", s);
+
+					reader = PreprocessorUtils.getReaderIncludeUrl(url, s, suf, charset);
+				}
 			} else if (what.startsWith("[") && what.endsWith("]")) {
-				reader = PreprocessorUtils.getReaderNonstandardInclude(s, what.substring(1, what.length() - 1));
-				// ::done
-			} else if (importedFiles.getCurrentDir() instanceof AParentFolderStdlib) {
-				final AParentFolderStdlib folderStdlib = (AParentFolderStdlib) importedFiles.getCurrentDir();
-				reader = folderStdlib.getReader(what);
+				throw new IOException("To be finished");
+				// reader = PreprocessorUtils.getReaderNonstandardInclude(s, what.substring(1,
+				// what.length() - 1));
 			} else {
-				final FileWithSuffix f2 = importedFiles.getFile(what, suf);
-				if (f2.fileOk()) {
-					if (strategy == PreprocessorIncludeStrategy.DEFAULT && filesUsedCurrent.contains(f2))
+				final InputFile f2 = this.pathSystem.getInputFile(what);
+				if (f2 != null) {
+					final File used = f2 instanceof SFile ? ((SFile) f2).getCanonicalFile().conv() : null;
+					final String identity = used != null ? used.getPath() : this.pathSystem.getTeaVMFileId(f2);
+					final List<String> included = identity == null ? null : Arrays.asList(identity, suf);
+					final boolean seen = included != null && includedCurrent.contains(included);
+					if (strategy == PreprocessorIncludeStrategy.DEFAULT && seen)
 						return;
 
-					if (strategy == PreprocessorIncludeStrategy.ONCE && filesUsedCurrent.contains(f2))
+					if (strategy == PreprocessorIncludeStrategy.ONCE && seen)
 						throw new EaterException("This file has already been included", s);
 
-					if (StartDiagramExtractReader.containsStartDiagram(f2, s, charset)) {
-						reader = StartDiagramExtractReader.build(f2, s, charset);
-					} else {
+					if (used != null)
+						filesUsedCurrent.add(used);
+
+					try {
+						reader = DiagramDetector.extractFromFile(f2, "desc2", suf);
+					} catch (NumberFormatException | PatternSyntaxException e) {
+						throw new EaterException("cannot include " + what + "!" + suf, s);
+					}
+					if (reader instanceof DiagramExtractor && ((DiagramExtractor) reader).isFound() == false)
+						throw new EaterException("cannot include " + what + "!" + suf, s);
+
+					if (reader == null) {
 						final Reader tmp = f2.getReader(charset);
 						if (tmp == null)
 							throw new EaterException("Cannot include file", s);
 
 						reader = ReadLineReader.create(tmp, what, s.getLocation());
 					}
-					saveImportedFiles = this.importedFiles;
-					this.importedFiles = this.importedFiles.withCurrentDir(f2.getParentFile());
-					assert reader != null;
-					filesUsedCurrent.add(f2);
+					saveImportedFiles = this.pathSystem;
+					this.pathSystem = this.pathSystem.withCurrentDir(f2.getParentFolder());
+					if (TeaVM.a())
+						assert reader != null;
+					if (included != null)
+						includedCurrent.add(included);
 				}
 			}
 			if (reader != null)
@@ -840,8 +750,7 @@ public class TContext {
 					} while (true);
 				} finally {
 					if (saveImportedFiles != null)
-						this.importedFiles = saveImportedFiles;
-
+						this.pathSystem = saveImportedFiles;
 				}
 
 		} catch (IOException e) {
@@ -854,34 +763,28 @@ public class TContext {
 				} catch (IOException e) {
 					Logme.error(e);
 				}
-
 		}
-
 		throw new EaterException("cannot include " + what, s);
 	}
 
 	public boolean isLegacyDefine(String functionName) {
-		for (Map.Entry<TFunctionSignature, TFunction> ent : functionsSet.functions().entrySet())
-			if (ent.getKey().getFunctionName().equals(functionName) && ent.getValue().getFunctionType().isLegacy())
+		for (TFunction func : functionsSet.getFunctionsByName(functionName))
+			if (func.getFunctionType().isLegacy())
 				return true;
 
 		return false;
 	}
 
 	public boolean isUnquoted(String functionName) {
-		for (Map.Entry<TFunctionSignature, TFunction> ent : functionsSet.functions().entrySet())
-			if (ent.getKey().getFunctionName().equals(functionName) && ent.getValue().isUnquoted())
+		for (TFunction func : functionsSet.getFunctionsByName(functionName))
+			if (func.isUnquoted())
 				return true;
 
 		return false;
 	}
 
 	public boolean doesFunctionExist(String functionName) {
-		for (Map.Entry<TFunctionSignature, TFunction> ent : functionsSet.functions().entrySet())
-			if (ent.getKey().getFunctionName().equals(functionName))
-				return true;
-
-		return false;
+		return functionsSet.doesFunctionExist(functionName);
 	}
 
 	@JawsStrange

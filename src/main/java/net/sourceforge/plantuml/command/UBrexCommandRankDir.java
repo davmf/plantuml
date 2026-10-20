@@ -34,6 +34,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 import com.plantuml.ubrex.builder.UBrexConcat;
 import com.plantuml.ubrex.builder.UBrexLeaf;
@@ -41,12 +44,15 @@ import com.plantuml.ubrex.builder.UBrexNamed;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.skin.SkinParam;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class UBrexCommandRankDir extends UBrexSingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("left", "top");
 
 	public UBrexCommandRankDir() {
 		super(getRegexConcat());
@@ -61,11 +67,31 @@ public class UBrexCommandRankDir extends UBrexSingleLineCommand2<TitledDiagram> 
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// UBREX twin of CommandRankDir: 'left to right direction' (or 'top to
+		// bottom direction') sets the global layout direction of the diagram;
+		// the default is top to bottom.
+		return "Setting the layout direction of the diagram to " + StringUtils.goLowerCase(arg.get("DIRECTION", 0));
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		final String s = StringUtils.goUpperCase(arg.get("DIRECTION", 0)).replace(' ', '_');
 		((SkinParam) diagram.getSkinParam()).setRankdir(Rankdir.valueOf(s));
 		// diagram.setRankdir(Rankdir.valueOf(s));
 		return CommandExecutionResult.ok();
+	}
+
+	// Declared by hand: FirstTokens only reads regex patterns, and this one is a UBrex expression.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FIRST_TOKENS;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

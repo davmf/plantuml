@@ -41,11 +41,12 @@ import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 
-public class ActorHollow extends AbstractTextBlock implements TextBlock {
+import net.sourceforge.plantuml.annotation.Fast;
+
+public class ActorHollow implements TextBlock {
 
 	private final double headDiam = 9;
 	private final double bodyWidth = 25;
@@ -63,6 +64,7 @@ public class ActorHollow extends AbstractTextBlock implements TextBlock {
 		this.fashion = fashion;
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 
 		final UEllipse head = UEllipse.build(headDiam, headDiam);
@@ -108,6 +110,8 @@ public class ActorHollow extends AbstractTextBlock implements TextBlock {
 		return headDiam + neckHeight + bodyHeight + thickness() * 2 + fashion.getDeltaShadow();
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(getPreferredWidth(), getPreferredHeight());
 	}

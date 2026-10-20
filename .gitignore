@@ -19,6 +19,8 @@ target/
 
 # Gradle build folders
 /.gradle
+/license-variants/build-logic/.gradle
+/license-variants/build-logic/.kotlin
 build/
 
 # Eclipse Project files
@@ -34,3 +36,14 @@ build/
 
 *.patch
 **/*.class
+
+# macos
+.DS_Store
+
+# other
+tmp
+node_modules/
+other
+
+# Executable copied by compilec.bat
+/plantuml-c.exe

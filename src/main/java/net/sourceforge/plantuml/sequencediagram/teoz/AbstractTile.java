@@ -38,13 +38,12 @@ package net.sourceforge.plantuml.sequencediagram.teoz;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.sequencediagram.AbstractMessage;
 import net.sourceforge.plantuml.sequencediagram.Event;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public abstract class AbstractTile extends CommonTile implements Tile {
 
 	public AbstractTile(StringBounder stringBounder, YGauge currentY) {
 		super(stringBounder);
-		if (YGauge.USE_ME)
-			System.err.println("CREATING " + getClass());
 	}
 
 	public AbstractTile(StringBounder stringBounder) {
@@ -62,7 +61,7 @@ public abstract class AbstractTile extends CommonTile implements Tile {
 
 	final public double getZZZ() {
 		final double result = getPreferredHeight() - getContactPointRelative();
-		assert result >= 0;
+		if (TeaVM.a()) assert result >= 0;
 		return result;
 	}
 

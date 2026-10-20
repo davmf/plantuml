@@ -36,9 +36,12 @@
 package net.sourceforge.plantuml.sequencediagram.command;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -59,6 +62,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandReferenceOverSeveral extends SingleLineCommand2<SequenceDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("ref");
+
 	public CommandReferenceOverSeveral() {
 		super(getConcat());
 	}
@@ -73,7 +78,7 @@ public class CommandReferenceOverSeveral extends SingleLineCommand2<SequenceDiag
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf(4, "PARTS", "(([%pLN_.@]+|[%g][^%g]+[%g])([%s]*,[%s]*([%pLN_.@]+|[%g][^%g]+[%g]))*)"), //
 				RegexLeaf.spaceZeroOrMore(), //
-				new RegexOptional(new RegexLeaf(1, "URL", "(\\[\\[.*?\\]\\])")), //
+				new RegexOptional(new RegexLeaf(1, UrlBuilder.URL_KEY, "(\\[\\[.*?\\]\\])")), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf(":"), //
 				RegexLeaf.spaceZeroOrMore(), //
@@ -81,20 +86,52 @@ public class CommandReferenceOverSeveral extends SingleLineCommand2<SequenceDiag
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'ref over A, B : text' draws a reference frame spanning the given
+		// participants. The list is split and unquoted exactly as in
+		// executeArg.
+		sb.append("Drawing a reference frame over ");
+		final List<String> participants = StringUtils.splitComma(arg.get("PARTS", 0));
+		for (int i = 0; i < participants.size(); i++) {
+			if (i > 0)
+				sb.append(i == participants.size() - 1 ? " and " : ", ");
+			sb.append("'").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(participants.get(i)))
+					.append("'");
+		}
+
+		final String text = StringUtils.trin(arg.get("TEXT", 0));
+		if (text.isEmpty() == false)
+			sb.append(" labelled \"").append(text).append("\"");
+
+		final String color = arg.get("REF", 0);
+		if (color != null)
+			sb.append(", background color ").append(color);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
 		final String s1 = arg.get("REF", 0);
 		final HColor backColorElement = s1 == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s1);
 		// final HtmlColor backColorGeneral =
 		// HtmlColorSetSimple.instance().getColorIfValid(arg.get("REF").get(1));
 
 		final List<String> participants = StringUtils.splitComma(arg.get("PARTS", 0));
-		final String url = arg.get("URL", 0);
+		final String url = arg.get(UrlBuilder.URL_KEY, 0);
 		final String text = StringUtils.trin(arg.get("TEXT", 0));
 
 		final List<Participant> p = new ArrayList<>();
 		for (String s : participants)
-			p.add(diagram.getOrCreateParticipant(location, StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(s)));
+			p.add(diagram.getOrCreateParticipant(location,
+					StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(s)));
 
 		final Display strings = Display.getWithNewlines(diagram.getPragma(), text);
 
@@ -108,6 +145,11 @@ public class CommandReferenceOverSeveral extends SingleLineCommand2<SequenceDiag
 				diagram.getSkinParam().getCurrentStyleBuilder());
 		diagram.addReference(ref);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

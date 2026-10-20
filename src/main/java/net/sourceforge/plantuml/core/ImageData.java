@@ -66,7 +66,7 @@ public interface ImageData {
 	public boolean containsCMapData();
 
 	/**
-	 * Return position information as a CMap formated string. For example, if you
+	 * Return position information as a CMap formatted string. For example, if you
 	 * call this method with <code>nameId</code> set to "foo_map", you will get
 	 * something like:
 	 * 

@@ -35,7 +35,12 @@
  */
 package net.sourceforge.plantuml.command.note.sequence;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
+import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
@@ -68,6 +73,10 @@ import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public final class FactorySequenceNoteAcrossCommand implements SingleMultiFactoryCommand<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"/", "hnote", "hnoteaccross", "hnoteacross", "note", "noteaccross", "noteacross",
+			"rnote", "rnoteaccross", "rnoteacross");
 
 	private IRegex getRegexConcatMultiLine() {
 		return RegexConcat.build(FactorySequenceNoteAcrossCommand.class.getName() + "multi", RegexLeaf.start(), //
@@ -109,6 +118,17 @@ public final class FactorySequenceNoteAcrossCommand implements SingleMultiFactor
 		return new SingleLineCommand2<SequenceDiagram>(getRegexConcatSingleLine()) {
 
 			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
+
+			@Override
+			@Explain
+			protected String explainArg(LineLocation location, RegexResult arg) {
+				return explainInternal(arg, arg.get("NOTE", 0));
+			}
+
+			@Override
 			protected CommandExecutionResult executeArg(final SequenceDiagram diagram, LineLocation location,
 					RegexResult arg, ParserPass currentPass) throws NoSuchColorException {
 				final Display display = Display.getWithNewlines(diagram.getPragma(), arg.get("NOTE", 0));
@@ -118,12 +138,76 @@ public final class FactorySequenceNoteAcrossCommand implements SingleMultiFactor
 		};
 	}
 
-	private final static Lazy<Pattern2> END = new Lazy<>(
-			() -> Pattern2.cmpile("^end[%s]?(note|hnote|rnote)$"));
+	@Explain
+	private String explainInternal(RegexResult arg, String label) {
+		final StringBuilder sb = new StringBuilder();
+
+		// The note spans the whole diagram width, across all participants.
+		final String style = StringUtils.goLowerCase(arg.get("STYLE", 0));
+		if ("hnote".equals(style))
+			sb.append("Adding a hexagonal note");
+		else if ("rnote".equals(style))
+			sb.append("Adding a rectangular note");
+		else
+			sb.append("Adding a note");
+
+		sb.append(" across all participants");
+
+		if (label != null && label.isEmpty() == false)
+			sb.append(" labelled \"").append(label).append("\"");
+
+		// The stereotype may be written before or after 'across'
+		// (STEREO1/STEREO2), hence the lazzy lookup.
+		final String stereo = arg.getLazzy("STEREO", 0);
+		if (stereo != null)
+			sb.append(", stereotype ").append(stereo);
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		// A leading '/' vertically merges this note with the previous one.
+		if (arg.get("VMERGE", 0) != null)
+			sb.append(", merged with the previous note");
+
+		// The misspelling 'accross' is matched by the pattern but rejected by
+		// executeInternal with an explicit error.
+		if ("accross".equalsIgnoreCase(arg.get("ACROSS", 0)))
+			sb.append(" (the misspelling 'accross' is rejected at execution: use 'across')");
+
+		return sb.toString();
+	}
+
+	private final static Lazy<Pattern2> END = new Lazy<>(() -> Pattern2.cmpile("^end[%s]?(note|hnote|rnote)$"));
 
 	public Command<SequenceDiagram> createMultiLine(boolean withBracket) {
 		return new CommandMultilines2<SequenceDiagram>(getRegexConcatMultiLine(),
 				MultilinesStrategy.KEEP_STARTING_QUOTE, Trim.BOTH, END) {
+
+			@Override
+			public Collection<String> mandatoryFirstTokensFast() {
+				return FIRST_TOKENS;
+			}
+
+			@Override
+			@Explain
+			protected String explainNow(BlocLines lines) {
+				// Mirror executeNow: the first line carries the declaration, the
+				// lines up to the closing 'end note' are the text of the note.
+				final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+				if (line0 == null)
+					return "Adding a note";
+
+				final StringBuilder sb = new StringBuilder(explainInternal(line0, null));
+				final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+				if (bodyCount > 0)
+					sb.append(", with ").append(bodyCount).append(bodyCount == 1 ? " line" : " lines")
+							.append(" of text");
+
+				return sb.toString();
+			}
 
 			@Override
 			protected CommandExecutionResult executeNow(final SequenceDiagram diagram, BlocLines lines,
@@ -158,9 +242,9 @@ public final class FactorySequenceNoteAcrossCommand implements SingleMultiFactor
 			}
 			note.setColors(colors);
 			note.setNoteStyle(NoteStyle.getNoteStyle(line0.get("STYLE", 0)));
-			if (line0.get("URL", 0) != null) {
+			if (line0.get(UrlBuilder.URL_KEY, 0) != null) {
 				final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
-				final Url urlLink = urlBuilder.getUrl(line0.get("URL", 0));
+				final Url urlLink = urlBuilder.getUrl(line0.get(UrlBuilder.URL_KEY, 0));
 				note.setUrl(urlLink);
 			}
 			diagram.addNote(note, tryMerge);

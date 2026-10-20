@@ -38,18 +38,17 @@ package net.sourceforge.plantuml.syntax;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.TreeSet;
 
 import net.sourceforge.plantuml.FileFormatOption;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.error.PSystemError;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class SyntaxResult {
-	// ::remove file when __CORE__
 
-	private UmlDiagramType umlDiagramType;
+	private DiagramType diagramType;
 	private boolean isError;
 	private String description;
 	private Collection<String> errors = new TreeSet<>();
@@ -57,8 +56,8 @@ public class SyntaxResult {
 	private PSystemError systemError;
 	private LineLocation lineLocation;
 
-	public UmlDiagramType getUmlDiagramType() {
-		return umlDiagramType;
+	public DiagramType getDiagramType() {
+		return diagramType;
 	}
 
 	public boolean isError() {
@@ -70,11 +69,11 @@ public class SyntaxResult {
 	}
 
 	public Collection<String> getErrors() {
-		return Collections.unmodifiableCollection(errors);
+		return MyCollections.unmodifiableCollection(errors);
 	}
 
-	public void setUmlDiagramType(UmlDiagramType umlDiagramType) {
-		this.umlDiagramType = umlDiagramType;
+	public void setDiagramType(DiagramType diagramType) {
+		this.diagramType = diagramType;
 	}
 
 	public void setError(boolean isError) {

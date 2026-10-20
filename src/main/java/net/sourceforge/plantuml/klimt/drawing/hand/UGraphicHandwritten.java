@@ -47,6 +47,7 @@ import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class UGraphicHandwritten extends UGraphicDelegator implements UGraphic {
 
@@ -54,29 +55,30 @@ public class UGraphicHandwritten extends UGraphicDelegator implements UGraphic {
 
 	public UGraphicHandwritten(UGraphic ug) {
 		super(ug);
-		if (ug instanceof UGraphicSvg) {
-			((UGraphicSvg) ug).enlargeClip();
+		if (!TeaVM.isTeaVM()) {
+			if (ug instanceof UGraphicSvg)
+				((UGraphicSvg) ug).enlargeClip();
 		}
 	}
 
 	public void draw(UShape shape) {
 		// http://www.ufonts.com/fonts/felt-tip-roman.html
 		// http://webdesignledger.com/freebies/20-amazing-free-handwritten-fonts-for-your-designs
-		if (shape instanceof ULine) {
+		if (shape instanceof ULine)
 			drawHand((ULine) shape);
-		} else if (shape instanceof URectangle) {
+		else if (shape instanceof URectangle)
 			drawHand((URectangle) shape);
-		} else if (shape instanceof UPolygon) {
+		else if (shape instanceof UPolygon)
 			drawHand((UPolygon) shape);
-		} else if (shape instanceof UEllipse) {
+		else if (shape instanceof UEllipse)
 			drawHand((UEllipse) shape);
-		} else if (shape instanceof DotPath) {
+		else if (shape instanceof DotPath)
 			drawHand((DotPath) shape);
-		} else if (shape instanceof UPath) {
+		else if (shape instanceof UPath)
 			drawHand((UPath) shape);
-		} else {
+		else
 			getUg().draw(shape);
-		}
+
 	}
 
 	private void drawHand(UPath shape) {

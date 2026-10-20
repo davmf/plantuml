@@ -2,62 +2,130 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build System
+## Project Overview
 
-PlantUML uses Gradle as the primary build system:
+PlantUML is a tool that allows users to create UML diagrams from plain text descriptions. It supports various diagram types including sequence, class, activity, component, state diagrams, and more.
 
-- **Build**: `gradle build` - Builds the project and creates JAR in `build/libs`
-- **Test**: `gradle test` - Runs JUnit tests
-- **Clean**: `gradle clean` - Cleans build artifacts
-- **JAR**: `gradle jar` - Creates the main PlantUML JAR file
-- **PDF JAR**: `gradle pdfJar` - Creates JAR with PDF generation dependencies
+## Build and Test Commands
 
-Alternative Ant build is available: `ant` (uses `build.xml`)
+```bash
+# Build the project
+gradle build
 
-### Java Version Support
+# Run tests
+gradle test
+```
 
-- **Runtime**: Java 8 compatible (minimum requirement)
-- **Development**: Java 17+ recommended for testing
-- **Build parameter**: Use `-PjavacRelease=8` or `-PjavacRelease=17` to target specific versions
-- **Testing**: Can build with Java 17 then test with Java 8
+If Gradle cannot download its distribution (offline or restricted sandbox), Ant
+is a fully working fallback and needs no network access:
 
-## Architecture Overview
+```bash
+# Requires a full JDK (not just a JRE) and ant
+ant dist          # compiles src/main/java and produces ./plantuml.jar
+```
 
-### Core Structure
+`.clide/` holds the committed compile-only stubs (TeaVM, OpenPDF, Ant, opentest4j).
+The test jars themselves (JUnit 5, JUnit Pioneer, XMLUnit) are **not** committed:
+clide unpacks them into the gitignored `.clide/tmp/jar-junit/` the first time it
+opens this project, and they can also be copied from a clide checkout (`lib/`).
+Once they are there, tests compile and run without Gradle:
 
-- **Main Class**: `net.sourceforge.plantuml.Run` - CLI entry point
-- **Version Management**: Version string must be synchronized between `gradle.properties` and `src/net/sourceforge/plantuml/version/Version.java`
-- **Source Layout**: Main source in `src/`, tests in `test/`
+```bash
+javac -nowarn -d /tmp/testclasses \
+      -cp "plantuml.jar:.clide/*:.clide/tmp/jar-junit/*" \
+      -sourcepath src/test/java src/test/java/test/vega/VegaTest.java
 
-### Key Packages
+java -jar .clide/tmp/jar-junit/junit-platform-console-standalone-*.jar execute \
+     -cp "plantuml.jar:/tmp/testclasses:src/test/resources" \
+     --select-class test.vega.VegaTest --details=summary
+```
 
-- `net.sourceforge.plantuml.activitydiagram*` - Activity diagram implementations (legacy and v3)
-- `net.sourceforge.plantuml.classdiagram` - Class diagram support
-- `net.sourceforge.plantuml.sequencediagram` - Sequence diagram functionality
-- `net.sourceforge.plantuml.cucadiagram` - Core UML diagram abstractions
-- `net.sourceforge.plantuml.dot` - GraphViz DOT integration
-- `net.sourceforge.plantuml.svek` - SVG-based rendering engine
-- `net.sourceforge.plantuml.tim` - Template and macro processing
-- `net.sourceforge.plantuml.security` - Security framework and authentication
-- `net.sourceforge.plantuml.code` - Text encoding/compression utilities
-- `gen/` - Generated code from C GraphViz libraries (read-only)
+`src/test/resources` must be on the runtime classpath, and the working directory
+must be the repository root (Vega resolves `src/test/resources/vega` relatively).
 
-### Diagram Processing Flow
+## Reproducing a diagram from the command line
 
-1. **Input**: Text parsed by `BlockUmlBuilder` into `BlockUml` objects
-2. **Processing**: Diagram-specific factories create `PSystem` implementations
-3. **Rendering**: Output via `ImageBuilder` to various formats (PNG, SVG, PDF)
+```bash
+java -jar plantuml.jar -tsvg  -pipe < test.puml   # SVG on stdout
+java -jar plantuml.jar -tutxt -pipe < test.puml   # quick ASCII check
+```
 
-### External Dependencies
+A syntax error usually shows up as `Syntax Error? (Assumed diagram type: sequence)`:
+when a command regex stops matching, the parser falls back to a sequence diagram,
+so the reported line is rarely the real culprit.
 
-- **GraphViz Integration**: Embedded Windows version in `graphviz.dat` (compressed with Brotli)
-- **PDF Generation**: Apache FOP and Batik (runtime dependencies for PDF feature)
-- **Test Dependencies**: JUnit 5, AssertJ, Mockito, XMLUnit
+## Vega: the main regression harness
 
-## Development Notes
+`test.vega.VegaTest` walks `src/test/resources/vega/**` and turns every `.puml`
+file into a dynamic test. Adding a non-regression test means adding one file:
 
-- Main library has minimal external dependencies to remain lightweight
-- Test dependencies are more extensive for comprehensive testing
-- GraphViz integration handles both embedded (Windows) and system-installed versions
-- Security framework supports various authentication methods (basic auth, OAuth2, tokens)
-- Multiple output formats supported through pluggable renderer system
+```
+---
+output: svg              # also: utxt, atxt, debug, latex, scxml, graphml, xmi, preproc
+expected-description: (1 entities)
+---
+@startuml
+...
+@enduml
+```
+
+Then generate the reference file(s) once, review them, and re-run without the flag:
+
+```bash
+VEGA_FORCE_WRITE=true <run VegaTest>   # writes the .svg/.txt/... next to the .puml
+```
+
+Notes:
+- Always check that the new test **fails** before the fix and passes after it.
+- A file with no YAML header is always regenerated and never asserted.
+- `vega.json`, `vega-summary.txt` and `vega-summary.md` are rewritten on every
+  run; revert them unless the change is meaningful.
+- The `.puml` file name has no meaning for the framework: the directory groups
+  the tests, so put a class-diagram non-regression in `vega/nonreg/simple/`.
+
+## Digging into history
+
+The recommended shallow clone has no history to bisect. To find when a line
+changed, deepen first:
+
+```bash
+git fetch --deepen 500
+git log -L <start>,<end>:<file>
+```
+
+## Cloning this repository
+
+Do a shallow clone - do not fetch the full history:
+
+```bash
+git clone --depth 1 https://github.com/plantuml/plantuml
+```
+
+## Code Style Guidelines
+
+- **Java Version**: Java 8 compatibility is required. Do not use `var`, lambda features beyond Java 8, or other post-Java 8 syntax.
+- **Indentation**: Use tabs for indentation, not spaces.
+- **Braces**:
+  - Opening braces on the same line as the statement.
+  - For `if`/`for`/`while` with a single statement: no braces, statement on the next line with indentation.
+  - For blocks with multiple statements: braces required, opening brace on the same line.
+- **Imports**: Explicit imports, no wildcard imports.
+- **Final variables**: Prefer `final` for local variables when possible.
+- **Boolean negation**: Prefer positive conditions (`foo == false`) over negation operators (`!foo`).
+
+## Architecture Notes
+
+- Main source code is in `src/main/java/net/sourceforge/plantuml/`
+- The project uses a custom preprocessor and parser for PlantUML syntax
+
+## Packages to avoid modifying
+
+**Generated code** (do not modify):
+- `gen` - generated code
+- `h` - generated code
+
+**External/third-party packages** (do not modify):
+- `jcckit` - external charting library
+- `zext` - external library
+- `org.stathissideris` - external library (ditaa)
+

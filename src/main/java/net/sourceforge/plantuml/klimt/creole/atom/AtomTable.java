@@ -42,6 +42,7 @@ import java.util.Map;
 
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColorScheme;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.creole.Position;
 import net.sourceforge.plantuml.klimt.creole.SheetBlock1;
@@ -81,13 +82,13 @@ public class AtomTable extends AbstractAtom implements Atom {
 	private final List<Line> lines = new ArrayList<>();
 	private final Map<Atom, Position> positions = new HashMap<Atom, Position>();
 	private final HColor lineColor;
-	private Class<? extends StringBounder> lastCaller;
 
 	public AtomTable(HColor lineColor) {
 		this.lineColor = lineColor;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		initMap(stringBounder);
 		final double width = getEndingX(getNbCols() - 1);
 		final double height = getEndingY(getNbLines() - 1);
@@ -143,7 +144,8 @@ public class AtomTable extends AbstractAtom implements Atom {
 					cell.drawU(ug.apply(cellBackColor.bg()).apply(pos.getTranslate().compose(UTranslate.dx(dx))));
 			}
 		}
-		ug = ug.apply(lineColor);
+		ug = ug.apply(getLineColor(ug));
+
 		final ULine hline = ULine.hline(getEndingX(getNbCols() - 1));
 		for (int i = 0; i <= getNbLines(); i++)
 			ug.apply(UTranslate.dy(getStartingY(i))).draw(hline);
@@ -154,13 +156,17 @@ public class AtomTable extends AbstractAtom implements Atom {
 
 	}
 
+	private HColor getLineColor(UGraphic ug) {
+		if (lineColor instanceof HColorScheme) {
+			HColor backcolor = ug.getParam().getBackcolor();
+			if (backcolor.isTransparent())
+				backcolor = ug.getDefaultBackground();
+			return ((HColorScheme) lineColor).getAppropriateColor(backcolor);
+		}
+		return lineColor;
+	}
+
 	private void initMap(StringBounder stringBounder) {
-		final Class<? extends StringBounder> currentCaller = stringBounder.getClass();
-		if (lastCaller != currentCaller)
-			positions.clear();
-
-		this.lastCaller = currentCaller;
-
 		if (positions.size() > 0)
 			return;
 

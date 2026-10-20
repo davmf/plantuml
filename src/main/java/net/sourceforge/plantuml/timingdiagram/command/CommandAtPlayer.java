@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.timingdiagram.TimingDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandAtPlayer extends SingleLineCommand2<TimingDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("@");
 
 	public CommandAtPlayer() {
 		super(getRegexConcat());
@@ -61,6 +67,14 @@ public class CommandAtPlayer extends SingleLineCommand2<TimingDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String code = arg.get("PLAYER", 0);
+		// executeArg fails when no player exists with this code
+		return "Setting the current timing player to '" + code + "'";
+	}
+
+	@Override
 	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		final String code = arg.get("PLAYER", 0);
 		final Player player = diagram.getPlayer(code);
@@ -69,6 +83,11 @@ public class CommandAtPlayer extends SingleLineCommand2<TimingDiagram> {
 		}
 		diagram.setLastPlayer(player);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

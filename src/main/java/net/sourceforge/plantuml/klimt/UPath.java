@@ -36,11 +36,11 @@
  */
 package net.sourceforge.plantuml.klimt;
 
-import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import net.sourceforge.plantuml.klimt.awt.XAffineTransform;
 import net.sourceforge.plantuml.klimt.compress.CompressionMode;
 import net.sourceforge.plantuml.klimt.compress.UShapeIgnorableForCompression;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -94,6 +94,20 @@ public class UPath extends AbstractShadowable implements Iterable<USegment>, USh
 		}
 	}
 
+	private double[] getLastCoord() {
+		if (segments.size() == 0)
+			return null;
+		return segments.get(segments.size() - 1).getCoord();
+	}
+
+	public boolean isInvisible() {
+		for (USegment segment : segments)
+			if (segment.getSegmentType() != USegmentType.SEG_MOVETO)
+				return false;
+
+		return true;
+	}
+
 	public UPath translate(double dx, double dy) {
 		if (dx == 0 && dy == 0)
 			return this;
@@ -113,7 +127,7 @@ public class UPath extends AbstractShadowable implements Iterable<USegment>, USh
 		return result;
 	}
 
-	public UPath affine(AffineTransform transform, double angle, double scale) {
+	public UPath affine(XAffineTransform transform, double angle, double scale) {
 		final UPath result = new UPath(comment, codeLine);
 		for (USegment seg : segments)
 			result.addInternal(seg.affine(transform, angle, scale));
@@ -131,6 +145,9 @@ public class UPath extends AbstractShadowable implements Iterable<USegment>, USh
 	}
 
 	public void moveTo(double x, double y) {
+		final double last[] = getLastCoord();
+		if (last != null && last[0] == x && last[1] == y)
+			return;
 		add(new double[] { x, y }, USegmentType.SEG_MOVETO);
 	}
 
@@ -229,5 +246,10 @@ public class UPath extends AbstractShadowable implements Iterable<USegment>, USh
 	// public boolean isEmpty() {
 	// return segments.size() == 0;
 	// }
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.PATH;
+	}
 
 }

@@ -64,13 +64,12 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.skin.SkinParamColors;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class FtileBoxOld extends AbstractFtile {
 
@@ -82,6 +81,11 @@ public class FtileBoxOld extends AbstractFtile {
 	private final HorizontalAlignment horizontalAlignment;
 	private double minimumWidth = 0;
 
+	public void setMinimumWidth(double minimumWidth) {
+		this.minimumWidth = Math.max(this.minimumWidth, minimumWidth);
+		invalidateGeometryCache();
+	}
+
 	private final LinkRendering inRendering;
 	private final Swimlane swimlane;
 	private final BoxStyle boxStyle;
@@ -90,12 +94,12 @@ public class FtileBoxOld extends AbstractFtile {
 	private final HColor backColor;
 	private final Style style;
 
-	static public StyleSignatureBasic getDefaultStyleDefinitionActivity() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity);
+	static public StyleQuery getDefaultStyleDefinitionActivity() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY;
 	}
 
-	static public StyleSignatureBasic getDefaultStyleDefinitionArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	static public StyleQuery getDefaultStyleDefinitionArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
 	final public LinkRendering getInLinkRendering() {
@@ -132,7 +136,7 @@ public class FtileBoxOld extends AbstractFtile {
 
 	}
 
-	public static TextBlock createWbs(Style style, ISkinParam skinParam, Display label) {
+	public static FtileBoxOld createWbs(Style style, ISkinParam skinParam, Display label) {
 		final Style styleArrow = style;
 		return new FtileBoxOld(skinParam, label, null, BoxStyle.PLAIN, style, styleArrow);
 	}

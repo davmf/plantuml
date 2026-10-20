@@ -85,7 +85,7 @@ public class ComponentRoseSelfArrow extends AbstractComponentRoseArrow {
 		else
 			drawRightSide(ug, ug2, area, arrowHeight, textHeight);
 
-		getTextBlock().drawU(ug.apply(UTranslate.dx(getMarginX1())));
+		getTextBlock().drawU(ug.apply(UTranslate.dx(getOldPaddingX1())));
 	}
 
 	private void drawRightSide(UGraphic ug, UGraphic ug2, Area area, double arrowHeight, double textHeight) {
@@ -325,6 +325,30 @@ public class ComponentRoseSelfArrow extends AbstractComponentRoseArrow {
 	@Override
 	public double getPreferredWidth(StringBounder stringBounder) {
 		return Math.max(getTextWidth(stringBounder), arrowWidth+5);
+	}
+
+	// How far this loop's actual ink reaches from the lifeline -- narrower
+	// than getPreferredWidth() whenever the message carries no label, or a
+	// short one. getPreferredWidth() floors at `arrowWidth+5` (50) purely to
+	// give the arrow itself (drawn `xRight` = `arrowWidth-3` = 42 wide,
+	// flush against the far end of whatever width it is given -- the
+	// "prefTextWidth - xRight" translate drawLeftSide() uses throughout
+	// cancels prefTextWidth out of the arrow's own absolute position, so
+	// shrinking the reservation down to this method's return value cannot
+	// clip it) a little more than its own 42px, and that slack is blank:
+	// nothing is ever painted into it. The label, drawn separately starting
+	// getOldPaddingX1() (7) in from the SAME end the arrow is flush against
+	// the other end of, can reach past that slack on its own if it is long
+	// enough -- accounted for here (not by falling back to
+	// getPreferredWidth(), which would reintroduce the floor's own slack on
+	// TOP of a long label's genuine need) so a caller sizing itself around
+	// this loop's ink never comes up short. 0 pure text width (no label) is
+	// read as literally nothing drawn there, not "7px of padding worth
+	// keeping" -- padding around an empty label paints nothing either.
+	public double getDrawnWidth(StringBounder stringBounder) {
+		final double pureTextWidth = getPureTextWidth(stringBounder);
+		final double labelReach = pureTextWidth == 0 ? 0 : getOldPaddingX1() + pureTextWidth;
+		return Math.max(xRight, labelReach);
 	}
 
 	public double getPosArrow(StringBounder stringBounder) {

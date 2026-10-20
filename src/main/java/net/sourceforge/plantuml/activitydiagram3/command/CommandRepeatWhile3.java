@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -49,17 +53,19 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexOr;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandRepeatWhile3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("repeat", "repeatwhile");
 
 	public CommandRepeatWhile3() {
 		super(getRegexConcat());
 	}
 
 	static IRegex getRegexConcat() {
-		return RegexConcat.build(CommandRepeatWhile3.class.getName(), //
-				RegexLeaf.start(), //
+		return RegexConcat.build(CommandRepeatWhile3.class.getName(), RegexLeaf.start(), //
 				new RegexLeaf("repeat"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf("while"), //
@@ -91,14 +97,55 @@ public class CommandRepeatWhile3 extends SingleLineCommand2<ActivityDiagram3> {
 				new RegexOptional(new RegexConcat( //
 						new RegexOr(//
 								new RegexLeaf("->"), //
-								new RegexLeaf(1, "COLOR", CommandLinkElement.STYLE_COLORS_MULTIPLES)), //
+								new RegexLeaf(1, "XCOLOR", CommandLinkElement.STYLE_COLORS_MULTIPLES)), //
 						RegexLeaf.spaceZeroOrMore(), //
 						new RegexOr(//
 								new RegexLeaf(1, "LABEL", "(.*)"), //
 								new RegexLeaf("")) //
 				)), //
 				new RegexLeaf(";?"), //
+				RegexLeaf.spaceZeroOrMore(), //
+				Stereogroup.optionalStereogroup(), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'repeat while (test) is (yes) not (no)' closes the repeat loop
+		// opened by 'repeat': while the test holds, the flow loops back.
+		// 'is (...)' labels the loop-back arrow, 'not (...)' the exit arrow,
+		// and the lazzy lookups unify the four syntax variants, like in
+		// executeArg.
+		sb.append("Closing the repeat loop");
+
+		final String test = arg.getLazzy("TEST", 0);
+		if (test != null && test.isEmpty() == false)
+			sb.append(", looping back while \"").append(test).append("\"");
+
+		final String when = arg.getLazzy("WHEN", 0);
+		if (when != null)
+			sb.append(", loop-back arrow labelled \"").append(when).append("\"");
+
+		final String out = arg.getLazzy("OUT", 0);
+		if (out != null)
+			sb.append(", exit arrow labelled \"").append(out).append("\"");
+
+		final String color = arg.get("XCOLOR", 0);
+		if (color != null)
+			sb.append(", exit arrow color or style '").append(color).append("'");
+
+		final String label = arg.get("LABEL", 0);
+		if (label != null && label.isEmpty() == false)
+			sb.append(", arrow labelled \"").append(label).append("\"");
+
+		final Stereogroup stereogroup = Stereogroup.build(arg);
+		if (stereogroup.isEmpty() == false)
+			sb.append(", stereotyped ").append(arg.get("STEREOGROUP", 0));
+
+		return sb.toString();
 	}
 
 	@Override
@@ -108,17 +155,23 @@ public class CommandRepeatWhile3 extends SingleLineCommand2<ActivityDiagram3> {
 		final Display yes = Display.getWithNewlines(diagram.getPragma(), arg.getLazzy("WHEN", 0));
 		final Display out = Display.getWithNewlines(diagram.getPragma(), arg.getLazzy("OUT", 0));
 
-		final String colorString = arg.get("COLOR", 0);
+		final String colorString = arg.get("XCOLOR", 0);
 		final Rainbow rainbow;
-		if (colorString == null) {
+		if (colorString == null)
 			rainbow = Rainbow.none();
-		} else {
+		else
 			rainbow = Rainbow.build(diagram.getSkinParam(), colorString,
 					diagram.getSkinParam().colorArrowSeparationSpace());
-		}
+
+		final Stereogroup stereogroup = Stereogroup.build(arg);
 
 		final Display linkLabel = Display.getWithNewlines(diagram.getPragma(), arg.get("LABEL", 0));
-		return diagram.repeatWhile(test, yes, out, linkLabel, rainbow);
+		return diagram.repeatWhile(test, yes, out, linkLabel, rainbow, stereogroup);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

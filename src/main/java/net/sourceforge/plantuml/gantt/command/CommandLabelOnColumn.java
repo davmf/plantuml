@@ -1,0 +1,101 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ * 
+ * If you like this project or if you find it useful, you can support us at:
+ * 
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ * 
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  Arnaud Roques
+ * 
+ *
+ */
+package net.sourceforge.plantuml.gantt.command;
+
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.command.CommandExecutionResult;
+import net.sourceforge.plantuml.command.ParserPass;
+import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.gantt.GanttDiagram;
+import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.regex.RegexConcat;
+import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.warning.Warning;
+
+public class CommandLabelOnColumn extends SingleLineCommand2<GanttDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("label", "labels");
+
+	public CommandLabelOnColumn() {
+		super(getRegexConcat());
+	}
+
+	static IRegex getRegexConcat() {
+		return RegexConcat.build(CommandLabelOnColumn.class.getName(), RegexLeaf.start(), //
+				new RegexLeaf("labels?"), //
+				RegexLeaf.spaceOneOrMore(), //
+				new RegexLeaf("on"), //
+				RegexLeaf.spaceZeroOrMore(), //
+				new RegexLeaf(1, "POSITION", "(first|last)"), //
+				RegexLeaf.spaceZeroOrMore(), //
+				new RegexLeaf("column"), //
+				new RegexOptional(new RegexConcat( //
+						RegexLeaf.spaceZeroOrMore(), //
+						new RegexLeaf("and"), //
+						RegexLeaf.spaceZeroOrMore(), //
+						new RegexLeaf(1, "ALIGNED", "(left|right)"), //
+						RegexLeaf.spaceZeroOrMore(), //
+						new RegexLeaf("aligned") //
+				)), //
+				RegexLeaf.end());
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(GanttDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
+//		final LabelPosition position = "first".equalsIgnoreCase(arg.get("POSITION", 0)) ? LabelPosition.FIRST_COLUMN
+//				: LabelPosition.LAST_COLUMN;
+//		final HorizontalAlignment alignment = "right".equalsIgnoreCase(arg.get("ALIGNED", 0))
+//				? HorizontalAlignment.RIGHT
+//				: HorizontalAlignment.LEFT;
+//		final LabelStrategy strategy = new LabelStrategy(position, alignment);
+//		diagram.setLabelStrategy(strategy);
+		diagram.addWarning(new Warning("'labels on " + arg.get("POSITION", 0)
+				+ " column' is no longer supported: this line is ignored"));
+		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
+}

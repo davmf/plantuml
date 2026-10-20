@@ -50,7 +50,9 @@ import net.sourceforge.plantuml.skin.Component;
 import net.sourceforge.plantuml.skin.Context2D;
 import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.skin.rose.Rose;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.LineLocation;
 
 class MessageArrow extends Arrow {
 
@@ -59,12 +61,12 @@ class MessageArrow extends Arrow {
 	private final Component compAliveBox;
 
 	public MessageArrow(AtomicInteger counter, Pragma pragma, double startingY, Rose skin, ArrowComponent arrow,
-			LivingParticipantBox p1, LivingParticipantBox p2, Url url, Component compAliveBox) {
-		super(counter, pragma, startingY, skin, arrow, url);
+			LivingParticipantBox p1, LivingParticipantBox p2, Url url, Component compAliveBox, LineLocation location) {
+		super(counter, pragma, startingY, skin, arrow, url, location);
 
-		if (p1 == p2) {
+		if (p1 == p2)
 			throw new IllegalArgumentException();
-		}
+
 		this.p1 = Objects.requireNonNull(p1);
 		this.p2 = Objects.requireNonNull(p2);
 		this.compAliveBox = compAliveBox;
@@ -73,7 +75,8 @@ class MessageArrow extends Arrow {
 	@Override
 	public double getActualWidth(StringBounder stringBounder) {
 		final double r = getRightEndInternal(stringBounder) - getLeftStartInternal(stringBounder);
-		assert r > 0;
+		if (TeaVM.a())
+			assert r > 0;
 		return r;
 	}
 

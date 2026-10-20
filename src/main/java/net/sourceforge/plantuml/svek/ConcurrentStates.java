@@ -43,16 +43,16 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
-public final class ConcurrentStates extends AbstractTextBlock implements IEntityImage {
+public final class ConcurrentStates extends TextBlockMemoized implements IEntityImage {
 
 	private final List<IEntityImage> inners;
 	private final Separator separator;
@@ -108,11 +108,11 @@ public final class ConcurrentStates extends AbstractTextBlock implements IEntity
 	}
 
 	private Style getStyle() {
-		return getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleSignature());
 	}
 
-	private StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.stateDiagram, SName.state);
+	private StyleQuery getStyleSignature() {
+		return StyleQueries.STATEDIAG_STATE;
 	}
 
 	public void drawU(UGraphic ug) {
@@ -132,7 +132,8 @@ public final class ConcurrentStates extends AbstractTextBlock implements IEntity
 
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		XDimension2D result = new XDimension2D(0, 0);
 		for (IEntityImage inner : inners) {
 			final XDimension2D dim = inner.calculateDimension(stringBounder);

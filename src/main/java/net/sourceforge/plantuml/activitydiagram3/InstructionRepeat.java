@@ -52,12 +52,13 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.GtileBox;
 import net.sourceforge.plantuml.activitydiagram3.gtile.GtileRepeat;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.klimt.color.Colors;
-import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
+import net.sourceforge.plantuml.stereo.Stereogroup;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.StyleBuilder;
@@ -77,7 +78,7 @@ public class InstructionRepeat extends AbstractInstruction implements Instructio
 
 	private Display backward = Display.NULL;
 
-	private Stereotype stereotypeLoop;
+	private Stereogroup stereogroupLoop;
 	private Stereotype stereotypeBack;
 	private LinkRendering incoming1 = LinkRendering.none();
 	private LinkRendering incoming2 = LinkRendering.none();
@@ -89,15 +90,18 @@ public class InstructionRepeat extends AbstractInstruction implements Instructio
 	private boolean testCalled = false;
 	private LinkRendering endRepeatLinkRendering = LinkRendering.none();
 
-	private final Colors colors;
+	// private final Colors colors;
 	private final StyleBuilder currentStyleBuilder;
+
+	// private Colors colors2;
+	private Stereogroup stereotype2 = Stereogroup.NONE;
 
 	public boolean containsBreak() {
 		return repeatList.containsBreak();
 	}
 
-	public InstructionRepeat(Swimlanes swimlanes, Instruction parent, LinkRendering nextLinkRenderer, HColor color,
-			Display startLabel, BoxStyle boxStyleIn, Colors colors, Stereotype stereotype) {
+	public InstructionRepeat(Swimlanes swimlanes, Instruction parent, LinkRendering nextLinkRenderer,
+			Display startLabel, BoxStyle boxStyleIn, Colors colors, Stereogroup stereogroup) {
 		this.currentStyleBuilder = swimlanes.getCurrentStyleBuilder();
 		this.swimlanes = swimlanes;
 		this.swimlane = swimlanes.getCurrentSwimlane();
@@ -106,8 +110,8 @@ public class InstructionRepeat extends AbstractInstruction implements Instructio
 		this.startLabel = startLabel;
 		this.parent = parent;
 		this.nextLinkRenderer = Objects.requireNonNull(nextLinkRenderer);
-		this.colors = colors;
-		this.stereotypeLoop = stereotype;
+		// this.colors = colors;
+		this.stereogroupLoop = stereogroup;
 	}
 
 	private boolean isLastOfTheParent() {
@@ -136,7 +140,6 @@ public class InstructionRepeat extends AbstractInstruction implements Instructio
 		return repeatList.add(ins);
 	}
 
-	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 
@@ -156,16 +159,15 @@ public class InstructionRepeat extends AbstractInstruction implements Instructio
 //		}
 		return result;
 	}
-	// ::done
 
-	public Ftile createFtile(FtileFactory factory) {
+	public Ftile createFtile(FtileFactory factory) throws NoSuchColorException {
 		final Ftile back = getFtileBackward(factory);
 		Ftile tmp = repeatList.createFtile(factory);
 		tmp = factory.decorateOut(tmp, endRepeatLinkRendering);
 		if (this.testCalled == false && incoming1.isNone())
 			incoming1 = swimlanes.nextLinkRenderer();
-		tmp = factory.repeat(boxStyleIn, stereotypeLoop, swimlane, swimlaneOut, startLabel, tmp, test,
-				yes, out, colors, back, isLastOfTheParent(), incoming1, incoming2, currentStyleBuilder);
+		tmp = factory.repeat(stereogroupLoop, stereotype2, boxStyleIn, swimlane, swimlaneOut, startLabel, tmp, test, yes,
+				out, back, isLastOfTheParent(), incoming1, incoming2, currentStyleBuilder);
 		tmp = FtileUtils.withSwimlaneIn(tmp, swimlane);
 		if (killed)
 			return new FtileKilled(tmp);
@@ -189,7 +191,8 @@ public class InstructionRepeat extends AbstractInstruction implements Instructio
 	}
 
 	public void setTest(Display test, Display yes, Display out, LinkRendering endRepeatLinkRendering,
-			LinkRendering back, Swimlane swimlaneOut) {
+			LinkRendering back, Swimlane swimlaneOut, Stereogroup stereotype2) {
+		this.stereotype2 = stereotype2;
 		this.swimlaneOut = swimlaneOut;
 		this.test = Objects.requireNonNull(test);
 		this.yes = Objects.requireNonNull(yes);
@@ -214,7 +217,8 @@ public class InstructionRepeat extends AbstractInstruction implements Instructio
 	}
 
 	@Override
-	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote, Stereotype stereotype) {
+	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote,
+			Stereotype stereotype) {
 		if (Display.isNull(backward))
 			return repeatList.addNote(note, position, type, colors, swimlaneNote, stereotype);
 

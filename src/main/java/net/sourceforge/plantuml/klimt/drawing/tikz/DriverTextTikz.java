@@ -52,8 +52,8 @@ public class DriverTextTikz implements UDriver<UText, TikzGraphics> {
 		final HColor col = fontConfiguration.getColor();
 		tikz.setStrokeColor(col);
 		final boolean underline = fontConfiguration.containsStyle(FontStyle.UNDERLINE);
-		final boolean italic = font.isItalic();
-		final boolean bold = font.isBold();
+		final boolean italic = font.getFontFace().isItalic();
+		final boolean bold = font.getFontFace().isBold();
 		tikz.text(x, y, shape.getText(), underline, italic, bold);
 
 	}

@@ -35,9 +35,10 @@
  */
 package net.sourceforge.plantuml.klimt.color;
 
-import java.awt.Color;
+
 
 import net.sourceforge.plantuml.klimt.UChange;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.HColor.TransparentFillBehavior;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 
@@ -82,8 +83,8 @@ public class HColors {
 
 		final HColorSet set = HColorSet.instance();
 
-		BLACK = (HColorSimple) set.getColorOrWhite("black");
-		WHITE = (HColorSimple) set.getColorOrWhite("white");
+		BLACK = (HColorSimple) set.getColorOrWhite("#000000");
+		WHITE = (HColorSimple) set.getColorOrWhite("#FFFFFF");
 		RED_LIGHT = set.getColorOrWhite("#FEF6F3");
 		RED_DARK = set.getColorOrWhite("#CD0A0A");
 		RED = set.getColorOrWhite("#FF0000");
@@ -119,7 +120,7 @@ public class HColors {
 
 	}
 
-	private static final HColorSimple TRANSPARENT = HColorSimple.create(new Color(0, 0, 0, 0));
+	private static final HColorSimple TRANSPARENT = HColorSimple.create(new XColor(0, 0, 0, 0));
 
 	public static HColor transparent() {
 		return TRANSPARENT;
@@ -138,6 +139,8 @@ public class HColors {
 	public static HColor noGradient(HColor color) {
 		if (color instanceof HColorGradient)
 			return ((HColorGradient) color).getColor1();
+		if (color instanceof HColorLinearGradient)
+			return ((HColorLinearGradient) color).getColor1();
 
 		return color;
 	}
@@ -172,7 +175,7 @@ public class HColors {
 		return new HColorGradient(color1, color2, policy);
 	}
 
-	public static HColor simple(Color c) {
+	public static HColor simple(XColor c) {
 		return HColorSimple.create(c);
 	}
 

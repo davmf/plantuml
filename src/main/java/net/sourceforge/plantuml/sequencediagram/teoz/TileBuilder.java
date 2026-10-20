@@ -36,12 +36,10 @@
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
 import net.sourceforge.plantuml.klimt.font.StringBounder;
-import net.sourceforge.plantuml.real.Real;
 import net.sourceforge.plantuml.sequencediagram.Delay;
 import net.sourceforge.plantuml.sequencediagram.Divider;
 import net.sourceforge.plantuml.sequencediagram.Event;
@@ -59,6 +57,7 @@ import net.sourceforge.plantuml.sequencediagram.Notes;
 import net.sourceforge.plantuml.sequencediagram.Reference;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class TileBuilder {
 
@@ -69,14 +68,11 @@ public class TileBuilder {
 			final Event ev = it.next();
 			for (Tile tile : TileBuilder.buildOne(it, tileArguments, ev, parent, currentY)) {
 				tiles.add(tile);
-				final Real tmpMax = tile.getMaxX();
-				if (YGauge.USE_ME) {
-					final YGauge gauge = tile.getYGauge();
-					currentY = gauge;
-				}
+				// Y chaining: the next tile's gauge is built on this one's
+				currentY = tile.getYGauge();
 			}
 		}
-		return Collections.unmodifiableList(tiles);
+		return MyCollections.unmodifiableList(tiles);
 	}
 
 	public static List<Tile> buildOne(Iterator<Event> it, TileArguments tileArguments, final Event ev, Tile parent,
@@ -106,13 +102,13 @@ public class TileBuilder {
 			for (Note noteOnMessage : msg.getNoteOnMessages()) {
 				final NotePosition notePosition = noteOnMessage.getPosition();
 				if (notePosition == NotePosition.LEFT && msg.isSelfMessage())
-					result = new CommunicationTileSelfNoteLeft((CommunicationTileSelf) result, msg, skin, skinParam,
+					result = new CommunicationTileSelfNoteLeft(result, msg, skin, skinParam, livingSpace1,
 							noteOnMessage, currentY);
 				else if (notePosition == NotePosition.LEFT)
 					result = new CommunicationTileNoteLeft(result, msg, skin, skinParam,
 							reverse ? livingSpace2 : livingSpace1, noteOnMessage, currentY);
 				else if (notePosition == NotePosition.RIGHT && msg.isSelfMessage())
-					result = new CommunicationTileSelfNoteRight((CommunicationTileSelf) result, msg, skin, skinParam,
+					result = new CommunicationTileSelfNoteRight(result, msg, skin, skinParam, livingSpace1,
 							noteOnMessage, currentY);
 				else if (notePosition == NotePosition.RIGHT)
 					result = new CommunicationTileNoteRight(result, msg, skin, skinParam,
@@ -157,14 +153,20 @@ public class TileBuilder {
 			tiles.add(new DividerTile(divider, tileArguments, currentY));
 		} else if (ev instanceof GroupingStart) {
 			final GroupingStart start = (GroupingStart) ev;
-			final GroupingTile groupingTile = new GroupingTile(it, start,
-					tileArguments.withBackColorGeneral(start.getBackColorElement(), start.getBackColorGeneral()),
-					tileArguments, currentY);
-			if (YGauge.USE_ME == false)
-				tiles.add(new EmptyTile(4, groupingTile, currentY));
+			final AbstractTile groupingTile;
+			if (start.getType() == GroupingType.START_PARTITION)
+				groupingTile = new PartitionTile(it, start,
+						tileArguments.withBackColorGeneral(start.getBackColorElement(), start.getBackColorGeneral()),
+						tileArguments, currentY);
+			else
+				groupingTile = new GroupingTile(it, start,
+						tileArguments.withBackColorGeneral(start.getBackColorElement(), start.getBackColorGeneral()),
+						tileArguments, currentY);
+
+			// No ghost spacer tiles around the group: the 4px of breathing room on
+			// each side is now owned by the GroupingTile itself (reserved in its
+			// getPreferredHeight(), applied to the frame at draw time via getFrameY())
 			tiles.add(groupingTile);
-			if (YGauge.USE_ME == false)
-				tiles.add(new EmptyTile(4, groupingTile, currentY));
 
 		} else if (ev instanceof GroupingLeaf && ((GroupingLeaf) ev).getType() == GroupingType.ELSE) {
 			final GroupingLeaf anElse = (GroupingLeaf) ev;

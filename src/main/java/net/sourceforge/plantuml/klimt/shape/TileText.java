@@ -47,8 +47,7 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.Log;
 
-public class TileText extends AbstractTextBlock implements TextBlock {
-	// ::remove file when __HAXE__
+public class TileText extends TextBlockMemoized {
 
 	private final String text;
 	private final FontConfiguration fontConfiguration;
@@ -60,7 +59,8 @@ public class TileText extends AbstractTextBlock implements TextBlock {
 		this.url = url;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D rect = stringBounder.calculateDimension(fontConfiguration.getFont(), text);
 		final int spaceBottom = Math.abs(fontConfiguration.getSpace());
 		Log.debug(() -> "g2d=" + rect);

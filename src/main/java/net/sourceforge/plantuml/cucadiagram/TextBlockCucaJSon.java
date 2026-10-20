@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.cucadiagram;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.json.JsonArray;
 import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.json.JsonValue;
@@ -47,15 +48,15 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.WithPorts;
 
-public class TextBlockCucaJSon extends AbstractTextBlock implements WithPorts {
+public class TextBlockCucaJSon implements TextBlock, WithPorts {
 
 	private final ISkinParam skinParam;
 	private final FontConfiguration fontConfiguration;
@@ -80,7 +81,7 @@ public class TextBlockCucaJSon extends AbstractTextBlock implements WithPorts {
 			((TextBlockJson) jsonTextBlock).jsonTotalWidth = mainTotalWidth;
 		if (jsonTextBlock instanceof TextBlockArray)
 			((TextBlockArray) jsonTextBlock).arrayTotalWidth = mainTotalWidth;
-		
+
 		return jsonTextBlock;
 	}
 
@@ -103,6 +104,8 @@ public class TextBlockCucaJSon extends AbstractTextBlock implements WithPorts {
 		return new Ports();
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return getJsonTextBlock().calculateDimension(stringBounder);
 	}
@@ -111,7 +114,7 @@ public class TextBlockCucaJSon extends AbstractTextBlock implements WithPorts {
 		getJsonTextBlock().drawU(ug);
 	}
 
-	class TextBlockJson extends AbstractTextBlock {
+	class TextBlockJson extends TextBlockMemoized {
 
 		private final JsonObject obj;
 		private double jsonTotalWidth;
@@ -122,7 +125,7 @@ public class TextBlockCucaJSon extends AbstractTextBlock implements WithPorts {
 		}
 
 		@Override
-		public XDimension2D calculateDimension(StringBounder stringBounder) {
+		public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 			return new XDimension2D(getWidth1(stringBounder) + getWidth2(stringBounder), getHeight(stringBounder));
 		}
 
@@ -186,7 +189,7 @@ public class TextBlockCucaJSon extends AbstractTextBlock implements WithPorts {
 		return result;
 	}
 
-	class TextBlockArray extends AbstractTextBlock {
+	class TextBlockArray extends TextBlockMemoized {
 
 		private final JsonArray array;
 		private double arrayTotalWidth;
@@ -197,7 +200,7 @@ public class TextBlockCucaJSon extends AbstractTextBlock implements WithPorts {
 		}
 
 		@Override
-		public XDimension2D calculateDimension(StringBounder stringBounder) {
+		public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 			XDimension2D result = new XDimension2D(0, 0);
 			for (JsonValue element : array) {
 				final TextBlock tb = getTextBlockValue(element, arrayTotalWidth);

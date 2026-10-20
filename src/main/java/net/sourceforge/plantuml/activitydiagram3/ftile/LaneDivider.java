@@ -35,6 +35,8 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.ftile;
 
+
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -42,16 +44,16 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEmpty;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
-public class LaneDivider extends AbstractTextBlock {
+public class LaneDivider implements TextBlock {
 
 	private final ISkinParam skinParam;
 
@@ -67,17 +69,19 @@ public class LaneDivider extends AbstractTextBlock {
 		this.height = height;
 	}
 
-	public StyleSignatureBasic getDefaultStyleDefinition() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.swimlane);
+	public StyleQuery getDefaultStyleDefinition() {
+		return StyleQueries.ACTIVITYDIAG_SWIMLANE;
 	}
 
 	private Style getStyle() {
 		if (style == null) {
-			this.style = getDefaultStyleDefinition().getMergedStyle(skinParam.getCurrentStyleBuilder());
+			this.style = skinParam.getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinition());
 		}
 		return style;
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(x1 + x2, height);
 	}

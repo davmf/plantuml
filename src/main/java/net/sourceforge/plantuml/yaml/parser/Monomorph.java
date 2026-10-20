@@ -40,11 +40,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// A Monomorph represents a single YAML node that can be one of three
+// possible types: a scalar (string value), a list (ordered sequence),
+// or a map (key-value pairs).  It starts in an UNDETERMINATE state and
+// its type is fixed on first use (setValue, addInList, or putInMap).
+//
+// The name "Monomorph" reflects the fact that, unlike a polymorphic
+// union with separate subclasses for each variant, all three forms
+// live inside a single ("mono") mutable object whose shape ("morph")
+// is decided at runtime.
+//
+// This is the output type produced by YamlParser.parse().
 public class Monomorph {
 
 	private MonomorphType type;
 
-	// Only one of this 3 cannot be null.
+	// At most one of the following three fields is non-null,
+	// matching the current MonomorphType.
 	private String value;
 	private List<Monomorph> list;
 	private Map<String, Monomorph> map;

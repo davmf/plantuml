@@ -35,10 +35,17 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.abel.DisplayPositioned;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -48,6 +55,8 @@ import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandNewpage extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("@", "newpage");
 
 	public CommandNewpage() {
 		super(getRegexConcat());
@@ -65,11 +74,34 @@ public class CommandNewpage extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Splits the diagram into several images. The optional label is used
+		// as the title of the new page. Note that this command is a no-op once
+		// 'ignore newpage' has been issued (see SequenceDiagram.newpage).
+		sb.append("Starting a new page");
+
+		final String label = arg.get("LABEL", 0);
+		if (label != null)
+			sb.append(" titled \"").append(label).append("\"");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String label = arg.get("LABEL", 0);
 		final Display strings = label == null ? Display.NULL : Display.getWithNewlines(diagram.getPragma(), label);
-		diagram.newpage(strings);
+		diagram.newpage(DisplayPositioned.single(location, strings, HorizontalAlignment.CENTER, VerticalAlignment.TOP));
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

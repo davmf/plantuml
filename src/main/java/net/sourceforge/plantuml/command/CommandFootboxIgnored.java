@@ -35,14 +35,21 @@
  */
 package net.sourceforge.plantuml.command;
 
-import net.sourceforge.plantuml.UmlDiagram;
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandFootboxIgnored extends SingleLineCommand2<UmlDiagram> {
+public class CommandFootboxIgnored extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"footbox", "hide", "hidefootbox", "show", "showfootbox");
 
 	public CommandFootboxIgnored() {
 		super(getRegexConcat());
@@ -56,7 +63,23 @@ public class CommandFootboxIgnored extends SingleLineCommand2<UmlDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(UmlDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// This command swallows 'hide footbox' and 'show footbox' in diagram
+		// types where the footbox does not exist, so that the line is accepted
+		// without any effect; the real handling, for sequence diagrams, is in
+		// CommandFootbox.
+		return "Accepted but ignored: 'footbox' has no effect in this diagram type";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

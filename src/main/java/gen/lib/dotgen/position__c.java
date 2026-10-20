@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -50,6 +50,7 @@ import static gen.lib.cgraph.edge__c.agtail;
 import static gen.lib.cgraph.graph__c.agnnodes;
 import static gen.lib.cgraph.obj__c.agcontains;
 import static gen.lib.cgraph.obj__c.agroot;
+import static gen.lib.common.ns__c.hasNegativeSlackEdges;
 import static gen.lib.common.ns__c.rank;
 import static gen.lib.common.splines__c.selfRightSpace;
 import static gen.lib.common.utils__c.late_int;
@@ -130,6 +131,8 @@ import static smetana.core.Macro.alloc_elist;
 import static smetana.core.Macro.free_list;
 import static smetana.core.debug.SmetanaDebug.ENTERING;
 import static smetana.core.debug.SmetanaDebug.LEAVING;
+import static smetana.core.debug.SmetanaDebug.SMETANA_TRACE;
+import static smetana.core.debug.SmetanaDebug.safeName;
 
 import gen.annotation.Difficult;
 import gen.annotation.HasND_Rank;
@@ -147,6 +150,11 @@ import h.ST_aspect_t;
 import h.ST_point;
 import h.ST_pointf;
 import h.ST_rank_t;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
 import smetana.core.CArray;
 import smetana.core.CArrayOfStar;
 import smetana.core.CString;
@@ -163,7 +171,6 @@ import smetana.core.ZType;
  * created and correctly separated.
  */
 public class position__c {
-
 
 	//3 ciez0pfggxdljedzsbklq49f0
 	// static inline point pointof(int x, int y) 
@@ -638,19 +645,51 @@ ENTERING("33snzyd9z0loienur06dnily9","dot_position");
 try {
     if (GD_nlist(g) == null)
 	return;			/* ignore empty graph */
+    // [DEBUG-flat-label] Temporary trace, Test_5 (SMETANA.md): phase ordering check
+    if (false) SMETANA_TRACE("position__c", "dot_position: ENTER");
+    if (false) SMETANA_TRACE("position__c", "dot_position: root minrank=" + GD_minrank(g) + " maxrank=" + GD_maxrank(g) + " at entry");
     mark_lowclusters(zz, g);	/* we could remove from splines.c now */
+    if (false) SMETANA_TRACE("position__c", "dot_position: root minrank=" + GD_minrank(g) + " after mark_lowclusters");
+    // [DEBUG-cluster-layout] Test_7 investigation (SMETANA.md): verify that
+    // mincross left every cluster contiguous on every rank -- this is the exact
+    // point where ND_clust is freshly set for all nodes (real + virtual) and
+    // the order is exactly what create_aux_edges() will constrain against.
+    gen.lib.dotgen.dotinit__c.checkClusterContiguity(zz, g, "at dot_position entry");
     set_ycoords(zz, g);
+    if (false) SMETANA_TRACE("position__c", "dot_position: root minrank=" + GD_minrank(g) + " after set_ycoords (1st call)");
     if (zz.Concentrate)
 	dot_concentrate(g);
+    if (false) SMETANA_TRACE("position__c", "dot_position: root minrank=" + GD_minrank(g) + " after dot_concentrate");
     expand_leaves(g);
+    if (false) SMETANA_TRACE("position__c", "dot_position: root minrank=" + GD_minrank(g) + " after expand_leaves");
     if (flat_edges(zz, g))
 	set_ycoords(zz, g);
+    if (false) SMETANA_TRACE("position__c", "dot_position: root minrank=" + GD_minrank(g) + " after flat_edges/2nd set_ycoords");
     create_aux_edges(zz, g);
-    if (rank(zz, g, 2, nsiter2(zz, g))!=0) { /* LR balance == 2 */
+    if (false) SMETANA_TRACE("position__c", "dot_position: root minrank=" + GD_minrank(g) + " maxrank=" + GD_maxrank(g) + " right after create_aux_edges");
+    dumpAuxEdges(zz, g, "before rank() [X-position aux graph]");
+    int rankResult = rank(zz, g, 2, nsiter2(zz, g));
+    if (false) SMETANA_TRACE("position__c", "dot_position: rank(g,2,...) returned " + rankResult + " (0=ok, 1=disconnected->connectGraph with NO re-rank, 2=setjmp/longjmp abort)");
+    if (rankResult!=0) { /* LR balance == 2 */
 	connectGraph (g);
 	//assert(rank(g, 2, nsiter2(g)) == 0);
     }
+    // [FIX-cluster-layout] Diagnostic only (not present in upstream Graphviz).
+    // A genuine constraint cycle in the X-position aux graph is now prevented at
+    // the source, in make_LR_constraints() (deferred label-position pass with
+    // cycle guards evaluated once the full adjacency graph exists -- see there).
+    // If this warning ever fires, a NEW class of infeasibility exists that that
+    // pass does not cover; investigate it, do NOT try to "fix up" here: a
+    // previous attempt to remove_aux_edges()+create_aux_edges()+rank() again at
+    // this point hung the network simplex, because create_aux_edges() is not
+    // re-entrant (GD_ln/GD_rn keep pointing at cluster boundary nodes that
+    // remove_aux_edges() already unlinked from GD_nlist, so the rebuilt graph
+    // references ghost nodes the simplex never ranks). See SMETANA.md.
+    if (hasNegativeSlackEdges(zz)) {
+    	if (false) SMETANA_TRACE("position__c", "dot_position: WARNING negative-slack edges remain after rank() -- X-position aux graph is infeasible, layout may show overlapping nodes. See SMETANA.md.");
+    }
     set_xcoords(g);
+    clampSkippedLabelVnodes(zz, g);
     set_aspect(g, asp);
     remove_aux_edges(g);	/* must come after set_aspect since we now
 				 * use GD_ln and GD_rn for bbox width.
@@ -784,7 +823,7 @@ LEAVING("53fvij7oun7aezlb7x66vzuyb","allocate_aux_edges");
 @Unused
 @HasND_Rank
 @Original(version="2.38.0", path="lib/dotgen/position.c", name="make_LR_constraints", key="ah28nr6mxpjeosr85bhmzd3si", definition="static void  make_LR_constraints(graph_t * g)")
-public static void make_LR_constraints(ST_Agraph_s g) {
+public static void make_LR_constraints(Globals zz, ST_Agraph_s g) {
 ENTERING("ah28nr6mxpjeosr85bhmzd3si","make_LR_constraints");
 try {
     int i, j, k;
@@ -796,6 +835,9 @@ try {
     ST_Agedge_s e, e0, e1, ff;
     ST_Agnode_s u, v, t0, h0;
     CArray<ST_rank_t> rank = GD_rank(g);
+    // [FIX-cluster-layout] Not present in upstream Graphviz: label nodes whose
+    // position constraints are deferred to after the main loop -- see below.
+    final List<ST_Agnode_s> deferredLabelNodes = new ArrayList<ST_Agnode_s>();
     /* Use smaller separation on odd ranks if g has edge labels */
     if ((GD_has_labels(g) & (1 << 0))!=0) {
 	sep[0] = GD_nodesep(g);
@@ -838,26 +880,17 @@ try {
 		last = (int)(last + width);
 	    }
 	    /* constraints from labels of flat edges on previous rank */
-	    if ((e = (ST_Agedge_s) ND_alg(u))!=null) {
-		e0 = (ST_Agedge_s) ND_save_out(u).list.get_(0);
-		e1 = (ST_Agedge_s) ND_save_out(u).list.get_(1);
-		if (ND_order(aghead(e0)) > ND_order(aghead(e1))) {
-		    ff = e0;
-		    e0 = e1;
-		    e1 = ff;
-		}
-		m0 = (ED_minlen(e) * GD_nodesep(g)) / 2;
-		m1 = m0 + ((int)(ND_rw(aghead(e0)) + ND_lw(agtail(e0))));
-		/* these guards are needed because the flat edges
-		 * work very poorly with cluster layout */
-		if (canreach(agtail(e0), aghead(e0)) == false)
-		    make_aux_edge(aghead(e0), agtail(e0), m1,
-			ED_weight(e));
-		m1 = m0 + ((int)(ND_rw(agtail(e1)) + ND_lw(aghead(e1))));
-		if (canreach(aghead(e1), agtail(e1)) == false)
-		    make_aux_edge(agtail(e1), aghead(e1), m1,
-			ED_weight(e));
-	    }
+	    // [FIX-cluster-layout] Changed from upstream Graphviz: instead of creating
+	    // the label-position aux edges right here, only collect the label node.
+	    // Upstream evaluates its canreach() cycle guards at this point, which is
+	    // too early: ranks are processed minrank->maxrank, so when a label on
+	    // rank r-1 is handled here, the plain left-right adjacency edges of rank
+	    // r do not exist yet and the guards cannot see the cycles they are meant
+	    // to prevent (proven on zdev.Test_1, see SMETANA.md "Root cause
+	    // CONFIRMED"). The actual edge creation happens after the main loop,
+	    // once every adjacency edge of every rank exists.
+	    if (ND_alg(u)!=null)
+		deferredLabelNodes.add(u);
 	    /* position flat edge endpoints */
 	    for (k = 0; k < ND_flat_out(u).size; k++) {
 		e = (ST_Agedge_s) ND_flat_out(u).list.get_(k);
@@ -893,9 +926,156 @@ try {
 	    }
 	}
     }
+    /*
+     * [FIX-cluster-layout] Deferred creation of the label-position constraints:
+     * this is upstream's "constraints from labels of flat edges on previous
+     * rank" block, moved verbatim out of the loop above, with the same guard
+     * logic. Running it here means the guards finally see the complete
+     * left-right adjacency graph of every rank (plus the constraints created
+     * by earlier iterations of this very loop), so a label constraint that
+     * would close a genuine cycle -- two crossing labeled flat/same-rank edges,
+     * as in zdev.Test_1 -- is skipped (with a TRACE) instead of making the
+     * whole X-position problem mathematically infeasible and the final render
+     * overlap nodes. On any graph whose full constraint set is acyclic (i.e.
+     * every diagram that already laid out correctly), no path exists that the
+     * guards could find, nothing is ever skipped, and the resulting aux graph
+     * is identical to upstream's. The guards use canReachInAuxGraph() instead
+     * of upstream's canreach()/go(): same question, but iterative and with a
+     * visited set (go() is an unmarked recursive DFS -- potentially exponential
+     * on the denser graph seen at this point).
+     */
+    for (ST_Agnode_s lu : deferredLabelNodes) {
+	e = (ST_Agedge_s) ND_alg(lu);
+	e0 = (ST_Agedge_s) ND_save_out(lu).list.get_(0);
+	e1 = (ST_Agedge_s) ND_save_out(lu).list.get_(1);
+	if (ND_order(aghead(e0)) > ND_order(aghead(e1))) {
+	    ff = e0;
+	    e0 = e1;
+	    e1 = ff;
+	}
+	m0 = (ED_minlen(e) * GD_nodesep(g)) / 2;
+	m1 = m0 + ((int)(ND_rw(aghead(e0)) + ND_lw(agtail(e0))));
+	/* these guards are needed because the flat edges
+	 * work very poorly with cluster layout */
+	// [DEBUG-Test_15] zdev.Test_15 investigation (SMETANA.md): pass zz/context so
+	// a SKIP can log the exact path found, to confirm/refute by trace (not by
+	// hand-reconstruction) whether the reachability comes from a genuine node
+	// adjacency cycle or merely from the same-rank ordering edge between two
+	// label vnodes on rank -1.
+	if (canReachInAuxGraph(zz, agtail(e0), aghead(e0), smetana.core.debug.SmetanaDebug.TRACE_ON ? "guard1 label=" + safeName(zz, lu) : null) == false)
+	    make_aux_edge(aghead(e0), agtail(e0), m1,
+		ED_weight(e));
+	else {
+	zz.skippedConstraintLabelVnodes.put(lu, Boolean.TRUE);
+	if (false) SMETANA_TRACE("position__c", "make_LR_constraints: SKIPPED label-position aux edge " + safeName(zz, aghead(e0))
+		    + " -> " + safeName(zz, agtail(e0)) + " (would close a cycle in the X aux graph)");
+	}
+	m1 = m0 + ((int)(ND_rw(agtail(e1)) + ND_lw(aghead(e1))));
+	if (canReachInAuxGraph(zz, aghead(e1), agtail(e1), smetana.core.debug.SmetanaDebug.TRACE_ON ? "guard2 label=" + safeName(zz, lu) : null) == false)
+	    make_aux_edge(agtail(e1), aghead(e1), m1,
+		ED_weight(e));
+	else {
+		zz.skippedConstraintLabelVnodes.put(lu, Boolean.TRUE);
+		if (false) SMETANA_TRACE("position__c", "make_LR_constraints: SKIPPED label-position aux edge " + safeName(zz, agtail(e1))
+		    + " -> " + safeName(zz, aghead(e1)) + " (would close a cycle in the X aux graph)");
+	}
+    }
 } finally {
 LEAVING("ah28nr6mxpjeosr85bhmzd3si","make_LR_constraints");
 }
+}
+
+
+
+
+/*
+ * [FIX-cluster-layout] Not present in upstream Graphviz. Reachability test
+ * over the aux graph's ND_out lists, used by make_LR_constraints()'s deferred
+ * label-position pass above. Same question as upstream's canreach()/go()
+ * pair, but iterative and with a visited set: go() is an unmarked recursive
+ * DFS, which is potentially exponential on the denser DAG this pass sees
+ * (upstream only ever ran it on the sparse, partially-built graph) and would
+ * not terminate at all if a cycle ever slipped in.
+ *
+ * [DEBUG-Test_15] zdev.Test_15 investigation (SMETANA.md): now takes zz + a
+ * short trace label, and when a path IS found, reconstructs and logs it
+ * (via parent pointers) instead of just returning true -- this is meant to
+ * confirm or refute, by direct trace, whether a SKIPPED guard fires because
+ * of a genuine node-adjacency cycle or because of some other, less obviously
+ * intentional edge (e.g. the plain same-rank ordering edge between two label
+ * vnodes on rank -1, which is not a real topological constraint of the
+ * original graph). No change to the guard's boolean semantics -- purely
+ * additive logging on the already-existing BFS.
+ */
+private static boolean canReachInAuxGraph(Globals zz, ST_Agnode_s from, ST_Agnode_s to, String traceLabel) {
+    if (from == to)
+	return true;
+    final IdentityHashMap<ST_Agnode_s, Boolean> visited = new IdentityHashMap<ST_Agnode_s, Boolean>();
+    final IdentityHashMap<ST_Agnode_s, ST_Agnode_s> parent = new IdentityHashMap<ST_Agnode_s, ST_Agnode_s>();
+    final ArrayDeque<ST_Agnode_s> stack = new ArrayDeque<ST_Agnode_s>();
+    visited.put(from, Boolean.TRUE);
+    stack.push(from);
+    while (stack.isEmpty() == false) {
+	final ST_Agnode_s cur = stack.pop();
+	for (int i = 0; ND_out(cur).list.get_(i) != null; i++) {
+	    final ST_Agedge_s outEdge = (ST_Agedge_s) ND_out(cur).list.get_(i);
+	    final ST_Agnode_s head = aghead(outEdge);
+	    if (head == to) {
+		parent.put(head, cur);
+		// logReachPath(zz, from, to, parent, traceLabel);
+		return true;
+	    }
+	    if (visited.containsKey(head) == false) {
+		visited.put(head, Boolean.TRUE);
+		parent.put(head, cur);
+		stack.push(head);
+	    }
+	}
+    }
+    return false;
+}
+
+/*
+ * [DEBUG-Test_15] zdev.Test_15 investigation (SMETANA.md): reconstructs and
+ * logs the from->to path found by canReachInAuxGraph's BFS, via its parent
+ * map. For every hop, also logs the ND_out edge's minlen/weight, so it's
+ * directly visible (without cross-referencing dumpAuxEdges by hand) which
+ * edges make up the reachability chain, and in particular whether any of
+ * them is a weight-0 same-rank ordering edge between two label vnodes
+ * (rather than a real node-adjacency/containment constraint).
+ */
+private static void logReachPath(Globals zz, ST_Agnode_s from, ST_Agnode_s to,
+	IdentityHashMap<ST_Agnode_s, ST_Agnode_s> parent, String traceLabel) {
+    final List<ST_Agnode_s> path = new ArrayList<ST_Agnode_s>();
+    ST_Agnode_s cur = to;
+    path.add(cur);
+    while (cur != from) {
+	cur = parent.get(cur);
+	path.add(cur);
+    }
+    Collections.reverse(path);
+    final StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < path.size(); i++) {
+	if (i > 0)
+	    sb.append(" -> ");
+	sb.append(safeName(zz, path.get(i)));
+    }
+    if (false) SMETANA_TRACE("position__c", "canReachInAuxGraph: " + traceLabel + " PATH FOUND: " + sb.toString());
+    for (int i = 0; i + 1 < path.size(); i++) {
+	final ST_Agnode_s a = path.get(i);
+	final ST_Agnode_s b = path.get(i + 1);
+	int minlen = -1, weight = -1;
+	for (int k = 0; ND_out(a).list.get_(k) != null; k++) {
+	    final ST_Agedge_s e = (ST_Agedge_s) ND_out(a).list.get_(k);
+	    if (aghead(e) == b) {
+		minlen = ED_minlen(e);
+		weight = ED_weight(e);
+		break;
+	    }
+	}
+	if (false) SMETANA_TRACE("position__c", "  hop " + i + ": " + safeName(zz, a) + " -> " + safeName(zz, b)
+		+ " minlen=" + minlen + " weight=" + weight);
+    }
 }
 
 
@@ -1169,10 +1349,15 @@ public static void create_aux_edges(Globals zz, ST_Agraph_s g) {
 ENTERING("b7y0htx4svbhaqb1a12dihlue","create_aux_edges");
 try {
     allocate_aux_edges(g);
-    make_LR_constraints(g);
+    if (false) SMETANA_TRACE("position__c", "create_aux_edges: minrank=" + GD_minrank(g) + " after allocate_aux_edges");
+    make_LR_constraints(zz, g);
+    if (false) SMETANA_TRACE("position__c", "create_aux_edges: minrank=" + GD_minrank(g) + " after make_LR_constraints");
     make_edge_pairs(g);
+    if (false) SMETANA_TRACE("position__c", "create_aux_edges: minrank=" + GD_minrank(g) + " after make_edge_pairs");
     pos_clusters(zz, g);
+    if (false) SMETANA_TRACE("position__c", "create_aux_edges: minrank=" + GD_minrank(g) + " after pos_clusters");
     compress_graph(g);
+    if (false) SMETANA_TRACE("position__c", "create_aux_edges: minrank=" + GD_minrank(g) + " after compress_graph");
 } finally {
 LEAVING("b7y0htx4svbhaqb1a12dihlue","create_aux_edges");
 }
@@ -1235,9 +1420,15 @@ try {
     int i, j;
     ST_Agnode_s v;
     CArray<ST_rank_t> rank = GD_rank(g);
+    // [DEBUG-flat-label] Temporary trace, Test_5 (SMETANA.md): ND_rank of normal
+    // nodes found holding X coordinates at spline time -- verify the restore here.
+    if (false) SMETANA_TRACE("position__c", "set_xcoords: ENTER minrank=" + GD_minrank(g) + " maxrank=" + GD_maxrank(g));
     for (i = GD_minrank(g); i <= GD_maxrank(g); i++) {
+	if (false) SMETANA_TRACE("position__c", "set_xcoords: rank " + i + " n=" + rank.get__(i).n);
 	for (j = 0; j < rank.get__(i).n; j++) {
 	    v = (ST_Agnode_s) rank.get__(i).v.get_(j);
+	    if (false) SMETANA_TRACE("position__c", "set_xcoords: node=" + System.identityHashCode(v)
+		    + " x(from ND_rank)=" + ND_rank(v) + " -> restored ND_rank=" + i);
 	    ND_coord(v).x = ND_rank(v);
 	    ND_rank(v, i);
 	}
@@ -1245,6 +1436,54 @@ try {
 } finally {
 LEAVING("1oobmglea9t819y95xeel37h8","set_xcoords");
 }
+}
+
+/*
+ * [FIX-Test_15] Not part of upstream Graphviz. See SMETANA.md, zdev.Test_15
+ * investigation: when make_LR_constraints()'s deferred label-position pass
+ * skips one (or both) of a flat-edge label vnode's two real-endpoint anchor
+ * constraints (because creating it would close a cycle in the X-position aux
+ * graph -- a legitimate, necessary skip, same mechanism as zdev.Test_1), that
+ * label's final X coordinate is otherwise left unconstrained on the skipped
+ * side and can end up entirely outside the span of its own edge's two real
+ * endpoints. When that happens, make_flat_labeled_edge() (dotsplines__c.java)
+ * builds a geometrically degenerate box path around the label, and
+ * routesplines/routepolylines gives up (pn[0]==0), leaving that edge
+ * permanently unrouted (ED_spl stays null) -- the root cause of the
+ * SmetanaEdge.getDotPathInternal() NPE fixed at its source here instead of by
+ * a downstream rendering fallback.
+ *
+ * This clamps such labels' X coordinate back into [min(a.x,b.x),
+ * max(a.x,b.x)] where a/b are the two real nodes the label's edge connects
+ * (found via ND_save_out(lu), the label vnode's original two FLATORDER
+ * anchor edges -- the same edges make_LR_constraints() itself reads,
+ * still valid at this point since remove_aux_edges() hasn't run yet).
+ * Purely additive: only labels actually recorded in
+ * zz.skippedConstraintLabelVnodes are touched, and only when their X
+ * coordinate is already outside the span -- a label that happens to still
+ * fall within its endpoints' span despite the skipped constraint (or a label
+ * that had no constraint skipped at all) is left untouched.
+ */
+private static void clampSkippedLabelVnodes(Globals zz, ST_Agraph_s g) {
+    for (ST_Agnode_s lu : zz.skippedConstraintLabelVnodes.keySet()) {
+	final ST_Agedge_s e0 = (ST_Agedge_s) ND_save_out(lu).list.get_(0);
+	final ST_Agedge_s e1 = (ST_Agedge_s) ND_save_out(lu).list.get_(1);
+	if (e0 == null || e1 == null)
+	    continue;
+	final ST_Agnode_s a = aghead(e0);
+	final ST_Agnode_s b = aghead(e1);
+	final double lo = Math.min(ND_coord(a).x, ND_coord(b).x);
+	final double hi = Math.max(ND_coord(a).x, ND_coord(b).x);
+	final double x = ND_coord(lu).x;
+	if (x < lo || x > hi) {
+	    final double clamped = Math.max(lo, Math.min(hi, x));
+	    if (false) SMETANA_TRACE("position__c", "clampSkippedLabelVnodes: " + safeName(zz, lu)
+		    + " x=" + x + " outside endpoint span [" + lo + "," + hi + "] (endpoints "
+		    + safeName(zz, a) + "=" + ND_coord(a).x + ", " + safeName(zz, b) + "=" + ND_coord(b).x
+		    + ") -> clamped to " + clamped);
+	    ND_coord(lu).x = clamped;
+	}
+    }
 }
 
 
@@ -1948,6 +2187,58 @@ UNSUPPORTED("6hqli9m8yickz1ox1qfgtdbnd"); // 	    continue;
 } finally {
 LEAVING("daz786541idcxnywckcbncazb","contain_nodes");
 }
+}
+
+
+/*
+ * [DEBUG-cluster-layout] Ad-hoc tracing added to investigate the Smetana
+ * cluster/package layout producing overlapping nodes (see zdev.Test_1,
+ * compared against zdev.Test_2). Dumps, to smetana.txt via SmetanaDebug.TRACE,
+ * every edge of the auxiliary X-positioning graph (tail -> head, minlen,
+ * weight) right before it is handed to the network simplex solver
+ * (gen.lib.common.ns__c.rank). Cluster boundary nodes (GD_ln/GD_rn, for every
+ * cluster, recursively) are resolved to readable labels like "ln(cluster6)"
+ * instead of relying on agnameof/safeName, since these are synthetic nodes
+ * with tag.id == 0 (see the virtual_node() discussion in SMETANA.md) and
+ * safeName() would otherwise just print an identity-hash placeholder for all
+ * of them, making them impossible to tell apart. Safe to leave in place.
+ */
+private static void dumpAuxEdges(Globals zz, ST_Agraph_s g, String phase) {
+    if (!smetana.core.debug.SmetanaDebug.TRACE_ON)
+	return;
+    final IdentityHashMap<ST_Agnode_s, String> labels = new IdentityHashMap<ST_Agnode_s, String>();
+    collectClusterBoundaryLabels(zz, g, labels);
+    if (false) SMETANA_TRACE("position__c", "----- rank array contents " + phase + " -----");
+    for (int r = GD_minrank(g); r <= GD_maxrank(g); r++) {
+	if (false) SMETANA_TRACE("position__c", "  rank " + r + " (n=" + GD_rank(g).get__(r).n + "):");
+	for (int i = 0; i < GD_rank(g).get__(r).n; i++) {
+	    final ST_Agnode_s v = (ST_Agnode_s) GD_rank(g).get__(r).v.get_(i);
+	    final String label = v == null ? "null" : (labels.containsKey(v) ? labels.get(v) : safeName(zz, v));
+	    if (false) SMETANA_TRACE("position__c", "    v[" + i + "] = " + label + (v == null ? "" : " (ND_order=" + ND_order(v) + ")"));
+	}
+    }
+    if (false) SMETANA_TRACE("position__c", "----- aux edges " + phase + " -----");
+    for (ST_Agnode_s n = GD_nlist(g); n != null; n = ND_next(n)) {
+	final String nlabel = labels.containsKey(n) ? labels.get(n) : safeName(zz, n);
+	for (int i = 0; ND_out(n).list.get_(i) != null; i++) {
+	    final ST_Agedge_s e = (ST_Agedge_s) ND_out(n).list.get_(i);
+	    final ST_Agnode_s head = aghead(e);
+	    final String hlabel = labels.containsKey(head) ? labels.get(head) : safeName(zz, head);
+	    if (false) SMETANA_TRACE("position__c", "  " + nlabel + " -> " + hlabel + " minlen=" + ED_minlen(e) + " weight=" + ED_weight(e));
+	}
+    }
+}
+
+private static void collectClusterBoundaryLabels(Globals zz, ST_Agraph_s g, IdentityHashMap<ST_Agnode_s, String> labels) {
+    for (int c = 1; c <= GD_n_cluster(g); c++) {
+	final ST_Agraph_s clust = GD_clust(g).get_(c);
+	final String name = safeName(zz, clust);
+	if (GD_ln(clust) != null)
+	    labels.put(GD_ln(clust), "ln(" + name + ")");
+	if (GD_rn(clust) != null)
+	    labels.put(GD_rn(clust), "rn(" + name + ")");
+	collectClusterBoundaryLabels(zz, clust, labels);
+    }
 }
 
 

@@ -35,22 +35,60 @@
  */
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
+import net.sourceforge.plantuml.asciiverse.AsciiBlock;
 import net.sourceforge.plantuml.real.Real;
 import net.sourceforge.plantuml.sequencediagram.Event;
 
-public interface Tile {
+public interface Tile extends AsciiBlock {
 
 	public double getPreferredHeight();
 
-	public void callbackY(TimeHook y);
+	public void onGaugeResolved();
 
 	public YGauge getYGauge();
 
 	public void addConstraints();
 
+	// ASCII counterpart of addConstraints(): declares this tile's constraints
+	// on the dedicated ASCII Real graph (getAsciiPosB/C/D... on LivingSpace),
+	// convention 1.0 = 1 char. Default no-op so the ~30 existing Tile
+	// implementations compile unchanged; each is migrated incrementally,
+	// exactly like asciiDraw()/asciiDimension().
+	public default void asciiAddConstraints() {
+	}
+
+	public default Real getAsciiMinX() {
+		return null;
+	}
+
+	public default Real getAsciiMaxX() {
+		return null;
+	}
+
 	public Real getMinX();
 
 	public Real getMaxX();
+
+	// The bound a GroupingTile should size its own drawn frame around, as
+	// opposed to getMinX()/getMaxX() -- which most tiles answer identically,
+	// hence the default delegating straight to them. They diverge only for a
+	// tile whose LAYOUT reservation (what keeps the next/previous participant
+	// far enough away, unrelated to this) is deliberately wider than what it
+	// actually draws: a self-message loop's fixed component width reserves a
+	// few pixels nothing ever paints into (see
+	// ComponentRoseSelfArrow.getDrawnWidth()), which a group wrapped around
+	// just that loop has no reason to inherit as blank space inside its own
+	// frame. CommunicationTileSelf and its two note-wrapping siblings are the
+	// only overrides; everything else -- including participant spacing
+	// itself, which deliberately keeps using getMinX()/getMaxX() -- is
+	// unaffected.
+	public default Real getDrawnMinX() {
+		return getMinX();
+	}
+
+	public default Real getDrawnMaxX() {
+		return getMaxX();
+	}
 
 	public double getMiddleX();
 

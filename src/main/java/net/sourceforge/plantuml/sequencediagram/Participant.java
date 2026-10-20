@@ -42,6 +42,9 @@ import java.util.Set;
 
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.SpecificBackcolorable;
+import net.sourceforge.plantuml.asciiverse.ADimension2D;
+import net.sourceforge.plantuml.asciiverse.AsciiBlock;
+import net.sourceforge.plantuml.asciiverse.InfinitePlan;
 import net.sourceforge.plantuml.klimt.Fashion;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
@@ -50,19 +53,16 @@ import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.skin.Pragma;
-import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.MergeStrategy;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.WithStyle;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-// ::remove folder when __HAXE__
-public class Participant implements SpecificBackcolorable, WithStyle {
+public class Participant implements SpecificBackcolorable, WithStyle, AsciiBlock {
 
 	private final String code;
 	private Display display;
@@ -78,18 +78,17 @@ public class Participant implements SpecificBackcolorable, WithStyle {
 	private final LineLocation location;
 	private final String uid;
 
-	// private Style style;
-
-	public StyleSignatureBasic getStyleSignature() {
-		return type.getStyleSignature().addClickable(getUrl());
+	@Override
+	public StyleQuery getStyleQuery() {
+		return type.getStyleQuery().addClickable(getUrl());
 	}
 
 	public Style[] getUsedStyles() {
 
-		final StyleSignature signature = getStyleSignature().withTOBECHANGED(stereotype);
-		Style tmp = signature.getMergedStyle(styleBuilder);
+		final StyleQuery query = getStyleQuery().withStereotype(stereotype);
+		Style tmp = styleBuilder.getMergedStyle(query);
 		tmp = tmp.eventuallyOverride(getColors());
-		Style stereo = getStyleSignature().forStereotypeItself(stereotype).getMergedStyle(styleBuilder);
+		Style stereo = styleBuilder.getMergedStyle(getStyleQuery().forStereotypeItself(stereotype));
 		if (tmp != null)
 			stereo = tmp.mergeWith(stereo, MergeStrategy.OVERWRITE_EXISTING_VALUE);
 
@@ -201,42 +200,53 @@ public class Participant implements SpecificBackcolorable, WithStyle {
 	}
 
 	public UGroup groupTypeTail(Pragma pragma) {
-		final UGroup group = new UGroup();
+		final UGroup group = new UGroup(location);
 		group.put(UGroupType.CLASS, "participant participant-tail");
 		group.put(UGroupType.DATA_QUALIFIED_NAME, code);
 		group.put(UGroupType.DATA_PARTICIPANT, code);
 		group.put(UGroupType.DATA_ENTITY_UID, uid);
-		if (pragma.isTrue(PragmaKey.SVGNEWDATA))
-			group.put(UGroupType.DATA_UID, uid + "-tail");
+		group.put(UGroupType.DATA_UID, uid + "-tail");
 
 		return group;
 	}
 
 	public UGroup groupTypeHead(Pragma pragma) {
-		final UGroup group = new UGroup();
+		final UGroup group = new UGroup(location);
 		group.put(UGroupType.CLASS, "participant participant-head");
 		group.put(UGroupType.DATA_QUALIFIED_NAME, code);
 		group.put(UGroupType.DATA_PARTICIPANT, code);
 		group.put(UGroupType.DATA_ENTITY_UID, uid);
-		if (pragma.isTrue(PragmaKey.SVGNEWDATA))
-			group.put(UGroupType.DATA_UID, uid + "-head");
+		group.put(UGroupType.DATA_UID, uid + "-head");
 		return group;
 	}
 
 	public UGroup groupTypeLifeline(Pragma pragma) {
-		final UGroup group = new UGroup();
-		if (pragma.isTrue(PragmaKey.SVGNEWDATA)) {
-			group.put(UGroupType.CLASS, "participant-lifeline");
-			group.put(UGroupType.DATA_UID, uid + "-lifeline");
-			group.put(UGroupType.DATA_QUALIFIED_NAME, code);
-			group.put(UGroupType.DATA_PARTICIPANT, code);
-			group.put(UGroupType.DATA_ENTITY_UID, uid);
-		}
+		final UGroup group = new UGroup(location);
+		group.put(UGroupType.CLASS, "participant-lifeline");
+		group.put(UGroupType.DATA_UID, uid + "-lifeline");
+		group.put(UGroupType.DATA_QUALIFIED_NAME, code);
+		group.put(UGroupType.DATA_PARTICIPANT, code);
+		group.put(UGroupType.DATA_ENTITY_UID, uid);
 		return group;
 	}
 
 	public String getUid() {
 		return uid;
+	}
+
+	// ASCII rendering: the participant draws its own head (the top box).
+	// Drawn relative to the plan (the caller translates the plan's column
+	// origin to this participant's box position before calling): the box
+	// occupies rows 0-2, columns 0..asciiDimension().getWidth()-1.
+	@Override
+	public ADimension2D asciiDimension() {
+		return new ADimension2D(code.length() + 2, 3);
+	}
+
+	@Override
+	public void asciiDraw(InfinitePlan plan) {
+		plan.drawBox(code.length() + 2, 3);
+		plan.move(1, 1).drawString(code);
 	}
 
 }

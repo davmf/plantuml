@@ -39,10 +39,10 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.skin.Component;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public abstract class AbstractComponentText implements Component {
-	// ::remove folder when __CORE__
+	
 
 	public final XDimension2D getPreferredDimension(StringBounder stringBounder) {
 		final double w = getPreferredWidth(stringBounder);
@@ -54,7 +54,8 @@ public abstract class AbstractComponentText implements Component {
 		throw new UnsupportedOperationException();
 	}
 
-	public StyleSignatureBasic getStyleSignature() {
+	@Override
+	public StyleQuery getStyleQuery() {
 		throw new UnsupportedOperationException();
 	}
 

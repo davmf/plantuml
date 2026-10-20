@@ -36,7 +36,10 @@
 package net.sourceforge.plantuml.help;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -51,6 +54,8 @@ import net.sourceforge.plantuml.utils.Log;
 
 public class CommandHelpTheme extends SingleLineCommand2<Help> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("help");
+
 	public CommandHelpTheme() {
 		super(getRegexConcat());
 	}
@@ -63,11 +68,19 @@ public class CommandHelpTheme extends SingleLineCommand2<Help> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		return null;
+	}
+
+
+	@Override
 	protected CommandExecutionResult executeArg(Help diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		diagram.add("<b>Help on themes");
 		diagram.add(" ");
 		diagram.add(" The possible themes are :");
 
+		// ::comment when __TEAVM__
 		try {
 			for (String theme : ThemeUtils.getAllThemeNames()) {
 				diagram.add("* " + theme);
@@ -78,7 +91,14 @@ public class CommandHelpTheme extends SingleLineCommand2<Help> {
 			Logme.error(e);
 			return CommandExecutionResult.error(message);
 		}
+		// ::done
 
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

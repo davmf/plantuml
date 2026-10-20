@@ -35,15 +35,13 @@
  */
 package net.sourceforge.plantuml.real;
 
-import net.sourceforge.plantuml.log.Logme;
-
 class PositiveForce {
 
 	private final Real fixedPoint;
 	private final RealMoveable movingPoint;
 	private final double minimunDistance;
 	private final boolean trace = false;
-	private final Throwable creationPoint;
+	private final RealDebug creationPoint;
 
 	public PositiveForce(Real fixedPoint, RealMoveable movingPoint, double minimunDistance) {
 		if (fixedPoint == movingPoint) {
@@ -52,8 +50,10 @@ class PositiveForce {
 		this.fixedPoint = fixedPoint;
 		this.movingPoint = movingPoint;
 		this.minimunDistance = minimunDistance;
-		this.creationPoint = new Throwable();
-		this.creationPoint.fillInStackTrace();
+		// See RealDebug: one PositiveForce is created per layout constraint, so
+		// this stack trace capture (used only for the diagnostic below when a
+		// force conflicts with an already-faulty Real) is opt-in.
+		this.creationPoint = RealDebug.create();
 	}
 
 	@Override
@@ -72,14 +72,25 @@ class PositiveForce {
 		} catch (IllegalStateException e) {
 			System.err.println("Pb with force " + this);
 			System.err.println("This force has been created here:");
-			Logme.error(creationPoint);
+			RealDebug.printCreationStackTrace(creationPoint);
 			System.err.println("The fixed point has been created here: " + fixedPoint);
 			fixedPoint.printCreationStackTrace();
 			throw e;
 		}
 		final double distance = movingPointValue - fixedPointValue;
 		final double diff = distance - minimunDistance;
-		if (diff >= 0) {
+		// Tolerance against floating-point absorption in the fixed-point
+		// iteration: a chained addition can be off
+		// by a few ULPs of the CURRENT magnitude, at which point 'move()' is a
+		// silent no-op and this force fires forever. The tolerance must scale
+		// with magnitude — a fixed 1e-6 is fine for typical diagrams but is not
+		// guaranteed to dominate the accumulated error on very large ones (many
+		// chained forces). Using a few ULPs of the larger operand times a
+		// safety factor keeps the slack always above the absorption threshold
+		// while staying many orders of magnitude below a pixel.
+		final double epsilon = Math.max(0.000001,
+				1000 * Math.ulp(Math.max(Math.abs(movingPointValue), Math.abs(fixedPointValue))));
+		if (diff >= -epsilon) {
 			if (trace) {
 				System.err.println("Not using ");
 			}

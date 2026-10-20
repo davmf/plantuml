@@ -40,12 +40,11 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 
-public class PiecewiseAffineOnXorYBuilder extends AbstractTextBlock {
-    // ::remove file when __HAXE__
+public class PiecewiseAffineOnXorYBuilder extends TextBlockMemoized {
 
 	private final TextBlock textBlock;
 	private final CompressionMode mode;
@@ -71,19 +70,20 @@ public class PiecewiseAffineOnXorYBuilder extends AbstractTextBlock {
 
 	@Override
 	public MinMax getMinMax(StringBounder stringBounder) {
-		if (cachedMinMax == null) {
+		if (cachedMinMax == null)
 			cachedMinMax = TextBlockUtils.getMinMax(this, stringBounder, false);
-		}
+
 		return cachedMinMax;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dim = textBlock.calculateDimension(stringBounder);
-		if (mode == CompressionMode.ON_X) {
+		if (mode == CompressionMode.ON_X)
 			return new XDimension2D(piecewiseAffineTransform.transform(dim.getWidth()), dim.getHeight());
-		} else {
+		else
 			return new XDimension2D(dim.getWidth(), piecewiseAffineTransform.transform(dim.getHeight()));
-		}
+
 	}
 
 	public HColor getBackcolor() {

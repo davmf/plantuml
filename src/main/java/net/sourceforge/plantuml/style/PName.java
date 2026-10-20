@@ -41,6 +41,8 @@ public enum PName {
 	FontColor, //
 	FontSize, //
 	FontStyle, //
+	/** CSS font-weight: accepts keywords (normal, bold, lighter, bolder) or numeric values 100-900. */
+	FontWeight, //
 	BackGroundColor, //
 	RoundCorner, //
 	LineThickness, //
@@ -59,7 +61,13 @@ public enum PName {
 	Image, //
 	HorizontalAlignment, //
 	ShowStereotype, //
-	ImagePosition;
+	ImagePosition, //
+	// Chart-specific properties
+	MarkerShape, //
+	MarkerSize, //
+	MarkerColor, //
+	BarWidth, //
+	Width;
 
 	public static PName getFromName(String name, StyleScheme scheme) {
 		for (PName prop : values())

@@ -35,13 +35,15 @@
  */
 package net.sourceforge.plantuml.klimt.sprite;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
 
 import net.atmp.PixelImage;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.AffineTransformType;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorGradient;
@@ -49,7 +51,6 @@ import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 
@@ -177,14 +178,13 @@ public class SpriteMonochrome implements Sprite {
 	}
 
 	public UImage toUImage(ColorMapper colorMapper, HColor backcolor, HColor color) {
-
 		if (backcolor == null || backcolor.isTransparent())
 			backcolor = HColors.WHITE.withDark(HColors.BLACK);
 
 		if (color == null || color.isTransparent())
 			color = HColors.BLACK.withDark(HColors.WHITE);
 
-		final BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		final PortableImage im = PortableImageFactory.build(width, height, PortableImage.TYPE_INT_ARGB);
 		final HColorGradient gradient = HColors.gradient(backcolor, color, '\0');
 		double maxCoef = 0;
 		for (int col = 0; col < width; col++)
@@ -200,15 +200,17 @@ public class SpriteMonochrome implements Sprite {
 					alpha = 255;
 				else
 					alpha = (int) (255 * (coef * 4 / maxCoef));
-				final Color c = gradient.getColor(colorMapper, coef, alpha);
+				final XColor c = gradient.getColor(colorMapper, coef, alpha);
 				im.setRGB(col, line, c.getRGB());
 			}
 
 		return new UImage(new PixelImage(im, AffineTransformType.TYPE_BILINEAR));
 	}
 
-	public TextBlock asTextBlock(final HColor fontColor, final HColor forcedColor, final double scale) {
-		return new AbstractTextBlock() {
+	@Override
+	public TextBlock asTextBlock(final HColor fontColor, final HColor forcedColor, final double scale,
+			final HColor backColor) {
+		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
 				final UImage image = toUImage(ug.getColorMapper(), ug.getParam().getBackcolor(),
@@ -216,6 +218,8 @@ public class SpriteMonochrome implements Sprite {
 				ug.draw(image.scale(scale));
 			}
 
+			@Fast
+			@Override
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
 				return new XDimension2D(getWidth() * scale, getHeight() * scale);
 			}

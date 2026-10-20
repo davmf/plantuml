@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -47,6 +50,9 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMultilinesHeader extends CommandMultilines<TitledDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"center", "centerheader", "header", "left", "leftheader", "right", "rightheader");
+
 	public static final CommandMultilinesHeader ME = new CommandMultilinesHeader();
 
 	private CommandMultilinesHeader() {
@@ -54,11 +60,39 @@ public class CommandMultilinesHeader extends CommandMultilines<TitledDiagram> {
 				Pattern2.cmpile("^end[%s]?header$"));
 	}
 
+	@Override
+	public String explain(BlocLines lines) {
+		// CommandMultilines does not dispatch explain() to a helper like
+		// CommandMultilines2.explainNow does, so it is overridden directly.
+		// Mirror execute(): the optional alignment prefixes the 'header'
+		// keyword, the lines up to 'end header' are the text; when no
+		// position is given, the alignment comes from the current style.
+		lines = lines.trim();
+		final Matcher2 m = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString(), 0);
+		if (m.find() == false)
+			return "Setting the header of the diagram";
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Setting the header of the diagram");
+
+		final String align = m.group(1);
+		if (align != null)
+			sb.append(", aligned ").append(align);
+
+		final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+		if (bodyCount > 0)
+			sb.append(", from ").append(bodyCount).append(bodyCount == 1 ? " line" : " lines").append(" of text");
+		else
+			sb.append(" (rejected at execution: empty header)");
+
+		return sb.toString();
+	}
+
 	public CommandExecutionResult execute(final TitledDiagram diagram, BlocLines lines, ParserPass currentPass)
 			throws NoSuchColorException {
 		final LineLocation location = lines.getLocation();
 		lines = lines.trim();
-		final Matcher2 m = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		final Matcher2 m = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString(), 0);
 		if (m.find() == false) {
 			throw new IllegalStateException();
 		}
@@ -68,13 +102,18 @@ public class CommandMultilinesHeader extends CommandMultilines<TitledDiagram> {
 		if (strings.size() > 0) {
 			HorizontalAlignment ha = HorizontalAlignment.fromString(align, HorizontalAlignment.RIGHT);
 			if (align == null)
-				ha = FontParam.HEADER.getStyleDefinition(null)
-						.getMergedStyle(diagram.getSkinParam().getCurrentStyleBuilder()).getHorizontalAlignment();
+				ha = diagram.getSkinParam().getCurrentStyleBuilder()
+						.getMergedStyle(FontParam.HEADER.getStyleDefinition(null)).getHorizontalAlignment();
 
 			diagram.updateHeader(location, strings, ha);
 			return CommandExecutionResult.ok();
 		}
 		return CommandExecutionResult.error("Empty header");
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

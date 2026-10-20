@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.klimt.creole.command;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
@@ -43,12 +46,13 @@ import net.sourceforge.plantuml.klimt.creole.legacy.StripeSimple;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
+import net.sourceforge.plantuml.style.ISkinSimple;
 
 public class CommandCreoleColorAndSizeChange implements Command {
 
 	@Override
-	public String startingChars() {
-		return "<";
+	public Collection<String> starters() {
+		return Collections.singleton("<f");
 	}
 
 	private final Pattern2 mypattern;
@@ -71,16 +75,19 @@ public class CommandCreoleColorAndSizeChange implements Command {
 		this.mypattern = pattern;
 	}
 
-	public int matchingSize(String line) {
-		final Matcher2 m = mypattern.matcher(line);
+	@Override
+	public int matchingSize(String line, int pos) {
+		final Matcher2 m = mypattern.matcher(line, pos);
 		if (m.find() == false)
 			return 0;
 
 		return m.group(1).length();
 	}
 
-	public String executeAndGetRemaining(String line, StripeSimple stripe) throws NoSuchColorRuntimeException {
-		final Matcher2 m = mypattern.matcher(line);
+	@Override
+	public int executeAndAdvance(ISkinSimple skinSimple, String line, int pos, StripeSimple stripe)
+			throws NoSuchColorRuntimeException {
+		final Matcher2 m = mypattern.matcher(line, pos);
 		if (m.find() == false)
 			throw new IllegalStateException();
 
@@ -99,7 +106,7 @@ public class CommandCreoleColorAndSizeChange implements Command {
 			stripe.setActualFontConfiguration(fc2);
 			stripe.analyzeAndAdd(m.group(4));
 			stripe.setActualFontConfiguration(fc1);
-			return line.substring(m.group(1).length());
+			return m.group(1).length();
 		} catch (NoSuchColorException e) {
 			throw new NoSuchColorRuntimeException();
 		}

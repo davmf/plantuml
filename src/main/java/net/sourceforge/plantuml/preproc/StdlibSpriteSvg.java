@@ -41,10 +41,12 @@ import java.io.UncheckedIOException;
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
 
 public class StdlibSpriteSvg implements Sprite {
-
+	
+	
 	final private Lazy<Sprite> sprite;
 
 	public StdlibSpriteSvg(Stdlib lib, String name) {
@@ -59,8 +61,12 @@ public class StdlibSpriteSvg implements Sprite {
 	}
 
 	@Override
-	public TextBlock asTextBlock(HColor fontColor, HColor forcedColor, double scale) {
-		return this.sprite.get().asTextBlock(fontColor, forcedColor, scale);
+	public TextBlock asTextBlock(HColor fontColor, HColor forcedColor, double scale, final HColor backColor) {
+		final Sprite tmp = this.sprite.get();
+		if (tmp == null)
+			return TextBlockUtils.EMPTY_TEXT_BLOCK;
+		
+		return tmp.asTextBlock(fontColor, forcedColor, scale, backColor);
 	}
 
 }

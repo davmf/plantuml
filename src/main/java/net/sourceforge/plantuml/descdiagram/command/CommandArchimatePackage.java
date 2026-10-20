@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.descdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -60,6 +64,8 @@ import net.sourceforge.plantuml.stereo.StereotypePattern;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandArchimatePackage extends SingleLineCommand2<DescriptionDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("archimate");
 
 	public CommandArchimatePackage() {
 		super(getRegexConcat());
@@ -102,6 +108,32 @@ public class CommandArchimatePackage extends SingleLineCommand2<DescriptionDiagr
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'archimate #color Name <<icon>> {' opens an ArchiMate group around
+		// the following elements, closed by '}'; the stereotype selects the
+		// ArchiMate icon displayed in its corner, through the '$archimate/...'
+		// sprite, like in executeArg.
+		final String idShort = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("CODE", 0));
+		sb.append("Starting the ArchiMate group '").append(idShort).append("'");
+
+		final String display = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("DISPLAY", 0));
+		if (display != null)
+			sb.append(" displayed as \"").append(display).append("\"");
+
+		final String icon = StereotypePattern.removeChevronBrackets(arg.getLazzy("STEREOTYPE", 0));
+		if (icon != null)
+			sb.append(", with the ArchiMate icon '").append(icon).append("'");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(DescriptionDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
 			throws NoSuchColorException {
 		final String codeRaw = arg.getLazzy("CODE", 0);
@@ -135,4 +167,10 @@ public class CommandArchimatePackage extends SingleLineCommand2<DescriptionDiagr
 
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

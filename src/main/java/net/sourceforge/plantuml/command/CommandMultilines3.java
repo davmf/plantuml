@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Collection;
+
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 
@@ -52,7 +56,8 @@ public abstract class CommandMultilines3<S extends Diagram> implements Command<S
 	private final IRegex patternEnd;
 
 	public CommandMultilines3(IRegex patternStart, MultilinesStrategy strategy, Trim trimEnd, IRegex patternEnd) {
-		assert patternStart.getPatternAsString().startsWith("^") && patternStart.getPatternAsString().endsWith("$");
+		if (TeaVM.a())
+			assert patternStart.getPatternAsString().startsWith("^") && patternStart.getPatternAsString().endsWith("$");
 
 		this.strategy = strategy;
 		this.starting = patternStart;
@@ -62,7 +67,7 @@ public abstract class CommandMultilines3<S extends Diagram> implements Command<S
 
 	final public CommandControl isValid(BlocLines lines) {
 		lines = lines.cleanList(strategy);
-		if (isCommandForbidden())
+		if (isCommandForbidden(lines))
 			return CommandControl.NOT_OK;
 
 		final StringLocated first = lines.getFirst();
@@ -97,11 +102,15 @@ public abstract class CommandMultilines3<S extends Diagram> implements Command<S
 		return executeNow(system, lines);
 	}
 
-	protected abstract CommandExecutionResult executeNow(S system, BlocLines lines) throws NoSuchColorException;
-
-	protected boolean isCommandForbidden() {
-		return false;
+	@Override
+	final public String explain(BlocLines lines) {
+		lines = lines.cleanList(strategy);
+		return explainNow(lines);
 	}
+
+	protected abstract String explainNow(BlocLines lines);
+
+	protected abstract CommandExecutionResult executeNow(S system, BlocLines lines) throws NoSuchColorException;
 
 	protected CommandControl finalVerification() {
 		return CommandControl.OK;
@@ -118,6 +127,13 @@ public abstract class CommandMultilines3<S extends Diagram> implements Command<S
 	@Override
 	public boolean isEligibleFor(ParserPass pass) {
 		return pass == ParserPass.ONE;
+	}
+
+	// Read from the pattern rather than declared beside it, so that the regex stays the only
+	// place this command says what it accepts.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FirstTokens.from(starting);
 	}
 
 }

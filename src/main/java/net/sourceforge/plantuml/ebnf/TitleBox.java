@@ -41,10 +41,10 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontStyle;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.UText;
 
-public class TitleBox extends AbstractTextBlock {
+public class TitleBox extends TextBlockMemoized {
 
 	private final String value;
 	private final FontConfiguration fc;
@@ -57,7 +57,7 @@ public class TitleBox extends AbstractTextBlock {
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return stringBounder.calculateDimension(fc.getFont(), value);
 	}
 

@@ -35,11 +35,13 @@
  */
 package net.sourceforge.plantuml.klimt.sprite;
 
-import java.awt.Color;
+
 import java.util.Objects;
 
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.HColorSimple;
 import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class ColorPalette4096 {
 
@@ -48,7 +50,7 @@ public class ColorPalette4096 {
 	// So we replace them by . and '
 	private static final String colorValue = ".,$%&*+-:;<=>?@^_~GHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-	public String getStringFor(Color dest) {
+	public String getStringFor(XColor dest) {
 		return getStringFor((HColorSimple) HColors.simple(dest));
 	}
 
@@ -68,16 +70,16 @@ public class ColorPalette4096 {
 	protected String encodeInt(int result) {
 		final int v2 = result % 64;
 		final int v1 = result / 64;
-		assert v1 >= 0 && v1 <= 63 && v2 >= 0 && v2 <= 63;
+		if (TeaVM.a()) assert v1 >= 0 && v1 <= 63 && v2 >= 0 && v2 <= 63;
 		return "" + colorValue.charAt(v1) + colorValue.charAt(v2);
 	}
 
 	private HColorSimple getHtmlColorSimpleFor(int s) {
-		final Color color = Objects.requireNonNull(getColorFor(s));
+		final XColor color = Objects.requireNonNull(getColorFor(s));
 		return (HColorSimple) HColors.simple(color);
 	}
 
-	protected Color getColorFor(String s) {
+	protected XColor getColorFor(String s) {
 		// Migration
 		s = s.replace('!', '.');
 		s = s.replace('#', ',');
@@ -96,15 +98,15 @@ public class ColorPalette4096 {
 		return getColorFor(code);
 	}
 
-	protected Color getColorFor(final int code) {
+	protected XColor getColorFor(final int code) {
 		final int blue = code % 16;
 		final int green = (code / 16) % 16;
 		final int red = (code / 256) % 16;
-		return new Color(dup(red), dup(green), dup(blue));
+		return new XColor(dup(red), dup(green), dup(blue));
 	}
 
 	private int dup(int v) {
-		assert v >= 0 && v <= 15;
+		if (TeaVM.a()) assert v >= 0 && v <= 15;
 		return v * 16 + v;
 	}
 

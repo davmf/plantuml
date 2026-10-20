@@ -34,6 +34,8 @@
  */
 package com.plantuml.ubrex.builder;
 
+import java.util.Collection;
+
 import com.plantuml.ubrex.ChallengeAlternative;
 
 public class UBrexOr extends UBrexPart {
@@ -42,7 +44,12 @@ public class UBrexOr extends UBrexPart {
 		super(new ChallengeAlternative());
 		for (UBrexPart element : all)
 			((ChallengeAlternative) getChallenge()).addAlternative(element.getChallenge());
+	}
 
+	public UBrexOr(Collection<UBrexPart> all) {
+		super(new ChallengeAlternative());
+		for (UBrexPart element : all)
+			((ChallengeAlternative) getChallenge()).addAlternative(element.getChallenge());
 	}
 
 }

@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -53,6 +57,8 @@ import net.sourceforge.plantuml.timingdiagram.TimingDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandHighlight extends SingleLineCommand2<TimingDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("highlight");
 
 	public CommandHighlight() {
 		super(getRegexConcat());
@@ -85,6 +91,24 @@ public class CommandHighlight extends SingleLineCommand2<TimingDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// FROM/TO are resolved by parseTimeTick against clock/diagram state; describe them lexically only
+		final String from = TimeTickBuilder.describeTime("FROM", arg);
+		final String to = TimeTickBuilder.describeTime("TO", arg);
+		final String color = arg.getLazzy("COLOR", 0);
+		final String caption = arg.get("CAPTION", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Highlighting the time range from ").append(from).append(" to ").append(to);
+		if (color != null)
+			sb.append(" with background color ").append(color);
+		if (caption != null && caption.isEmpty() == false)
+			sb.append(" labelled \"").append(caption).append("\"");
+		return sb.toString();
+	}
+
+	@Override
 	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
 		final TimeTick tickFrom = TimeTickBuilder.parseTimeTick("FROM", arg, diagram);
@@ -92,6 +116,11 @@ public class CommandHighlight extends SingleLineCommand2<TimingDiagram> {
 		final Display display = Display.getWithNewlines(diagram.getPragma(), arg.get("CAPTION", 0));
 		final Colors colors = color().getColor(arg, diagram.getSkinParam().getIHtmlColorSet());
 		return diagram.highlight(tickFrom, tickTo, display, colors);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

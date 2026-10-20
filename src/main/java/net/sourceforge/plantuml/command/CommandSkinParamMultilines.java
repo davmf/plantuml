@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.regex.Matcher2;
@@ -43,7 +46,10 @@ import net.sourceforge.plantuml.utils.BlocLines;
 
 public class CommandSkinParamMultilines extends CommandMultilinesBracket<TitledDiagram> {
 
-	private static final Pattern2 COMMENT_SINGLE_LINE = Pattern2.cmpile(CommandMultilinesComment.COMMENT_SINGLE_LINE);
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("skinparam");
+
+	// A comment line inside the block: a single-quote comment, or a /' ... '/ one on a single line.
+	private static final Pattern2 COMMENT_SINGLE_LINE = Pattern2.cmpile("^[%s]*([%q].*|/[%q].*[%q]/[%s]*)$");
 	public static final CommandSkinParamMultilines ME = new CommandSkinParamMultilines();
 
 	private CommandSkinParamMultilines() {
@@ -56,11 +62,35 @@ public class CommandSkinParamMultilines extends CommandMultilinesBracket<TitledD
 		if (hasStartingQuote(line))
 			return true;
 
-		return SkinLoader.p1.matcher(line).matches();
+		return SkinLoader.p1.matcher(line, 0).matches();
 	}
 
 	private boolean hasStartingQuote(CharSequence line) {
-		return COMMENT_SINGLE_LINE.matcher(line).matches();
+		return COMMENT_SINGLE_LINE.matcher(line, 0).matches();
+	}
+
+	@Override
+	public String explain(BlocLines lines) {
+		// CommandMultilinesBracket does not dispatch explain() to a helper like
+		// CommandMultilines2.explainNow does, so it is overridden directly.
+		// Mirror execute(): the optional group of the starting line scopes the
+		// parameters, the inner lines are the settings themselves.
+		lines = lines.expandsNewline(true);
+		final Matcher2 mStart = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString(), 0);
+		if (mStart.find() == false)
+			return "Setting skin parameters";
+
+		final StringBuilder sb = new StringBuilder();
+		final String group1 = mStart.group(1);
+		if (group1 == null)
+			sb.append("Setting skin parameters");
+		else
+			sb.append("Setting the skin parameters of '").append(group1).append("'");
+
+		final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+		sb.append(" from a block of ").append(bodyCount).append(bodyCount == 1 ? " line" : " lines");
+
+		return sb.toString();
 	}
 
 	public CommandExecutionResult execute(TitledDiagram diagram, BlocLines lines, ParserPass currentPass) {
@@ -68,7 +98,7 @@ public class CommandSkinParamMultilines extends CommandMultilinesBracket<TitledD
 
 		lines = lines.expandsNewline(true);
 
-		final Matcher2 mStart = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		final Matcher2 mStart = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString(), 0);
 		if (mStart.find() == false)
 			return CommandExecutionResult.error("Bad syntax for skinparam");
 
@@ -82,6 +112,11 @@ public class CommandSkinParamMultilines extends CommandMultilinesBracket<TitledD
 	@Override
 	public boolean isEligibleFor(ParserPass pass) {
 		return pass == ParserPass.ONE;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

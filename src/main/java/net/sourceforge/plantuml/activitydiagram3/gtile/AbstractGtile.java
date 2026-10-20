@@ -68,7 +68,7 @@ public abstract class AbstractGtile extends AbstractGtileRoot implements Gtile {
 
 //	@Override
 //	public Collection<Gtile> getMyChildren() {
-//		return Collections.emptySet();
+//		return PatchUtils.emptySet();
 //	}
 
 	@Override

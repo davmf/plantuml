@@ -80,9 +80,10 @@ import javax.swing.Timer;
 import javax.swing.border.CompoundBorder;
 
 import net.sourceforge.plantuml.GeneratedImage;
-import net.sourceforge.plantuml.Option;
+import net.sourceforge.plantuml.cli.CliOptions;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.version.PSystemVersion;
 
 public class MainWindow extends JFrame {
@@ -99,7 +100,7 @@ public class MainWindow extends JFrame {
 
 	final private List<SimpleLine> currentDirectoryListing2 = new ArrayList<>();
 	final private Set<ImageWindow> openWindows2 = new HashSet<>();
-	final private Option option;
+	final private CliOptions option;
 
 	private DirWatcher2 dirWatcher;
 
@@ -152,12 +153,12 @@ public class MainWindow extends JFrame {
 			filePattern.append(")$");
 			return filePattern.toString();
 		}
-		return Option.getPattern();
+		return CliOptions.getPattern();
 	}
 
-	public MainWindow(Option option, File arg) {
+	public MainWindow(CliOptions option, File arg) {
 		super(getDirectory(arg).getAbsolutePath());
-		System.setProperty("PLANTUML_SECURITY_PROFILE", "UNSECURE");
+		System.setProperty("PLANTUML_SECURITY_PROFILE", "INSECURE");
 		final File dir = getDirectory(arg);
 		setIconImage(PSystemVersion.getPlantumlSmallIcon2());
 		this.option = option;
@@ -406,7 +407,7 @@ public class MainWindow extends JFrame {
 	}
 
 	public List<SimpleLine> getCurrentDirectoryListing2() {
-		return Collections.unmodifiableList(currentDirectoryListing2);
+		return MyCollections.unmodifiableList(currentDirectoryListing2);
 	}
 
 }

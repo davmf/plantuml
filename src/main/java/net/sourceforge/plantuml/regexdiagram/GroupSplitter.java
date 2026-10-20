@@ -36,10 +36,10 @@
 package net.sourceforge.plantuml.regexdiagram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.jaws.JawsStrange;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class GroupSplitter {
 
@@ -51,12 +51,15 @@ public class GroupSplitter {
 				result.add("" + group.substring(i, i + 3));
 				i += 2;
 			} else if (i + 1 < group.length() && group.charAt(i) == '\\') {
-				result.add("" + group.substring(i, i + 2));
+				String tmp = group.substring(i, i + 2);
+				if (Character.isLetter(tmp.charAt(1)) == false)
+					tmp = tmp.substring(1);
+				result.add("" + tmp);
 				i++;
 			} else
 				result.add("" + group.charAt(i));
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 }

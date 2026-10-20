@@ -35,6 +35,8 @@
  */
 package net.sourceforge.plantuml.activitydiagram.command;
 
+import java.util.Collection;
+
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 import com.plantuml.ubrex.builder.UBrexConcat;
 import com.plantuml.ubrex.builder.UBrexLeaf;
@@ -47,6 +49,7 @@ import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArg;
 import net.sourceforge.plantuml.activitydiagram.ActivityDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.command.CommandLinkClass;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -55,6 +58,7 @@ import net.sourceforge.plantuml.decoration.LinkDecor;
 import net.sourceforge.plantuml.decoration.LinkType;
 import net.sourceforge.plantuml.descdiagram.command.CommandLinkElement;
 import net.sourceforge.plantuml.klimt.creole.Display;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.LineLocation;
@@ -63,6 +67,11 @@ public class UBrexCommandIf extends UBrexSingleLineCommand2<ActivityDiagram> {
 
 	public UBrexCommandIf() {
 		super(getRegexConcat());
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 	static UnicodeBracketedExpression getRegexConcat() {
@@ -98,6 +107,76 @@ public class UBrexCommandIf extends UBrexSingleLineCommand2<ActivityDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Legacy activity diagram syntax: 'Source --> if "test" then' opens a
+		// branch (a diamond) linked from the given source, or from the last
+		// activity when no source is written. The condition may be quoted
+		// (IF1, with an optional 'as code') or a bare word (IF2), like in
+		// executeArg.
+		sb.append("Starting an 'if'");
+
+		if (arg.get("IF2", 0) == null) {
+			final String if1 = arg.get("IF1", 0);
+			if (if1 != null && if1.isEmpty() == false)
+				sb.append(", testing \"").append(if1).append("\"");
+			if (arg.get("ASIF1", 0) != null)
+				sb.append(" (code '").append(arg.get("ASIF1", 0)).append("')");
+		} else
+			sb.append(", testing \"").append(arg.get("IF2", 0)).append("\"");
+
+		sb.append(", linked from ").append(describeSource(arg));
+
+		final String bracket = arg.get("BRACKET", 0);
+		if (bracket != null)
+			sb.append(", arrow labelled \"").append(bracket).append("\"");
+
+		final String direction = arg.get("ARROW_DIRECTION", 0);
+		if (direction != null && direction.isEmpty() == false)
+			sb.append(", oriented ").append(describeDirection(direction));
+
+		final String style = arg.getLazzy("ARROW_STYLE", 0);
+		if (style != null)
+			sb.append(", with style '").append(style).append("'");
+
+		return sb.toString();
+	}
+
+	private String describeSource(RegexResult arg) {
+		if (arg.get("STAR", 0) != null)
+			return "the start node";
+
+		if (arg.get("BAR", 0) != null)
+			return "the synchronization bar '" + arg.get("BAR", 0) + "'";
+
+		if (arg.get("QUOTED1", 0) != null) {
+			if (arg.get("QUOTED2", 0) != null)
+				return "'" + arg.get("QUOTED2", 0) + "' displayed as \"" + arg.get("QUOTED1", 0) + "\"";
+			return "\"" + arg.get("QUOTED1", 0) + "\"";
+		}
+
+		if (arg.get("CODE", 0) != null)
+			return "'" + arg.get("CODE", 0) + "'";
+
+		return "the last activity";
+	}
+
+	private String describeDirection(String direction) {
+		switch (Character.toLowerCase(direction.charAt(0))) {
+		case 'l':
+			return "to the left";
+		case 'r':
+			return "to the right";
+		case 'u':
+			return "upwards";
+		default:
+			return "downwards";
+		}
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final Entity entity1 = CommandLinkActivity.ubrexGetEntityForIfOnly(location, diagram, arg);
@@ -115,23 +194,23 @@ public class UBrexCommandIf extends UBrexSingleLineCommand2<ActivityDiagram> {
 		}
 		diagram.startIf(location, ifCode);
 
-		int lenght = 2;
+		int length = 2;
 
 		if (arg.get("ARROW_BODY1", 0) != null) {
 //			final String arrow = StringUtils.manageArrowForCuca(arg.get("ARROW", 0));
-//			lenght = arrow.length() - 1;
+//			length = arrow.length() - 1;
 			final String arrowBody1 = CommandLinkClass.notNull(arg.get("ARROW_BODY1", 0));
 			final String arrowBody2 = CommandLinkClass.notNull(arg.get("ARROW_BODY2", 0));
 			final String arrowDirection = CommandLinkClass.notNull(arg.get("ARROW_DIRECTION", 0));
 
 			final String arrow = StringUtils.manageArrowForCuca(arrowBody1 + arrowDirection + arrowBody2 + ">");
-			lenght = arrow.length() - 1;
+			length = arrow.length() - 1;
 		}
 
 		final Entity branch = diagram.getCurrentContext().getBranch();
 
 		final LinkArg linkArg = LinkArg.build(Display.getWithNewlines(diagram.getPragma(), arg.get("BRACKET", 0)),
-				lenght);
+				length);
 		Link link = new Link(location, diagram, diagram.getSkinParam().getCurrentStyleBuilder(), entity1, branch,
 				new LinkType(LinkDecor.ARROW, LinkDecor.NONE), linkArg.withQuantifier(null, ifLabel)
 						.withDistanceAngle(diagram.getLabeldistance(), diagram.getLabelangle()));
@@ -146,6 +225,12 @@ public class UBrexCommandIf extends UBrexSingleLineCommand2<ActivityDiagram> {
 		diagram.addLink(link);
 
 		return CommandExecutionResult.ok();
+	}
+	
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FirstTokens.ANYTHING;
 	}
 
 }

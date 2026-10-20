@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2024, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program.
+ * This translation is distributed under the same License as the original C program.
  * 
  * THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC
  * LICENSE ("AGREEMENT"). [Eclipse Public License - v 1.0]
@@ -35,8 +35,6 @@
  */
 package smetana.core;
 
-import com.plantuml.api.cheerpj.WasmLog;
-
 final public class Memory {
 
 	public static void free(Object arg) {
@@ -48,7 +46,6 @@ final public class Memory {
 
 		int result = data.getUid();
 		zz.all.put(result, data);
-		WasmLog.log("hashsize = " + zz.all.size());
 		return result;
 	}
 

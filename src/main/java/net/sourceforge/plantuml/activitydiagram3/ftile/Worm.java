@@ -58,7 +58,8 @@ import net.sourceforge.plantuml.utils.Direction;
 
 public class Worm {
 
-	private final List<XPoint2D> points;
+	private List<XPoint2D> points;
+	private boolean sharedPoints;
 	private final Style style;
 	private final Arrows arrows;
 	private UTranslate tr;
@@ -70,8 +71,19 @@ public class Worm {
 		else
 			result.tr = this.tr.compose(new UTranslate(dx, dy));
 
-		result.points.addAll(points);
+		// Share the points list instead of copying it
+		result.points = this.points;
+		result.sharedPoints = true;
+		this.sharedPoints = true;
 		return result;
+	}
+
+	// Must be called before any mutation of the points list
+	private void ensureOwnPoints() {
+		if (sharedPoints) {
+			this.points = new ArrayList<>(this.points);
+			this.sharedPoints = false;
+		}
 	}
 
 	public Worm(Style style, Arrows arrows) {
@@ -255,6 +267,7 @@ public class Worm {
 				return;
 		}
 
+		ensureOwnPoints();
 		this.points.add(new XPoint2D(x, y));
 	}
 
@@ -361,6 +374,7 @@ public class Worm {
 	private void mergeMe(MergeStrategy merge) {
 		if (tr != null)
 			throw new UnsupportedOperationException();
+		ensureOwnPoints();
 		boolean change = false;
 		do {
 			change = false;

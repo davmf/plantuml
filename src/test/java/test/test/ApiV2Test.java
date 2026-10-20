@@ -1,11 +1,10 @@
 package test.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.IOException;
 
@@ -32,7 +31,7 @@ class ApiV2Test {
 		final Diagram diagram = result.getDiagram();
 		assertNull(result.error());
 		assertNotNull(diagram);
-		assertEquals(DiagramType.UML, diagram.getSource().getDiagramType());
+		assertTrue(diagram.getSource().getDiagramTypes().contains(DiagramType.SEQUENCE));
 		assertEquals("SequenceDiagram", diagram.getClass().getSimpleName());
 		assertEquals("(2 participants)", diagram.getDescription().getDescription());
 		assertEquals(1, diagram.getNbImages());
@@ -49,7 +48,7 @@ class ApiV2Test {
 		final Diagram diagram = result.getDiagram();
 		assertNull(result.error());
 		assertNotNull(diagram);
-		assertEquals(DiagramType.UML, diagram.getSource().getDiagramType());
+		assertTrue(diagram.getSource().getDiagramTypes().contains(DiagramType.SEQUENCE));
 		assertEquals("SequenceDiagram", diagram.getClass().getSimpleName());
 		assertEquals("(2 participants)", diagram.getDescription().getDescription());
 		assertEquals(1, diagram.getNbImages());
@@ -63,9 +62,9 @@ class ApiV2Test {
 	public void testError() throws IOException {
 		final DiagramReturn result = DiagramUtils.exportDiagram("@startuml", "ERROR", "@enduml");
 		final Diagram diagram = result.getDiagram();
-		assertEquals("Syntax Error?", result.error());
+		assertEquals("Syntax Error? (Assumed diagram type: sequence)", result.error());
 		assertNotNull(diagram);
-		assertEquals(DiagramType.UML, diagram.getSource().getDiagramType());
+		assertTrue(diagram.getSource().getDiagramTypes().contains(DiagramType.SEQUENCE));
 		assertEquals("PSystemErrorV2", diagram.getClass().getSimpleName());
 		assertEquals("(Error)", diagram.getDescription().getDescription());
 		assertEquals(1, diagram.getNbImages());
@@ -77,11 +76,11 @@ class ApiV2Test {
 
 	@Test
 	public void testError2() throws IOException {
-		final DiagramReturn result = DiagramUtils.exportDiagram("@startuml", "start", "#zzblue:toto;", "@enduml");
+		final DiagramReturn result = DiagramUtils.exportDiagram("@startuml", "start", ":toto;<<#zzblue>>", "@enduml");
 		final Diagram diagram = result.getDiagram();
 		assertEquals("No such color (Assumed diagram type: activity)", result.error());
 		assertNotNull(diagram);
-		assertEquals(DiagramType.UML, diagram.getSource().getDiagramType());
+		assertTrue(diagram.getSource().getDiagramTypes().contains(DiagramType.SEQUENCE));
 		assertEquals("PSystemErrorV2", diagram.getClass().getSimpleName());
 		assertEquals("(Error)", diagram.getDescription().getDescription());
 		assertEquals(1, diagram.getNbImages());

@@ -35,6 +35,8 @@
  */
 package net.sourceforge.plantuml.security;
 
+import net.sourceforge.plantuml.teavm.TeaVM;
+
 /**
  * There are 4 different security profile defined.
  * <p>
@@ -55,7 +57,6 @@ package net.sourceforge.plantuml.security;
  * 
  */
 public enum SecurityProfile {
-	// ::remove folder when __HAXE__
 
 	/**
 	 * Running in SANDBOX mode is completely secure. No local file can be read
@@ -79,7 +80,12 @@ public enum SecurityProfile {
 	INTERNET,
 
 	/**
-	 * This mode reproduce old PlantUML version behaviour.
+	 * https://github.com/plantuml/plantuml/issues/2495#issuecomment-4495327971
+	 */
+	INTERNET_WITH_DOTSVG,
+
+	/**
+	 * This mode reproduce old PlantUML version behavior.
 	 * <p>
 	 * Right now, this is the default Security Profile but this will be removed from
 	 * future version because it is now full secure, especially on Internet server.
@@ -87,7 +93,7 @@ public enum SecurityProfile {
 	LEGACY,
 
 	/**
-	 * Running in UNSECURE mode means that PlantUML can access to any local file and
+	 * Running in INSECURE mode means that PlantUML can access to any local file and
 	 * can connect to any URL.
 	 * <p>
 	 * Some technical information (file path, Java version) are also printed in some
@@ -95,7 +101,7 @@ public enum SecurityProfile {
 	 * you should not use this mode if PlantUML is running on some server,
 	 * especially if the server is accessible from Internet.
 	 */
-	UNSECURE;
+	INSECURE;
 
 	/**
 	 * Initialize the default value.
@@ -106,21 +112,26 @@ public enum SecurityProfile {
 	 * @return the value
 	 */
 	static SecurityProfile init() {
-		// ::comment when __CORE__
+		if (TeaVM.isTeaVM())
+			return INSECURE;
+
 		final String env = SecurityUtils.getenv("PLANTUML_SECURITY_PROFILE");
-		if ("SANDBOX".equalsIgnoreCase(env))
-			return SANDBOX;
-		else if ("ALLOWLIST".equalsIgnoreCase(env))
-			return ALLOWLIST;
-		else if ("INTERNET".equalsIgnoreCase(env))
-			return INTERNET;
-		else if ("UNSECURE".equalsIgnoreCase(env))
-			// ::done
-			return UNSECURE;
-		// ::comment when __CORE__
+		if (env != null)
+			switch (env.toUpperCase()) {
+			case "SANDBOX":
+				return SANDBOX;
+			case "ALLOWLIST":
+				return ALLOWLIST;
+			case "INTERNET":
+				return INTERNET;
+			case "INTERNET_WITH_DOTSVG":
+				return INTERNET_WITH_DOTSVG;
+			case "INSECURE":
+			case "UNSECURE": // Sorry about this typo
+				return INSECURE;
+			}
 
 		return LEGACY;
-		// ::done
 	}
 
 	/**
@@ -134,9 +145,11 @@ public enum SecurityProfile {
 			return "Some local resource may be accessible.";
 		case INTERNET:
 			return "<i>Mode designed for server connected to Internet.";
+		case INTERNET_WITH_DOTSVG:
+			return "<i>Mode designed for server connected to Internet with Dot Svg permission";
 		case LEGACY:
 			return "<b>Warning: this mode will be removed in future version";
-		case UNSECURE:
+		case INSECURE:
 			return "<b>Make sure that this server is not accessible from Internet";
 		}
 		return "<i>This is completely safe: no access on local files or on distant URL.";
@@ -152,10 +165,11 @@ public enum SecurityProfile {
 		case ALLOWLIST:
 			return 1000L * 60 * 5;
 		case INTERNET:
+		case INTERNET_WITH_DOTSVG:
 			return 1000L * 10;
 		case LEGACY:
 			return 1000L * 60;
-		case UNSECURE:
+		case INSECURE:
 			return 1000L * 60 * 5;
 		}
 		throw new AssertionError();
@@ -175,7 +189,16 @@ public enum SecurityProfile {
 		if (lname.equals("path.separator") || lname.equals("line.separator"))
 			return true;
 
-		return this == UNSECURE;
+		return this == INSECURE;
+	}
+
+	public boolean allowDotSvg() {
+		switch (this) {
+		case INSECURE:
+		case INTERNET_WITH_DOTSVG:
+			return true;
+		}
+		return false;
 	}
 
 }

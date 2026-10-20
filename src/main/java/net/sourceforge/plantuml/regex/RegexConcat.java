@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.regex;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 
 public final class RegexConcat extends RegexComposed implements IRegex {
@@ -110,8 +111,8 @@ public final class RegexConcat extends RegexComposed implements IRegex {
 
 	private static RegexConcat buildInternal(IRegex... partials) {
 		final RegexConcat result = new RegexConcat(partials);
-		assert partials[0] == RegexLeaf.start();
-		assert partials[partials.length - 1] == RegexLeaf.end();
+		if (TeaVM.a()) assert partials[0] == RegexLeaf.start();
+		if (TeaVM.a()) assert partials[partials.length - 1] == RegexLeaf.end();
 		return result;
 	}
 
@@ -124,6 +125,7 @@ public final class RegexConcat extends RegexComposed implements IRegex {
 
 	@Override
 	public boolean match(StringLocated s) {
+		// ::comment when __TEAVM__
 		if (limitSize != 0 && s.getString().length() > limitSize)
 			return false;
 
@@ -150,6 +152,7 @@ public final class RegexConcat extends RegexComposed implements IRegex {
 			}
 
 		}
+		// ::done
 		return super.match(s);
 	}
 

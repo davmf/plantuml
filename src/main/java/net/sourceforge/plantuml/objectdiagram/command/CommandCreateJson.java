@@ -35,9 +35,14 @@
  */
 package net.sourceforge.plantuml.objectdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.command.CommandControl;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
@@ -71,6 +76,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateJson extends CommandMultilines2<AbstractEntityDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("json");
+
 	private final static Lazy<Pattern2> END = new Lazy<>(
 			() -> Pattern2.cmpile("^[%s]*\\}[%s]*$"));
 
@@ -93,13 +100,52 @@ public class CommandCreateJson extends CommandMultilines2<AbstractEntityDiagram>
 	}
 
 	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: 'json Name {' embeds a JSON object, displayed as
+		// a table-like element; the lines between the brackets are the JSON
+		// data, validated at execution ('Bad data' when invalid). Like the
+		// single line 'object' command, executing fails when the name already
+		// exists.
+		lines = lines.trim().removeEmptyLines();
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Creating a JSON element";
+
+		final StringBuilder sb = new StringBuilder();
+		final String idShort = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(line0.getLazzy("CODE", 0));
+		sb.append("Creating the JSON element '").append(idShort).append("'");
+
+		final String display = line0.getLazzy("DISPLAY", 0);
+		if (display != null)
+			sb.append(" displayed as \"").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(display))
+					.append("\"");
+
+		final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+		sb.append(" with ").append(bodyCount).append(bodyCount == 1 ? " line" : " lines").append(" of JSON data");
+
+		final String stereotype = line0.get("STEREO", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		if (line0.get("COLOR", 0) != null)
+			sb.append(", background color ").append(line0.get("COLOR", 0));
+
+		// The URL is parsed but never read by executeNow.
+		if (line0.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(" (the URL is currently ignored)");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeNow(AbstractEntityDiagram diagram, BlocLines lines, ParserPass currentPass)
 			throws NoSuchColorException {
 		lines = lines.trim().removeEmptyLines();
 		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
 		final Entity entity1 = executeArg0(lines.getLocation(), diagram, line0);
 		if (entity1 == null)
-			return CommandExecutionResult.error("No such entity");
+			return CommandExecutionResult.error("JSON already exists: " + line0.getLazzy("CODE", 0));
 
 		final JsonValue json = getJsonValue(lines);
 
@@ -178,6 +224,11 @@ public class CommandCreateJson extends CommandMultilines2<AbstractEntityDiagram>
 		entity.setSpecificColorTOBEREMOVED(ColorType.BACK,
 				s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s));
 		return entity;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

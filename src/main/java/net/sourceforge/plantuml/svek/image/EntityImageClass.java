@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
-import net.atmp.InnerStrategy;
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.LineConfigurable;
@@ -58,9 +58,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UComment;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.Kal;
 import net.sourceforge.plantuml.svek.Margins;
@@ -96,7 +96,8 @@ public class EntityImageClass extends AbstractEntityImage implements Stencil, Wi
 		this.url = entity.getUrl99();
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dimHeader = header.calculateDimension(stringBounder);
 		final XDimension2D dimBody = body == null ? new XDimension2D(0, 0) : body.calculateDimension(stringBounder);
 		double width = Math.max(dimBody.getWidth(), dimHeader.getWidth());
@@ -127,8 +128,8 @@ public class EntityImageClass extends AbstractEntityImage implements Stencil, Wi
 	}
 
 	@Override
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		final XRectangle2D result = body.getInnerPosition(member, stringBounder, strategy);
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		final XRectangle2D result = body.getInnerPosition(member, stringBounder);
 		if (result == null)
 			return result;
 
@@ -157,18 +158,21 @@ public class EntityImageClass extends AbstractEntityImage implements Stencil, Wi
 
 	}
 
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.CLASSDIAG_CLASS;
+	}
+
 	private Style getStyle() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.classDiagram, SName.class_) //
-				.withTOBECHANGED(getEntity().getStereotype()) //
-				.with(getEntity().getStereostyles()) //
-				.getMergedStyle(getEntity().getCurrentStyleBuilder());
+		return getEntity().getCurrentStyleBuilder().getMergedStyle(getStyleQuery() //
+				.withStereotype(getEntity().getStereotype()) //
+				.withStereostyles(getEntity().getStereostyles()));
 	}
 
 	private Style getStyleHeader() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.classDiagram, SName.class_, SName.header) //
-				.withTOBECHANGED(getEntity().getStereotype()) //
-				.with(getEntity().getStereostyles()) //
-				.getMergedStyle(getEntity().getCurrentStyleBuilder());
+		return getEntity().getCurrentStyleBuilder().getMergedStyle(StyleQueries.CLASSDIAG_CLASS_HEADER //
+				.withStereotype(getEntity().getStereotype()) //
+				.withStereostyles(getEntity().getStereostyles()));
 	}
 
 	private void drawInternal(UGraphic ug) {

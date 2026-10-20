@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -63,6 +67,8 @@ import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("frame");
 
 	public CommandCreatePackage2() {
 		super(getRegexConcat());
@@ -113,6 +119,41 @@ public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'frame Name {' (or 'frame Name begin') opens a frame around the
+		// following states, closed by '}'. The code and the display may be
+		// written in both orders, hence the getNotNull lookups, like in
+		// executeArg.
+		sb.append("Starting the frame '").append(getNotNull(arg, "CODE1", "CODE2")).append("'");
+
+		final String display = getNotNull(arg, "DISPLAY1", "DISPLAY2");
+		if (display != null)
+			sb.append(" displayed as \"").append(display).append("\"");
+
+		final String stereotype = arg.get("STEREOTYPE", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		// '##[style]color' sets the border style and color.
+		if (arg.get("LINECOLOR", 1) != null)
+			sb.append(", line color ").append(arg.get("LINECOLOR", 1));
+
+		if (arg.get("LINECOLOR", 0) != null)
+			sb.append(", line style ").append(arg.get("LINECOLOR", 0));
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
 
@@ -129,7 +170,7 @@ public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
 		if (stereotype != null)
 			p.setStereotype(Stereotype.build(stereotype));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);
@@ -148,6 +189,11 @@ public class CommandCreatePackage2 extends SingleLineCommand2<StateDiagram> {
 
 		p.setColors(colors);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

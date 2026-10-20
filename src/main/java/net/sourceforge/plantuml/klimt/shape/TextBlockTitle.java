@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -53,7 +53,6 @@ import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.style.ISkinSimple;
 
 public class TextBlockTitle implements TextBlock {
-    // ::remove file when __HAXE__
 
 	private final double outMargin = 2;
 
@@ -72,6 +71,8 @@ public class TextBlockTitle implements TextBlock {
 		textBlock.drawU(ug.apply(UTranslate.dx(outMargin)));
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final XDimension2D textDim = textBlock.calculateDimension(stringBounder);
 		final double width = textDim.getWidth() + outMargin * 2;
@@ -83,7 +84,8 @@ public class TextBlockTitle implements TextBlock {
 		throw new UnsupportedOperationException();
 	}
 
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
+	@Override
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 		return null;
 	}
 

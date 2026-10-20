@@ -41,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.EmbeddedDiagram;
 import net.sourceforge.plantuml.StringUtils;
@@ -91,7 +92,7 @@ public class CreoleParser implements SheetBuilder {
 			final StripeTable table = (StripeTable) lastStripe;
 			table.analyzeAndAddLine(line);
 			return null;
-		} else if (lastStripe instanceof StripeTree && Parser.isTreeStart(StringUtils.trinNoTrace(line))) {
+		} else if (lastStripe instanceof StripeTree && Parser.isTreeStart(StringUtils.trim2(line))) {
 			final StripeTree tree = (StripeTree) lastStripe;
 			tree.analyzeAndAdd(line);
 			return null;
@@ -101,21 +102,28 @@ public class CreoleParser implements SheetBuilder {
 			return Arrays.asList(new StripeTree(fontConfiguration, skinParam, line));
 		} else if (Parser.isCodeStart(line)) {
 			return Arrays.asList(new StripeCode(fontConfiguration.changeFamily(Parser.MONOSPACED)));
-			// ::comment when __CORE__
+			// ::comment when __TEAVM__
 		} else if (Parser.isLatexStart(line)) {
 			return Arrays.asList(new StripeLatex(fontConfiguration));
 			// ::done
 		}
+		final HorizontalAlignment align = lastStripe instanceof StripeSimple
+				? ((StripeSimple) lastStripe).getCellAlignment()
+				: this.horizontalAlignment;
 		return new CreoleStripeSimpleParser(line, context, fontConfiguration, skinParam, creoleMode)
-				.createStripes(context);
+				.createStripes(context, align);
 	}
 
-	public static boolean isTableLine(String line) {
-		return line.matches("^(\\<#\\w+(,#?\\w+)?\\>)?\\|(\\=)?.*\\|$");
+	private static final Pattern TABLE_LINE_PATTERN = Pattern.compile("^(\\<#\\w+(,#?\\w+)?\\>)?\\|(\\=)?.*\\|$");
+
+	private static final Pattern STARTS_BY_COLOR_PATTERN = Pattern.compile("^\\=?\\s*(\\<#\\w+(,#?\\w+)?\\>).*");
+
+	public static boolean isTableLine(CharSequence line) {
+		return TABLE_LINE_PATTERN.matcher(line).matches();
 	}
 
 	public static boolean doesStartByColor(String line) {
-		return line.matches("^\\=?\\s*(\\<#\\w+(,#?\\w+)?\\>).*");
+		return STARTS_BY_COLOR_PATTERN.matcher(line).matches();
 	}
 
 	private final Map<Display, Sheet> cache = new HashMap<>();
@@ -141,7 +149,7 @@ public class CreoleParser implements SheetBuilder {
 				if (Jaws.TRACE)
 					System.err.println("createSheetSlow:" + cs);
 				final List<Stripe> stripes;
-				final String type = EmbeddedDiagram.getEmbeddedType(StringUtils.trinNoTrace(cs));
+				final String type = EmbeddedDiagram.getEmbeddedType(cs);
 				if (type != null) {
 					final Atom embeddedDiagram = EmbeddedDiagram.createAndSkip(type, it, skinParam);
 					if (checkColor)
@@ -177,7 +185,7 @@ public class CreoleParser implements SheetBuilder {
 	}
 
 //	public static void checkColor(Display result) throws NoSuchColorException {
-//		FontConfiguration fc = FontConfiguration.blackBlueTrue(UFont.byDefault(10));
+//		FontConfiguration fc = FontConfiguration.blackBlueTrue(UFontImpl.byDefault(10));
 //		try {
 //			new CreoleParser(fc, HorizontalAlignment.LEFT, new SpriteContainerEmpty(), CreoleMode.FULL, fc)
 //					.createSheetSlow(result, true);

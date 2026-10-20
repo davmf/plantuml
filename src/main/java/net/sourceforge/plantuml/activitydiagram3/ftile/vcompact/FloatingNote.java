@@ -35,6 +35,8 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.ftile.vcompact;
 
+
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -50,24 +52,23 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.svek.image.Opale;
 import net.sourceforge.plantuml.utils.Direction;
 
-public class FloatingNote extends AbstractTextBlock implements Stencil, TextBlock {
+public class FloatingNote implements Stencil, TextBlock {
 
 	private final Opale opale;
 
 	private FloatingNote(Display note, ISkinParam skinParam, SName sname, boolean withLink) {
 
-		final Style style = StyleSignatureBasic.of(SName.root, SName.element, sname, SName.note)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.NOTE.add(sname));
 		final LineBreakStrategy wrapWidth = style.wrapWidth();
 		final FontConfiguration fc = FontConfiguration.create(skinParam, style);
 		final HColor noteBackgroundColor = style.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
@@ -101,6 +102,8 @@ public class FloatingNote extends AbstractTextBlock implements Stencil, TextBloc
 		opale.drawU(ug);
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return opale.calculateDimension(stringBounder);
 	}

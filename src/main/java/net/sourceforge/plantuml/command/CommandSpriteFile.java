@@ -35,15 +35,18 @@
  */
 package net.sourceforge.plantuml.command;
 
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import net.sourceforge.plantuml.FileSystem;
 import net.sourceforge.plantuml.FileUtils;
 import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
 import net.sourceforge.plantuml.klimt.sprite.SpriteImage;
 import net.sourceforge.plantuml.klimt.sprite.SpriteSvg;
@@ -57,6 +60,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.utils.Log;
 
 public class CommandSpriteFile extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("sprite");
 
 	public static final CommandSpriteFile ME = new CommandSpriteFile();
 
@@ -75,18 +80,41 @@ public class CommandSpriteFile extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(TitledDiagram system, LineLocation location, RegexResult arg, ParserPass currentPass) {
-		// ::comment when __CORE__
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Defining the sprite '").append(arg.get("NAME", 0)).append("'");
+
+		// Mirror the source dispatch of executeArg, without any file access:
+		// 'jar:' loads an internal sprite, '~' targets an entry inside a zip
+		// archive, otherwise the path is an SVG or raster image file.
+		final String src = arg.get("FILE", 0);
+		if (src.startsWith("jar:"))
+			sb.append(" from the internal sprite '").append(src.substring(4)).append("'");
+		else if (src.contains("~")) {
+			final int idx = src.lastIndexOf("~");
+			sb.append(" from the entry '").append(src.substring(idx + 1)).append("' of the archive '")
+					.append(src.substring(0, idx)).append("'");
+		} else if (isSvg(src))
+			sb.append(" from the SVG file '").append(src).append("'");
+		else
+			sb.append(" from the image file '").append(src).append("'");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram system, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final String src = arg.get("FILE", 0);
 		final Sprite sprite;
 		try {
 			if (src.startsWith("jar:")) {
-				final String inner = src.substring(4) + ".png";
-				final InputStream is = SpriteImage.getInternalSprite(inner);
-				if (is == null)
-					return CommandExecutionResult.error("No such internal sprite: " + inner);
+				final String name = src.substring(4);
+				sprite = SpriteImage.fromInternal(name);
+				if (sprite == null)
+					return CommandExecutionResult.error("No such internal sprite: " + name);
 
-				sprite = new SpriteImage(SImageIO.read(is));
 			} else if (src.contains("~")) {
 				final int idx = src.lastIndexOf("~");
 				final SFile f = FileSystem.getInstance().getFile(src.substring(0, idx));
@@ -110,7 +138,7 @@ public class CommandSpriteFile extends SingleLineCommand2<TitledDiagram> {
 
 					sprite = new SpriteSvg(tmp);
 				} else {
-					final BufferedImage tmp = f.readRasterImageFromFile();
+					final PortableImage tmp = f.readRasterImageFromFile();
 					if (tmp == null)
 						return CommandExecutionResult.error("Cannot read: " + src);
 
@@ -122,11 +150,9 @@ public class CommandSpriteFile extends SingleLineCommand2<TitledDiagram> {
 			return CommandExecutionResult.error("Cannot read: " + src);
 		}
 		system.addSprite(arg.get("NAME", 0), sprite);
-		// ::done
 		return CommandExecutionResult.ok();
 	}
 
-	// ::comment when __CORE__
 	private Sprite getImageFromZip(SFile f, String name) throws IOException {
 		final InputStream tmp = f.openFile();
 		if (tmp == null) {
@@ -161,5 +187,10 @@ public class CommandSpriteFile extends SingleLineCommand2<TitledDiagram> {
 	private boolean isSvg(String name) {
 		return name.toLowerCase().endsWith(".svg");
 	}
-	// ::done
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

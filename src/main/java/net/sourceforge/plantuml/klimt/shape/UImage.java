@@ -35,14 +35,17 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
-
+import net.sourceforge.plantuml.klimt.UShapeKind;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.MutableImage;
-import net.sourceforge.plantuml.klimt.UShape;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
-public class UImage implements UShape {
-    // ::remove file when __HAXE__
+public class UImage implements TextBlock {
 
 	private final MutableImage image;
 	private final String formula;
@@ -78,9 +81,8 @@ public class UImage implements UShape {
 		return new UImage(image.withScale(scale), rawFileName, formula);
 	}
 
-	public final BufferedImage getImage(double withScale) {
+	public final PortableImage getImage(double withScale) {
 		return image.withScale(withScale).getImage();
-		// return bufferedImage.getImage();
 	}
 
 	public int getWidth() {
@@ -91,11 +93,11 @@ public class UImage implements UShape {
 		return image.getImage().getHeight() - 1;
 	}
 
-	public UImage muteColor(Color newColor) {
+	public UImage muteColor(XColor newColor) {
 		return new UImage(image.muteColor(newColor), rawFileName, formula);
 	}
 
-	public UImage muteTransparentColor(Color newColor) {
+	public UImage muteTransparentColor(XColor newColor) {
 		return new UImage(image.muteTransparentColor(newColor), rawFileName, formula);
 	}
 
@@ -105,6 +107,27 @@ public class UImage implements UShape {
 
 	public double getScale() {
 		return image.getScale();
+	}
+
+	@Override
+	public void drawU(UGraphic ug) {
+		ug.draw(this);
+	}
+
+	@Override
+	@Fast
+	public XDimension2D calculateDimension(StringBounder stringBounder) {
+		return new XDimension2D(getWidth(), getHeight());
+	}
+
+	@Override
+	public MinMax getMinMax(StringBounder stringBounder) {
+		return MinMax.fromMax(getWidth(), getHeight());
+	}
+
+	@Override
+	public UShapeKind getShapeKind() {
+		return UShapeKind.IMAGE;
 	}
 
 }

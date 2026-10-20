@@ -39,7 +39,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.klimt.font.FontStyle;
 import net.sourceforge.plantuml.klimt.sprite.SpriteUtils;
 import net.sourceforge.plantuml.regex.Matcher2;
@@ -123,19 +122,19 @@ public class Splitter {
 		tagOrText = Pattern2.cmpile(htmlTag + "|.+?(?=" + htmlTag + ")|.+$");
 	}
 
-	private final List<String> splitted = new ArrayList<>();
+	private final List<String> split = new ArrayList<>();
 
 	public Splitter(String s) {
-		final Matcher2 matcher = tagOrText.matcher(s);
+		final Matcher2 matcher = tagOrText.matcher(s, 0);
 		while (matcher.find()) {
 			String part = matcher.group(0);
-			part = StringUtils.showComparatorCharacters(part);
-			splitted.add(part);
+			// part = StringUtils.showComparatorCharacters(part);
+			split.add(part);
 		}
 	}
 
 	List<String> getSplittedInternal() {
-		return splitted;
+		return split;
 	}
 
 	public static String purgeAllTag(String s) {

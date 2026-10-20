@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2024, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program.
+ * This translation is distributed under the same License as the original C program.
  * 
  * THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC
  * LICENSE ("AGREEMENT"). [Eclipse Public License - v 1.0]
@@ -35,8 +35,6 @@
  */
 
 package smetana.core;
-
-import com.plantuml.api.cheerpj.WasmLog;
 
 final public class CArrayOfStar<O> extends UnsupportedC {
 
@@ -68,8 +66,6 @@ final public class CArrayOfStar<O> extends UnsupportedC {
 		if (old.offset != 0)
 			throw new IllegalStateException();
 
-		WasmLog.log("Realloc* from " + old.data.length + " to " + size);
-
 		final CArrayOfStar<O> result = ALLOC(size, type);
 		System.arraycopy(old.data, 0, result.data, 0, old.data.length);
 		return result;
@@ -95,12 +91,22 @@ final public class CArrayOfStar<O> extends UnsupportedC {
 	}
 
 	public void _swap(int i, int j) {
-		if (offset != 0)
-			throw new IllegalStateException();
-
-		final Object tmp = data[i];
-		data[i] = data[j];
-		data[j] = tmp;
+		// Arnaud/Claude 2026-07-08 (SMETANA.md, zdev.Test_12 root cause): this used
+		// to swap data[i]/data[j] directly (ignoring `offset`) and defensively throw
+		// for any non-zero-offset array, since swapping unshifted indices on such an
+		// array would silently corrupt the WRONG physical slots. But get_(i)/set_(i)
+		// right above already correctly use data[i + offset] -- _swap just never got
+		// the same treatment. This was dormant for years because no caller ever
+		// exercised an actual swap (i.e. a real out-of-order adjacent pair) on a
+		// non-zero-offset array -- e.g. mincross__c.restore_best()'s qsort() call on
+		// an expanded cluster's GD_rank(g)[r].v (which aliases GD_rank(root)[r].v at
+		// a non-zero offset via merge_ranks) only started actually needing to swap
+		// once restore_best's ND_order-restore loop was fixed (Test_7 case study) to
+		// stop being a no-op. The correct fix is to make _swap offset-aware, exactly
+		// like get_/set_, not to forbid non-zero offsets.
+		final Object tmp = data[i + offset];
+		data[i + offset] = data[j + offset];
+		data[j + offset] = tmp;
 	}
 
 }

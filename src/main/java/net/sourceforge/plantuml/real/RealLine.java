@@ -110,7 +110,7 @@ class RealLine {
 			cpt++;
 			if (cpt > 99999) {
 				printCounter(counter);
-				throw new IllegalStateException("Inifinite Loop?");
+				throw new IllegalStateException("Infinite Loop?");
 			}
 		} while (true);
 
@@ -153,10 +153,6 @@ class RealLine {
 	abstract class AbstractAbsolute implements Real {
 
 		public void printCreationStackTrace() {
-		}
-
-		public String getName() {
-			return getClass().getName();
 		}
 
 		public Real addFixed(double delta) {

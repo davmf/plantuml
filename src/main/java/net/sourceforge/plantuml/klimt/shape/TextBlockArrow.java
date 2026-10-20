@@ -37,6 +37,7 @@ package net.sourceforge.plantuml.klimt.shape;
 
 import java.util.Objects;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -45,9 +46,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.utils.Direction;
 
-public class TextBlockArrow extends AbstractTextBlock implements TextBlock {
-    // ::remove file when __HAXE__
-
+public class TextBlockArrow implements TextBlock {
 	private final double size;
 	private final Direction arrow;
 	private final HColor color;
@@ -99,6 +98,8 @@ public class TextBlockArrow extends AbstractTextBlock implements TextBlock {
 		return triangle;
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(size, size);
 	}

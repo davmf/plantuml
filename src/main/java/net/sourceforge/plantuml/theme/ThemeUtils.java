@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.theme;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,18 +49,21 @@ import java.util.List;
 import java.util.Objects;
 
 import net.sourceforge.plantuml.klimt.sprite.ResourcesUtils;
+import net.sourceforge.plantuml.nio.InputFile;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.ReadLineReader;
 import net.sourceforge.plantuml.preproc.Stdlib;
+import net.sourceforge.plantuml.preproc2.PreprocessorUtils;
+import net.sourceforge.plantuml.security.SURL;
+import net.sourceforge.plantuml.teavm.TeaVM;
+// ::comment when JAVA8
+import net.sourceforge.plantuml.teavm.js.browser.ScriptLoaderJs;
+// ::done
+import net.sourceforge.plantuml.text.StringLocated;
+import net.sourceforge.plantuml.tim.EaterException;
 import net.sourceforge.plantuml.utils.Log;
 
-// ::uncomment when __CORE__
-//import static com.plantuml.api.cheerpj.StaticMemory.cheerpjPath;
-//import java.io.FileInputStream;
-//import java.io.FileNotFoundException;
-// ::done
-
 public class ThemeUtils {
-	// ::remove folder when __HAXE__
 
 	private static final String THEME_FILE_PREFIX = "puml-theme-";
 
@@ -64,61 +71,172 @@ public class ThemeUtils {
 
 	private static final String THEME_PATH = "themes";
 
-	// ::uncomment when __CORE__
-//	public static ReadLine getReaderTheme(String filename) throws FileNotFoundException {
-//	Log.info("Loading theme " + filename);
-//	final String fullpath = cheerpjPath + THEME_PATH + "/" + THEME_FILE_PREFIX + filename
-//			+ THEME_FILE_SUFFIX;
-//
-//	final String res = "/" + THEME_PATH + "/" + THEME_FILE_PREFIX + filename + THEME_FILE_SUFFIX;
-//	final String description = "<" + res + ">";
-//	final InputStream is = new FileInputStream(fullpath);
-//	return ReadLineReader.create(new InputStreamReader(is), description);
-//}
+	// ::comment when JAVA8
+	private static final String THEMES_JS = "themes.js";
 	// ::done
 
-	// ::comment when __CORE__
-	public static Theme getReaderTheme(String realName, String from) {
-		final String description = realName + " from " + from;
-		from = from.substring(1, from.length() - 1);
-		final String res = from + "/" + THEME_FILE_PREFIX + realName + THEME_FILE_SUFFIX;
-		final byte[] is = Stdlib.getPumlResource(res);
-		if (is == null)
-			return null;
+	public static Theme loadTheme(PathSystem pathSystem, String name, String from, StringLocated location)
+			throws IOException, EaterException {
+		// ::comment when JAVA8
+		if (TeaVM.isTeaVM()) {
+			// The browser build has no classpath, no filesystem and no synchronous URL
+			// fetch: a bundled theme comes from themes.js, and one from a local folder
+			// from the host's file loader, as an included file does (loadFileTheme).
+			// Any other "from" variant returns null, which the caller reports as a
+			// regular "Cannot load theme" error instead of silently ignoring the
+			// directive.
+			if (from == null)
+				return (TeaVM.isTeaVM() && TeaVM.isC() == false) ? loadJsTheme(name) : null;
+			if (isLocalFolder(from) == false)
+				return null;
+		}
+		// ::done
 
-		return new Theme(ReadLineReader.create(is, description));
+		if (from == null)
+			return loadBundledOrLocalTheme(pathSystem, name);
+
+		if (from.startsWith("<") && from.endsWith(">"))
+			return loadStdlibTheme(name, from);
+
+		if (from.startsWith("http://") || from.startsWith("https://"))
+			return loadHttpTheme(name, from, location);
+
+		return loadFileTheme(pathSystem, name, from);
 	}
 
-	public static Theme getReaderTheme(String filename) {
-		Log.info(() -> "Loading theme " + filename);
-		final String res = "/" + THEME_PATH + "/" + THEME_FILE_PREFIX + filename + THEME_FILE_SUFFIX;
-		final String description = "<" + res + ">";
+	/**
+	 * Whether <code>from</code>, as written after <code>!theme NAME from</code>,
+	 * is a folder rather than a library (<code>&lt;...&gt;</code>) or a URL.
+	 */
+	public static boolean isLocalFolder(String from) {
+		if (from == null)
+			return false;
+		if (from.startsWith("<") && from.endsWith(">"))
+			return false;
+		return from.startsWith("http://") == false && from.startsWith("https://") == false;
+	}
+
+	// ::comment when JAVA8
+	/**
+	 * Loads a bundled theme in the browser build, from the PLANTUML_THEMES map
+	 * published by themes.js.
+	 * <p>
+	 * The map is consulted before the script is fetched, so that a host which has
+	 * registered the themes itself (for instance inside a Web Worker, where
+	 * ScriptLoaderJs has no document to append a script tag to) does not need
+	 * themes.js to be reachable.
+	 */
+	private static Theme loadJsTheme(String name) {
+		Log.info(() -> "Loading theme " + name + " from " + THEMES_JS);
+		String content = ScriptLoaderJs.getTheme(name);
+		if (content == null) {
+			try {
+				// Never waits: when themes.js is not loaded yet, this rendering attempt
+				// goes on unthemed and is rendered again once it is (PendingResources).
+				ScriptLoaderJs.require(THEMES_JS);
+			} catch (RuntimeException fetchFailed) {
+				// hasThemes() decides below; a failed fetch and a fetch that did not
+				// define the map are the same situation.
+			}
+			if (!ScriptLoaderJs.hasThemes()) {
+				// themes.js is not deployed where the page can fetch it. The diagram is
+				// published content viewed by someone who cannot fix that, so it keeps
+				// rendering unthemed, exactly as it did when !theme was ignored; the
+				// missing file is reported on the console, where the page author looks.
+				// An unknown name in a loaded themes.js stays an error (null, below),
+				// like the desktop build.
+				ScriptLoaderJs.consoleWarn("PlantUML: " + THEMES_JS + " could not be loaded, so '!theme " + name
+						+ "' was ignored. Serve " + THEMES_JS + " next to the page"
+						+ " or register globalThis.PLANTUML_THEMES (importing " + THEMES_JS
+						+ " as a module does this).");
+				return new Theme(ReadLineReader.create(new byte[0], "<missing " + THEMES_JS + ">"));
+			}
+			content = ScriptLoaderJs.getTheme(name);
+		}
+		if (content == null)
+			return null;
+
+		final String description = "<" + THEMES_JS + ":" + name + ">";
+		return new Theme(ReadLineReader.create(content.getBytes(UTF_8), description));
+	}
+	// ::done
+
+	private static Theme loadBundledOrLocalTheme(PathSystem pathSystem, String name) throws IOException {
+		// First, try bundled themes
+		Log.info(() -> "Loading theme " + name);
+		final String res = "/" + THEME_PATH + "/" + getFilename(name);
 		final InputStream is = Stdlib.class.getResourceAsStream(res);
+		if (is != null) {
+			final String description = "<" + res + ">";
+			return new Theme(ReadLineReader.create(new InputStreamReader(is), description));
+		}
+
+		// Then try local file
+		final InputFile localFile = pathSystem.getInputFile(getFilename(name), PathSystem.KIND_THEME);
+		if (localFile != null) {
+			final Reader br = localFile.getReader(UTF_8);
+			if (br != null)
+				return new Theme(ReadLineReader.create(br, "theme " + name));
+
+		}
+
+		return null;
+	}
+
+	private static Theme loadStdlibTheme(String name, String from) {
+		final String realFrom = from.substring(1, from.length() - 1);
+		final String res = realFrom + "/" + getFilename(name);
+		final byte[] content = Stdlib.getPumlResource(res);
+		if (content == null)
+			return null;
+
+		final String description = name + " from " + from;
+		return new Theme(ReadLineReader.create(content, description));
+	}
+
+	private static Theme loadHttpTheme(String name, String from, StringLocated location)
+			throws UnsupportedEncodingException, EaterException {
+		final SURL url = SURL.create(getFullPath(from, name));
+		if (url == null)
+			throw new EaterException("Cannot open URL", location);
+
+		return new Theme(PreprocessorUtils.getReaderInclude(url, location, UTF_8));
+	}
+
+	private static String getFullPath(String from, String filename) {
+		final StringBuilder sb = new StringBuilder(from);
+		if (from.endsWith("/") == false)
+			sb.append("/");
+
+		return sb + getFilename(filename);
+	}
+
+	private static Theme loadFileTheme(PathSystem pathSystem, String name, String from) throws IOException {
+		final InputFile file = pathSystem.getInputFile(getFullPath(from, name), PathSystem.KIND_THEME);
+		if (file == null)
+			return null;
+
+		final InputStream is = file.newInputStream();
 		if (is == null)
 			return null;
 
+		final String description = name + " from " + from;
 		return new Theme(ReadLineReader.create(new InputStreamReader(is), description));
 	}
 
 	public static List<String> getAllThemeNames() throws IOException {
-		final Collection<String> filenames = Objects.requireNonNull(ResourcesUtils.getJarFile(THEME_PATH, false));
 		final List<String> result = new ArrayList<>();
-		for (String f : filenames) {
-			if (f.startsWith(THEME_FILE_PREFIX) && f.endsWith(THEME_FILE_SUFFIX)) {
-				result.add(f.substring(THEME_FILE_PREFIX.length(), f.length() - THEME_FILE_SUFFIX.length()));
-			}
+		if (TeaVM.isTeaVM()) {
+			result.addAll(new ThemeList().getAll());
+		} else {
+			final Collection<String> filenames = Objects.requireNonNull(ResourcesUtils.getJarFile(THEME_PATH, false));
+			for (String f : filenames)
+				if (f.startsWith(THEME_FILE_PREFIX) && f.endsWith(THEME_FILE_SUFFIX))
+					result.add(f.substring(THEME_FILE_PREFIX.length(), f.length() - THEME_FILE_SUFFIX.length()));
 		}
+
 		Collections.sort(result);
 		return result;
-	}
-	// ::done
-
-	public static String getFullPath(String from, String filename) {
-		final StringBuilder sb = new StringBuilder(from);
-		if (from.endsWith("/") == false) {
-			sb.append("/");
-		}
-		return sb + getFilename(filename);
 	}
 
 	public static String getFilename(String filename) {

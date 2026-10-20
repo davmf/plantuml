@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -97,13 +97,13 @@ try {
 	
 	/* these operations only happen at the top level */
 	if ((type&(DT_INSERT|DT_DELETE|DT_CLEAR|DT_RENEW))!=0)
-		return (__ptr__) dt.meth.searchf.exe(zz, dt, obj, type);
+		return (__ptr__) dt.meth.searchf.exeSearch(zz, dt, obj, type);
 	
 	
 	if(((type&(DT_MATCH|DT_SEARCH))!=0) || /* order sets first/last done below */
 	   (((type&(DT_FIRST|DT_LAST))!=0) && (dt.meth.type&(DT_OBAG|DT_OSET)) == 0 ) )
 	{	for(d = dt; d!=null; d = d.view)
-			if((o = (__ptr__) d.meth.searchf.exe(zz, d,obj,type))!=null )
+			if((o = (__ptr__) d.meth.searchf.exeSearch(zz, d,obj,type))!=null )
 				break;
 		dt.walk = d;
 		return o;
@@ -117,7 +117,7 @@ try {
 	
 		n = nk = null; p = null;
 		for(d = dt; d!=null; d = d.view)
-		{	if((o = (__ptr__) d.meth.searchf.exe(zz, d, obj, type) ) == null)
+		{	if((o = (__ptr__) d.meth.searchf.exeSearch(zz, d, obj, type) ) == null)
 				continue;
 			ky = d.disc.key;
 			sz = d.disc.size;
@@ -129,11 +129,16 @@ try {
 			if(n!=null) /* get the right one among all dictionaries */
 			{	cmp = _DTCMP(zz, d, ok, nk, d.disc, cmpf, sz);
 				if(((type & (DT_NEXT|DT_FIRST))!=0 && cmp < 0) ||
-				   ((type & (DT_PREV|DT_LAST))!=0 && cmp > 0) )
-UNSUPPORTED("5o3u9aaanyd9yh74sjfkkofmo"); // 					goto a_dj;
+				   ((type & (DT_PREV|DT_LAST))!=0 && cmp > 0) ) {
+					/* was: goto a_dj; -- inlined here since the label just marks the
+					 * start of the else-block below (5o3u9aaanyd9yh74sjfkkofmo) */
+					p  = d;
+					n  = o;
+					nk = ok;
+				}
 			}
 			else /* looks good for now */
-			{ a_dj: p  = d;
+			{	p  = d;
 				n  = o;
 				nk = ok;
 			}

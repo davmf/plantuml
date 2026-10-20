@@ -35,6 +35,16 @@
  */
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import net.sourceforge.plantuml.asciiverse.ADimension2D;
+import net.sourceforge.plantuml.asciiverse.ANote;
+import net.sourceforge.plantuml.asciiverse.AsciiBlock;
+import net.sourceforge.plantuml.asciiverse.InfinitePlan;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
@@ -78,7 +88,49 @@ public class NoteTile extends AbstractTile implements Tile {
 		this.note = note;
 		this.skin = skin;
 		this.skinParam = skinParam;
-		this.yGauge = YGauge.create(currentY.getMax(), getPreferredHeight());
+
+		// Same chaining as CommunicationTile: a standalone note published via
+		// "& note ..." must share the previous tile's contact line (top-aligned
+		// via createParallel) instead of stacking sequentially below it. The
+		// note's own "contact point" is its vertical center (see
+		// getContactPointRelative below), mirroring how the legacy TileParallel
+		// aligned notes against message arrows by their respective
+		// contact points.
+		//
+		// EXCEPT when this note's own footprint was already claimed by an
+		// earlier note in the same "&" run (e.g. "note over A & note over A"):
+		// contact-point alignment centers both on the very same line, which,
+		// since they occupy the same side of the same participant, means the
+		// same X footprint too -- i.e. they would be drawn directly on top of
+		// one another. In that case fall back to createPropagating(): it
+		// stacks this note below everything drawn so far in the run (like a
+		// LifeEventTile passing through the run without joining the alignment
+		// itself) while still forwarding the run's contact/origin, so a LATER
+		// sibling on a genuinely different footprint still aligns against the
+		// original line (see issue #2883's follow-up: notes on different
+		// participants were fixed there, same-participant notes were an
+		// explicit out-of-scope limitation, closed here).
+		//
+		// The footprint key is (participant, position), not just the
+		// participant: "note left of U" and "note right of U" both resolve to
+		// livingSpace1 == U, but extend away from U in opposite directions and
+		// never actually overlap -- only two notes on the very same side (or
+		// both plain OVER) do.
+		final double contactRelative = getContactPointRelative();
+		final double height = getPreferredHeight();
+		final Object footprint = Arrays.asList(livingSpace1, note.getPosition());
+		final Set<Object> anchorsInRun = currentY.getNoteAnchorsInRun();
+		if (note.isParallel() && anchorsInRun != null && anchorsInRun.contains(footprint)) {
+			this.yGauge = YGauge.createPropagating(currentY, height).withNoteAnchorsInRun(anchorsInRun);
+		} else if (note.isParallel()) {
+			final Set<Object> grown = anchorsInRun == null ? new HashSet<Object>() : new HashSet<>(anchorsInRun);
+			grown.add(footprint);
+			this.yGauge = YGauge.createParallel(currentY, contactRelative, height).withNoteAnchorsInRun(grown);
+		} else {
+			final Set<Object> fresh = new HashSet<>();
+			fresh.add(footprint);
+			this.yGauge = YGauge.createWithContact(currentY, contactRelative, height).withNoteAnchorsInRun(fresh);
+		}
 	}
 
 	@Override
@@ -86,10 +138,16 @@ public class NoteTile extends AbstractTile implements Tile {
 		return yGauge;
 	}
 
+	// The component only depends on the tile's fixed data, not on the string
+	// bounder, but it was rebuilt on every call from every layout phase
+	private Component cachedComponent;
+
 	private Component getComponent(StringBounder stringBounder) {
-		final Component comp = skin.createComponentNote(note.getUsedStyles(), getNoteComponentType(note.getNoteStyle()),
-				note.getSkinParamBackcolored(skinParam), note.getDisplay(), note.getColors(), note.getPosition());
-		return comp;
+		if (cachedComponent == null)
+			cachedComponent = skin.createComponentNote(note.getUsedStyles(),
+					getNoteComponentType(note.getNoteStyle()), note.getSkinParamBackcolored(skinParam),
+					note.getDisplay(), note.getColors(), note.getPosition());
+		return cachedComponent;
 	}
 
 	protected static ComponentType getNoteComponentType(NoteStyle noteStyle) {
@@ -103,8 +161,8 @@ public class NoteTile extends AbstractTile implements Tile {
 	}
 
 	public void drawU(UGraphic ug) {
-		if (YGauge.USE_ME)
-			ug = ug.apply(UTranslate.dy(getYGauge().getMin().getCurrentValue()));
+		// Self-translate prologue: absolute gauge position
+		ug = ug.apply(UTranslate.dy(getYGauge().getMin().getCurrentValue()));
 		final StringBounder stringBounder = ug.getStringBounder();
 		final Component comp = getComponent(stringBounder);
 		final XDimension2D dim = comp.getPreferredDimension(stringBounder);
@@ -158,9 +216,99 @@ public class NoteTile extends AbstractTile implements Tile {
 	}
 
 	public void addConstraints() {
-		// final Component comp = getComponent(stringBounder);
-		// final Dimension2D dim = comp.getPreferredDimension(stringBounder);
-		// final double width = dim.getWidth();
+		ensureOwnBoxClearsNote();
+	}
+
+	// See CommunicationTileSelf.ensureOwnBoxClearsLoop() (issue #2791): a `box
+	// "..." ... endbox` grouping draws its rectangle purely from its first/last
+	// participant's LivingSpace marginBefore/marginAfter (Doll.getPosA()/
+	// getPosE()), never from any tile's own footprint. A standalone
+	// "note left of"/"note right of"/"note over" can reach further than the
+	// participant(s) it is attached to -- exactly the same shape of overflow
+	// as a self-message loop, just for a note instead of a loop. Grow the
+	// relevant LivingSpace's own margin to cover it; harmless when the
+	// participant(s) here are not actually a box's first/last member (or are
+	// in no box at all), since that margin is then never read (see
+	// LivingSpace.getPosA()/getPosE(), read only by Doll).
+	//
+	// The formula self-selects by position: for NotePosition.LEFT, getMinX()
+	// already equals getX() (no leftward reach past livingSpace1.getPosB()
+	// unless the note itself is wider than the gap), and getMaxX() collapses
+	// to livingSpace1.getPosC(), which never exceeds getPosD() -- so the
+	// "wrong side" of the pair is always a no-op (overflow <= 0) without
+	// needing to branch on note.getPosition() here.
+	private void ensureOwnBoxClearsNote() {
+		final StringBounder stringBounder = getStringBounder();
+
+		final double overflowLeft = livingSpace1.getPosB(stringBounder).getCurrentValue()
+				- getMinX().getCurrentValue();
+		if (overflowLeft > 0)
+			livingSpace1.ensureMarginBefore(overflowLeft);
+
+		final LivingSpace rightAnchor = note.getPosition() == NotePosition.OVER_SEVERAL ? livingSpace2
+				: livingSpace1;
+		final double overflowRight = getMaxX().getCurrentValue()
+				- rightAnchor.getPosD(stringBounder).getCurrentValue();
+		if (overflowRight > 0)
+			rightAnchor.ensureMarginAfter(overflowRight);
+	}
+
+	// The right edges this note is built on, broken back down into Reals that are
+	// each safe to hand to Real.ensureBiggerThan() -- i.e. plain delta chains,
+	// re-read on every compile() pass. getMaxX() itself is NOT safe for that:
+	// under OVER_SEVERAL it composes a RealUtils.max(), which caches its resolved
+	// value the first time it is read (see the note in GroupingTile). Stacking one
+	// constraint per element of this list is the same "max", minus the caching.
+	// RealUtils.middle(), which getX() uses under OVER_SEVERAL, does not cache and
+	// needs no such treatment.
+	// The participant this note's own left edge is measured from, and how far left
+	// of that participant's posC it reaches -- a plain distance, no Real involved,
+	// so a caller can subtract it from a position it already holds. Used by
+	// GroupingTile to re-derive a group frame's left edge without reading the
+	// RealMin the constructor built it from.
+	//
+	// 0 for OVER_SEVERAL, where the left edge is a RealUtils.middle() between two
+	// participants and no fixed distance from either one describes it. That
+	// over-estimates the frame's left edge, hence its title's right edge, hence the
+	// push -- the harmless direction: a little too much room rather than a
+	// participant back under the frame.
+	LivingSpace getLeftAnchor() {
+		return livingSpace1;
+	}
+
+	double getLeftOverhang() {
+		final NotePosition position = note.getPosition();
+		if (position == NotePosition.LEFT)
+			return getUsedWidth(getStringBounder());
+
+		if (position == NotePosition.OVER)
+			return getUsedWidth(getStringBounder()) / 2;
+
+		return 0;
+	}
+
+	List<Real> getStableMaxX() {
+		final List<Real> result = new ArrayList<>();
+		result.add(getX(getStringBounder()).addFixed(getUsedWidth(getStringBounder())));
+		if (note.getPosition() == NotePosition.OVER_SEVERAL)
+			result.add(livingSpace2.getPosD(getStringBounder()));
+
+		return result;
+	}
+
+	// Left-side mirror of getStableMaxX(): the left edges this note is built
+	// on, each safe to hand to Real.ensureBiggerThan() for the same reason --
+	// getMinX() itself composes a RealUtils.min() under OVER_SEVERAL, which
+	// caches its resolved value the first time it is read (see the note on
+	// GroupingTile.ensureFollowingParticipantClearsFrame()), so that case is
+	// split back into its two plain halves here too.
+	List<Real> getStableMinX() {
+		final List<Real> result = new ArrayList<>();
+		result.add(getX(getStringBounder()));
+		if (note.getPosition() == NotePosition.OVER_SEVERAL)
+			result.add(livingSpace1.getPosB(getStringBounder()));
+
+		return result;
 	}
 
 	@Override
@@ -181,6 +329,142 @@ public class NoteTile extends AbstractTile implements Tile {
 			return RealUtils.max(result, x2);
 		}
 		return result;
+	}
+
+	// ===================== ASCII =====================
+	//
+	// ASCII counterpart of getX()/getUsedWidth()/drawU(), so that a
+	// standalone note ("note left of", "note right of", "note over",
+	// "note over A, B", "note across", and their hnote/rnote variants, all
+	// drawn as the same folded-corner box) no longer reaches the
+	// AsciiBlock "not migrated" default and crashes the whole txt/utxt
+	// export. LEFT and RIGHT use the very same placement as the notes
+	// attached to a message (CommunicationTileNoteLeft/Right), so both
+	// kinds of note line up, and like them (and like the pixel rendering)
+	// they do not push the neighboring participant away. OVER and
+	// OVER_SEVERAL do, as in pixels (see asciiAddConstraints()).
+
+	private AsciiBlock asciiNoteText() {
+		return note.getDisplay().marginLR(1, 3);
+	}
+
+	// The note box alone, no margin, as drawn for OVER and OVER_SEVERAL
+	private int asciiBoxWidth() {
+		return new ANote(asciiNoteText()).asciiDimension().getWidth();
+	}
+
+	// The note box plus the margins LEFT and RIGHT draw it with, exactly
+	// like CommunicationTileNoteLeft/Right
+	private int asciiSideNoteWidth() {
+		return new ANote(asciiNoteText()).marginLR(2, 2).asciiDimension().getWidth();
+	}
+
+	private boolean isAsciiOverSeveral() {
+		return note.getPosition() == NotePosition.OVER_SEVERAL && livingSpace1 != livingSpace2;
+	}
+
+	// The participants under an OVER_SEVERAL note, leftmost first: "note
+	// over B, A" names them in reverse order
+	private LivingSpace asciiLeftSpace() {
+		if (livingSpace1.getAsciiPosB().getCurrentValue() <= livingSpace2.getAsciiPosB().getCurrentValue())
+			return livingSpace1;
+
+		return livingSpace2;
+	}
+
+	private LivingSpace asciiRightSpace() {
+		return asciiLeftSpace() == livingSpace1 ? livingSpace2 : livingSpace1;
+	}
+
+	@Override
+	public void asciiAddConstraints() {
+		final NotePosition position = note.getPosition();
+		if (isAsciiOverSeveral()) {
+			// The box spans its two participants' boxes (see asciiDraw()):
+			// make that span at least as wide as the note itself
+			final Real left = asciiLeftSpace().getAsciiPosB();
+			asciiRightSpace().getAsciiPosD().ensureBiggerThan(left.addFixed(asciiBoxWidth()));
+		} else if (position != NotePosition.LEFT && position != NotePosition.RIGHT) {
+			// Like the pixel rendering, a note over a participant pushes its
+			// neighbors away instead of covering their lifelines: whatever the
+			// box reaches past the participant's own box becomes that
+			// participant's margin, which LivingSpaces.asciiAddConstraints()
+			// keeps clear of the next participant
+			final int participantWidth = livingSpace1.getParticipant().asciiDimension().getWidth();
+			final int width = asciiBoxWidth();
+			final int left = participantWidth / 2 - width / 2;
+			if (left < 0)
+				livingSpace1.ensureAsciiMarginBefore(-left);
+			if (left + width > participantWidth)
+				livingSpace1.ensureAsciiMarginAfter(left + width - participantWidth);
+		}
+	}
+
+	@Override
+	public Real getAsciiMinX() {
+		final NotePosition position = note.getPosition();
+		if (isAsciiOverSeveral())
+			return asciiLeftSpace().getAsciiPosB();
+
+		final Real column = livingSpace1.getAsciiLifeColumn();
+		if (position == NotePosition.LEFT)
+			return column.addFixed(-(asciiSideNoteWidth() + 1));
+
+		if (position == NotePosition.RIGHT)
+			return column;
+
+		return column.addFixed(-(asciiBoxWidth() / 2));
+	}
+
+	@Override
+	public Real getAsciiMaxX() {
+		final NotePosition position = note.getPosition();
+		if (isAsciiOverSeveral())
+			return asciiRightSpace().getAsciiPosD().addFixed(-1);
+
+		final Real column = livingSpace1.getAsciiLifeColumn();
+		if (position == NotePosition.LEFT)
+			return column;
+
+		if (position == NotePosition.RIGHT)
+			return column.addFixed(asciiSideNoteWidth() + 1);
+
+		final int width = asciiBoxWidth();
+		return column.addFixed(width - width / 2 - 1);
+	}
+
+	// The box itself, plus one blank row below it: the same breathing room a
+	// message leaves after its arrow (see CommunicationTile.asciiDimension()),
+	// so that the next message's label, or the footbox, does not touch the
+	// note's bottom border.
+	@Override
+	public ADimension2D asciiDimension() {
+		final ADimension2D box = new ANote(asciiNoteText()).asciiDimension();
+		final int width = (int) (getAsciiMaxX().getCurrentValue() - getAsciiMinX().getCurrentValue()) + 1;
+		return new ADimension2D(width, box.getHeight() + 1);
+	}
+
+	@Override
+	public void asciiDraw(InfinitePlan plan) {
+		final NotePosition position = note.getPosition();
+		final int column = (int) livingSpace1.getAsciiLifeColumn().getCurrentValue();
+		if (position == NotePosition.LEFT) {
+			final AsciiBlock noteBox = plan.createNoteBox(asciiNoteText()).marginLR(2, 2);
+			noteBox.asciiDraw(plan.move(column - asciiSideNoteWidth() - 1, 0));
+		} else if (position == NotePosition.RIGHT) {
+			final AsciiBlock noteBox = plan.createNoteBox(asciiNoteText()).marginLR(2, 2);
+			noteBox.asciiDraw(plan.move(column + 2, 0));
+		} else if (isAsciiOverSeveral()) {
+			// Like getUsedWidth() in pixels: from the left participant's box
+			// to the right participant's one; asciiAddConstraints() made sure
+			// the note itself fits in there
+			final int left = (int) asciiLeftSpace().getAsciiPosB().getCurrentValue();
+			final int right = (int) asciiRightSpace().getAsciiPosD().getCurrentValue();
+			final int extra = Math.max(0, right - left - asciiBoxWidth());
+			plan.createNoteBox(note.getDisplay().marginLR(1, 3 + extra)).asciiDraw(plan.move(left, 0));
+		} else {
+			plan.createNoteBox(asciiNoteText()).asciiDraw(plan.move(column - asciiBoxWidth() / 2, 0));
+		}
 	}
 
 }

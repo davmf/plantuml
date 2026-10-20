@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
@@ -54,9 +55,9 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.url.Url;
@@ -85,8 +86,8 @@ public class EntityImageChenCircle extends AbstractEntityImage {
 			titleFontConfiguration = titleFontConfiguration.underline();
 		}
 
-		title = entity.getDisplay().create8(titleFontConfiguration, HorizontalAlignment.CENTER, getSkinParam(), CreoleMode.FULL,
-				getStyle().wrapWidth());
+		title = entity.getDisplay().create8(titleFontConfiguration, HorizontalAlignment.CENTER, getSkinParam(),
+				CreoleMode.FULL, getStyle().wrapWidth());
 
 		url = entity.getUrl99();
 	}
@@ -99,14 +100,19 @@ public class EntityImageChenCircle extends AbstractEntityImage {
 		return getStyle(getEntity(), getSkinParam());
 	}
 
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.CHENEER_CIRCLE;
+	}
+
 	private static Style getStyle(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.chenEerDiagram, SName.circle)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.CHENEER_CIRCLE.withStereotype(group.getStereotype()));
 	}
 
 	private static Style getStyleTitle(Entity group, ISkinParam skinParam) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.chenEerDiagram, SName.circle, SName.title)
-				.withTOBECHANGED(group.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.CHENEER_CIRCLE_TITLE.withStereotype(group.getStereotype()));
 	}
 
 	@Override
@@ -115,7 +121,7 @@ public class EntityImageChenCircle extends AbstractEntityImage {
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return new XDimension2D(25, 25);
 	}
 

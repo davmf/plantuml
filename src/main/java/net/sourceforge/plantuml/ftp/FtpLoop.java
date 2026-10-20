@@ -68,7 +68,7 @@ class FtpLoop implements Runnable {
 	final private BufferedReader br;
 	final private PrintWriter pw;
 
-	private FtpConnexion connexion;
+	private FtpConnection connection;
 	private String ipClient = null;
 	private int port = -1;
 	private Mode mode;
@@ -111,7 +111,7 @@ class FtpLoop implements Runnable {
 		if (upper.startsWith("USER")) {
 			myOut("331 Password required");
 			final String user = cmd.substring("USER ".length());
-			connexion = ftpServer.getFtpConnexion(user);
+			connection = ftpServer.getFtpConnexion(user);
 		} else if (upper.startsWith("PASS")) {
 			myOut("230 Logged in.");
 		} else if (upper.startsWith("PWD")) {
@@ -165,7 +165,7 @@ class FtpLoop implements Runnable {
 			}
 		} else if (upper.startsWith("DELE")) {
 			final String file = cmd.substring("DELE ".length());
-			connexion.delete(file);
+			connection.delete(file);
 			myOut("200 Command okay.");
 		} else if (upper.startsWith("QUIT")) {
 			myOut("221 Goodbye.");
@@ -184,7 +184,7 @@ class FtpLoop implements Runnable {
 	private void retr(final String fileName, Socket soc)
 			throws UnknownHostException, IOException, InterruptedException {
 		final OutputStream os = soc.getOutputStream();
-		final byte[] data = connexion.getData(fileName);
+		final byte[] data = connection.getData(fileName);
 
 		if (data != null) {
 			os.write(data);
@@ -198,7 +198,7 @@ class FtpLoop implements Runnable {
 	private void retrPassif(final String s) throws UnknownHostException, IOException, InterruptedException {
 		String fileName = s.substring("STOR ".length());
 		fileName = removeStartingsSlash(fileName);
-		if (connexion.willExist(fileName) == false) {
+		if (connection.willExist(fileName) == false) {
 			myOut("550 No such file.");
 			return;
 		}
@@ -212,7 +212,7 @@ class FtpLoop implements Runnable {
 
 	private void waitForMe(String fileName) throws InterruptedException {
 		do {
-			if (connexion.doesExist(fileName)) {
+			if (connection.doesExist(fileName)) {
 				return;
 			}
 			Thread.sleep(200L);
@@ -222,7 +222,7 @@ class FtpLoop implements Runnable {
 	private void retrActif(final String s) throws UnknownHostException, IOException, InterruptedException {
 		String fileName = s.substring("STOR ".length());
 		fileName = removeStartingsSlash(fileName);
-		if (connexion.willExist(fileName) == false) {
+		if (connection.willExist(fileName) == false) {
 			myOut("550 No such file.");
 			return;
 		}
@@ -263,20 +263,20 @@ class FtpLoop implements Runnable {
 		myOut("226 Transfer complete.");
 
 		if ("png".equalsIgnoreCase(fileName)) {
-			connexion.setFileFormat(FileFormat.PNG);
+			connection.setFileFormat(FileFormat.PNG);
 		} else if ("svg".equalsIgnoreCase(fileName)) {
-			connexion.setFileFormat(FileFormat.SVG);
+			connection.setFileFormat(FileFormat.SVG);
 		} else if ("eps".equalsIgnoreCase(fileName)) {
-			connexion.setFileFormat(FileFormat.EPS);
+			connection.setFileFormat(FileFormat.EPS);
 		}
 
 		if (fileName.length() > 3) {
 			final String data = new String(baos.toByteArray(), ftpServer.getCharset());
-			final String pngFileName = connexion.getFutureFileName(fileName);
-			connexion.futureOutgoing(pngFileName);
-			connexion.addIncoming(fileName, data);
+			final String pngFileName = connection.getFutureFileName(fileName);
+			connection.futureOutgoing(pngFileName);
+			connection.addIncoming(fileName, data);
 
-			ftpServer.processImage(connexion, fileName);
+			ftpServer.processImage(connection, fileName);
 		}
 	}
 
@@ -296,17 +296,17 @@ class FtpLoop implements Runnable {
 
 	private void list(final Socket soc) throws IOException {
 		final PrintWriter listing = SecurityUtils.createPrintWriter(soc.getOutputStream(), true);
-		final Collection<String> files = connexion.getFiles();
+		final Collection<String> files = connection.getFiles();
 		if (files.size() > 0) {
 			int total = 0;
 			for (String n : files) {
-				total += (connexion.getSize(n) + 511) / 512;
+				total += (connection.getSize(n) + 511) / 512;
 			}
 			listing.println("total " + total);
 			// localLog(total);
 			for (String n : files) {
 				final String ls = String.format("%10s %4d %-8s %-8s %8d %3s %2s %5s %s", "-rw-rw-r--", 1, "plantuml",
-						"plantuml", connexion.getSize(n), "Sep", 28, 2006, n);
+						"plantuml", connection.getSize(n), "Sep", 28, 2006, n);
 				listing.println(ls);
 				// localLog(ls);
 			}

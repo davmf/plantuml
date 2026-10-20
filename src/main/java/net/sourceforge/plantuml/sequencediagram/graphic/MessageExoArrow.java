@@ -53,7 +53,9 @@ import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.skin.rose.AbstractComponentRoseArrow;
 import net.sourceforge.plantuml.skin.rose.ComponentRoseArrow;
 import net.sourceforge.plantuml.skin.rose.Rose;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.LineLocation;
 
 public class MessageExoArrow extends Arrow {
 
@@ -62,9 +64,10 @@ public class MessageExoArrow extends Arrow {
 	private final boolean shortArrow;
 	private final ArrowConfiguration arrowConfiguration;
 
-	public MessageExoArrow(AtomicInteger counter, Pragma pragma, double startingY, Rose skin, ArrowComponent arrow, LivingParticipantBox p,
-			MessageExoType type, Url url, boolean shortArrow, ArrowConfiguration arrowConfiguration) {
-		super(counter, pragma, startingY, skin, arrow, url);
+	public MessageExoArrow(AtomicInteger counter, Pragma pragma, double startingY, Rose skin, ArrowComponent arrow,
+			LivingParticipantBox p, MessageExoType type, Url url, boolean shortArrow,
+			ArrowConfiguration arrowConfiguration, LineLocation location) {
+		super(counter, pragma, startingY, skin, arrow, url, location);
 		this.p = p;
 		this.type = type;
 		this.shortArrow = shortArrow;
@@ -73,7 +76,8 @@ public class MessageExoArrow extends Arrow {
 
 	double getActualWidth(StringBounder stringBounder, double maxX) {
 		final double r = getRightEndInternal(stringBounder, maxX) - getLeftStartInternal(stringBounder);
-		assert r > 0;
+		if (TeaVM.a())
+			assert r > 0;
 		return r;
 	}
 
@@ -83,12 +87,12 @@ public class MessageExoArrow extends Arrow {
 				return p.getLiveThicknessAt(stringBounder, getArrowYStartLevel(stringBounder)).getSegment().getPos2()
 						- getPreferredWidth(stringBounder);
 			} else {
-				if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_LEFT) {
+				if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_LEFT)
 					return ComponentRoseArrow.diamCircle;
-				}
-				if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_LEFT) {
+
+				if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_LEFT)
 					return ComponentRoseArrow.diamCircle;
-				}
+
 				return 0;
 			}
 		}
@@ -96,19 +100,19 @@ public class MessageExoArrow extends Arrow {
 	}
 
 	private double getRightEndInternal(StringBounder stringBounder, double maxX) {
-		if (type == MessageExoType.FROM_LEFT || type == MessageExoType.TO_LEFT) {
+		if (type == MessageExoType.FROM_LEFT || type == MessageExoType.TO_LEFT)
 			return p.getLiveThicknessAt(stringBounder, getArrowYStartLevel(stringBounder)).getSegment().getPos1();
-		}
-		if (shortArrow) {
+
+		if (shortArrow)
 			return getLeftStartInternal(stringBounder) + getPreferredWidth(stringBounder);
-		}
+
 		double result = Math.max(maxX, getLeftStartInternal(stringBounder) + getPreferredWidth(stringBounder));
-		if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_RIGHT) {
+		if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_RIGHT)
 			result -= ComponentRoseArrow.diamCircle;
-		}
-		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_RIGHT) {
+
+		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_RIGHT)
 			result -= ComponentRoseArrow.diamCircle;
-		}
+
 		return result;
 	}
 
@@ -130,18 +134,17 @@ public class MessageExoArrow extends Arrow {
 	@Override
 	public double getPreferredWidth(StringBounder stringBounder) {
 		double result = getArrowComponent().getPreferredWidth(stringBounder);
-		if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_RIGHT) {
+		if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_RIGHT)
 			result += ComponentRoseArrow.diamCircle;
-		}
-		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_RIGHT) {
+
+		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_RIGHT)
 			result += ComponentRoseArrow.diamCircle;
-		}
-		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_LEFT) {
+
+		if (arrowConfiguration.getDecoration1() == ArrowDecoration.CIRCLE && type == MessageExoType.FROM_LEFT)
 			result += ComponentRoseArrow.diamCircle;
-		}
-		if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_LEFT) {
+
+		if (arrowConfiguration.getDecoration2() == ArrowDecoration.CIRCLE && type == MessageExoType.TO_LEFT)
 			result += ComponentRoseArrow.diamCircle;
-		}
 
 		return result;
 	}

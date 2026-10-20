@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.mindmap;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMindMapRoot extends SingleLineCommand2<MindMapDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("0");
+
 	public CommandMindMapRoot() {
 		super(getRegexConcat());
 	}
@@ -54,14 +60,31 @@ public class CommandMindMapRoot extends SingleLineCommand2<MindMapDiagram> {
 	static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandMindMapRoot.class.getName(), RegexLeaf.start(), //
 				new RegexLeaf(1, "TYPE", "(0)"), //
-				RegexLeaf.spaceOneOrMore(), //
-				new RegexLeaf(1, "LABEL", "([^%s].*)"), RegexLeaf.end());
+				RegexLeaf.spaceZeroOrMore(), //
+				new RegexLeaf(1, "LABEL", "(.*)"), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String label = arg.get("LABEL", 0);
+		// The root is always created at level 0 with a box shape and no background color
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding the mindmap root node");
+		if (label != null && label.isEmpty() == false)
+			sb.append(" labelled \"").append(label).append("\"");
+		return sb.toString();
 	}
 
 	@Override
 	protected CommandExecutionResult executeArg(MindMapDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		final String label = arg.get("LABEL", 0);
 		return diagram.addIdea(null, 0, Display.getWithNewlines(diagram.getPragma(), label), IdeaShape.BOX, true);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

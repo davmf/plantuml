@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.statediagram.StateDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandEndState extends SingleLineCommand2<StateDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("end", "endstate", "}");
 
 	public CommandEndState() {
 		super(getRegexConcat());
@@ -64,6 +70,15 @@ public class CommandEndState extends SingleLineCommand2<StateDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// '}' (or 'end state') closes the composite state or frame opened by
+		// the matching 'state Name {' or 'frame Name {' command (executeArg
+		// fails if none is open).
+		return "Closing the current composite state";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final Entity currentPackage = diagram.getCurrentGroup();
@@ -72,6 +87,11 @@ public class CommandEndState extends SingleLineCommand2<StateDiagram> {
 
 		diagram.endGroup();
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

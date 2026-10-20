@@ -36,13 +36,11 @@
 package net.sourceforge.plantuml.cucadiagram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
@@ -56,13 +54,14 @@ import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
-import net.sourceforge.plantuml.klimt.shape.TextBlockVertical2;
+import net.sourceforge.plantuml.klimt.shape.TextBlockVertical;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.WithPorts;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class BodyEnhanced1 extends BodyEnhancedAbstract implements TextBlock, WithPorts {
 
@@ -115,8 +114,8 @@ public class BodyEnhanced1 extends BodyEnhancedAbstract implements TextBlock, Wi
 		return 6;
 	}
 
-	private static boolean isTreeOrTable(String s) {
-		s = StringUtils.trinNoTrace(s);
+	private static boolean isTreeOrTable(CharSequence s) {
+		s = StringUtils.trim2(s);
 		return Parser.isTreeStart(s) || CreoleParser.isTableLine(s);
 	}
 
@@ -152,11 +151,11 @@ public class BodyEnhanced1 extends BodyEnhancedAbstract implements TextBlock, Wi
 				display = null;
 				final List<CharSequence> allTree = buildTreeOrTable(s, it);
 				final FontConfiguration fontConfiguration = style.getFontConfiguration(skinParam.getIHtmlColorSet());
-				TextBlock bloc = Display.create(allTree).create7(fontConfiguration, align, skinParam, CreoleMode.FULL);
+				TextBlock block = Display.create(allTree).create7(fontConfiguration, align, skinParam, CreoleMode.FULL);
 				if (isTable)
-					bloc = TextBlockUtils.withMargin(bloc, 10, 10, 0, 5);
+					block = TextBlockUtils.withMargin(block, 10, 10, 0, 5);
 
-				blocks.add(bloc);
+				blocks.add(block);
 			} else {
 				if (display == null)
 					display = Display.empty();
@@ -178,7 +177,7 @@ public class BodyEnhanced1 extends BodyEnhancedAbstract implements TextBlock, Wi
 		if (blocks.size() == 1)
 			this.area = blocks.get(0);
 		else
-			this.area = new TextBlockVertical2(blocks, align);
+			this.area = new TextBlockVertical(blocks, align);
 
 		final double minClassWidth = style.value(PName.MinimumWidth).asDouble();
 		if (minClassWidth > 0)
@@ -235,11 +234,12 @@ public class BodyEnhanced1 extends BodyEnhancedAbstract implements TextBlock, Wi
 	}
 
 	public List<Url> getUrls() {
-		return Collections.unmodifiableList(urls);
+		return MyCollections.unmodifiableList(urls);
 	}
 
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		return getArea(stringBounder).getInnerPosition(member, stringBounder, strategy);
+	@Override
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		return getArea(stringBounder).getInnerPosition(member, stringBounder);
 	}
 
 }

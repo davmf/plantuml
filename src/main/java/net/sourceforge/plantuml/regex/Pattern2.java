@@ -37,18 +37,28 @@ package net.sourceforge.plantuml.regex;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.Lazy;
 import net.sourceforge.plantuml.jaws.Jaws;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class Pattern2 {
 
-	private static final ConcurrentHashMap<String, AtomicInteger> COUNT = new ConcurrentHashMap<>();
+	private static final Map<String, String> QUOTED_REPLACEMENTS = new HashMap<>();
+	static {
+		if (TeaVM.isTeaVM())
+			QUOTED_REPLACEMENTS.put("%pLN", Matcher.quoteReplacement("\\p{L}[0-9]")); // Unicode Letter or digit (TeaVM)
+		else
+			QUOTED_REPLACEMENTS.put("%pLN", Matcher.quoteReplacement("\\p{L}\\p{N}")); // Unicode Letter or digit
+		QUOTED_REPLACEMENTS.put("%s", Matcher.quoteReplacement("\\s\u00A0")); // normal or non-breaking space
+		QUOTED_REPLACEMENTS.put("%q", Matcher.quoteReplacement("'\u2018\u2019")); // single quotes
+		QUOTED_REPLACEMENTS.put("%g", Matcher.quoteReplacement("\"\u201c\u201d" + Jaws.BLOCK_E1_INVISIBLE_QUOTE));
+	}
 
+	private static final Pattern TRANSFORM_PATTERN = Pattern.compile("%(pLN|s|q|g)");
 	private static final Pattern2 EMPTY = new Pattern2("");
 
 	private final String patternString;
@@ -60,8 +70,29 @@ public class Pattern2 {
 
 	}
 
-	public Matcher2 matcher(CharSequence input) {
-		return Matcher2.build(pattern.get(), input);
+	public Matcher2 matcher(CharSequence input, int pos) {
+		return Matcher2.build(pattern.get(), input, pos);
+	}
+
+	// A Matcher kept for find(): reset() on it costs nothing, while pattern.matcher() allocates
+	// its group and state arrays every time. Command recognition asks find() of many patterns
+	// for every line, almost always for a "no", so this was the first allocation site of the
+	// parsing. One spare instance, borrowed with getAndSet(null): a concurrent caller finding
+	// the slot empty just builds its own, and no Matcher is ever used by two threads at once.
+	private final AtomicReference<Matcher> spare = new AtomicReference<>();
+
+	public boolean find(CharSequence input) {
+		Matcher m = spare.getAndSet(null);
+		if (m == null)
+			m = pattern.get().matcher(input);
+		else
+			m.reset(input);
+
+		final boolean result = m.find();
+		// Do not keep a reference to the line once done.
+		m.reset("");
+		spare.set(m);
+		return result;
 	}
 
 	public String pattern() {
@@ -77,35 +108,19 @@ public class Pattern2 {
 		// this helps detect potential excessive or unintended pattern compilations.
 		// Note: using 'assert' does not impact performance in production, as assertions
 		// are typically disabled by default.
-		// assert COUNT.computeIfAbsent(p, k -> new AtomicInteger()).incrementAndGet() < 5;
+		// assert COUNT.computeIfAbsent(p, k -> new AtomicInteger()).incrementAndGet() <
+		// 5;
 
 		return new Pattern2(p);
 
 	}
 
 	public static Pattern compileInternal(String patternString) {
-		return Pattern.compile(transform(patternString), Pattern.CASE_INSENSITIVE);
-	}
+		final String regex = transform(patternString);
 
-	private static String transformOld(String p) {
-		// Replace ReadLineReader.java
-		p = p.replace("%pLN", "\\p{L}\\p{N}"); // Unicode Letter, digit
-		p = p.replace("%s", "\\s\u00A0"); // space
-		p = p.replace("%q", "'\u2018\u2019"); // quote
-		p = p.replace("%g", "\"\u201c\u201d" + Jaws.BLOCK_E1_INVISIBLE_QUOTE); // double quote
-		return p;
+		final Pattern result = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+		return result;
 	}
-
-	private static final Map<String, String> QUOTED_REPLACEMENTS = new HashMap<>();
-	static {
-		QUOTED_REPLACEMENTS.put("%pLN", Matcher.quoteReplacement("\\p{L}\\p{N}")); // Unicode Letter or digit
-		QUOTED_REPLACEMENTS.put("%s", Matcher.quoteReplacement("\\s\u00A0")); // normal or non-breaking space
-		QUOTED_REPLACEMENTS.put("%q", Matcher.quoteReplacement("'\u2018\u2019")); // single quotes
-		QUOTED_REPLACEMENTS.put("%g", Matcher.quoteReplacement("\"\u201c\u201d" + Jaws.BLOCK_E1_INVISIBLE_QUOTE));
-	}
-
-	// private static final Pattern TRANSFORM_PATTERN = Pattern.compile("%pLN|%s|%q|%g");
-	private static final Pattern TRANSFORM_PATTERN = Pattern.compile("%(pLN|s|q|g)");
 
 	public static String transform(String input) {
 		final Matcher m = TRANSFORM_PATTERN.matcher(input);

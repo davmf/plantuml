@@ -42,9 +42,10 @@ import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandFootboxIgnored;
 import net.sourceforge.plantuml.command.CommonCommands;
 import net.sourceforge.plantuml.command.PSystemCommandFactory;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.timingdiagram.command.CommandAnalog;
 import net.sourceforge.plantuml.timingdiagram.command.CommandAtPlayer;
 import net.sourceforge.plantuml.timingdiagram.command.CommandAtTime;
@@ -69,8 +70,13 @@ import net.sourceforge.plantuml.timingdiagram.command.CommandUseDateFormat;
 
 public class TimingDiagramFactory extends PSystemCommandFactory {
 
+	public TimingDiagramFactory() {
+		super(DiagramType.TIMING);
+	}
+
 	@Override
-	public TimingDiagram createEmptyDiagram(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
+	public TimingDiagram createEmptyDiagram(PathSystem pathSystem, UmlSource source, Previous previous,
+			PreprocessingArtifact preprocessing) {
 		return new TimingDiagram(source, preprocessing);
 	}
 
@@ -100,11 +106,5 @@ public class TimingDiagramFactory extends PSystemCommandFactory {
 		cmds.add(new CommandPixelHeight());
 		cmds.add(new CommandUseDateFormat());
 	}
-	
-	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return UmlDiagramType.TIMING;
-	}
-
 
 }

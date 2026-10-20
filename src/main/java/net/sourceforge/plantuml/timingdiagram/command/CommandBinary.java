@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -50,6 +54,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandBinary extends SingleLineCommand2<TimingDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("binary", "compact");
+
 	public CommandBinary() {
 		super(getRegexConcat());
 	}
@@ -62,20 +68,49 @@ public class CommandBinary extends SingleLineCommand2<TimingDiagram> {
 								RegexLeaf.spaceOneOrMore())), //
 				new RegexLeaf("binary"), //
 				RegexLeaf.spaceOneOrMore(), //
-				new RegexLeaf(1, "FULL", "[%g]([^%g]+)[%g]"), //
-				StereotypePattern.optional("STEREOTYPE"), //
-				new RegexLeaf("as"), //
-				RegexLeaf.spaceOneOrMore(), //
+				new RegexOptional( //
+						new RegexConcat( //
+							new RegexLeaf(1, "FULL", "[%g]([^%g]+)[%g]"), //
+							StereotypePattern.optional("STEREOTYPE"), //
+							new RegexLeaf("as"), //
+							RegexLeaf.spaceOneOrMore())), //
 				new RegexLeaf(1, "CODE", "([%pLN_.@]+)"), //
 				StereotypePattern.optional("STEREOTYPE2"), //
 				RegexLeaf.end());
 	}
 
 	@Override
-	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
 		final String compact = arg.get("COMPACT", 0);
 		final String code = arg.get("CODE", 0);
 		final String full = arg.get("FULL", 0);
+		// The two stereotype slots are mutually exclusive in practice; STEREOTYPE takes priority over STEREOTYPE2
+		String stereotype = arg.get("STEREOTYPE", 0);
+		if (stereotype == null)
+			stereotype = arg.get("STEREOTYPE2", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		if (compact != null)
+			sb.append("Creating a compact binary timing player '");
+		else
+			sb.append("Creating a binary timing player '");
+		sb.append(code).append("'");
+		if (full != null)
+			sb.append(" displayed as \"").append(full).append("\"");
+		if (stereotype != null)
+			sb.append(" stereotyped ").append(stereotype);
+		return sb.toString();
+	}
+
+	@Override
+	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
+		final String compact = arg.get("COMPACT", 0);
+		final String code = arg.get("CODE", 0);
+		String full = arg.get("FULL", 0);
+		if (full == null)
+			full = "";
 
 		Stereotype stereotype = null;
 		if (arg.get("STEREOTYPE", 0) != null)
@@ -83,7 +118,13 @@ public class CommandBinary extends SingleLineCommand2<TimingDiagram> {
 		else if (arg.get("STEREOTYPE2", 0) != null)
 			stereotype = Stereotype.build(arg.get("STEREOTYPE2", 0));
 
-		return diagram.createBinary(code, full, compact != null, stereotype);
+		diagram.createPlayerBinary(code, full, compact != null, stereotype);
+		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

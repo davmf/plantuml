@@ -39,7 +39,7 @@
  * 
  * <p>
  * Class diagrams (and other free-form graphs) are represented as a tree of
- * enities. The tree structure is represented using {@link Quark} objects, each
+ * entities. The tree structure is represented using {@link Quark} objects, each
  * of which corresponds to an {@link net.sourceforge.plantuml.abel.Entity}. The
  * quark for an entity can be retrieved using a method on the entity, and
  * vice-versa.

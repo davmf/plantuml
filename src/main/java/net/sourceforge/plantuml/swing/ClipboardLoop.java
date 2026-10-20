@@ -46,38 +46,46 @@ import java.io.IOException;
 
 import net.sourceforge.plantuml.SourceStringReader;
 import net.sourceforge.plantuml.core.DiagramDescription;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
 import net.sourceforge.plantuml.security.SImageIO;
 import net.sourceforge.plantuml.utils.Log;
 
 public class ClipboardLoop {
-	// ::remove file when __CORE__
 
-	public static void runLoop() throws IOException, InterruptedException {
+	public static void runLoop() {
 		final ClipboardLoop clipboardLoop = new ClipboardLoop();
-		while (true) {
-			final String text = clipboardLoop.getClipboardText();
-			if (clipboardLoop.isTextOk(text)) {
-				clipboardLoop.runText(text);
+		try {
+			while (true) {
+				final String text = clipboardLoop.getClipboardText();
+				if (clipboardLoop.isTextOk(text))
+					clipboardLoop.runText(text);
+
+				Thread.sleep(10000L);
 			}
-			Thread.sleep(10000L);
+		} catch (InterruptedException | IOException e) {
+			e.printStackTrace();
 		}
 	}
 
-	public static void runOnce() throws IOException, InterruptedException {
+	public static void runOnce() {
 		final ClipboardLoop clipboardLoop = new ClipboardLoop();
 		final String text = clipboardLoop.getClipboardText();
-		if (clipboardLoop.isTextOk(text)) {
-			clipboardLoop.runText(text);
-		} else {
-			clipboardLoop.setClipboardImage(new BufferedImage(10, 10, BufferedImage.TYPE_INT_ARGB));
+		try {
+			if (clipboardLoop.isTextOk(text))
+				clipboardLoop.runText(text);
+			else
+				clipboardLoop.setClipboardImage(PortableImageFactory.build(10, 10, BufferedImage.TYPE_INT_ARGB));
+		} catch (InterruptedException | IOException e) {
+			e.printStackTrace();
 		}
 
 	}
 
 	private boolean isTextOk(String text) {
-		if (text == null) {
+		if (text == null)
 			return false;
-		}
+
 		return text.startsWith("@start");
 	}
 
@@ -91,7 +99,7 @@ public class ClipboardLoop {
 		} else {
 			Log.info(() -> "Image ok " + desc.getDescription());
 			baos.close();
-			final BufferedImage image = SImageIO.read(baos.toByteArray());
+			final PortableImage image = SImageIO.read(baos.toByteArray());
 			setClipboardImage(image);
 			Log.info(() -> "Image copied in clipboard");
 		}
@@ -112,9 +120,9 @@ public class ClipboardLoop {
 		return null;
 	}
 
-	private void setClipboardImage(BufferedImage image) {
+	private void setClipboardImage(PortableImage image) {
 		final Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-		clipboard.setContents(new ImageSelection(image), null);
+		clipboard.setContents(new ImageSelection(image.getBufferedImage()), null);
 	}
 
 }

@@ -38,11 +38,9 @@ package net.sourceforge.plantuml.klimt.drawing.g2d;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -53,6 +51,7 @@ import net.sourceforge.plantuml.klimt.UAntiAliasing;
 import net.sourceforge.plantuml.klimt.UChange;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UPath;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.AbstractCommonUGraphic;
@@ -65,6 +64,7 @@ import net.sourceforge.plantuml.klimt.shape.UCenteredCharacter;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.klimt.shape.UImageSvg;
+import net.sourceforge.plantuml.klimt.shape.UImageTikz;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.UPixel;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
@@ -73,10 +73,11 @@ import net.sourceforge.plantuml.klimt.shape.UText;
 import net.sourceforge.plantuml.png.PngIO;
 import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureVisible {
 
-	private BufferedImage bufferedImage;
+	private PortableImage portableImage;
 
 	private final double dpiFactor;
 	private final FileFormat format;
@@ -87,7 +88,7 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 	private Set<Url> allUrls = new HashSet<>();
 
 	public final Set<Url> getAllUrlsEncountered() {
-		return Collections.unmodifiableSet(allUrls);
+		return MyCollections.unmodifiableSet(allUrls);
 	}
 
 	@Override
@@ -109,12 +110,11 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 		super(other.getStringBounder());
 		copy(other);
 		this.dpiFactor = other.dpiFactor;
-		this.bufferedImage = other.bufferedImage;
+		this.portableImage = other.portableImage;
 		this.urls = other.urls;
 		this.allUrls = other.allUrls;
 		this.antiAliasing = other.antiAliasing;
 		this.format = other.format;
-		register(dpiFactor);
 	}
 
 	public UGraphicG2d(HColor defaultBackground, ColorMapper colorMapper, StringBounder stringBounder, Graphics2D g2d,
@@ -131,11 +131,9 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 
 	private void register(double dpiFactor) {
 		registerDriver(URectangle.class, new DriverRectangleG2d(dpiFactor, this));
-		// ::comment when __CORE__
 		if (dpiFactor != 1.0)
 			registerDriver(UText.class, new DriverTextAsPathG2d(this, getStringBounder()));
 		else
-			// ::done
 			registerDriver(UText.class, new DriverTextG2d(this, getStringBounder()));
 
 		registerDriver(ULine.class, new DriverLineG2d(dpiFactor));
@@ -143,6 +141,7 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 		registerDriver(UPolygon.class, new DriverPolygonG2d(dpiFactor, this));
 		registerDriver(UEllipse.class, new DriverEllipseG2d(dpiFactor, this));
 		ignoreShape(UImageSvg.class);
+		ignoreShape(UImageTikz.class);
 		registerDriver(UImage.class, new DriverImageG2d(dpiFactor, this));
 		registerDriver(DotPath.class, new DriverDotPathG2d(this));
 		registerDriver(UPath.class, new DriverPathG2d(dpiFactor));
@@ -187,19 +186,22 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 		urls.remove(urls.size() - 1);
 	}
 
-	public void ensureVisible(double x, double y) {
+	public void ensureVisible(double x, double y, UClip clip) {
+		// urls is shared by reference with every copy of this UGraphic (see the copy
+		// constructor), so it is the same list whichever instance a driver happens to hold; the
+		// clip is not, which is why it arrives as an argument.
 		for (Url u : urls)
-			if (u != null && (getClip() == null || getClip().isInside(x, y)))
+			if (u != null && (clip == null || clip.isInside(x, y)))
 				u.ensureVisible(x, y);
 
 	}
 
-	public BufferedImage getBufferedImage() {
-		return bufferedImage;
+	public PortableImage getPortableImage() {
+		return portableImage;
 	}
 
-	public void setBufferedImage(BufferedImage bufferedImage) {
-		this.bufferedImage = bufferedImage;
+	public void setPortableImage(PortableImage bufferedImage) {
+		this.portableImage = bufferedImage;
 	}
 
 	public Graphics2D getGraphics2D() {
@@ -210,7 +212,7 @@ public class UGraphicG2d extends AbstractUGraphic<Graphics2D> implements EnsureV
 	public void writeToStream(OutputStream os, String metadata, int dpi) throws IOException {
 		if (format == FileFormat.PNG_EMPTY)
 			return;
-		final BufferedImage im = getBufferedImage();
+		final PortableImage im = getPortableImage();
 		PngIO.write(im, getColorMapper(), os, metadata, dpi);
 	}
 

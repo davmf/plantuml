@@ -46,11 +46,10 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
-import net.sourceforge.plantuml.sequencediagram.Participant;
 import net.sourceforge.plantuml.skin.AbstractTextualComponent;
 import net.sourceforge.plantuml.skin.Area;
+import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 
 public class ComponentRoseParticipant extends AbstractTextualComponent {
@@ -63,11 +62,13 @@ public class ComponentRoseParticipant extends AbstractTextualComponent {
 	private final UStroke stroke;
 	private final double minWidth;
 	private final boolean collections;
-	private final double padding;
+	private final ClockwiseTopRightBottomLeft padding;
+	private final ClockwiseTopRightBottomLeft margin;
 
-	public ComponentRoseParticipant(Style style, Style stereo, Display stringsToDisplay,
-			ISkinParam skinParam, double minWidth, boolean collections, double padding) {
-		super(style, stereo, LineBreakStrategy.NONE, 7, 7, 7, skinParam, stringsToDisplay, false);
+	public ComponentRoseParticipant(Style style, Style stereo, Display stringsToDisplay, ISkinParam skinParam,
+			double minWidth, boolean collections, ClockwiseTopRightBottomLeft padding,
+			ClockwiseTopRightBottomLeft margin) {
+		super(style, stereo, LineBreakStrategy.NONE, style.getPadding(), skinParam, stringsToDisplay, false);
 
 		this.roundCorner = getRoundCorner();
 		this.diagonalCorner = getDiagonalCorner();
@@ -75,6 +76,7 @@ public class ComponentRoseParticipant extends AbstractTextualComponent {
 		this.stroke = getStroke();
 
 		this.padding = padding;
+		this.margin = margin;
 		this.minWidth = minWidth;
 		this.collections = collections;
 		this.back = biColor.getBackColor();
@@ -85,14 +87,22 @@ public class ComponentRoseParticipant extends AbstractTextualComponent {
 	@Override
 	protected void drawInternalU(UGraphic ug, Area area) {
 		final StringBounder stringBounder = ug.getStringBounder();
-		ug = ug.apply(UTranslate.dx(padding));
+
+		// Margin: empty space outside the box
+		ug = ug.apply(new UTranslate(margin.getLeft(), margin.getTop()));
+
 		if (foregroundColor != null)
 			ug = ug.apply(foregroundColor);
 		if (back != null)
 			ug = ug.apply(back.bg());
 		ug = ug.apply(stroke);
-		final Shadowable rect = URectangle.build(getTextWidth(stringBounder), getTextHeight(stringBounder))
-				.rounded(roundCorner).diagonalCorner(diagonalCorner);
+
+		// Padding: space inside the box, between border and text
+		final double boxWidth = getTextWidth(stringBounder);
+		final double boxHeight = getTextHeight(stringBounder);
+
+		final Shadowable rect = URectangle.build(boxWidth, boxHeight).rounded(roundCorner)
+				.diagonalCorner(diagonalCorner);
 		rect.setDeltaShadow(deltaShadow);
 		if (collections) {
 			ug.apply(UTranslate.dx(getDeltaCollection())).draw(rect);
@@ -100,8 +110,15 @@ public class ComponentRoseParticipant extends AbstractTextualComponent {
 		}
 		ug.draw(rect);
 		ug = ug.apply(UStroke.simple());
+
+		// Text: offset by padding, and placed according to HorizontalAlignment
+		// inside the extra room created by MinimumWidth (if any). The text block
+		// itself is only as wide as its own content, so it cannot align itself.
 		final TextBlock textBlock = getTextBlock();
-		textBlock.drawU(ug.apply(new UTranslate(getMarginX1() + suppWidth(stringBounder) / 2, getMarginY())));
+		final double textWidth = textBlock.calculateDimension(stringBounder).getWidth();
+		final double extra = getPureTextWidth(stringBounder) - textWidth;
+		final double dx = extra > 0 ? getHorizontalAlignment().getPosition(textWidth, textWidth + extra) : 0;
+		textBlock.drawU(ug.apply(padding.getTranslate()).apply(UTranslate.dx(dx)));
 	}
 
 	private double getDeltaCollection() {
@@ -113,21 +130,18 @@ public class ComponentRoseParticipant extends AbstractTextualComponent {
 
 	@Override
 	public double getPreferredHeight(StringBounder stringBounder) {
-		return getTextHeight(stringBounder) + deltaShadow + 1 + getDeltaCollection();
+		return getTextHeight(stringBounder) + margin.getTop() + margin.getBottom() + deltaShadow + 1
+				+ getDeltaCollection();
 	}
 
 	@Override
 	public double getPreferredWidth(StringBounder stringBounder) {
-		return getTextWidth(stringBounder) + deltaShadow + getDeltaCollection() + 2 * padding;
+		return getTextWidth(stringBounder) + margin.getLeft() + margin.getRight() + deltaShadow + getDeltaCollection();
 	}
 
 	@Override
 	protected double getPureTextWidth(StringBounder stringBounder) {
 		return Math.max(super.getPureTextWidth(stringBounder), minWidth);
-	}
-
-	private final double suppWidth(StringBounder stringBounder) {
-		return getPureTextWidth(stringBounder) - super.getPureTextWidth(stringBounder);
 	}
 
 }

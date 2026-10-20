@@ -41,11 +41,11 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.ISkinParam;
 
-public class GridArray implements UDrawable {
+public class GridArray extends TextBlockMemoized {
 
 	private final int lines;
 	private final int cols;
@@ -107,6 +107,19 @@ public class GridArray implements UDrawable {
 	}
 
 	private final double margin = 30;
+
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
+		double heightMax = 0;
+		for (int l = 0; l < lines; l++)
+			heightMax += getHeightOfLine(stringBounder, l) + margin;
+
+		double widthMax = 0;
+		for (int c = 0; c < cols; c++)
+			widthMax += getWidthOfCol(stringBounder, c) + margin;
+
+		return new XDimension2D(widthMax, heightMax);
+	}
 
 	public void drawU(UGraphic ug) {
 		// printMe();

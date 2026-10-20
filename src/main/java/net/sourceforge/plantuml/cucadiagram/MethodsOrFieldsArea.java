@@ -42,10 +42,9 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
-import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.EmbeddedDiagram;
-import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
@@ -54,6 +53,8 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.PlacementStrategy;
 import net.sourceforge.plantuml.klimt.geom.PlacementStrategyVisibility;
 import net.sourceforge.plantuml.klimt.geom.PlacementStrategyY1Y2Center;
@@ -62,9 +63,9 @@ import net.sourceforge.plantuml.klimt.geom.PlacementStrategyY1Y2Right;
 import net.sourceforge.plantuml.klimt.geom.ULayoutGroup;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockLineBefore;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.TextBlockWithUrl;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
@@ -76,7 +77,7 @@ import net.sourceforge.plantuml.svek.WithPorts;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.CharHidder;
 
-public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock, WithPorts {
+public class MethodsOrFieldsArea extends TextBlockMemoized implements WithPorts {
 
 	public TextBlock asBlockMemberImpl() {
 		return new TextBlockLineBefore(style.value(PName.LineThickness).asDouble(),
@@ -109,7 +110,7 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 
 		while (it.hasNext()) {
 			final CharSequence cs = it.next();
-			final String type = EmbeddedDiagram.getEmbeddedType(StringUtils.trinNoTrace(cs));
+			final String type = EmbeddedDiagram.getEmbeddedType(cs);
 			if (type != null)
 				embeddeds.add(EmbeddedDiagram.createAndSkip(type, it, skinParam));
 			else
@@ -136,7 +137,7 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dim1 = calculateDimensionOnlyMembers(stringBounder);
 		double x = dim1.getWidth();
 		double y = dim1.getHeight();
@@ -157,10 +158,18 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 		double x = 0;
 		double y = 0;
 		for (CharSequence cs : members) {
-			final TextBlock bloc = createTextBlock(cs);
-			final XDimension2D dim = bloc.calculateDimension(stringBounder);
+			final TextBlock block = createTextBlock(cs);
+			final XDimension2D dim = block.calculateDimension(stringBounder);
 			x = Math.max(dim.getWidth(), x);
 			y += dim.getHeight();
+			if (stringBounder.matchesProperty("TIKZ") && dim.getHeight() == 10) {
+				// the modifier would add a hard-coded 1 to height
+				// ref1: AtomText::calculateDimension
+				// ref2: VisibilityModifier::getUBlock
+				// https://github.com/plantuml/plantuml/pull/2424
+				// https://github.com/plantuml/plantuml/issues/2055
+				y += 1;
+			}
 		}
 		x += smallIcon;
 
@@ -189,8 +198,8 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 		final Collection<String> shortNames = sortBySize(leaf.getPortShortNames());
 
 		for (CharSequence cs : members) {
-			final TextBlock bloc = createTextBlock(cs);
-			final XDimension2D dim = bloc.calculateDimension(stringBounder);
+			final TextBlock block = createTextBlock(cs);
+			final XDimension2D dim = block.calculateDimension(stringBounder);
 			final Elected elected = getElected(convert(cs), shortNames);
 			if (elected != null)
 				ports.add(elected.getShortName(), elected.getScore(), y, dim.getHeight());
@@ -242,27 +251,65 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 			if (m.isStatic())
 				config = config.underline();
 
-			TextBlock bloc = Display.getWithNewlines(skinParam.getPragma(), s).create8(config, align, skinParam, CreoleMode.SIMPLE_LINE,
-					style.wrapWidth());
-			bloc = TextBlockUtils.fullInnerPosition(bloc, m.getDisplay(false));
-			return new TextBlockTracer(m, bloc);
+			TextBlock block = Display.getWithNewlines(skinParam.getPragma(), s).create8(config, align, skinParam,
+					CreoleMode.SIMPLE_LINE, style.wrapWidth());
+			block = fullInnerPosition(block, m);
+			return new TextBlockTracer(m, block);
 		}
 
 //		if (cs instanceof EmbeddedDiagram)
 //			return ((EmbeddedDiagram) cs).asDraw(skinParam);
 
-		return Display.getWithNewlines(skinParam.getPragma(), cs.toString()).create8(config, align, skinParam, CreoleMode.SIMPLE_LINE,
-				style.wrapWidth());
+		return Display.getWithNewlines(skinParam.getPragma(), cs.toString()).create8(config, align, skinParam,
+				CreoleMode.SIMPLE_LINE, style.wrapWidth());
 
 	}
 
-	static class TextBlockTracer extends AbstractTextBlock implements TextBlock {
+	private static TextBlock fullInnerPosition(final TextBlock block, final Member display) {
+		return new TextBlock() {
 
-		private final TextBlock bloc;
+			public void drawU(UGraphic ug) {
+				block.drawU(ug);
+			}
+
+			@Fast
+			@Override
+			public XDimension2D calculateDimension(StringBounder stringBounder) {
+				return block.calculateDimension(stringBounder);
+			}
+
+			public MinMax getMinMax(StringBounder stringBounder) {
+				return block.getMinMax(stringBounder);
+			}
+
+			@Override
+			public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+				// InnerStrategy
+				if (display.toString().equals(member.toString())) {
+					final XDimension2D dim = calculateDimension(stringBounder);
+					return new XRectangle2D(0, 0, dim.getWidth(), dim.getHeight());
+				}
+				return null;
+			}
+
+			public MagneticBorder getMagneticBorder() {
+				return block.getMagneticBorder();
+			}
+
+			public HColor getBackcolor() {
+				return block.getBackcolor();
+			}
+
+		};
+	}
+
+	static class TextBlockTracer implements TextBlock {
+
+		private final TextBlock block;
 		private final Url url;
 
-		public TextBlockTracer(Member m, TextBlock bloc) {
-			this.bloc = bloc;
+		public TextBlockTracer(Member m, TextBlock block) {
+			this.block = block;
 			this.url = m.getUrl();
 		}
 
@@ -270,43 +317,46 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 			if (url != null)
 				ug.startUrl(url);
 
-			bloc.drawU(ug);
+			block.drawU(ug);
 			if (url != null)
 				ug.closeUrl();
 
 		}
 
+		@Fast
+		@Override
 		public XDimension2D calculateDimension(StringBounder stringBounder) {
-			final XDimension2D dim = bloc.calculateDimension(stringBounder);
+			final XDimension2D dim = block.calculateDimension(stringBounder);
 			return dim;
 		}
 
 		@Override
-		public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-			return bloc.getInnerPosition(member, stringBounder, strategy);
+		public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+			return block.getInnerPosition(member, stringBounder);
 		}
 
 	}
 
 	private TextBlock getUBlock(final VisibilityModifier modifier, Url url) {
 		if (modifier == null) {
-			return new AbstractTextBlock() {
+			return new TextBlock() {
 
 				public void drawU(UGraphic ug) {
 				}
 
 				@Override
-				public XRectangle2D getInnerPosition(String member, StringBounder stringBounder,
-						InnerStrategy strategy) {
+				public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 					return null;
 				}
 
+				@Fast
+				@Override
 				public XDimension2D calculateDimension(StringBounder stringBounder) {
 					return new XDimension2D(1, 1);
 				}
 			};
 		}
-		final Style style = modifier.getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(modifier.getStyleSignature());
 		final HColor borderColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 		final boolean isField = modifier.isField();
 		final HColor backColor = isField ? null
@@ -328,10 +378,17 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 	}
 
 	@Override
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 		final ULayoutGroup group = getLayout(stringBounder);
 		final XDimension2D dim = calculateDimension(stringBounder);
-		return group.getInnerPosition(member, dim.getWidth(), dim.getHeight(), stringBounder);
+		final XRectangle2D result = group.getInnerPosition(member, dim.getWidth(), dim.getHeight(), stringBounder);
+		if (result != null && hasSmallIcon()) {
+			// Extend the inner position to include the visibility modifier on its left
+			final double smallIcon = skinParam.getCircledCharacterRadius() + 3;
+			return new XRectangle2D(result.getMinX() - smallIcon, result.getMinY(), result.getWidth() + smallIcon,
+					result.getHeight());
+		}
+		return result;
 	}
 
 	private ULayoutGroup getLayout(final StringBounder stringBounder) {
@@ -340,7 +397,7 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 			group = new ULayoutGroup(
 					new PlacementStrategyVisibility(stringBounder, skinParam.getCircledCharacterRadius() + 3));
 			for (CharSequence cs : members) {
-				final TextBlock bloc = createTextBlock(cs);
+				final TextBlock block = createTextBlock(cs);
 //				if (cs instanceof EmbeddedDiagram) {
 //					group.add(getUBlock(null, null));
 //				} else {
@@ -348,7 +405,7 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 				final VisibilityModifier modifier = att.getVisibilityModifier();
 				group.add(getUBlock(modifier, att.getUrl()));
 //				}
-				group.add(bloc);
+				group.add(block);
 			}
 		} else {
 			final PlacementStrategy placementStrategy;
@@ -361,8 +418,8 @@ public class MethodsOrFieldsArea extends AbstractTextBlock implements TextBlock,
 
 			group = new ULayoutGroup(placementStrategy);
 			for (CharSequence cs : members) {
-				final TextBlock bloc = createTextBlock(cs);
-				group.add(bloc);
+				final TextBlock block = createTextBlock(cs);
+				group.add(block);
 			}
 		}
 		return group;

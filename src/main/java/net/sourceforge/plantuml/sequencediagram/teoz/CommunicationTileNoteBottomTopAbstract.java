@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
+
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -43,6 +44,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.real.Real;
+import net.sourceforge.plantuml.real.RealUtils;
 import net.sourceforge.plantuml.sequencediagram.AbstractMessage;
 import net.sourceforge.plantuml.sequencediagram.Event;
 import net.sourceforge.plantuml.sequencediagram.Note;
@@ -51,9 +53,8 @@ import net.sourceforge.plantuml.skin.ComponentType;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 
 public abstract class CommunicationTileNoteBottomTopAbstract extends AbstractTile {
 
@@ -81,7 +82,16 @@ public abstract class CommunicationTileNoteBottomTopAbstract extends AbstractTil
 		this.skin = skin;
 		this.skinParam = skinParam;
 		this.noteOnMessage = noteOnMessage;
-		this.yGauge = YGauge.create(currentY.getMax(), getPreferredHeight());
+		// See CommunicationTileNoteRight for why contact/origin are propagated
+		// and max is built with addAtLeast rather than YGauge.create(). Note
+		// that for Top/Bottom, getPreferredHeight() ADDS the note's height to
+		// the tile's own (the note stacks above/below, not beside), so this
+		// wrapper's max legitimately extends further past the inner tile's own
+		// max than for Left/Right -- min (and thus the arrow's own contact
+		// anchoring) is still untouched.
+		final YGauge innerGauge = tile.getYGauge();
+		this.yGauge = new YGauge(innerGauge.getMin(), innerGauge.getMin().addAtLeast(getPreferredHeight()),
+				innerGauge.getContact(), innerGauge.getOrigin());
 	}
 
 	@Override
@@ -90,9 +100,8 @@ public abstract class CommunicationTileNoteBottomTopAbstract extends AbstractTil
 	}
 
 	@Override
-	final protected void callbackY_internal(TimeHook y) {
-		super.callbackY_internal(y);
-		tile.callbackY(y);
+	final public void onGaugeResolved() {
+		tile.onGaugeResolved();
 	}
 
 	final protected Component getComponent(StringBounder stringBounder) {
@@ -111,8 +120,7 @@ public abstract class CommunicationTileNoteBottomTopAbstract extends AbstractTil
 
 	protected final void drawLine(UGraphic ug, double x1, double y1, double x2, double y2) {
 
-		final Style style = StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.SEQUENCEDIAG);
 		final HColor color = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 
 		final double dx = x2 - x1;
@@ -137,7 +145,17 @@ public abstract class CommunicationTileNoteBottomTopAbstract extends AbstractTil
 	}
 
 	public Real getMaxX() {
-		return tile.getMaxX();
+		final Real maxMessage = tile.getMaxX();
+		final Component comp = getComponent(getStringBounder());
+		final XDimension2D dim = comp.getPreferredDimension(getStringBounder());
+		final Real maxNote = tile.getMinX().addFixed(dim.getWidth());
+
+		return RealUtils.max(maxMessage, maxNote);
+	}
+
+	protected final double getMiddleMsg() {
+		final double middleMsg = (tile.getMinX().getCurrentValue() + tile.getMaxX().getCurrentValue()) / 2;
+		return middleMsg;
 	}
 
 }

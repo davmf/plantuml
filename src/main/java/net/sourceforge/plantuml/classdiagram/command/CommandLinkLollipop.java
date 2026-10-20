@@ -35,19 +35,24 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArg;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.LinkDecor;
 import net.sourceforge.plantuml.decoration.LinkType;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.objectdiagram.AbstractClassOrObjectDiagram;
 import net.sourceforge.plantuml.plasma.Quark;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.regex.RegexConcat;
@@ -55,25 +60,29 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexOr;
 import net.sourceforge.plantuml.regex.RegexResult;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassOrObjectDiagram> {
 
-	public CommandLinkLollipop(UmlDiagramType umlDiagramType) {
-		super(getRegexConcat(umlDiagramType));
+	public CommandLinkLollipop(DiagramType diagramType) {
+		super(getRegexConcat(diagramType));
 	}
 
-	static RegexConcat getRegexConcat(UmlDiagramType umlDiagramType) {
-		return RegexConcat.build(CommandLinkLollipop.class.getName() + umlDiagramType, RegexLeaf.start(), //
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
+	}
+
+	static RegexConcat getRegexConcat(DiagramType diagramType) {
+		return RegexConcat.build(CommandLinkLollipop.class.getName() + diagramType, RegexLeaf.start(), //
 				new RegexOptional( //
 						new RegexConcat( //
 								new RegexLeaf(1, "HEADER", "@([\\d.]+)"), //
 								RegexLeaf.spaceOneOrMore() //
 						)), //
 				new RegexLeaf(3, "ENT1",
-						"(?:" + optionalKeywords(umlDiagramType) + "[%s]+)?"
-								+ "(\\.?[%pLN_]+(?:\\.[%pLN_]+)*|[%g][^%g]+[%g])[%s]*(\\<\\<.*\\>\\>)?"), //
+						"(?:" + optionalKeywords(diagramType) + "[%s]+)?" + CommandLinkClass.getClassIdentifier()
+								+ "[%s]*(\\<\\<.*\\>\\>)?"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexOptional(new RegexLeaf(1, "FIRST_LABEL", "[%g]([^%g]+)[%g]")), //
 				RegexLeaf.spaceZeroOrMore(), //
@@ -83,8 +92,8 @@ final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassO
 				new RegexOptional(new RegexLeaf(1, "SECOND_LABEL", "[%g]([^%g]+)[%g]")), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf(3, "ENT2",
-						"(?:" + optionalKeywords(umlDiagramType) + "[%s]+)?"
-								+ "(\\.?[%pLN_]+(?:\\.[%pLN_]+)*|[%g][^%g]+[%g])[%s]*(\\<\\<.*\\>\\>)?"), //
+						"(?:" + optionalKeywords(diagramType) + "[%s]+)?" + CommandLinkClass.getClassIdentifier()
+								+ "[%s]*(\\<\\<.*\\>\\>)?"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexOptional( //
 						new RegexConcat( //
@@ -94,11 +103,11 @@ final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassO
 						)), RegexLeaf.end());
 	}
 
-	private static String optionalKeywords(UmlDiagramType type) {
-		if (type == UmlDiagramType.CLASS)
+	private static String optionalKeywords(DiagramType type) {
+		if (type == DiagramType.CLASS)
 			return "(interface|enum|annotation|abstract[%s]+class|abstract|class|entity|protocol|struct|exception|metaclass|stereotype|dataclass|record)";
 
-		if (type == UmlDiagramType.OBJECT)
+		if (type == DiagramType.OBJECT)
 			return "(object)";
 
 		throw new IllegalArgumentException();
@@ -109,6 +118,60 @@ final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassO
 			return LeafType.LOLLIPOP_HALF;
 
 		return LeafType.LOLLIPOP_FULL;
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'C --(' Name' or 'Name ()-- C' attaches an interface lollipop to a
+		// class. The lollipop is created as a new leaf, while the class must
+		// already exist (executeArg fails otherwise). A doubled symbol ('(('
+		// or '))') is a half circle, '()' is a full circle - see getType().
+		final String symbol;
+		final String lollipop;
+		final String existing;
+		if (arg.get("LOL_THEN_ENT", 1) == null) {
+			symbol = arg.get("ENT_THEN_LOL", 1);
+			existing = arg.get("ENT1", 1);
+			lollipop = arg.get("ENT2", 1);
+		} else {
+			symbol = arg.get("LOL_THEN_ENT", 0);
+			lollipop = arg.get("ENT1", 1);
+			existing = arg.get("ENT2", 1);
+		}
+
+		sb.append("Attaching the interface lollipop '")
+				.append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(lollipop)).append("' to '")
+				.append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(existing)).append("'");
+
+		if (symbol.charAt(0) == symbol.charAt(1))
+			sb.append(" (half circle: required interface)");
+		else
+			sb.append(" (full circle: provided interface)");
+
+		if (getQueue(arg).contains("."))
+			sb.append(", dashed");
+
+		final String firstLabel = arg.get("FIRST_LABEL", 0);
+		if (firstLabel != null)
+			sb.append(", label \"").append(firstLabel).append("\" on the first end");
+
+		final String secondLabel = arg.get("SECOND_LABEL", 0);
+		if (secondLabel != null)
+			sb.append(", label \"").append(secondLabel).append("\" on the second end");
+
+		final String labelLink = arg.get("LABEL_LINK", 0);
+		if (labelLink != null)
+			sb.append(", labelled \"").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(labelLink))
+					.append("\"");
+
+		final String weight = arg.get("HEADER", 0);
+		if (weight != null)
+			sb.append(", weight ").append(weight);
+
+		return sb.toString();
 	}
 
 	@Override
@@ -173,7 +236,7 @@ final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassO
 			labelLink = arg.get("LABEL_LINK", 0);
 			if (firstLabel == null && secondLabel == null) {
 				final Pattern2 p1 = Pattern2.cmpile("^\"([^\"]+)\"([^\"]+)\"([^\"]+)\"$");
-				final Matcher2 m1 = p1.matcher(labelLink);
+				final Matcher2 m1 = p1.matcher(labelLink, 0);
 				if (m1.matches()) {
 					firstLabel = m1.group(1);
 					labelLink = StringUtils.trin(
@@ -181,7 +244,7 @@ final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassO
 					secondLabel = m1.group(3);
 				} else {
 					final Pattern2 p2 = Pattern2.cmpile("^\"([^\"]+)\"([^\"]+)$");
-					final Matcher2 m2 = p2.matcher(labelLink);
+					final Matcher2 m2 = p2.matcher(labelLink, 0);
 					if (m2.matches()) {
 						firstLabel = m2.group(1);
 						labelLink = StringUtils.trin(StringUtils
@@ -189,7 +252,7 @@ final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassO
 						secondLabel = null;
 					} else {
 						final Pattern2 p3 = Pattern2.cmpile("^([^\"]+)\"([^\"]+)\"$");
-						final Matcher2 m3 = p3.matcher(labelLink);
+						final Matcher2 m3 = p3.matcher(labelLink, 0);
 						if (m3.matches()) {
 							firstLabel = null;
 							labelLink = StringUtils.trin(StringUtils
@@ -225,7 +288,7 @@ final public class CommandLinkLollipop extends SingleLineCommand2<AbstractClassO
 			// }
 			// if (type.contains(LinkDecor.ARROW) ||
 			// type.contains(LinkDecor.COMPOSITION)
-			// || type.contains(LinkDecor.AGREGATION)) {
+			// || type.contains(LinkDecor.AGGREGATION)) {
 			// link.setWeight(2);
 			// }
 			// }

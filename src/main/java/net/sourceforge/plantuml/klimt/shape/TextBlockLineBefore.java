@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -45,8 +45,7 @@ import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.WithPorts;
 
-public class TextBlockLineBefore extends AbstractTextBlock implements TextBlock, WithPorts {
-    // ::remove file when __HAXE__
+public class TextBlockLineBefore implements TextBlock, WithPorts {
 
 	private final TextBlock textBlock;
 	private final char separator;
@@ -68,6 +67,8 @@ public class TextBlockLineBefore extends AbstractTextBlock implements TextBlock,
 		this(defaultThickness, textBlock, '\0');
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final XDimension2D dim = textBlock.calculateDimension(stringBounder);
 		if (title != null) {
@@ -94,8 +95,8 @@ public class TextBlockLineBefore extends AbstractTextBlock implements TextBlock,
 	}
 
 	@Override
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		return textBlock.getInnerPosition(member, stringBounder, strategy);
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		return textBlock.getInnerPosition(member, stringBounder);
 	}
 
 	@Override

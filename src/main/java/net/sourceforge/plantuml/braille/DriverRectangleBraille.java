@@ -34,22 +34,14 @@
  */
 package net.sourceforge.plantuml.braille;
 
-import java.awt.geom.Rectangle2D;
-
-import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 
 public class DriverRectangleBraille implements UDriver<URectangle, BrailleGrid> {
-
-	private final ClipContainer clipContainer;
-
-	public DriverRectangleBraille(ClipContainer clipContainer) {
-		this.clipContainer = clipContainer;
-	}
 
 	public void draw(URectangle rect, double x, double y, ColorMapper mapper, UParam param, BrailleGrid grid) {
 		// final double rx = rect.getRx();
@@ -76,9 +68,9 @@ public class DriverRectangleBraille implements UDriver<URectangle, BrailleGrid> 
 		// svg.setStrokeWidth(param.getStroke().getThickness(),
 		// param.getStroke().getDasharraySvg());
 
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null) {
-			final Rectangle2D.Double r = clip.getClippedRectangle(new Rectangle2D.Double(x, y, width, height));
+			final XRectangle2D r = clip.getClippedRectangle(new XRectangle2D(x, y, width, height));
 			x = r.x;
 			y = r.y;
 			width = r.width;

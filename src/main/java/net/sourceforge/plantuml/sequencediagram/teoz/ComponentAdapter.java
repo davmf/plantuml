@@ -35,16 +35,16 @@
  */
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.skin.Area;
 import net.sourceforge.plantuml.skin.Component;
 import net.sourceforge.plantuml.skin.SimpleContext2D;
 
-public class ComponentAdapter extends AbstractTextBlock implements TextBlock {
+public class ComponentAdapter implements TextBlock {
 
 	private final Component component;
 
@@ -60,6 +60,7 @@ public class ComponentAdapter extends AbstractTextBlock implements TextBlock {
 
 	}
 
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		if (component == null) {
 			return new XDimension2D(0, 0);

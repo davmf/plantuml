@@ -57,7 +57,7 @@ import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.utils.Direction;
 
 public class Snake implements UShape {
@@ -136,19 +136,19 @@ public class Snake implements UShape {
 	}
 
 	public static Snake create(ISkinParam skinParam, Rainbow color) {
-		final Style style = StyleSignatureBasic.activityArrow().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.ACTIVITYDIAG_ACTIVITY_ARROW);
 		return new Snake(skinParam, null, color, null, new Worm(style, skinParam.arrows()), MergeStrategy.FULL, null,
 				new ArrayList<Text>());
 	}
 
 	public static Snake create(ISkinParam skinParam, Rainbow color, UPolygon endDecoration) {
-		final Style style = StyleSignatureBasic.activityArrow().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.ACTIVITYDIAG_ACTIVITY_ARROW);
 		return new Snake(skinParam, null, color, endDecoration, new Worm(style, skinParam.arrows()), MergeStrategy.FULL,
 				null, new ArrayList<Text>());
 	}
 
 	public static Snake create(ISkinParam skinParam, UPolygon startDecoration, Rainbow color, UPolygon endDecoration) {
-		final Style style = StyleSignatureBasic.activityArrow().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.ACTIVITYDIAG_ACTIVITY_ARROW);
 		return new Snake(skinParam, startDecoration, color, endDecoration, new Worm(style, skinParam.arrows()),
 				MergeStrategy.FULL, null, new ArrayList<Text>());
 	}
@@ -283,15 +283,20 @@ public class Snake implements UShape {
 
 	}
 
-	private XPoint2D getFirst() {
+	public XPoint2D getFirst() {
 		return worm.getPoint(0);
+	}
+
+	// Returns true if this snake cannot be the target of a touches() check
+	public boolean cannotBeTouched() {
+		return mergeable != MergeStrategy.FULL || worm.isPureHorizontal();
 	}
 
 	public XPoint2D getLast() {
 		return worm.getPoint(worm.size() - 1);
 	}
 
-	static boolean same(XPoint2D pt1, XPoint2D pt2) {
+	static public boolean same(XPoint2D pt1, XPoint2D pt2) {
 		return pt1.distance(pt2) < 0.001;
 	}
 

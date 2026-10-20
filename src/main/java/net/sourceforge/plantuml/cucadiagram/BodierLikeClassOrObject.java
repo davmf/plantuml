@@ -36,13 +36,12 @@
 package net.sourceforge.plantuml.cucadiagram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import net.sourceforge.plantuml.EmbeddedDiagram;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.creole.Parser;
@@ -55,16 +54,15 @@ import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.url.UrlBuilder;
 
-public class BodierLikeClassOrObject implements Bodier {
+public class BodierLikeClassOrObject extends BodierAbstract {
 
-	private final List<CharSequence> rawBody = new ArrayList<>();
 	private final Set<VisibilityModifier> hideVisibilityModifier;
 	private LeafType type;
 	private List<Member> methodsToDisplay;
 	private List<Member> fieldsToDisplay;
-	private Entity leaf;
 
 	@Override
 	public void muteClassToObject() {
@@ -78,14 +76,9 @@ public class BodierLikeClassOrObject implements Bodier {
 			throw new IllegalArgumentException();
 
 		this.type = Objects.requireNonNull(type);
-		assert type.isLikeClass() || type == LeafType.OBJECT;
+		if (TeaVM.a())
+			assert type.isLikeClass() || type == LeafType.OBJECT;
 		this.hideVisibilityModifier = hideVisibilityModifier;
-	}
-
-	@Override
-	public void setLeaf(Entity leaf) {
-		this.leaf = Objects.requireNonNull(leaf);
-
 	}
 
 	@Override
@@ -100,14 +93,19 @@ public class BodierLikeClassOrObject implements Bodier {
 	private boolean isBodyEnhanced() {
 		for (CharSequence s : rawBody)
 			if (BodyEnhanced1.isBlockSeparator(s) || CreoleParser.isTableLine(s.toString())
-					|| Parser.isTreeStart(s.toString()))
+					|| Parser.isTreeStart(s.toString()) || EmbeddedDiagram.getEmbeddedType(s) != null)
 				return true;
 
 		return false;
 	}
 
+	// Compiled once: String.replaceAll would recompile this regex for every
+	// member line of every class or object.
+	private static final java.util.regex.Pattern URL_PATTERN = java.util.regex.Pattern
+			.compile(UrlBuilder.getRegexp());
+
 	private boolean isMethod(CharSequence s) {
-		final String purged = s.toString().replaceAll(UrlBuilder.getRegexp(), "");
+		final String purged = URL_PATTERN.matcher(s.toString()).replaceAll("");
 		if (purged.contains("{method}"))
 			return true;
 
@@ -130,7 +128,8 @@ public class BodierLikeClassOrObject implements Bodier {
 					continue;
 
 				final Member m = Member.method(s);
-				if (hideVisibilityModifier == null || hideVisibilityModifier.contains(m.getVisibilityModifier()) == false)
+				if (hideVisibilityModifier == null
+						|| hideVisibilityModifier.contains(m.getVisibilityModifier()) == false)
 					methodsToDisplay.add(m);
 
 			}
@@ -159,7 +158,8 @@ public class BodierLikeClassOrObject implements Bodier {
 					continue;
 
 				final Member m = Member.field(s);
-				if (hideVisibilityModifier == null || hideVisibilityModifier.contains(m.getVisibilityModifier()) == false)
+				if (hideVisibilityModifier == null
+						|| hideVisibilityModifier.contains(m.getVisibilityModifier()) == false)
 					fieldsToDisplay.add(m);
 
 			}
@@ -215,7 +215,7 @@ public class BodierLikeClassOrObject implements Bodier {
 			Style style, FontConfiguration fontConfiguration) {
 
 		if (BodyFactory.BODY3)
-			return new Body3(rawBody, skinParam, stereotype, style);
+			return new Body3(rawBody, skinParam, style);
 
 		if (type.isLikeClass() && isBodyEnhanced()) {
 			if (showMethods || showFields)
@@ -236,7 +236,8 @@ public class BodierLikeClassOrObject implements Bodier {
 			return BodyFactory.create1(skinParam.getDefaultTextAlignment(HorizontalAlignment.LEFT),
 					rawBodyWithoutHidden(), skinParam, stereotype, leaf, style);
 		}
-		assert type.isLikeClass();
+		if (TeaVM.a())
+			assert type.isLikeClass();
 
 		final MethodsOrFieldsArea fields = new MethodsOrFieldsArea(getFieldsToDisplay(), skinParam, leaf, style);
 
@@ -251,11 +252,6 @@ public class BodierLikeClassOrObject implements Bodier {
 		final TextBlock bb1 = fields.asBlockMemberImpl();
 		final TextBlock bb2 = methods.asBlockMemberImpl();
 		return TextBlockUtils.mergeTB(bb1, bb2, HorizontalAlignment.LEFT);
-	}
-
-	@Override
-	public List<CharSequence> getRawBody() {
-		return Collections.unmodifiableList(rawBody);
 	}
 
 }

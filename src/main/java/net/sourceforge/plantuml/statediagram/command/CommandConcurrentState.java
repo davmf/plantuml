@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.statediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -46,6 +50,8 @@ import net.sourceforge.plantuml.statediagram.StateDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandConcurrentState extends SingleLineCommand2<StateDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("-", "|");
 
 	public CommandConcurrentState() {
 		super(getRegexConcat());
@@ -63,11 +69,28 @@ public class CommandConcurrentState extends SingleLineCommand2<StateDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// '--' (or '||') inside a composite state starts a new concurrent
+		// region; the first character selects the separator orientation, like
+		// in executeArg.
+		if (arg.get("TYPE", 0).charAt(0) == '-')
+			return "Starting a new concurrent region, separated by a horizontal line";
+
+		return "Starting a new concurrent region, separated by a vertical line";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(StateDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		if (diagram.concurrentState(location, arg.get("TYPE", 0).charAt(0), currentPass))
 			return CommandExecutionResult.ok();
 
 		return CommandExecutionResult.error("Error 42");
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

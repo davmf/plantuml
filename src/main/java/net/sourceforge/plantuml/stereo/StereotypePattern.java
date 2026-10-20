@@ -35,6 +35,12 @@
  */
 package net.sourceforge.plantuml.stereo;
 
+import com.plantuml.ubrex.builder.UBrexConcat;
+import com.plantuml.ubrex.builder.UBrexLeaf;
+import com.plantuml.ubrex.builder.UBrexNamed;
+import com.plantuml.ubrex.builder.UBrexOptional;
+import com.plantuml.ubrex.builder.UBrexPart;
+
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -42,6 +48,8 @@ import net.sourceforge.plantuml.regex.RegexOptional;
 
 public class StereotypePattern {
 
+	@Deprecated
+	// Use Stereogroup.optionalStereogroup()
 	public static IRegex optional(String param) {
 		return new RegexConcat( //
 				RegexLeaf.spaceZeroOrMore(), //
@@ -50,15 +58,29 @@ public class StereotypePattern {
 		);
 	}
 
+	public static IRegex optionalIGNORED() {
+		return optional("IGNORED");
+	}
+
+	@Deprecated
 	public static IRegex mandatory(String param) {
-		return new RegexLeaf(1, param, "(\\<\\<.+\\>\\>)");
+		return new RegexLeaf(1, param, "(\\<\\<.+?\\>\\>)");
+	}
+
+	public static UBrexPart umandatory(String param) {
+		return new UBrexNamed(param, new UBrexLeaf("<< 〇+「〤<>」>>"));
+	}
+
+	public static UBrexPart uoptional(String param) {
+		return new UBrexOptional(
+				UBrexConcat.build(UBrexLeaf.spaceZeroOrMore(), umandatory(param), UBrexLeaf.spaceZeroOrMore()));
 	}
 
 	public static IRegex optionalArchimate(String param) {
 		return new RegexConcat( //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexOptional(//
-						new RegexLeaf(1, param, "(\\<\\<[-\\w]+\\>\\>)")), //
+						new RegexLeaf(1, param, "(\\<\\<[-\\w]+?\\>\\>)")), //
 				RegexLeaf.spaceZeroOrMore() //
 		);
 	}

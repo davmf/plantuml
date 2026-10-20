@@ -37,6 +37,7 @@ package net.sourceforge.plantuml;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
@@ -47,27 +48,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import net.sourceforge.plantuml.cli.GlobalConfig;
+import net.sourceforge.plantuml.cli.GlobalConfigKey;
 import net.sourceforge.plantuml.code.AsciiEncoder;
 import net.sourceforge.plantuml.code.Transcoder;
 import net.sourceforge.plantuml.code.TranscoderUtil;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.error.PSystemErrorPreprocessor;
+import net.sourceforge.plantuml.explain.Explanation;
 import net.sourceforge.plantuml.jaws.Jaws;
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.Defines;
-import net.sourceforge.plantuml.preproc.FileWithSuffix;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.preproc.ReadLineWithYamlHeader;
 import net.sourceforge.plantuml.regex.Matcher2;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.teavm.c.PSystemBuilderC;
+import net.sourceforge.plantuml.teavm.js.PSystemBuilderJs;
 import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.tim.TimLoader;
 import net.sourceforge.plantuml.utils.LineLocationImpl;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.utils.StartUtils;
 import net.sourceforge.plantuml.version.Version;
 
 public class BlockUml {
-	// ::remove file when __HAXE__
 
 	private final List<StringLocated> rawSource;
 	private final List<StringLocated> data;
@@ -75,26 +82,25 @@ public class BlockUml {
 	private Diagram system;
 	private final Defines localDefines;
 	private final Previous previous;
-	private final Set<FileWithSuffix> included = new HashSet<>();
+	private final Set<File> included = new HashSet<>();
 	private final PreprocessingArtifact preprocessingArtifact;
+	private final PathSystem pathSystem;
 
-	public Set<FileWithSuffix> getIncluded() {
-		return Collections.unmodifiableSet(included);
+	public Set<File> getIncluded() {
+		return MyCollections.unmodifiableSet(included);
 	}
 
 	@Deprecated
 	BlockUml(String... strings) {
-		this(convert(strings), Defines.createEmpty(), null, null, null);
+		this(null, PathSystem.fetch(), convert(strings), Defines.createEmpty(), null, null);
 	}
 
-	// ::comment when __CORE__
 	public String getEncodedUrl() throws IOException {
 		final Transcoder transcoder = TranscoderUtil.getDefaultTranscoder();
 		final String source = getDiagram().getSource().getPlainString("\n");
 		final String encoded = transcoder.encode(source);
 		return encoded;
 	}
-	// ::done
 
 	public String getFlashData() {
 		final StringBuilder sb = new StringBuilder();
@@ -132,8 +138,9 @@ public class BlockUml {
 //		this(strings, defines, skinMap, definitions, charsetOrDefault(definitions.getCharset()));
 //	}
 
-	public BlockUml(List<StringLocated> strings, Defines defines, Previous previous,
-			DefinitionsContainer definitions, Charset charset) {
+	public BlockUml(DefinitionsContainer definitions, PathSystem pathSystem, List<StringLocated> strings,
+			Defines defines, Previous previous, Charset charset) {
+		this.pathSystem = pathSystem;
 		this.rawSource = ReadLineWithYamlHeader.removeYamlHeader(strings);
 		this.localDefines = defines;
 		this.previous = previous;
@@ -142,12 +149,11 @@ public class BlockUml {
 			this.data = new ArrayList<>(this.rawSource);
 			this.preprocessingArtifact = new PreprocessingArtifact();
 		} else {
-			final TimLoader timLoader = new TimLoader(definitions.getImportedFiles(), defines, charset, definitions,
-					this.rawSource.get(0));
+			final TimLoader timLoader = new TimLoader(pathSystem, defines, charset, definitions, this.rawSource.get(0));
 			this.included.addAll(timLoader.load(this.rawSource));
 			List<StringLocated> tmp = timLoader.getResultList();
-			tmp = Jaws.expands0(tmp);
-			tmp = Jaws.expandsJawsForPreprocessor(tmp);
+			Jaws.mutateExpands1(tmp);
+
 			this.data = tmp;
 			this.debug = timLoader.getDebug();
 			this.preprocessorError = timLoader.isPreprocessorError();
@@ -155,12 +161,11 @@ public class BlockUml {
 		}
 	}
 
-	// ::comment when __CORE__
 	public String getFileOrDirname() {
-		if (OptionFlags.getInstance().isWord())
+		if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.WORD))
 			return null;
 
-		final Matcher2 m = StartUtils.patternFilename.matcher(StringUtils.trin(data.get(0).getString()));
+		final Matcher2 m = StartUtils.patternFilename.matcher(StringUtils.trin(data.get(0).getString()), 0);
 		final boolean ok = m.find();
 		if (ok == false)
 			return null;
@@ -182,23 +187,40 @@ public class BlockUml {
 		result = result.replaceAll("\\.\\w\\w\\w$", "");
 		return result;
 	}
-	// ::done
 
 	public Diagram getDiagram() {
 		if (system == null) {
 			if (preprocessorError)
 				system = new PSystemErrorPreprocessor(data, debug, preprocessingArtifact);
+			else if (!TeaVM.isTeaVM())
+				system = PSystemBuilder.getInstance().createPSystem(pathSystem, data, rawSource, previous,
+						preprocessingArtifact);
+			// ::comment when __MIT__ __EPL__ __BSD__ __ASL__ __LGPL__ __GPLV2__
+			else if (TeaVM.isC())
+				system = PSystemBuilderC.getInstance().createDiagramFromPreprocessed(data, preprocessingArtifact);
 			else
-				system = new PSystemBuilder().createPSystem(data, rawSource, previous, preprocessingArtifact);
+				system = PSystemBuilderJs.getInstance().createDiagramFromPreprocessed(data, preprocessingArtifact);
+			// ::done
 		}
 		return system;
+	}
+
+	public List<Explanation> explain() {
+		if (preprocessorError)
+			return Collections.singletonList(Explanation.ofError("Preprocessor error"));
+
+		if (TeaVM.isC())
+			return PSystemBuilderC.getInstance().explain(data, preprocessingArtifact);
+		else if (TeaVM.isTeaVM())
+			return PSystemBuilderJs.getInstance().explain(data, preprocessingArtifact);
+		else
+			return PSystemBuilder.getInstance().explain(pathSystem, data, rawSource, previous, preprocessingArtifact);
 	}
 
 	public final List<StringLocated> getData() {
 		return data;
 	}
 
-	// ::comment when __CORE__
 	private String internalEtag() {
 		try {
 			final AsciiEncoder coder = new AsciiEncoder();
@@ -217,7 +239,6 @@ public class BlockUml {
 	public String etag() {
 		return Version.etag() + internalEtag();
 	}
-	// ::done
 
 	public long lastModified() {
 		return (Version.compileTime() / 1000L / 60) * 1000L * 60 + Version.beta() * 1000L * 3600;
@@ -234,9 +255,9 @@ public class BlockUml {
 			result.add(s.getString());
 
 		if (withHeader)
-			return Collections.unmodifiableList(result);
+			return MyCollections.unmodifiableList(result);
 
-		return Collections.unmodifiableList(result.subList(1, result.size() - 1));
+		return MyCollections.unmodifiableList(result.subList(1, result.size() - 1));
 	}
 
 	public Defines getLocalDefines() {

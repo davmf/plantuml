@@ -43,20 +43,26 @@ import net.sourceforge.plantuml.abel.DisplayPositioned;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.activitydiagram3.ftile.EntityImageLegend;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.cucadiagram.PortionShower;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
+import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
+import net.sourceforge.plantuml.skin.VisibilityModifier;
+import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public final class ClusterHeader {
 
@@ -76,7 +82,7 @@ public final class ClusterHeader {
 		final TextBlock stereoAndTitle = TextBlockUtils.mergeTB(stereo, title, getTitleHorizontalAlignment());
 		final XDimension2D dimLabel = stereoAndTitle.calculateDimension(stringBounder);
 		if (dimLabel.getWidth() > 0) {
-			final XDimension2D dimAttribute = ((Entity) g).getStateHeader(skinParam).calculateDimension(stringBounder);
+			final XDimension2D dimAttribute = g.getStateDescription(skinParam).calculateDimension(stringBounder);
 			final double attributeHeight = dimAttribute.getHeight();
 			final double attributeWidth = dimAttribute.getWidth();
 			final double marginForFields = attributeHeight > 0 ? IEntityImage.MARGIN : 0;
@@ -120,31 +126,41 @@ public final class ClusterHeader {
 		final HorizontalAlignment alignment = style.getHorizontalAlignment();
 		// final HorizontalAlignment alignment = getTitleHorizontalAlignment();
 		// final HorizontalAlignment alignment = HorizontalAlignment.CENTER;
-		return label.create(fontConfiguration, alignment, g.getSkinParam());
+		TextBlock result = label.create(fontConfiguration, alignment, g.getSkinParam());
+
+		final VisibilityModifier modifier = g.getVisibilityModifier();
+		if (modifier != null) {
+			final Rose rose = new Rose();
+			final HColor back = rose.getHtmlColor(g.getSkinParam(), modifier.getBackground());
+			final HColor fore = rose.getHtmlColor(g.getSkinParam(), modifier.getForeground());
+			final TextBlock uBlock = TextBlockUtils.withMargin(
+					modifier.getUBlock(g.getSkinParam().classAttributeIconSize(), fore, back, false), 0, 0, 4, 0);
+
+			result = TextBlockUtils.mergeLR(uBlock, result, VerticalAlignment.CENTER);
+		}
+
+		return result;
 	}
 
-	public Style getStyle() {
-		final StyleSignatureBasic signature = getSignature();
-		return signature //
-				.withTOBECHANGED(g.getStereotype()) //
-				.with(g.getStereostyles()) //
-				.getMergedStyle(g.getSkinParam().getCurrentStyleBuilder());
+	private Style getStyle() {
+		final StyleQuery signature = getSignature();
+		return g.getSkinParam().getCurrentStyleBuilder().getMergedStyle(signature //
+				.withStereotype(g.getStereotype()) //
+				.withStereostyles(g.getStereostyles()));
 	}
 
-	private StyleSignatureBasic getSignature() {
-		final SName sname = g.getSkinParam().getUmlDiagramType().getStyleName();
-		final StyleSignatureBasic signature;
+	private StyleQuery getSignature() {
+		final SName sname = g.getSkinParam().getDiagramType().getStyleName();
+		final StyleQuery signature;
 		final USymbol uSymbol = g.getUSymbol();
 		if (g.getGroupType() == GroupType.STATE)
-			signature = StyleSignatureBasic.of(SName.root, SName.element, SName.stateDiagram, SName.state,
-					SName.composite, SName.title);
+			signature = StyleQueries.STATEDIAG_STATE_NAME;
 		else if (uSymbol != null)
-			signature = StyleSignatureBasic.of(SName.root, SName.element, sname, uSymbol.getSNames(), SName.composite,
-					SName.title);
+			signature = StyleQueries.COMPOSITE_TITLE.add(sname).addSNames(uSymbol.getSNames());
 		else if (g.getGroupType() == GroupType.PACKAGE)
-			signature = StyleSignatureBasic.of(SName.root, SName.element, sname, SName.package_, SName.title);
+			signature = StyleQueries.PACKAGE_TITLE.add(sname);
 		else
-			signature = StyleSignatureBasic.of(SName.root, SName.element, sname, SName.composite, SName.title);
+			signature = StyleQueries.COMPOSITE_TITLE.add(sname);
 		return signature;
 	}
 
@@ -169,7 +185,16 @@ public final class ClusterHeader {
 		if (stereotype == null)
 			return TextBlockUtils.empty(0, 0);
 
+		// A composite state without a USymbol (i.e. not a pseudo-state like <<choice>> or
+		// <<start>>) is painted by Cluster.drawUState(), which only draws the title and never
+		// this stereotype block -- the stereotype there is purely a style-class selector, the
+		// same way a leaf state's stereotype never renders as text (see EntityImageState).
+		// Reserving height/width for a block that is never painted leaves a blank gap above the
+		// title (issue #2783), so keep the two in sync by not measuring it here either.
 		final ISkinParam skinParam = g.getSkinParam();
+		if (skinParam.getDiagramType() == DiagramType.STATE && g.getUSymbol() == null)
+			return TextBlockUtils.empty(0, 0);
+
 		final TextBlock tmp = stereotype.getSprite(skinParam);
 		if (tmp != null)
 			return tmp;
@@ -182,10 +207,11 @@ public final class ClusterHeader {
 		if (visibleStereotypes == null || visibleStereotypes.isEmpty())
 			return TextBlockUtils.empty(0, 0);
 
-		final Style style = Cluster
-				.getDefaultStyleDefinition(skinParam.getUmlDiagramType().getStyleName(), g.getUSymbol(),
-						g.getGroupType())
-				.forStereotypeItself(g.getStereotype()).getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(Cluster
+						.getDefaultStyleDefinition(skinParam.getDiagramType().getStyleName(), g.getUSymbol(),
+								g.getGroupType())
+						.forStereotypeItself(g.getStereotype()));
 
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(skinParam.getIHtmlColorSet());
 		final HorizontalAlignment horizontalAlignment = getTitleHorizontalAlignment();

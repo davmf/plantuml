@@ -43,18 +43,18 @@ import net.sourceforge.plantuml.klimt.creole.SheetBuilder;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.sprite.SpriteContainer;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.ConfigurationStore;
 import net.sourceforge.plantuml.preproc.OptionKey;
 import net.sourceforge.plantuml.skin.Pragma;
 
 public interface ISkinSimple extends SpriteContainer {
-    // ::remove file when __HAXE__
 
 	public String getValue(String key);
 
 	public Map<String, String> values();
 
-	public double getPadding();
+	public ClockwiseTopRightBottomLeft getPadding();
 
 	public String getMonospacedFamily();
 
@@ -73,7 +73,9 @@ public interface ISkinSimple extends SpriteContainer {
 			CreoleMode creoleMode, FontConfiguration stereo);
 
 	public Pragma getPragma();
-	
+
 	public ConfigurationStore<OptionKey> options();
+
+	public PathSystem getPathSystem();
 
 }

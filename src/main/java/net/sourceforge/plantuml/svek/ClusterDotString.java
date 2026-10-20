@@ -38,25 +38,25 @@ package net.sourceforge.plantuml.svek;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.EntityPosition;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.symbol.USymbols;
 import net.sourceforge.plantuml.dot.GraphvizVersion;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.skin.AlignmentParam;
 import net.sourceforge.plantuml.skin.PragmaKey;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class ClusterDotString {
-	// ::remove file when __CORE__
 
 	private final Cluster cluster;
 	private final ISkinParam skinParam;
@@ -72,12 +72,14 @@ public class ClusterDotString {
 	}
 
 	void printInternal(StringBuilder sb, Collection<SvekEdge> lines, StringBounder stringBounder, DotMode dotMode,
-			GraphvizVersion graphvizVersion, UmlDiagramType type) {
+			GraphvizVersion graphvizVersion, DiagramType type) {
+		// ::comment when __TEAVM__
 		if (cluster.diagram.getPragma().isTrue(PragmaKey.KERMOR)) {
 			new ClusterDotStringKermor(cluster, skinParam).printInternal(sb, lines, stringBounder, dotMode,
 					graphvizVersion, type);
 			return;
 		}
+		// ::done
 		final boolean packed = isPacked();
 
 		if (packed) {
@@ -88,8 +90,8 @@ public class ClusterDotString {
 		}
 		final boolean thereALinkFromOrToGroup2 = isThereALinkFromOrToGroup(lines);
 		boolean thereALinkFromOrToGroup1 = thereALinkFromOrToGroup2;
-		final boolean useProtectionWhenThereALinkFromOrToGroup = graphvizVersion
-				.useProtectionWhenThereALinkFromOrToGroup();
+		final boolean useProtectionWhenThereALinkFromOrToGroup = TeaVM.isTeaVM() ? true
+				: graphvizVersion.useProtectionWhenThereALinkFromOrToGroup();
 		if (useProtectionWhenThereALinkFromOrToGroup == false)
 			thereALinkFromOrToGroup1 = false;
 
@@ -114,7 +116,7 @@ public class ClusterDotString {
 
 		sb.append("subgraph " + cluster.getClusterId() + " {");
 		sb.append("style=solid;");
-		sb.append("color=\"" + StringUtils.sharp000000(cluster.getColor()) + "\";");
+		sb.append("color=\"" + XColor.toHexRGBColor(cluster.getColor()) + "\";");
 
 		final String label;
 		if (cluster.isLabel()) {
@@ -201,14 +203,14 @@ public class ClusterDotString {
 		SvekUtils.println(sb);
 	}
 
-	private String getSourceInPoint(UmlDiagramType type) {
+	private String getSourceInPoint(DiagramType type) {
 		if (skinParam.useSwimlanes(type))
 			return "sourceIn" + cluster.getColor();
 
 		return null;
 	}
 
-	private String getSinkInPoint(UmlDiagramType type) {
+	private String getSinkInPoint(DiagramType type) {
 		if (skinParam.useSwimlanes(type))
 			return "sinkIn" + cluster.getColor();
 
@@ -237,7 +239,7 @@ public class ClusterDotString {
 			if (sh.getEntityPosition() != EntityPosition.NORMAL)
 				result.add(sh.getEntityPosition());
 
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	private void subgraphClusterNoLabel(StringBuilder sb, String id) {
@@ -295,14 +297,14 @@ public class ClusterDotString {
 		return result;
 	}
 
-	private boolean protection0(UmlDiagramType type) {
+	private boolean protection0(DiagramType type) {
 		if (skinParam.useSwimlanes(type))
 			return false;
 
 		return true;
 	}
 
-	private boolean protection1(UmlDiagramType type) {
+	private boolean protection1(DiagramType type) {
 		if (cluster.getGroup().getUSymbol() == USymbols.NODE)
 			return true;
 

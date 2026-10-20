@@ -46,36 +46,43 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.dot.Graphviz;
 import net.sourceforge.plantuml.dot.GraphvizRuntimeEnvironment;
 import net.sourceforge.plantuml.dot.GraphvizVersion;
 import net.sourceforge.plantuml.dot.ProcessState;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.Moveable;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.skin.PragmaKey;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.Position;
 import net.sourceforge.plantuml.vizjs.GraphvizJs;
 import net.sourceforge.plantuml.vizjs.GraphvizJsRuntimeException;
 
 public final class DotStringFactory implements Moveable {
 
-	private final UmlDiagramType umlDiagramType;
+	private final DiagramType diagramType;
 	private final ISkinParam skinParam;
 	private final Bibliotekon bibliotekon;
 	private final Cluster root;
 
-	public DotStringFactory(Bibliotekon bibliotekon, Cluster root, UmlDiagramType umlDiagramType,
-			ISkinParam skinParam) {
+	public DotStringFactory(Bibliotekon bibliotekon, Cluster root, DiagramType diagramType, ISkinParam skinParam) {
 		this.bibliotekon = bibliotekon;
 		this.skinParam = skinParam;
-		this.umlDiagramType = umlDiagramType;
+		this.diagramType = diagramType;
 		this.root = root;
+	}
+
+	public Bibliotekon getBibliotekon() {
+		return bibliotekon;
 	}
 
 	private double getHorizontalDzeta(StringBounder stringBounder) {
@@ -87,10 +94,6 @@ public final class DotStringFactory implements Moveable {
 
 		}
 		return max / 10;
-	}
-
-	public Bibliotekon getBibliotekon() {
-		return bibliotekon;
 	}
 
 	private double getVerticalDzeta(StringBounder stringBounder) {
@@ -106,7 +109,6 @@ public final class DotStringFactory implements Moveable {
 		return max / 10;
 	}
 
-	// ::comment when __CORE__
 	private String createDotString(StringBounder stringBounder, DotMode dotMode, String... dotStrings) {
 		final StringBuilder sb = new StringBuilder();
 
@@ -176,7 +178,7 @@ public final class DotStringFactory implements Moveable {
 				line.appendLine(getGraphvizVersion(), sb, dotMode, dotSplines);
 
 			root.printCluster3_forKermor(sb, getBibliotekon().allLines(), stringBounder, dotMode, getGraphvizVersion(),
-					umlDiagramType);
+					diagramType);
 
 		} else {
 			root.printCluster1(sb, getBibliotekon().allLines(), stringBounder);
@@ -185,7 +187,7 @@ public final class DotStringFactory implements Moveable {
 				line.appendLine(getGraphvizVersion(), sb, dotMode, dotSplines);
 
 			root.printCluster2(sb, getBibliotekon().allLines(), stringBounder, dotMode, getGraphvizVersion(),
-					umlDiagramType);
+					diagramType);
 
 			for (SvekEdge line : getBibliotekon().lines1())
 				line.appendLine(getGraphvizVersion(), sb, dotMode, dotSplines);
@@ -197,17 +199,16 @@ public final class DotStringFactory implements Moveable {
 
 		return sb.toString();
 	}
-	// ::done
 
 	private void manageMinMaxCluster(final StringBuilder sb) {
 		final List<String> minPointCluster = new ArrayList<>();
 		final List<String> maxPointCluster = new ArrayList<>();
 		for (Cluster cluster : getBibliotekon().allCluster()) {
-			final String minPoint = cluster.getMinPoint(umlDiagramType);
+			final String minPoint = cluster.getMinPoint(diagramType);
 			if (minPoint != null)
 				minPointCluster.add(minPoint);
 
-			final String maxPoint = cluster.getMaxPoint(umlDiagramType);
+			final String maxPoint = cluster.getMaxPoint(diagramType);
 			if (maxPoint != null)
 				maxPointCluster.add(maxPoint);
 
@@ -235,7 +236,7 @@ public final class DotStringFactory implements Moveable {
 	}
 
 	private int getMinRankSep() {
-		if (umlDiagramType == UmlDiagramType.ACTIVITY) {
+		if (diagramType == DiagramType.ACTIVITY) {
 			// return 29;
 			return 40;
 		}
@@ -245,78 +246,100 @@ public final class DotStringFactory implements Moveable {
 	}
 
 	private int getMinNodeSep() {
-		if (umlDiagramType == UmlDiagramType.ACTIVITY) {
+		if (diagramType == DiagramType.ACTIVITY) {
 			// return 15;
 			return 20;
 		}
 		return 35;
 	}
 
-	// ::uncomment when __CORE__
-	// public GraphvizVersion getGraphvizVersion() {
-	// return null;
-	// }
-	// ::done
-	// ::comment when __CORE__
 	private GraphvizVersion graphvizVersion;
 
 	public GraphvizVersion getGraphvizVersion() {
-		if (graphvizVersion == null)
-			graphvizVersion = getGraphvizVersionInternal();
+		if (TeaVM.isTeaVM())
+			return null;
+		else {
+			if (graphvizVersion == null)
+				graphvizVersion = getGraphvizVersionInternal();
 
-		return graphvizVersion;
+			return graphvizVersion;
+		}
 	}
 
 	private GraphvizVersion getGraphvizVersionInternal() {
-		final Graphviz graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, "foo;", "svg");
-		if (graphviz instanceof GraphvizJs)
-			return GraphvizJs.getGraphvizVersion(false);
+		if (TeaVM.isTeaVM())
+			return null;
+		else {
+			final Graphviz graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, "foo;", "svg");
+			if (graphviz instanceof GraphvizJs)
+				return GraphvizJs.getGraphvizVersion(false);
 
-		final File f = graphviz.getDotExe();
-		return GraphvizRuntimeEnvironment.getInstance().getVersion(f);
+			final File f = graphviz.getDotExe();
+			return GraphvizRuntimeEnvironment.getInstance().getVersion(f);
+		}
 	}
 
 	public String getSvg(StringBounder stringBounder, DotMode dotMode, BaseFile basefile, String[] dotOptions)
 			throws IOException {
 		String dotString = createDotString(stringBounder, dotMode, dotOptions);
 
-		if (basefile != null) {
-			final SFile f = basefile.getTraceFile("svek.dot");
-			SvekUtils.traceString(f, dotString);
+		if (TeaVM.isC())
+			throw new IOException("Graphviz is not available in the TeaVM C build");
+
+		if (TeaVM.isTeaVM()) {
+			// Surface layout-engine failures (e.g. viz-global.js not loaded) as an
+			// IOException so GraphvizImageBuilder turns them into a crash report
+			// image instead of an uncaught exception escaping the render call.
+			// ::revert when JAVA8
+			try {
+				return net.sourceforge.plantuml.teavm.js.GraphVizEngineJs.renderDotToSvg(dotString);
+			} catch (RuntimeException e) {
+				throw new IOException(e.getMessage(), e);
+			}
+			// return null;
+			// ::done
+		} else {
+
+			if (basefile != null) {
+				final SFile f = basefile.getTraceFile("svek.dot");
+				SvekUtils.traceString(f, dotString);
+			}
+
+			Graphviz graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, dotString, "svg");
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			try {
+				final ProcessState state = graphviz.createFile3(baos);
+				baos.close();
+				if (state.differs(ProcessState.TERMINATED_OK()))
+					throw new IllegalStateException("Timeout4 " + state, state.getCause());
+
+			} catch (GraphvizJsRuntimeException e) {
+				System.err.println("GraphvizJsRuntimeException");
+				graphvizVersion = GraphvizJs.getGraphvizVersion(true);
+				dotString = createDotString(stringBounder, dotMode, dotOptions);
+				graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, dotString, "svg");
+				baos = new ByteArrayOutputStream();
+				final ProcessState state = graphviz.createFile3(baos);
+				baos.close();
+				if (state.differs(ProcessState.TERMINATED_OK()))
+					throw new IllegalStateException("Timeout4 " + state, state.getCause());
+
+			}
+			final byte[] result = baos.toByteArray();
+			final String s = new String(result, UTF_8);
+
+			if (basefile != null) {
+				final SFile f = basefile.getTraceFile("svek.svg");
+				SvekUtils.traceString(f, s);
+			}
+
+			return s;
 		}
-
-		Graphviz graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, dotString, "svg");
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		try {
-			final ProcessState state = graphviz.createFile3(baos);
-			baos.close();
-			if (state.differs(ProcessState.TERMINATED_OK()))
-				throw new IllegalStateException("Timeout4 " + state, state.getCause());
-
-		} catch (GraphvizJsRuntimeException e) {
-			System.err.println("GraphvizJsRuntimeException");
-			graphvizVersion = GraphvizJs.getGraphvizVersion(true);
-			dotString = createDotString(stringBounder, dotMode, dotOptions);
-			graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, dotString, "svg");
-			baos = new ByteArrayOutputStream();
-			final ProcessState state = graphviz.createFile3(baos);
-			baos.close();
-			if (state.differs(ProcessState.TERMINATED_OK()))
-				throw new IllegalStateException("Timeout4 " + state, state.getCause());
-
-		}
-		final byte[] result = baos.toByteArray();
-		final String s = new String(result, UTF_8);
-
-		if (basefile != null) {
-			final SFile f = basefile.getTraceFile("svek.svg");
-			SvekUtils.traceString(f, s);
-		}
-
-		return s;
 	}
 
 	public boolean illegalDotExe() {
+		if (TeaVM.isTeaVM())
+			return false;
 		final Graphviz graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, "svg");
 		if (graphviz instanceof GraphvizJs)
 			return false;
@@ -326,8 +349,12 @@ public final class DotStringFactory implements Moveable {
 	}
 
 	public File getDotExe() {
-		final Graphviz graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, "svg");
-		return graphviz.getDotExe();
+		if (!TeaVM.isTeaVM()) {
+			final Graphviz graphviz = GraphvizRuntimeEnvironment.getInstance().create(skinParam, "svg");
+			return graphviz.getDotExe();
+		} else {
+			throw new UnsupportedOperationException("TEAVM777");
+		}
 	}
 
 	private static final Pattern pGraph = Pattern.compile("(?m)\\<svg\\s+width=\"(\\d+)pt\"\\s+height=\"(\\d+)pt\"");
@@ -423,13 +450,186 @@ public final class DotStringFactory implements Moveable {
 		for (SvekEdge line : getBibliotekon().allLines())
 			line.solveLine(svgResult);
 
+		// Align edges at label nodes for orthogonal routing
+		if (skinParam.getDotSplines() == DotSplines.ORTHO)
+			alignEdgesAtLabelNodes();
+
 		for (SvekEdge line : getBibliotekon().allLines())
 			line.manageCollision(getBibliotekon().allNodes());
 
 	}
 
+	/**
+	 * Insert horizontal corners in orthogonal edges to align them through label
+	 * node centers. This handles the case where edges entering and leaving a label
+	 * node are horizontally misaligned.
+	 */
+	private void alignEdgesAtLabelNodes() {
+		// Find all nodes that are edge labels (typically named "transition_...")
+		final List<SvekNode> labelNodes = new ArrayList<>();
+		for (SvekNode node : getBibliotekon().allNodes()) {
+			final Entity entity = getBibliotekon().getLeaf(node);
+			if (entity != null && entity.getName() != null && entity.getName().startsWith("transition_")) {
+				labelNodes.add(node);
+			}
+		}
+
+		// For each label node, find edges connecting through it and align them
+		for (SvekNode labelNode : labelNodes) {
+			alignEdgesThroughLabel(labelNode);
+		}
+	}
+
+	/**
+	 * Align edges that pass through a specific label node
+	 */
+	private void alignEdgesThroughLabel(SvekNode labelNode) {
+		// Find edges coming into and out of this label node
+		final Entity labelEntity = getBibliotekon().getLeaf(labelNode);
+		if (labelEntity == null)
+			return;
+
+		// Get all edges connected to this label node
+		final List<SvekEdge> connectedEdges = getBibliotekon().getAllLineConnectedTo(labelEntity);
+		if (connectedEdges.size() != 2)
+			return; // We need exactly 2 edges (one in, one out)
+
+		// Determine which edge is incoming and which is outgoing
+		final SvekEdge edge0 = connectedEdges.get(0);
+		final SvekEdge edge1 = connectedEdges.get(1);
+
+		if (edge0.getDotPath() == null || edge1.getDotPath() == null)
+			return;
+
+		// The edge whose endpoint is above the label is incoming (ends at label)
+		// The edge whose startpoint is below the label is outgoing (starts from label)
+		final double labelCenterY = labelNode.getMinY() + labelNode.getHeight() / 2.0;
+		final double edge0EndY = edge0.getDotPath().getEndPoint().getY();
+		final double edge0StartY = edge0.getDotPath().getStartPoint().getY();
+
+		SvekEdge edgeIn, edgeOut;
+		// If edge0 ends near the label (incoming to label), then edge1 starts from
+		// label (outgoing)
+		if (Math.abs(edge0EndY - labelCenterY) < Math.abs(edge0StartY - labelCenterY)) {
+			edgeIn = edge0;
+			edgeOut = edge1;
+		} else {
+			edgeIn = edge1;
+			edgeOut = edge0;
+		}
+
+		insertCornersForAlignment(edgeIn, edgeOut, labelNode);
+	}
+
+	/**
+	 * Insert horizontal corners in edges to align them at the label node center.
+	 * This creates new paths with straight line segments and right-angle corners.
+	 */
+	private void insertCornersForAlignment(SvekEdge edgeIn, SvekEdge edgeOut, SvekNode labelNode) {
+		final net.sourceforge.plantuml.klimt.shape.DotPath pathIn = edgeIn.getDotPath();
+		final net.sourceforge.plantuml.klimt.shape.DotPath pathOut = edgeOut.getDotPath();
+
+		if (pathIn == null || pathOut == null)
+			return;
+
+		// Get the label node center position
+		final double labelCenterX = labelNode.getMinX() + labelNode.getWidth() / 2.0;
+		final double labelCenterY = labelNode.getMinY() + labelNode.getHeight() / 2.0;
+
+		// Get edge endpoints
+		final XPoint2D inStart = pathIn.getStartPoint();
+		final XPoint2D inEnd = pathIn.getEndPoint();
+		final XPoint2D outStart = pathOut.getStartPoint();
+		final XPoint2D outEnd = pathOut.getEndPoint();
+
+		// Check if edges are misaligned horizontally
+		final double xDiff = Math.abs(inEnd.getX() - outStart.getX());
+		if (xDiff < 5.0) // Already aligned
+			return;
+
+		// Check if they connect through this label (vertically adjacent)
+		final double yGap = Math.abs(inEnd.getY() - outStart.getY());
+		if (yGap > 30.0) // Not connected through this label
+			return;
+
+		// Rebuild incoming edge with corner to align at label center
+		final net.sourceforge.plantuml.klimt.shape.DotPath newPathIn = rebuildPathWithCorner(inStart, inEnd,
+				labelCenterX, labelCenterY, true);
+		if (newPathIn != null) {
+			edgeIn.replaceDotPath(newPathIn);
+		}
+
+		// Rebuild outgoing edge with corner to align at label center
+		final net.sourceforge.plantuml.klimt.shape.DotPath newPathOut = rebuildPathWithCorner(outStart, outEnd,
+				labelCenterX, labelCenterY, false);
+		if (newPathOut != null) {
+			edgeOut.replaceDotPath(newPathOut);
+		}
+	}
+
+	/**
+	 * Rebuild a path with a horizontal corner to route through the target X
+	 * coordinate. Creates straight line segments: start -> corner1 -> corner2 ->
+	 * end The horizontal segment is placed at the start/end Y coordinate to avoid
+	 * obscuring the label.
+	 */
+	private net.sourceforge.plantuml.klimt.shape.DotPath rebuildPathWithCorner(XPoint2D start, XPoint2D end,
+			double targetX, double targetY, boolean isIncoming) {
+
+		final double startX = start.getX();
+		final double startY = start.getY();
+		final double endX = end.getX();
+		final double endY = end.getY();
+
+		// Check if we need to add a corner
+		if (Math.abs(startX - targetX) < 1.0 && Math.abs(endX - targetX) < 1.0) {
+			return null; // Already aligned, no change needed
+		}
+
+		// Create path with vertical alignment at targetX
+		// Pattern for incoming: start → vertical → horizontal → vertical (aligned at
+		// targetX) → end
+		// Pattern for outgoing: start → vertical (aligned at targetX) → horizontal →
+		// vertical → end
+		final List<XCubicCurve2D> beziers = new ArrayList<>();
+
+		if (isIncoming) {
+			// Incoming edge: vertical → horizontal → vertical (aligned at targetX)
+			final double horizontalY = endY - 20;
+
+			// Segment 1: vertical from start down to horizontal routing level
+			beziers.add(new XCubicCurve2D(startX, startY, startX, startY, startX, horizontalY, startX, horizontalY));
+
+			// Segment 2: horizontal jog from startX to targetX
+			beziers.add(new XCubicCurve2D(startX, horizontalY, startX, horizontalY, targetX, horizontalY, targetX,
+					horizontalY));
+
+			// Segment 3: vertical aligned segment at targetX down to endY (path ends at
+			// targetX)
+			beziers.add(new XCubicCurve2D(targetX, horizontalY, targetX, horizontalY, targetX, endY, targetX, endY));
+
+		} else {
+			// Outgoing edge: vertical (aligned at targetX) → horizontal → vertical
+			final double horizontalY = startY + 20;
+
+			// Segment 1: vertical aligned segment at targetX from startY (path starts at
+			// targetX)
+			beziers.add(
+					new XCubicCurve2D(targetX, startY, targetX, startY, targetX, horizontalY, targetX, horizontalY));
+
+			// Segment 2: horizontal jog from targetX to endX
+			beziers.add(new XCubicCurve2D(targetX, horizontalY, targetX, horizontalY, endX, horizontalY, endX,
+					horizontalY));
+
+			// Segment 3: vertical down to actual end point
+			beziers.add(new XCubicCurve2D(endX, horizontalY, endX, horizontalY, endX, endY, endX, endY));
+		}
+
+		return net.sourceforge.plantuml.klimt.shape.DotPath.fromBeziers(beziers);
+	}
+
 	private int getClusterIndex(final String svg, int colorInt) {
-		final String colorString = StringUtils.goLowerCase(StringUtils.sharp000000(colorInt));
+		final String colorString = StringUtils.goLowerCase(XColor.toHexRGBColor(colorInt));
 		final String keyTitle1 = "=\"" + colorString + "\"";
 		int idx = svg.indexOf(keyTitle1);
 		if (idx == -1) {
@@ -441,7 +641,6 @@ public final class DotStringFactory implements Moveable {
 
 		return idx;
 	}
-	// ::done
 
 	public void moveDelta(double deltaX, double deltaY) {
 		for (SvekNode sh : getBibliotekon().allNodes())

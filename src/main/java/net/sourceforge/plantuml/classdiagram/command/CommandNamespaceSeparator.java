@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
-import net.sourceforge.plantuml.AbstractPSystem;
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -46,9 +50,23 @@ import net.sourceforge.plantuml.regex.RegexOr;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandNamespaceSeparator extends SingleLineCommand2<AbstractPSystem> {
+public class CommandNamespaceSeparator extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("set");
 
 	public static final CommandNamespaceSeparator ME = new CommandNamespaceSeparator();
+
+	// A namespace separator may be 'none'/'null' (disabled), one of the usual
+	// double separators ('::' or '\\', see CommandLinkClass), or a single
+	// character. Unlike CommandLinkClass.getSeparator(), ':' is allowed as a
+	// single-character separator here: at this point in the grammar it
+	// cannot be confused with a relation label ("A --> B : label"), so it
+	// does not need to be excluded (issue #2801).
+	// A single backslash must stay allowed (PHP namespaces, issue #2938): do
+	// not add it to the excluded characters, CommandLinkClass does not exclude it.
+	private static final String SEPARATOR_CHAR_SINGLE = "[^%pLN%s_$#{}<>%g]";
+	private static final String SEPARATOR = "((?:none|null)|" + CommandLinkClass.SEPARATOR_CHAR_DOUBLE + "|"
+			+ SEPARATOR_CHAR_SINGLE + ")";
 
 	private CommandNamespaceSeparator() {
 		super(getRegexConcat());
@@ -63,17 +81,38 @@ public class CommandNamespaceSeparator extends SingleLineCommand2<AbstractPSyste
 						new RegexLeaf("separator"), //
 						new RegexLeaf("namespaceseparator")), //
 				RegexLeaf.spaceOneOrMore(), //
-				new RegexLeaf(1, "SEPARATOR", "(\\S+)"), RegexLeaf.end()); //
+				new RegexLeaf(1, "SEPARATOR", SEPARATOR),
+				RegexLeaf.end()); //
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(AbstractPSystem diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// The namespace separator is the string splitting an element name into
+		// nested namespaces (the default is '.'); 'none' or 'null' disables
+		// this splitting, so dots become plain characters of the name.
+		final String separator = arg.get("SEPARATOR", 0);
+		if ("none".equalsIgnoreCase(separator) || "null".equalsIgnoreCase(separator))
+			return "Disabling the namespace separator: element names are no longer split into namespaces";
+
+		return "Setting the namespace separator to '" + separator + "'";
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 		final String s = arg.get("SEPARATOR", 0);
-		if ("none".equalsIgnoreCase(s))
+		if ("none".equalsIgnoreCase(s) || "null".equalsIgnoreCase(s))
 			diagram.setNamespaceSeparator(null);
 		else
 			diagram.setNamespaceSeparator(s);
 
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

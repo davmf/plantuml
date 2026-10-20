@@ -40,10 +40,10 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.style.ISkinParam;
 
-public class FilesListing extends AbstractTextBlock {
+public class FilesListing extends TextBlockMemoized {
 
 	private final ISkinParam skinParam;
 	private final FontConfiguration fontConfiguration;
@@ -57,8 +57,15 @@ public class FilesListing extends AbstractTextBlock {
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
-		return new XDimension2D(200, 200);
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
+		double width = 0;
+		double height = 0;
+		for (FEntry ent : root) {
+			final XDimension2D dim = ent.calculateDimension(stringBounder, fontConfiguration, skinParam, 0);
+			width = Math.max(width, dim.getWidth());
+			height += dim.getHeight();
+		}
+		return new XDimension2D(width, height);
 	}
 
 	@Override

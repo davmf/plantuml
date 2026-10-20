@@ -41,6 +41,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -52,8 +53,8 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.ULine;
@@ -62,18 +63,19 @@ import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.WithPorts;
 
-public class TextBlockMap extends AbstractTextBlock implements WithPorts {
-    // ::remove folder when __HAXE__
+public class TextBlockMap extends TextBlockMemoized implements WithPorts {
 
 	private final ISkinParam skinParam;
 	private final FontConfiguration fontConfiguration;
 	private final Map<TextBlock, TextBlock> blocksMap = new LinkedHashMap<>();
 	private final List<String> keys = new ArrayList<>();
 	private double totalWidth;
+	private final HorizontalAlignment horizontalAlignment;
 
 	public TextBlockMap(FontConfiguration fontConfiguration, ISkinParam skinParam, Map<String, String> map,
-			LineBreakStrategy wordWrap) {
+			LineBreakStrategy wordWrap, HorizontalAlignment horizontalAlignment) {
 		this.skinParam = skinParam;
+		this.horizontalAlignment = horizontalAlignment;
 		this.fontConfiguration = fontConfiguration;
 		for (Map.Entry<String, String> ent : map.entrySet()) {
 			String key = ent.getKey();
@@ -103,7 +105,8 @@ public class TextBlockMap extends AbstractTextBlock implements WithPorts {
 		return ports;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return new XDimension2D(getWidthColA(stringBounder) + getWidthColB(stringBounder),
 				getTotalHeight(stringBounder));
 	}
@@ -137,11 +140,12 @@ public class TextBlockMap extends AbstractTextBlock implements WithPorts {
 			final UGraphic ugline = ug.apply(UTranslate.dy(y));
 			ugline.draw(ULine.hline(trueWidth));
 			final double heightOfRow = getHeightOfRow(stringBounder, key, value);
+			final double keyWidth = key.calculateDimension(stringBounder).getWidth();
 			if (value instanceof Point) {
-				final double posColA = (trueWidth - key.calculateDimension(stringBounder).getWidth()) / 2;
+				final double posColA = horizontalAlignment.getPosition(keyWidth, trueWidth);
 				key.drawU(ugline.apply(UTranslate.dx(posColA)));
 			} else {
-				final double posColA = (widthColA - key.calculateDimension(stringBounder).getWidth()) / 2;
+				final double posColA = horizontalAlignment.getPosition(keyWidth, widthColA);
 				key.drawU(ugline.apply(UTranslate.dx(posColA)));
 				value.drawU(ugline.apply(UTranslate.dx(widthColA)));
 				ugline.apply(UTranslate.dx(widthColA)).draw(ULine.vline(heightOfRow));
@@ -176,7 +180,7 @@ public class TextBlockMap extends AbstractTextBlock implements WithPorts {
 		return result;
 	}
 
-	static class Point extends AbstractTextBlock {
+	static class Point implements TextBlock {
 
 		private final HColor color;
 
@@ -184,6 +188,8 @@ public class TextBlockMap extends AbstractTextBlock implements WithPorts {
 			this.color = color;
 		}
 
+		@Fast
+		@Override
 		public XDimension2D calculateDimension(StringBounder stringBounder) {
 			return new XDimension2D(getDiameter(), getDiameter());
 		}

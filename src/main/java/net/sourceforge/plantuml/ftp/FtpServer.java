@@ -54,7 +54,7 @@ import net.sourceforge.plantuml.log.Logme;
 
 public class FtpServer {
 
-	private final Map<String, FtpConnexion> datas = new TreeMap<String, FtpConnexion>();
+	private final Map<String, FtpConnection> datas = new TreeMap<String, FtpConnection>();
 	private final ExecutorService exeImage = Executors.newFixedThreadPool(2);
 
 	private final int listenPort;
@@ -89,10 +89,10 @@ public class FtpServer {
 		return ip;
 	}
 
-	public synchronized FtpConnexion getFtpConnexion(String user) {
-		FtpConnexion data = datas.get(Objects.requireNonNull(user));
+	public synchronized FtpConnection getFtpConnexion(String user) {
+		FtpConnection data = datas.get(Objects.requireNonNull(user));
 		if (data == null) {
-			data = new FtpConnexion(user, defaultfileFormat);
+			data = new FtpConnection(user, defaultfileFormat);
 			datas.put(user, data);
 		}
 		return data;
@@ -109,11 +109,11 @@ public class FtpServer {
 		new FtpServer(4242, FileFormat.PNG).go();
 	}
 
-	public void processImage(final FtpConnexion connexion, final String name) {
+	public void processImage(final FtpConnection connection, final String name) {
 		exeImage.submit(new Runnable() {
 			public void run() {
 				try {
-					connexion.processImage(name);
+					connection.processImage(name);
 				} catch (IOException e) {
 					Logme.error(e);
 				}

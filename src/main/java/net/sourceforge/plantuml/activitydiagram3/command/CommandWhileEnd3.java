@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -49,6 +53,9 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandWhileEnd3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"end", "endwhile", "while", "whileend");
 
 	public CommandWhileEnd3() {
 		super(getRegexConcat());
@@ -75,9 +82,30 @@ public class CommandWhileEnd3 extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'endwhile' (or 'while end') closes the while loop opened by
+		// 'while (test)'; the optional '(...)' labels the exit arrow.
+		sb.append("Closing the while loop");
+
+		final String out = arg.get("OUT", 0);
+		if (out != null)
+			sb.append(", exit arrow labelled \"").append(out).append("\"");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		return diagram.endwhile(Display.getWithNewlines(diagram.getPragma(), arg.get("OUT", 0)));
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

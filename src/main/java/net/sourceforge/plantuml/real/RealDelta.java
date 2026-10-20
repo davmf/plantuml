@@ -41,7 +41,7 @@ class RealDelta extends RealMoveable {
 	private final double diff;
 
 	RealDelta(Real delegated, double diff) {
-		super(((AbstractReal) delegated).getLine(), "[Delegated {" + delegated.getName() + "} d=" + diff + "]");
+		super(((AbstractReal) delegated).getLine());
 		this.delegated = delegated;
 		this.diff = diff;
 	}

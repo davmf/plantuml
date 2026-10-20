@@ -35,13 +35,17 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Collection;
 import java.util.Objects;
 
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.error.PSystemError;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
@@ -85,7 +89,7 @@ public abstract class SingleLineCommand2<S extends Diagram> implements Command<S
 		if (lines.size() != 1)
 			return CommandControl.NOT_OK;
 
-		if (isCommandForbidden())
+		if (isCommandForbidden(lines))
 			return CommandControl.NOT_OK;
 
 		final StringLocated line2 = myTrim2(lines.getFirst());
@@ -105,8 +109,10 @@ public abstract class SingleLineCommand2<S extends Diagram> implements Command<S
 	}
 
 	private CommandControl isValidBracket(BlocLines lines) {
-		assert lines.size() == 2;
-		assert syntaxWithFinalBracket();
+		if (TeaVM.a())
+			assert lines.size() == 2;
+		if (TeaVM.a())
+			assert syntaxWithFinalBracket();
 		if (myTrim(lines.getAt(1)).equals("{") == false)
 			return CommandControl.NOT_OK;
 
@@ -114,17 +120,42 @@ public abstract class SingleLineCommand2<S extends Diagram> implements Command<S
 		return isValid(BlocLines.singleString(vline));
 	}
 
-	protected boolean isCommandForbidden() {
-		return false;
-	}
-
 	protected CommandControl finalVerification() {
 		return CommandControl.OK;
 	}
 
+	@Override
+	final public String explain(BlocLines lines) {
+		if (syntaxWithFinalBracket() && lines.size() == 2) {
+			if (TeaVM.a())
+				assert myTrim(lines.getAt(1)).equals("{");
+			lines = BlocLines.singleString(lines.getFirst().getString() + " {");
+		}
+
+		if (lines.size() != 1)
+			throw new IllegalArgumentException();
+
+		final StringLocated first = lines.getFirst();
+		final String line = myTrim(first);
+		if (isForbidden(line))
+			return null;
+
+		final RegexResult arg = pattern.matcher(line);
+		if (arg == null)
+			return null;
+
+		return explainArg(first.getLocation(), arg);
+	}
+
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		return null;
+	}
+
 	public final CommandExecutionResult execute(S system, BlocLines lines, ParserPass currentPass) {
 		if (syntaxWithFinalBracket() && lines.size() == 2) {
-			assert myTrim(lines.getAt(1)).equals("{");
+			if (TeaVM.a())
+				assert myTrim(lines.getAt(1)).equals("{");
 			lines = BlocLines.singleString(lines.getFirst().getString() + " {");
 		}
 		if (lines.size() != 1)
@@ -153,12 +184,19 @@ public abstract class SingleLineCommand2<S extends Diagram> implements Command<S
 		return false;
 	}
 
-	protected abstract CommandExecutionResult executeArg(S system, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException;
+	protected abstract CommandExecutionResult executeArg(S system, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException;
 
 	@Override
 	public boolean isEligibleFor(ParserPass pass) {
 		return pass == ParserPass.ONE;
+	}
+
+	// Read from the pattern rather than declared beside it, so that the regex stays the only
+	// place this command says what it accepts.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FirstTokens.from(pattern);
 	}
 
 }

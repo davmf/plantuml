@@ -37,7 +37,7 @@ package net.sourceforge.plantuml.style;
 
 import java.util.Collection;
 
-import net.sourceforge.plantuml.TikzFontDistortion;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.klimt.Arrows;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
@@ -45,7 +45,6 @@ import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
-import net.sourceforge.plantuml.klimt.drawing.svg.LengthAdjust;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
@@ -60,15 +59,14 @@ import net.sourceforge.plantuml.skin.LineParam;
 import net.sourceforge.plantuml.skin.Padder;
 import net.sourceforge.plantuml.skin.PaddingParam;
 import net.sourceforge.plantuml.skin.SplitParam;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.svek.ConditionEndStyle;
 import net.sourceforge.plantuml.svek.ConditionStyle;
 import net.sourceforge.plantuml.svek.PackageStyle;
 import net.sourceforge.plantuml.text.Guillemet;
+import net.sourceforge.plantuml.tikz.TikzFontDistortion;
 
 public interface ISkinParam extends ISkinSimple {
-    // ::remove file when __HAXE__
 
 	public static final int SWIMLANE_WIDTH_SAME = -1;
 
@@ -113,7 +111,7 @@ public interface ISkinParam extends ISkinSimple {
 
 	public boolean stereotypePositionTop();
 
-	public boolean useSwimlanes(UmlDiagramType type);
+	public boolean useSwimlanes(DiagramType type);
 
 	public double getNodesep();
 
@@ -161,13 +159,13 @@ public interface ISkinParam extends ISkinSimple {
 
 	public int swimlaneWidth();
 
-	public UmlDiagramType getUmlDiagramType();
+	public DiagramType getDiagramType();
 
 	public HColor hoverPathColor();
 
 	public TikzFontDistortion getTikzFontDistortion();
 
-	public double getPadding(PaddingParam param);
+	public ClockwiseTopRightBottomLeft getPaddingTOBEREMOVED(PaddingParam param);
 
 	public boolean useRankSame();
 

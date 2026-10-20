@@ -36,30 +36,21 @@ package net.sourceforge.plantuml.klimt.drawing.svg;
 
 import java.awt.font.TextLayout;
 
-import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
-import net.sourceforge.plantuml.klimt.font.UFontContext;
 import net.sourceforge.plantuml.klimt.shape.UText;
 
 public class DriverTextAsPathSvg implements UDriver<UText, SvgGraphics> {
-    // ::remove file when __HAXE__
-
-	private final ClipContainer clipContainer;
-
-	public DriverTextAsPathSvg(ClipContainer clipContainer) {
-		this.clipContainer = clipContainer;
-	}
 
 	public void draw(UText ushape, double x, double y, ColorMapper mapper, UParam param, SvgGraphics svg) {
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null && clip.isInside(x, y) == false) {
 			return;
 		}
 
-		final TextLayout t = UFontContext.SVG.createTextLayout(ushape);
+		final TextLayout t = ushape.createTextLayout();
 		svg.drawPathIterator(x, y, t.getOutline(null).getPathIterator(null));
 	}
 

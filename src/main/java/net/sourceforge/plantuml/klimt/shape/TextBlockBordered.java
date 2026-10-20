@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -46,8 +47,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 
-public class TextBlockBordered extends AbstractTextBlock implements TextBlock {
-    // ::remove file when __HAXE__
+public class TextBlockBordered implements TextBlock {
 
 	private final double cornersize;
 	private final HColor backgroundColor;
@@ -90,6 +90,8 @@ public class TextBlockBordered extends AbstractTextBlock implements TextBlock {
 		return getPureTextWidth(stringBounder) + left + right;
 	}
 
+	@Override
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final double height = getTextHeight(stringBounder);
 		final double width = getTextWidth(stringBounder);

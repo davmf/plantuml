@@ -37,20 +37,14 @@ package net.sourceforge.plantuml.core;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Set;
 
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.api.ApiStable;
+import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.klimt.creole.Display;
-import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.warning.WarningHandler;
 
-/**
- * Represents a single diagram. A Diagram could be a UML (sequence diagram,
- * class diagram...) or an non-UML diagram.
- * 
- * @author Arnaud Roques
- */
-@ApiStable
-public interface Diagram {
+public interface Diagram extends WarningHandler {
 
 	/**
 	 * Export the diagram as an image to some format. Note that a diagram could be
@@ -68,38 +62,26 @@ public interface Diagram {
 	 */
 	ImageData exportDiagram(OutputStream os, int num, FileFormatOption fileFormat) throws IOException;
 
-	void exportDiagramGraphic(UGraphic ug, FileFormatOption fileFormat);
+	public int getNbImages();
 
-	/**
-	 * Number of images in this diagram (usually, 1)
-	 * 
-	 * @return usually 1
-	 */
-	int getNbImages();
+	public DiagramDescription getDescription();
 
-	int getSplitPagesHorizontal();
+	public UmlSource getSource();
 
-	int getSplitPagesVertical();
+	public String getMetadata();
 
-	DiagramDescription getDescription();
+	public String getWarningOrError();
 
-	String getMetadata();
-
-	String getWarningOrError();
-
-	/**
-	 * The original source of the diagram
-	 */
-	UmlSource getSource();
-
-	/**
-	 * Check if the Diagram have some links.
-	 */
 	public boolean hasUrl();
 
 	public Display getTitleDisplay();
-	
-	
+
 	public InstallationRequirement getInstallationRequirement();
+
+	public String checkFinalError();
+
+	public Set<ParserPass> getRequiredPass();
+	
+	public Throwable getRootCause();
 
 }

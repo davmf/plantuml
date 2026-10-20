@@ -39,7 +39,7 @@ import java.util.List;
 
 import net.sourceforge.plantuml.Previous;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandActivity3;
-import net.sourceforge.plantuml.activitydiagram3.command.CommandActivityLegacy1;
+import net.sourceforge.plantuml.activitydiagram3.command.CommandActivityList;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandActivityLong3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandArrow3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandArrowLong3;
@@ -48,19 +48,19 @@ import net.sourceforge.plantuml.activitydiagram3.command.CommandBackwardLong3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandBreak;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandCase;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandCircleSpot3;
+import net.sourceforge.plantuml.activitydiagram3.command.CommandCloseGroup3;
+import net.sourceforge.plantuml.activitydiagram3.command.CommandCloseGroupLegacy3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandElse3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandElseIf2;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandElseIf3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandElseLegacy1;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandEnd3;
-import net.sourceforge.plantuml.activitydiagram3.command.CommandEndPartition3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandEndSwitch;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandEndif3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandFork3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandForkAgain3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandForkEnd3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandGoto;
-import net.sourceforge.plantuml.activitydiagram3.command.CommandGroupEnd3;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandIf2;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandIf4;
 import net.sourceforge.plantuml.activitydiagram3.command.CommandIfLegacy1;
@@ -88,11 +88,16 @@ import net.sourceforge.plantuml.command.CommandDecoratorMultine;
 import net.sourceforge.plantuml.command.CommandFootboxIgnored;
 import net.sourceforge.plantuml.command.CommonCommands;
 import net.sourceforge.plantuml.command.PSystemCommandFactory;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
 public class ActivityDiagramFactory3 extends PSystemCommandFactory {
+
+	public ActivityDiagramFactory3() {
+		super(DiagramType.ACTIVITY);
+	}
 
 	@Override
 	protected void initCommandsList(List<Command> cmds) {
@@ -103,9 +108,9 @@ public class ActivityDiagramFactory3 extends PSystemCommandFactory {
 		cmds.add(new CommandSwimlane());
 		cmds.add(new CommandSwimlane2());
 		cmds.add(new CommandPartition3());
-		cmds.add(new CommandEndPartition3());
+		cmds.add(new CommandCloseGroup3());
 		// cmds.add(new CommandGroup3());
-		cmds.add(new CommandGroupEnd3());
+		cmds.add(new CommandCloseGroupLegacy3());
 		cmds.add(new CommandArrow3());
 		cmds.add(new CommandArrowLong3());
 		cmds.add(new CommandRepeat3());
@@ -152,7 +157,7 @@ public class ActivityDiagramFactory3 extends PSystemCommandFactory {
 		cmds.add(new CommandNoteLong3());
 
 		cmds.add(new CommandActivityLong3());
-		cmds.add(new CommandActivityLegacy1());
+		cmds.add(new CommandActivityList());
 
 		cmds.add(new CommandLabel());
 		cmds.add(new CommandGoto());
@@ -160,13 +165,9 @@ public class ActivityDiagramFactory3 extends PSystemCommandFactory {
 	}
 
 	@Override
-	public ActivityDiagram3 createEmptyDiagram(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
+	public ActivityDiagram3 createEmptyDiagram(PathSystem pathSystem, UmlSource source, Previous previous,
+			PreprocessingArtifact preprocessing) {
 		return new ActivityDiagram3(source, previous, preprocessing);
-	}
-
-	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return UmlDiagramType.ACTIVITY;
 	}
 
 }

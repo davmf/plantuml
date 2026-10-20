@@ -34,41 +34,46 @@
  */
 package net.sourceforge.plantuml.timingdiagram.graphic;
 
+
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.timingdiagram.TimingDiagram;
 
 public class PlayerFrame {
 
 	private final ISkinParam skinParam;
 	private final TextBlock title;
+	private final boolean compact;
 
-	public PlayerFrame(TextBlock title, ISkinParam skinParam) {
+	public PlayerFrame(TextBlock title, ISkinParam skinParam, boolean compact) {
 		this.title = title;
 		this.skinParam = skinParam;
+		this.compact = compact;
 	}
 
-	private StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram);
+	private StyleQuery getStyleSignature() {
+		return StyleQueries.TIMINGDIAG;
 	}
 
 	private HColor getLineColor() {
-		final Style style = getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleSignature());
 		return style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 	}
 
 	private UStroke getUStroke() {
-		final Style style = getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(getStyleSignature());
 		return style.getStroke();
 	}
 
@@ -77,12 +82,26 @@ public class PlayerFrame {
 	}
 
 	public void drawFrameTitle(UGraphic ug) {
+		if (title == TextBlockUtils.EMPTY_TEXT_BLOCK)
+			return;
 		title.drawU(ug);
-		final XDimension2D dimTitle = title.calculateDimension(ug.getStringBounder());
+
+		if (compact)
+			return;
+
 		ug = ug.apply(getLineColor()).apply(getUStroke());
+		final XDimension2D dimTitle = title.calculateDimension(ug.getStringBounder());
+
 		final double widthTmp = dimTitle.getWidth() + 1;
-		final double height = title.calculateDimension(ug.getStringBounder()).getHeight() + 1;
+		final double height = dimTitle.getHeight() + 1;
 		drawLine(ug, -TimingDiagram.marginX1, height, widthTmp, height, widthTmp + 10, 0);
+	}
+
+	public double getHeight(StringBounder stringBounder) {
+		final double height = title.calculateDimension(stringBounder).getHeight();
+		if (compact)
+			return height - 1;
+		return height + 1;
 	}
 
 	private void drawLine(UGraphic ug, double... coord) {

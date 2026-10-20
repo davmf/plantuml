@@ -36,9 +36,14 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.regex.Pattern;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.ClassDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -66,6 +71,15 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateElementFull2 extends SingleLineCommand2<ClassDiagram> {
 
+	// Must stay in line with the keywords of CommandCreateElementFull.ALL_TYPES (plus "state").
+	private static final Collection<String> FIRST_TOKENS_NORMAL = Arrays.asList("state", "person", "artifact",
+			"actor", "folder", "card", "file", "package", "rectangle", "hexagon", "label", "node", "frame", "cloud",
+			"action", "process", "database", "queue", "stack", "storage", "agent", "usecase", "component", "boundary",
+			"control", "entity", "interface", "circle", "collections", "port", "portin", "portout");
+
+	// The "mix_" prefix is what the line opens with.
+	private static final Collection<String> FIRST_TOKENS_MIX = Arrays.asList("mix");
+
 	private final Mode mode;
 
 	public static enum Mode {
@@ -75,6 +89,11 @@ public class CommandCreateElementFull2 extends SingleLineCommand2<ClassDiagram> 
 	public CommandCreateElementFull2(Mode mode) {
 		super(getRegexConcat(mode));
 		this.mode = mode;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return mode == Mode.WITH_MIX_PREFIX ? FIRST_TOKENS_MIX : FIRST_TOKENS_NORMAL;
 	}
 
 	private static RegexConcat getRegexConcat(Mode mode) {
@@ -128,17 +147,69 @@ public class CommandCreateElementFull2 extends SingleLineCommand2<ClassDiagram> 
 				RegexLeaf.end());
 	}
 
-	@Override
-	final protected boolean isForbidden(CharSequence line) {
-		if (line.toString().matches("^[\\p{L}0-9_.]+$"))
-			return true;
+	private static final Pattern FORBIDDEN_PATTERN = Pattern.compile("^[\\p{L}0-9_.]+$");
 
-		return false;
+	@Override
+	protected final boolean isForbidden(CharSequence line) {
+		return FORBIDDEN_PATTERN.matcher(line).matches();
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Mirror the symbol deduction of executeArg: the shape of the code or
+		// of the display ('()...', '(...)', ':...:', '[...]') overrides the
+		// keyword.
+		String codeRaw = arg.getLazzy("CODE", 0);
+		final String displayRaw = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("DISPLAY", 0));
+		final char codeChar = getCharEncoding(codeRaw);
+		final char codeDisplay = getCharEncoding(displayRaw);
+		final String symbol;
+		if (codeRaw.startsWith("()")) {
+			symbol = "interface";
+			codeRaw = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(StringUtils.trin(codeRaw.substring(2)));
+		} else if (codeChar == '(' || codeDisplay == '(')
+			symbol = "usecase";
+		else if (codeChar == ':' || codeDisplay == ':')
+			symbol = "actor";
+		else if (codeChar == '[' || codeDisplay == '[')
+			symbol = "component";
+		else
+			symbol = arg.get("SYMBOL", 0);
+
+		final String idShort = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(codeRaw);
+		sb.append("Creating the ").append(symbol == null ? "element" : symbol).append(" '").append(idShort).append("'");
+
+		if (displayRaw != null)
+			sb.append(" displayed as \"").append(displayRaw).append("\"");
+
+		final String stereotype = arg.getLazzy("STEREOTYPE", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		final String tags = arg.getLazzy("TAGS", 0);
+		if (tags != null && tags.isEmpty() == false)
+			sb.append(", tagged ").append(tags);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		// Without the 'mix_' prefix, this command is only accepted once
+		// 'allowmixing' has been set.
+		if (mode == Mode.NORMAL_KEYWORD)
+			sb.append(" (requires 'allowmixing')");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(ClassDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
 		if (mode == Mode.NORMAL_KEYWORD && diagram.isAllowMixing() == false)
 			return CommandExecutionResult.error("Use 'allowmixing' if you want to mix classes and other UML elements.");
 
@@ -209,7 +280,7 @@ public class CommandCreateElementFull2 extends SingleLineCommand2<ClassDiagram> 
 
 		CommandCreateClassMultilines.addTags(entity, arg.getLazzy("TAGS", 0));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);

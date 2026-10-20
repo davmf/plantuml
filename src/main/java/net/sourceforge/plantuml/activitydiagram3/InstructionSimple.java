@@ -85,7 +85,6 @@ public class InstructionSimple extends MonoSwimable implements Instruction {
 		this.styleBuilder = styleBuilder;
 	}
 
-	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		GtileBox result = GtileBox.create(stringBounder, colors.mute(skinParam), label, getSwimlaneIn(), boxStyle,
@@ -102,18 +101,17 @@ public class InstructionSimple extends MonoSwimable implements Instruction {
 		}
 		return result;
 	}
-	// ::done
 
 	@Override
 	public Ftile createFtile(FtileFactory factory) {
 		Ftile result = factory.activity(label, getSwimlaneIn(), boxStyle, colors, stereotype, styleBuilder);
-		if (url != null) {
+		if (url != null)
 			result = factory.addUrl(result, url);
-		}
+
 		result = eventuallyAddNote(factory, result, result.getSwimlaneIn(), VerticalAlignment.CENTER);
-		if (killed) {
+		if (killed)
 			return new FtileKilled(result);
-		}
+
 		return result;
 	}
 
@@ -131,6 +129,10 @@ public class InstructionSimple extends MonoSwimable implements Instruction {
 	@Override
 	public LinkRendering getInLinkRendering() {
 		return inlinkRendering;
+	}
+
+	public boolean isKilled() {
+		return killed;
 	}
 
 }

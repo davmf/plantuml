@@ -43,20 +43,22 @@ import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 
-public class BigFrame extends AbstractTextBlock {
-    // ::remove file when __HAXE__
-	
+public class BigFrame extends TextBlockMemoized {
+
 	private final TextBlock title;
-	private final double width;
-	private final double height;
+	private final TextBlock original;
+	private final ClockwiseTopRightBottomLeft padding;
 	private final Fashion symbolContext;
 
-	public BigFrame(final TextBlock title, final double width, final double height, final Fashion symbolContext) {
+	public BigFrame(final TextBlock title, final TextBlock original, final ClockwiseTopRightBottomLeft padding,
+			final Fashion symbolContext) {
 		this.title = title;
-		this.width = width;
-		this.height = height;
+		this.original = original;
+		this.padding = padding;
 		this.symbolContext = symbolContext;
 	}
 
@@ -67,14 +69,35 @@ public class BigFrame extends AbstractTextBlock {
 		return dimTitle.getHeight() + 3;
 	}
 
+	private ClockwiseTopRightBottomLeft getEffectivePadding(StringBounder stringBounder) {
+		final XDimension2D dimTitle = title.calculateDimension(stringBounder);
+		return padding.incTop(dimTitle.getHeight() + 10);
+	}
+
+	private double computeWidth(StringBounder stringBounder) {
+		final XDimension2D dimTitle = title.calculateDimension(stringBounder);
+		final ClockwiseTopRightBottomLeft effectivePadding = getEffectivePadding(stringBounder);
+		final MinMax originalMinMax = TextBlockUtils.getMinMax(original, stringBounder, false);
+		final double ww = originalMinMax.getMinX() >= 0 ? originalMinMax.getMaxX() : originalMinMax.getWidth();
+		return effectivePadding.getLeft() + Math.max(ww + 12, dimTitle.getWidth() + 10) + effectivePadding.getRight();
+	}
+
+	private double computeHeight(StringBounder stringBounder) {
+		final XDimension2D dimTitle = title.calculateDimension(stringBounder);
+		final ClockwiseTopRightBottomLeft effectivePadding = getEffectivePadding(stringBounder);
+		final MinMax originalMinMax = TextBlockUtils.getMinMax(original, stringBounder, false);
+		final double hh = originalMinMax.getMinY() >= 0 ? originalMinMax.getMaxY() : originalMinMax.getHeight();
+		return effectivePadding.getTop() + dimTitle.getHeight() + hh + effectivePadding.getBottom();
+	}
+
 	public void drawU(UGraphic ug) {
 		final StringBounder stringBounder = ug.getStringBounder();
 		final XDimension2D dim = calculateDimension(stringBounder);
 		ug = symbolContext.apply(ug);
 		final XDimension2D dimTitle = title.calculateDimension(stringBounder);
 		final double widthFull = dim.getWidth();
-		final Shadowable rectangle = URectangle.build(widthFull, dim.getHeight()).rounded(symbolContext.getRoundCorner())
-				.ignoreForCompressionOnX().ignoreForCompressionOnY();
+		final Shadowable rectangle = URectangle.build(widthFull, dim.getHeight())
+				.rounded(symbolContext.getRoundCorner()).ignoreForCompressionOnX().ignoreForCompressionOnY();
 		rectangle.setDeltaShadow(symbolContext.getDeltaShadow());
 
 		ug.draw(rectangle);
@@ -110,8 +133,8 @@ public class BigFrame extends AbstractTextBlock {
 	}
 
 	@Override
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
-		return new XDimension2D(width, height);
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
+		return new XDimension2D(computeWidth(stringBounder), computeHeight(stringBounder));
 	}
 
 }

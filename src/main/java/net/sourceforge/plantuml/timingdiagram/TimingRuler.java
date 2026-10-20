@@ -56,9 +56,8 @@ import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
 
 public class TimingRuler {
 
@@ -71,7 +70,7 @@ public class TimingRuler {
 
 	private TimingFormat format = TimingFormat.DECIMAL;
 
-	static UGraphic applyForVLines(UGraphic ug, Style style, ISkinParam skinParam) {
+	static public UGraphic applyForVLines(UGraphic ug, Style style, ISkinParam skinParam) {
 		final UStroke stroke = new UStroke(3, 5, 0.5);
 		final HColor color = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 
@@ -184,13 +183,11 @@ public class TimingRuler {
 	}
 
 	private Style getStyleTimegrid() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram, SName.timegrid)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.TIMINGDIAG_TIMEGRID);
 	}
 
 	private Style getStyleTimeline() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.timingDiagram, SName.timeline)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.TIMINGDIAG_TIMELINE);
 	}
 
 	private TextBlock getTimeTextBlock(long time) {
@@ -331,6 +328,12 @@ public class TimingRuler {
 			b = r;
 		}
 		return (Math.abs(a));
+	}
+
+
+	public void setStopAt(TimeTick timeTick) {
+		// WIP
+		
 	}
 
 }

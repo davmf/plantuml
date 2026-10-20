@@ -352,7 +352,6 @@ complimentary
 comprehensive
 conciliate
 conciliatory
-concise
 confidence
 confident
 congenial
@@ -1128,7 +1127,6 @@ like
 liked
 likes
 liking
-line
 lionhearted
 little
 live
@@ -1521,7 +1519,6 @@ recommendations
 recommended
 reconcile
 reconciliation
-record
 recover
 recovery
 rectification
@@ -1620,7 +1617,6 @@ rightfully
 rightly
 rightness
 risk
-robust
 rock
 rockstar
 rockstars

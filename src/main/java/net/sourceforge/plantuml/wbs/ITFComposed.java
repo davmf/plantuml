@@ -39,17 +39,23 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import net.sourceforge.plantuml.activitydiagram3.ftile.vertical.FtileBoxOld;
+import net.sourceforge.plantuml.asciiverse.ATable;
+import net.sourceforge.plantuml.asciiverse.InfinitePlan;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.AbstractCommonUGraphic;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.mindmap.IdeaShape;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.utils.Direction;
 
 class ITFComposed extends WBSTextBlock implements ITF {
@@ -61,16 +67,46 @@ class ITFComposed extends WBSTextBlock implements ITF {
 
 	final private double delta1x = 10;
 	final private double marginBottom;// = 15;
-	private final WElement idea;
+	private boolean autoWidthApplied;
 
 	private ITFComposed(ISkinParam skinParam, WElement idea, List<ITF> left, List<ITF> right) {
-		super(skinParam, idea.getStyleBuilder(), idea.getLevel(), idea.getStereotype());
-		this.idea = idea;
+		super(skinParam, idea);
 		this.left = left;
 		this.right = right;
 		this.main = buildMain(idea);
 		final Style style = idea.getStyle();
-		this.marginBottom = style.getMargin().getBottom();
+		this.marginBottom = idea.getShape() == IdeaShape.PSEUDO ? 0 : style.getMargin().getBottom();
+	}
+
+	@Override
+	public double getMainBoxWidth(StringBounder stringBounder) {
+		return main.calculateDimension(stringBounder).getWidth();
+	}
+
+	@Override
+	public void setForcedMinWidth(double width) {
+		if (main instanceof FtileBoxOld)
+			((FtileBoxOld) main).setMinimumWidth(width);
+	}
+
+	// Called from both calculateDimensionSlow() and drawU() because either
+	// may be invoked first. The flag ensures it runs only once.
+	private void applyAutoWidth(StringBounder stringBounder) {
+		if (autoWidthApplied)
+			return;
+		autoWidthApplied = true;
+		if (isAutoWidth() == false)
+			return;
+
+		final List<ITF> all = new ArrayList<>();
+		all.addAll(left);
+		all.addAll(right);
+		double maxWidth = 0;
+		for (ITF child : all)
+			maxWidth = Math.max(maxWidth, child.getMainBoxWidth(stringBounder));
+		for (ITF child : all)
+			child.setForcedMinWidth(maxWidth);
+		invalidateDimensionCache();
 	}
 
 	public static ITF build2(ISkinParam skinParam, WElement idea) {
@@ -121,7 +157,9 @@ class ITFComposed extends WBSTextBlock implements ITF {
 		return new XPoint2D(x, y);
 	}
 
-	public final XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public final XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
+		applyAutoWidth(stringBounder);
 		final XDimension2D mainDim = main.calculateDimension(stringBounder);
 		final double mainWidth = mainDim.getWidth();
 		final double height = mainDim.getHeight() + Math.max(getCollHeight(stringBounder, left, marginBottom),
@@ -131,14 +169,24 @@ class ITFComposed extends WBSTextBlock implements ITF {
 		return new XDimension2D(width, height);
 	}
 
+	@Override
+	public void asciiDraw(InfinitePlan plan) {
+		final Display label = getIdea().getLabel();
+		final ATable table = new ATable(1, 1).withLeftPadding(7).withRightPadding(7);
+		table.setCellContent(0, 0, label);
+		table.asciiDraw(plan);
+	}
+
+	
 	public void drawU(final UGraphic ug) {
+		applyAutoWidth(ug.getStringBounder());
 		final StringBounder stringBounder = ug.getStringBounder();
 
 		final XDimension2D mainDim = main.calculateDimension(stringBounder);
 
 		if (ug instanceof AbstractCommonUGraphic) {
 			final UTranslate translate = ((AbstractCommonUGraphic) ug).getTranslate();
-			idea.setGeometry(translate, mainDim);
+			getIdea().setGeometry(translate, mainDim);
 		}
 
 		final double wx = getw1(stringBounder) - mainDim.getWidth() / 2;
@@ -151,7 +199,8 @@ class ITFComposed extends WBSTextBlock implements ITF {
 			y += marginBottom;
 			final XDimension2D childDim = child.calculateDimension(stringBounder);
 			lastY1 = y + child.getF2(stringBounder).getY();
-			drawLine(ug.apply(lineColor), x - childDim.getWidth() - delta1x + child.getF2(stringBounder).getX(), lastY1, x, lastY1);
+			drawLine(ug.apply(lineColor), x - childDim.getWidth() - delta1x + child.getF2(stringBounder).getX(), lastY1,
+					x, lastY1);
 			child.drawU(ug.apply(new UTranslate(x - childDim.getWidth() - delta1x, y)));
 			y += childDim.getHeight();
 		}
@@ -171,8 +220,8 @@ class ITFComposed extends WBSTextBlock implements ITF {
 	}
 
 	private HColor getLinkColor() {
-		final Style styleArrow = idea.getStyle().getSignature().withTOBECHANGED(idea.getStereotype())
-				.getMergedStyle(idea.getStyleBuilder());
+		final StyleQuery query = getIdea().getStyle().getQuery().withStereotype(getIdea().getStereotype());
+		final Style styleArrow = getIdea().getStyleBuilder().getMergedStyle(query);
 		return styleArrow.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 	}
 

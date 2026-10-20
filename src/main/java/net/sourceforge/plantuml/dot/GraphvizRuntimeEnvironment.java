@@ -54,6 +54,7 @@ import net.sourceforge.plantuml.vizjs.GraphvizJs;
 import net.sourceforge.plantuml.vizjs.VizJsEngine;
 
 public class GraphvizRuntimeEnvironment {
+	
 
 	public static final String VIZJS = "vizjs";
 
@@ -89,12 +90,9 @@ public class GraphvizRuntimeEnvironment {
 	}
 
 	@DuplicateCode(reference = "GraphvizUtils")
-	public final String getDotExecutableForTest() {
-		return dotExecutable;
-	}
-
-	@DuplicateCode(reference = "GraphvizUtils")
 	public final void setDotExecutable(String value) {
+		if (value != null && value.length() == 1)
+			throw new IllegalArgumentException("setDotExecutable failure");
 		dotExecutable = value == null ? null : value.trim();
 	}
 
@@ -117,9 +115,9 @@ public class GraphvizRuntimeEnvironment {
 	@DuplicateCode(reference = "GraphvizUtils")
 	public Graphviz createForSystemDot(ISkinParam skinParam, String dotString, String... type) {
 		Graphviz result = createWithFactory(skinParam, dotString, type);
-		if (result != null) {
+		if (result != null)
 			return result;
-		}
+
 		if (useVizJs(skinParam)) {
 			Log.info(() -> "Using " + VIZJS);
 			return new GraphvizJs(dotString);
@@ -142,9 +140,9 @@ public class GraphvizRuntimeEnvironment {
 	@DuplicateCode(reference = "GraphvizUtils")
 	public Graphviz create(ISkinParam skinParam, String dotString, String... type) {
 		Graphviz result = createWithFactory(skinParam, dotString, type);
-		if (result != null) {
+		if (result != null)
 			return result;
-		}
+
 		if (useVizJs(skinParam)) {
 			Log.info(() -> "Using " + VIZJS);
 			return new GraphvizJs(dotString);

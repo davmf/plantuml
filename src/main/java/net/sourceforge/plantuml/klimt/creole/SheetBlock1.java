@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import net.atmp.InnerStrategy;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.creole.atom.Atom;
@@ -52,14 +51,12 @@ import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
-import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 
-public class SheetBlock1 extends AbstractTextBlock implements TextBlock, Atom, Stencil {
-    // ::remove folder when __HAXE__
+public class SheetBlock1 extends TextBlockMemoized implements Atom, Stencil {
 
 	private final Sheet sheet;
 	private List<Stripe> stripes;
@@ -74,8 +71,8 @@ public class SheetBlock1 extends AbstractTextBlock implements TextBlock, Atom, S
 	private Class<? extends StringBounder> lastCaller;
 	private double minimumWidth;
 
-	public SheetBlock1(Sheet sheet, LineBreakStrategy maxWidth, double padding) {
-		this(sheet, maxWidth, ClockwiseTopRightBottomLeft.same(padding), 0, 0);
+	public SheetBlock1(Sheet sheet, LineBreakStrategy maxWidth, ClockwiseTopRightBottomLeft padding) {
+		this(sheet, maxWidth, padding, 0, 0);
 	}
 
 	public SheetBlock1(Sheet sheet, LineBreakStrategy maxWidth, Style style) {
@@ -154,46 +151,59 @@ public class SheetBlock1 extends AbstractTextBlock implements TextBlock, Atom, S
 			}
 			sea.exportAllPositions(positions);
 		}
-		final int coef;
-		if (sheet.getHorizontalAlignment() == HorizontalAlignment.CENTER)
-			coef = 2;
-		else if (sheet.getHorizontalAlignment() == HorizontalAlignment.RIGHT)
-			coef = 1;
-		else
-			coef = 0;
 
-		if (coef != 0) {
-			double maxWidth = 0;
-			for (Double v : widths.values())
-				if (v > maxWidth)
-					maxWidth = v;
+		double maxWidth = 0;
+		for (Double v : widths.values())
+			if (v > maxWidth)
+				maxWidth = v;
 
-			for (Map.Entry<Stripe, Double> ent : widths.entrySet()) {
-				// final double diff = maxWidth - ent.getValue() + this.marginX1 +
-				// this.marginX2;
-				final double diff = maxWidth - ent.getValue();
-				if (diff > 0) {
-					for (Atom atom : ent.getKey().getAtoms()) {
+		for (Map.Entry<Stripe, Double> ent : widths.entrySet()) {
+			final double diff = maxWidth - ent.getValue();
+			if (diff > 0) {
+				final Stripe key = ent.getKey();
+				final int coef = getCoef(key);
+				if (coef > 0)
+					for (Atom atom : key.getAtoms()) {
 						final Position pos = positions.get(atom);
 						positions.put(atom, pos.translateX(diff / coef));
 					}
-				}
-
 			}
-
 		}
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	private int getCoef(Stripe key) {
+		if (key instanceof StripeSimple)
+			return getCoef(((StripeSimple) key).getCellAlignment());
+
+		return getCoef(sheet.getHorizontalAlignment());
+	}
+
+	private int getCoef(HorizontalAlignment alignment) {
+		if (alignment == null)
+			return 0;
+
+		switch (alignment) {
+		case CENTER:
+			return 2;
+		case RIGHT:
+			return 1;
+		default:
+			return 0;
+		}
+	}
+
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		initMap(stringBounder);
 		return minMax.getDimension().delta(padding.getBottom() + padding.getTop());
 	}
 
 	@Override
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
 		return null;
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		initMap(ug.getStringBounder());
 		if (padding.getLeft() > 0 || padding.getTop() > 0)

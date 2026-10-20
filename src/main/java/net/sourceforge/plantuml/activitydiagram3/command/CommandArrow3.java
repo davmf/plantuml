@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -51,6 +55,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandArrow3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("-");
 
 	public CommandArrow3() {
 		super(getRegexConcat());
@@ -69,6 +75,29 @@ public class CommandArrow3 extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// This command does not draw anything by itself: it sets the label
+		// and/or the color and style of the next arrow, that is the connection
+		// to the upcoming activity. Several colors separated by ';' make a
+		// rainbow arrow (see Rainbow).
+		final String color = arg.get("COLOR", 0);
+		final String label = arg.get("LABEL", 0);
+		final boolean hasLabel = label != null && label.length() > 0;
+
+		if (hasLabel && color != null)
+			return "Labelling the next arrow \"" + label + "\", with color or style '" + color + "'";
+
+		if (hasLabel)
+			return "Labelling the next arrow \"" + label + "\"";
+
+		if (color != null)
+			return "Setting the color or style of the next arrow to '" + color + "'";
+
+		return "Plain arrow, with no effect";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
 			throws NoSuchColorException {
 
@@ -83,6 +112,11 @@ public class CommandArrow3 extends SingleLineCommand2<ActivityDiagram3> {
 			diagram.setLabelNextArrow(Display.getWithNewlines(diagram.getPragma(), label));
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

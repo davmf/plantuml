@@ -49,6 +49,7 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.Gtiles;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.klimt.color.Colors;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.sequencediagram.NotePosition;
@@ -62,11 +63,13 @@ public class InstructionSplit extends AbstractInstruction implements Instruction
 	private final Instruction parent;
 	private final LinkRendering inlinkRendering;
 	private final Swimlane swimlaneIn;
+	private final Colors colors;
 	private Swimlane swimlaneOut;
 
-	public InstructionSplit(Instruction parent, LinkRendering inlinkRendering, Swimlane swimlane) {
+	public InstructionSplit(Instruction parent, LinkRendering inlinkRendering, Swimlane swimlane, Colors colors) {
 		this.parent = parent;
 		this.swimlaneIn = swimlane;
+		this.colors = colors;
 
 		this.splits.add(new InstructionList(swimlane));
 		this.inlinkRendering = Objects.requireNonNull(inlinkRendering);
@@ -90,7 +93,6 @@ public class InstructionSplit extends AbstractInstruction implements Instruction
 		return getLast().add(ins);
 	}
 
-	// ::comment when __CORE__
 	@Override
 	public Gtile createGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		final List<Gtile> all = new ArrayList<>();
@@ -103,7 +105,6 @@ public class InstructionSplit extends AbstractInstruction implements Instruction
 
 		return new GtileSplit(all, swimlaneIn, getInLinkRenderingColor(skinParam).getColor());
 	}
-	// ::done
 
 	private Rainbow getInLinkRenderingColor(ISkinParam skinParam) {
 		Rainbow color;
@@ -112,12 +113,12 @@ public class InstructionSplit extends AbstractInstruction implements Instruction
 	}
 
 	@Override
-	public Ftile createFtile(FtileFactory factory) {
+	public Ftile createFtile(FtileFactory factory) throws NoSuchColorException {
 		final List<Ftile> all = new ArrayList<>();
 		for (InstructionList list : splits)
 			all.add(list.createFtile(factory));
 
-		return factory.createParallel(all, ForkStyle.SPLIT, null, swimlaneIn, swimlaneOut);
+		return factory.createParallel(all, ForkStyle.SPLIT, null, swimlaneIn, swimlaneOut, colors);
 	}
 
 	public Instruction getParent() {
@@ -151,7 +152,8 @@ public class InstructionSplit extends AbstractInstruction implements Instruction
 	}
 
 	@Override
-	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote, Stereotype stereotype) {
+	public boolean addNote(Display note, NotePosition position, NoteType type, Colors colors, Swimlane swimlaneNote,
+			Stereotype stereotype) {
 		return getLast().addNote(note, position, type, colors, swimlaneNote, stereotype);
 	}
 

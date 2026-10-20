@@ -110,10 +110,10 @@ public final class LinkHtmlPrinter {
 		if (decor1 == LinkDecor.EXTENDS && decor2 == LinkDecor.NONE) {
 			return ent1 + " extends " + ent2;
 		}
-		if (decor2 == LinkDecor.AGREGATION) {
+		if (decor2 == LinkDecor.AGGREGATION) {
 			return ent1 + " is aggregated by  " + ent2;
 		}
-		if (decor1 == LinkDecor.AGREGATION) {
+		if (decor1 == LinkDecor.AGGREGATION) {
 			return ent1 + " aggregates " + ent2;
 		}
 		if (decor2 == LinkDecor.COMPOSITION) {
@@ -145,10 +145,10 @@ public final class LinkHtmlPrinter {
 		if (decor1 == LinkDecor.EXTENDS && decor2 == LinkDecor.NONE) {
 			return ent2 + " is extended by " + ent1;
 		}
-		if (decor2 == LinkDecor.AGREGATION) {
+		if (decor2 == LinkDecor.AGGREGATION) {
 			return ent2 + " aggregates " + ent1;
 		}
-		if (decor1 == LinkDecor.AGREGATION) {
+		if (decor1 == LinkDecor.AGGREGATION) {
 			return ent2 + " is aggregated by " + ent1;
 		}
 		if (decor2 == LinkDecor.COMPOSITION) {

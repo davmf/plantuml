@@ -43,15 +43,24 @@ import net.sourceforge.plantuml.text.StringLocated;
 
 public class PSystemErrorV2 extends PSystemError {
 
-	public PSystemErrorV2(UmlSource source, List<StringLocated> trace, ErrorUml singleError, PreprocessingArtifact preprocessing) {
+	private final Throwable rootCause;
+
+	public PSystemErrorV2(UmlSource source, List<StringLocated> trace, ErrorUml singleError,
+			PreprocessingArtifact preprocessing, Throwable rootCause) {
 		super(source, preprocessing);
 		this.trace = trace;
 		this.singleError = singleError;
+		this.rootCause = rootCause;
 	}
 
 	@Override
 	public String toString() {
 		return super.toString() + " " + singleError;
+	}
+
+	@Override
+	public Throwable getRootCause() {
+		return rootCause;
 	}
 
 }

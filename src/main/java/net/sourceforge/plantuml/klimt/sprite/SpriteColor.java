@@ -35,11 +35,11 @@
  */
 package net.sourceforge.plantuml.klimt.sprite;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
-
 import net.atmp.PixelImage;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.AffineTransformType;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorGradient;
@@ -47,7 +47,6 @@ import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 
@@ -99,7 +98,7 @@ public class SpriteColor implements Sprite {
 	}
 
 	public UImage toUImage(ColorMapper colorMapper, HColor backcolor, HColor forecolor) {
-		final BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		final PortableImage im = PortableImageFactory.build(width, height, PortableImage.TYPE_INT_RGB);
 
 		if (backcolor == null)
 			backcolor = HColors.WHITE;
@@ -113,8 +112,7 @@ public class SpriteColor implements Sprite {
 				final int localColor = color[line][col];
 				if (localColor == -1) {
 					final double coef = 1.0 * gray[line][col] / (16 - 1);
-					final Color c = gradient.getColor(colorMapper, coef, 255);
-					im.setRGB(col, line, c.getRGB());
+					im.setRGB(col, line, gradient.getRGB(colorMapper, coef, 255));
 				} else {
 					im.setRGB(col, line, localColor);
 				}
@@ -123,14 +121,17 @@ public class SpriteColor implements Sprite {
 		return new UImage(new PixelImage(im, AffineTransformType.TYPE_BILINEAR));
 	}
 
-	public TextBlock asTextBlock(final HColor fontColor, final HColor forcedColor, final double scale) {
-		return new AbstractTextBlock() {
+	@Override
+	public TextBlock asTextBlock(final HColor fontColor, final HColor forcedColor, final double scale,
+			final HColor backColor) {
+		return new TextBlock() {
 
 			public void drawU(UGraphic ug) {
 				final UImage image = toUImage(ug.getColorMapper(), ug.getParam().getBackcolor(), fontColor);
 				ug.draw(image.scale(scale));
 			}
 
+			@Fast
 			public XDimension2D calculateDimension(StringBounder stringBounder) {
 				return new XDimension2D(getWidth() * scale, getHeight() * scale);
 			}

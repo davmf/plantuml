@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -47,6 +51,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCase extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("case");
 
 	public CommandCase() {
 		super(getRegexConcat());
@@ -64,6 +70,19 @@ public class CommandCase extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		// 'case (value)' adds a new branch to the enclosing 'switch'; the flow
+		// of the previous case ends here. An empty value, like 'case ()',
+		// gives an unlabelled branch.
+		final String test = arg.get("TEST", 0);
+		if (test.length() == 0)
+			return "Adding an unlabelled branch to the enclosing switch";
+
+		return "Adding the branch \"" + test + "\" to the enclosing switch";
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
 		String test = arg.get("TEST", 0);
 		if (test.length() == 0) {
@@ -72,6 +91,11 @@ public class CommandCase extends SingleLineCommand2<ActivityDiagram3> {
 
 		return diagram.switchCase(Display.getWithNewlines(diagram.getPragma(), test));
 
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -45,7 +45,6 @@ import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorSet;
-import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
@@ -54,7 +53,9 @@ import net.sourceforge.plantuml.klimt.sprite.SpriteContainer;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.svek.PackageStyle;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.Guillemet;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class Stereotype implements CharSequence {
 
@@ -113,7 +114,7 @@ public class Stereotype implements CharSequence {
 		if (tmp == null)
 			return null;
 
-		return tmp.asTextBlock(getHtmlColor(), null, decoration.spriteScale);
+		return tmp.asTextBlock(getHtmlColor(), null, decoration.spriteScale, null);
 	}
 
 	public boolean isWithOOSymbol() {
@@ -129,7 +130,7 @@ public class Stereotype implements CharSequence {
 		while (m.find())
 			result.add(m.group(1));
 
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public boolean isSpotted() {
@@ -186,10 +187,10 @@ public class Stereotype implements CharSequence {
 		final List<Style> result = new ArrayList<>();
 		for (String s : getStyleNames()) {
 			final Style style = builder.createStyleStereotype(s);
-			assert (style != null);
+			if (TeaVM.a()) assert (style != null);
 			result.add(style);
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public List<String> getStyleNames() {
@@ -230,6 +231,10 @@ public class Stereotype implements CharSequence {
 		return decoration.label.equalsIgnoreCase("M") || decoration.label.equalsIgnoreCase("<<Machine>>")
 				|| decoration.label.equalsIgnoreCase("<<S>>") || decoration.label.equalsIgnoreCase("<<Spec>>")
 				|| decoration.label.equalsIgnoreCase("<<Specification>>");
+	}
+
+	public boolean isIcon() {
+		return decoration.label.equalsIgnoreCase("<<icon>>");
 	}
 
 }

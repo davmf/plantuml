@@ -35,9 +35,7 @@
  */
 package net.sourceforge.plantuml.regex;
 
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 import net.sourceforge.plantuml.text.StringLocated;
 
@@ -62,16 +60,17 @@ public class RegexRepeatedOneOrMore extends RegexComposed implements IRegex {
 		return 1;
 	}
 
-	final public Map<String, RegexPartialMatch> createPartialMatch(Iterator<String> it) {
-		final Map<String, RegexPartialMatch> result = new HashMap<String, RegexPartialMatch>();
+	final public void fillPartialMatch(Iterator<String> it, RegexResult result) {
+		// This node's own group comes before its children's, and its own entry is put after
+		// theirs -- the order the previous putAll-based version had, and what decides the winner
+		// when a child happens to carry the same name.
 		final String fullGroup = name == null ? null : it.next();
-		result.putAll(super.createPartialMatch(it));
+		super.fillPartialMatch(it, result);
 		if (name != null) {
-			final RegexPartialMatch m = new RegexPartialMatch(name);
+			final RegexPartialMatch m = new RegexPartialMatch(1);
 			m.add(fullGroup);
-			result.put(name, m);
+			result.add(name, m);
 		}
-		return result;
 	}
 
 

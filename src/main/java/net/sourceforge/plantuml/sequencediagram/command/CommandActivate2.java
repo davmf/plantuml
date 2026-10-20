@@ -35,10 +35,14 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -53,6 +57,11 @@ public class CommandActivate2 extends SingleLineCommand2<SequenceDiagram> {
 	public CommandActivate2() {
 		super(getRegexConcat());
 	}
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
+	}
 
 	static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandActivate2.class.getName(), RegexLeaf.start(), //
@@ -65,8 +74,30 @@ public class CommandActivate2 extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
-			throws NoSuchColorException {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Shorthand syntax: 'Bob++' activates and 'Bob--' deactivates the
+		// participant's life line (see executeArg).
+		final boolean activate = arg.get("TYPE", 0).equals("++");
+		final String name = arg.get("NAME", 0);
+
+		if (activate)
+			sb.append("Activating the life line of '").append(name).append("' (shorthand '++')");
+		else
+			sb.append("Deactivating the life line of '").append(name).append("' (shorthand '--')");
+
+		final String color = arg.get("COLOR", 0);
+		if (color != null)
+			sb.append(", background color ").append(color);
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) throws NoSuchColorException {
 		final LifeEventType type = arg.get("TYPE", 0).equals("++") ? LifeEventType.ACTIVATE : LifeEventType.DEACTIVATE;
 		final Participant p = diagram.getOrCreateParticipant(location, arg.get("NAME", 0));
 		final String s = arg.get("COLOR", 0);

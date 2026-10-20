@@ -35,21 +35,52 @@
  */
 package net.sourceforge.plantuml.klimt.font;
 
-import java.awt.Font;
+import java.util.Arrays;
+import java.util.Collection;
 
 public enum FontStyle {
 
 	PLAIN, ITALIC, BOLD, UNDERLINE, STRIKE, WAVE, BACKCOLOR;
 
+	public Collection<String> starters(boolean isCreolePure) {
+		switch (this) {
+		case PLAIN:
+			return Arrays.asList("<p", "<P");
+		case ITALIC:
+			if (isCreolePure)
+				return Arrays.asList("//");
+			return Arrays.asList("<i", "<I");
+		case BOLD:
+			if (isCreolePure)
+				return Arrays.asList("**");
+			return Arrays.asList("<b", "<B");
+		case UNDERLINE:
+			if (isCreolePure)
+				return Arrays.asList("__");
+			return Arrays.asList("<u", "<U");
+		case STRIKE:
+			if (isCreolePure)
+				return Arrays.asList("--");
+			return Arrays.asList("<s", "<S", "<d", "<D");
+		case WAVE:
+			if (isCreolePure)
+				return Arrays.asList("~~");
+			return Arrays.asList("<w");
+		case BACKCOLOR:
+			return Arrays.asList("<b", "<B");
+		}
+		throw new IllegalStateException();
+	}
+
 	public UFont mutateFont(UFont font) {
 		if (this == PLAIN)
-			return font.withStyle(Font.PLAIN);
+			return font.withFontFace(UFontFace.normal());
 
 		if (this == ITALIC)
-			return font.withStyle(font.getStyle() | Font.ITALIC);
+			return font.withFontFace(font.getFontFace().withStyle(UFontStyle.ITALIC));
 
 		if (this == BOLD)
-			return font.withStyle(font.getStyle() | Font.BOLD);
+			return font.withFontFace(font.getFontFace().withWeight(700));
 
 		return font;
 	}

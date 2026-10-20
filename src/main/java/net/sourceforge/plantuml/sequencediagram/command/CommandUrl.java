@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -51,6 +55,8 @@ import net.sourceforge.plantuml.url.UrlMode;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandUrl extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("url", "urlfor", "urlof");
 
 	public CommandUrl() {
 		super(getRegexConcat());
@@ -71,14 +77,38 @@ public class CommandUrl extends SingleLineCommand2<SequenceDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Attaches a URL link to a participant, creating it if needed. Note
+		// that executeArg does not unquote CODE, so a quoted name is kept
+		// verbatim; this explanation does the same.
 		final String code = arg.get("CODE", 0);
-		final String urlString = arg.get("URL", 0);
+		sb.append("Attaching a URL link to '").append(code).append("'");
+
+		final String url = arg.get(UrlBuilder.URL_KEY, 0);
+		if (url != null)
+			sb.append(": ").append(url);
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(SequenceDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
+		final String code = arg.get("CODE", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		final Participant p = diagram.getOrCreateParticipant(location, code);
 		final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 		final Url url = urlBuilder.getUrl(urlString);
 		p.setUrl(url);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

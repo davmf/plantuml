@@ -40,7 +40,6 @@ import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
 import net.sourceforge.plantuml.klimt.font.UFont;
-import net.sourceforge.plantuml.klimt.font.UFontContext;
 import net.sourceforge.plantuml.klimt.font.UnusedSpace;
 import net.sourceforge.plantuml.klimt.shape.UCenteredCharacter;
 import net.sourceforge.plantuml.tikz.TikzGraphics;
@@ -57,7 +56,7 @@ public class DriverCenteredCharacterTikz implements UDriver<UCenteredCharacter, 
 		final double xpos = x - unusedSpace.getCenterX() - 0.5;
 		final double ypos = y - unusedSpace.getCenterY() - 0.5;
 
-		final TextLayout t = UFontContext.TIKZ.createTextLayout(font, "" + c);
+		final TextLayout t = font.createTextLayout("" + c);
 		tikz.setStrokeColor(param.getColor());
 		tikz.drawPathIterator(xpos, ypos, t.getOutline(null).getPathIterator(null));
 	}

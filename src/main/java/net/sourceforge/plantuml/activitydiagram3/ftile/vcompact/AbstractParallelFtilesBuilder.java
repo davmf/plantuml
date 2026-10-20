@@ -45,6 +45,7 @@ import net.sourceforge.plantuml.activitydiagram3.ftile.FtileHeightFixedCentered;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileHeightFixedMarged;
 import net.sourceforge.plantuml.activitydiagram3.ftile.FtileUtils;
 import net.sourceforge.plantuml.activitydiagram3.ftile.Swimlane;
+import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
@@ -54,9 +55,9 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public abstract class AbstractParallelFtilesBuilder {
 
@@ -67,19 +68,22 @@ public abstract class AbstractParallelFtilesBuilder {
 	private final ISkinParam skinParam;
 	private final StringBounder stringBounder;
 	protected final List<Ftile> list99 = new ArrayList<>();
+	protected final Colors colors;
 
-	public StyleSignatureBasic getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity);
+	public StyleQuery getStyleSignature() {
+		return StyleQueries.ACTIVITYDIAG_ACTIVITY;
 	}
 
-	final public StyleSignatureBasic getStyleSignatureArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	final public StyleQuery getStyleSignatureArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
-	public AbstractParallelFtilesBuilder(ISkinParam skinParam, StringBounder stringBounder, List<Ftile> all) {
+	public AbstractParallelFtilesBuilder(ISkinParam skinParam, StringBounder stringBounder, List<Ftile> all,
+			Colors colors) {
 		this.skinParam = skinParam;
 		this.stringBounder = stringBounder;
 		this.list99.addAll(decorateAllTiles(all));
+		this.colors = colors;
 	}
 
 	private List<Ftile> decorateAllTiles(List<Ftile> all) {
@@ -120,7 +124,6 @@ public abstract class AbstractParallelFtilesBuilder {
 		}
 		return result;
 	}
-
 
 	private Ftile computeNewFtile(Ftile ftile, double maxHeight, double ymargin1, double ymargin2) {
 		final double spaceArroundBlackBar = 20;
@@ -186,7 +189,7 @@ public abstract class AbstractParallelFtilesBuilder {
 		if (Display.isNull(display))
 			return null;
 
-		final Style style = getStyleSignatureArrow().getMergedStyle(skinParam().getCurrentStyleBuilder());
+		final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getStyleSignatureArrow());
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(skinParam().getIHtmlColorSet());
 
 		return display.create7(fontConfiguration, HorizontalAlignment.LEFT, skinParam(), CreoleMode.SIMPLE_LINE);

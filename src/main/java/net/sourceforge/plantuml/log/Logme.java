@@ -39,20 +39,33 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import net.sourceforge.plantuml.teavm.TeaVM;
+
 public class Logme {
 
 	private static final Logger logger;
 
+	public static boolean MODE_VEGA;
+
 	static {
-		logger = Logger.getLogger("com.plantuml");
-		logger.setUseParentHandlers(false);
-		final ConsoleHandler handler = new ConsoleHandler();
-		handler.setFormatter(new SimpleFormatter());
-		logger.addHandler(handler);
+		if (!TeaVM.isTeaVM()) {
+			logger = Logger.getLogger("com.plantuml");
+			logger.setUseParentHandlers(false);
+			final ConsoleHandler handler = new ConsoleHandler();
+			handler.setFormatter(new SimpleFormatter());
+			logger.addHandler(handler);
+		} else {
+			logger = null;
+		}
 	}
 
 	public static void error(Throwable thrown) {
-		logger.log(Level.SEVERE, "", thrown);
+		if (MODE_VEGA)
+			return;
+
+		if (!TeaVM.isTeaVM()) {
+			logger.log(Level.SEVERE, "", thrown);
+		}
 	}
 
 	// Unused right now

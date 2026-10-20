@@ -35,45 +35,57 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
-import net.sourceforge.plantuml.klimt.color.ColorType;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 
-public class CircleStart implements UDrawable {
+public class CircleStart implements TextBlock {
 
 	private static final int SIZE = 20;
+
+	// UML 2.5.1 draws the junction pseudostate as a filled circle, smaller than the one
+	// used for the initial pseudostate. The spec does not give an exact ratio, so this
+	// keeps it clearly smaller while still an easy target to read and to click on.
+	private static final int JUNCTION_SIZE = 12;
 
 	private final ISkinParam skinParam;
 	private final Style style;
 	private final Colors colors;
+	private final int size;
 
 	public CircleStart(ISkinParam skinParam, Style style, Colors colors) {
+		this(skinParam, style, colors, false);
+	}
+
+	public CircleStart(ISkinParam skinParam, Style style, Colors colors, boolean junction) {
 		this.style = style;
 		this.colors = colors;
 		this.skinParam = skinParam;
+		this.size = junction ? JUNCTION_SIZE : SIZE;
 	}
 
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
-		return new XDimension2D(SIZE, SIZE);
+		return new XDimension2D(size, size);
 	}
 
 	final public void drawU(UGraphic ug) {
-		final UEllipse circle = UEllipse.build(SIZE, SIZE);
+		final UEllipse circle = UEllipse.build(size, size);
 
-		HColor backColor = style.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
-		HColor lineColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
-		if (colors.getColor(ColorType.BACK) != null) {
-			lineColor = colors.getColor(ColorType.BACK);
-			backColor = colors.getColor(ColorType.BACK);
-		}
+		final HColor backColor = colors.getColor(style, PName.BackGroundColor, skinParam.getIHtmlColorSet());
+		final HColor lineColor = colors.getColor(style, PName.LineColor, skinParam.getIHtmlColorSet());
+//		if (colors.getColor(ColorType.BACK) != null) {
+//			lineColor = colors.getColor(ColorType.BACK);
+//			backColor = colors.getColor(ColorType.BACK);
+//		}
 
 		final double shadowing = style.getShadowing();
 

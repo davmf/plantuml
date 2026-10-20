@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
@@ -48,6 +52,9 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandHeader extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"center", "centerheader", "header", "left", "leftheader", "right", "rightheader");
 
 	public static final CommandHeader ME = new CommandHeader();
 
@@ -73,16 +80,40 @@ public class CommandHeader extends SingleLineCommand2<TitledDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'center header Text' (or 'header: Text') displays a header above
+		// the diagram. When no position is given, the alignment comes from
+		// the current style. The label may be quoted (LABEL1) or unquoted
+		// (LABEL2), hence the lazzy lookup, like in executeArg.
+		sb.append("Setting the header of the diagram to \"").append(arg.getLazzy("LABEL", 0)).append("\"");
+
+		final String position = arg.get("POSITION", 0);
+		if (position != null)
+			sb.append(", aligned ").append(position);
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(TitledDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) {
 		final String align = arg.get("POSITION", 0);
 		HorizontalAlignment ha = HorizontalAlignment.fromString(align, HorizontalAlignment.RIGHT);
 		if (align == null)
-			ha = FontParam.HEADER.getStyleDefinition(null).getMergedStyle(diagram.getCurrentStyleBuilder())
+			ha = diagram.getCurrentStyleBuilder().getMergedStyle(FontParam.HEADER.getStyleDefinition(null))
 					.getHorizontalAlignment();
 
 		final Display s = Display.getWithNewlines(diagram.getPragma(), arg.getLazzy("LABEL", 0));
 		diagram.updateHeader(location, s, ha);
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

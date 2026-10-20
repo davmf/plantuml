@@ -42,7 +42,6 @@ import static gen.lib.gvc.gvc__c.gvContext;
 import static gen.lib.gvc.gvlayout__c.gvLayoutJobs;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import h.ST_Agedge_s;
@@ -51,18 +50,19 @@ import h.ST_Agnode_s;
 import h.ST_Agnodeinfo_t;
 import h.ST_Agraph_s;
 import h.ST_GVC_s;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.json.JsonValue;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.yaml.Highlighted;
 import smetana.core.CString;
 import smetana.core.Globals;
@@ -110,19 +110,17 @@ public class SmetanaForJson {
 	}
 
 	private SName getDiagramType() {
-		if (skinParam.getUmlDiagramType() == UmlDiagramType.JSON)
+		if (skinParam.getDiagramType() == DiagramType.JSON)
 			return SName.jsonDiagram;
 		return SName.yamlDiagram;
 	}
 
 	private Style getStyleArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, getDiagramType(), SName.arrow)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.ARROW.add(getDiagramType()));
 	}
 
 	private Style getStyleNode() {
-		return StyleSignatureBasic.of(SName.root, SName.element, getDiagramType(), SName.node)
-				.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.NODE.add(getDiagramType()));
 	}
 
 	private ST_Agnode_s manageOneNode(Globals zz, JsonValue current, List<Highlighted> highlighted) {
@@ -152,7 +150,7 @@ public class SmetanaForJson {
 			if (parent != null)
 				result.add(parent);
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public void drawMe(JsonValue root, List<Highlighted> highlighted) {

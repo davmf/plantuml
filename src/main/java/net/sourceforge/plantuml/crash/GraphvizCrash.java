@@ -35,8 +35,6 @@
  */
 package net.sourceforge.plantuml.crash;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +44,8 @@ import net.sourceforge.plantuml.dot.GraphvizRuntimeEnvironment;
 import net.sourceforge.plantuml.flashcode.FlashCodeFactory;
 import net.sourceforge.plantuml.fun.IconLoader;
 import net.sourceforge.plantuml.klimt.AffineTransformType;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -53,31 +53,34 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.GraphicPosition;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.Margins;
 import net.sourceforge.plantuml.svek.ShapeType;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.version.PSystemVersion;
 
-public class GraphvizCrash extends AbstractTextBlock implements IEntityImage {
+public class GraphvizCrash extends TextBlockMemoized implements IEntityImage {
 
 	private final TextBlock text1;
 	private final String flash;
-	// ::comment when __CORE__
-	private final BufferedImage flashCode;
+
+	private final PortableImage flashCode;
 	private final boolean graphviz244onWindows;
-	// ::done
 
 	private GraphvizCrash(String flash, boolean graphviz244onWindows, Throwable rootCause) {
 		this.flash = flash;
-		// ::comment when __CORE__
-		this.graphviz244onWindows = graphviz244onWindows;
-		this.flashCode = FlashCodeFactory.getFlashCodeUtils().exportFlashcode(flash, Color.BLACK, Color.WHITE);
-		// ::done
+		if (!TeaVM.isTeaVM()) {
+			this.graphviz244onWindows = graphviz244onWindows;
+			this.flashCode = FlashCodeFactory.getFlashCodeUtils().exportFlashcode(flash, XColor.BLACK, XColor.WHITE);
+		} else {
+			this.graphviz244onWindows = false;
+			this.flashCode = null;
+		}
 		final ReportLog strings = new ReportLog();
 		init(strings, rootCause);
 		this.text1 = GraphicStrings.createBlackOnWhite(strings.asList(), IconLoader.getRandom(),
@@ -89,7 +92,7 @@ public class GraphvizCrash extends AbstractTextBlock implements IEntityImage {
 	}
 
 	private void init(ReportLog strings, Throwable rootCause) {
-		strings.anErrorHasOccured(null, flash);
+		strings.anErrorHasOccurred(null, flash);
 		strings.add("For some reason, dot/GraphViz has crashed.");
 		strings.addEmptyLine();
 		strings.add("RootCause " + rootCause);
@@ -99,20 +102,18 @@ public class GraphvizCrash extends AbstractTextBlock implements IEntityImage {
 		strings.addEmptyLine();
 		strings.addProperties();
 		strings.addEmptyLine();
-		// ::comment when __CORE__
-		try {
-			final String dotVersion = GraphvizRuntimeEnvironment.getInstance().dotVersion();
-			strings.add("Default dot version: " + dotVersion);
-		} catch (Throwable e) {
-			strings.add("Cannot determine dot version: " + e.toString());
-		}
-		// ::done
+		if (!TeaVM.isTeaVM())
+			try {
+				final String dotVersion = GraphvizRuntimeEnvironment.getInstance().dotVersion();
+				strings.add("Default dot version: " + dotVersion);
+			} catch (Throwable e) {
+				strings.add("Cannot determine dot version: " + e.toString());
+			}
+
 		strings.pleaseCheckYourGraphVizVersion();
 		strings.youShouldSendThisDiagram();
-		// ::comment when __CORE__
 		if (flashCode != null)
 			strings.addDecodeHint();
-		// ::done
 
 	}
 
@@ -140,39 +141,45 @@ public class GraphvizCrash extends AbstractTextBlock implements IEntityImage {
 		return HColors.WHITE;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return getMain().calculateDimension(stringBounder);
 	}
 
+	@Override
 	public void drawU(UGraphic ug) {
 		getMain().drawU(ug);
 	}
 
 	private TextBlock getMain() {
-		TextBlock result = text1;
-		// ::comment when __CORE__
-		if (flashCode != null) {
-			final UImage flash = new UImage(new PixelImage(flashCode, AffineTransformType.TYPE_NEAREST_NEIGHBOR))
-					.scale(3);
-			result = TextBlockUtils.mergeTB(result, flash, HorizontalAlignment.LEFT);
+		if (!TeaVM.isTeaVM()) {
+			return text1;
+		} else {
+			TextBlock result = text1;
+			if (flashCode != null) {
+				final UImage flash = new UImage(new PixelImage(flashCode, AffineTransformType.TYPE_NEAREST_NEIGHBOR))
+						.scale(3);
+				result = TextBlockUtils.mergeTB(result, flash, HorizontalAlignment.LEFT);
+			}
+
+			if (graphviz244onWindows) {
+				final TextBlock text2 = GraphicStrings.createBlackOnWhite(getText2());
+				result = TextBlockUtils.mergeTB(result, text2, HorizontalAlignment.LEFT);
+
+				final UImage dotc = new UImage(
+						new PixelImage(PSystemVersion.getDotc(), AffineTransformType.TYPE_BILINEAR));
+				result = TextBlockUtils.mergeTB(result, dotc, HorizontalAlignment.LEFT);
+
+				final TextBlock text3 = GraphicStrings.createBlackOnWhite(getText3());
+				result = TextBlockUtils.mergeTB(result, text3, HorizontalAlignment.LEFT);
+
+				final UImage dotd = new UImage(
+						new PixelImage(PSystemVersion.getDotd(), AffineTransformType.TYPE_BILINEAR));
+				result = TextBlockUtils.mergeTB(result, dotd, HorizontalAlignment.LEFT);
+			}
+
+			return result;
 		}
-
-		if (graphviz244onWindows) {
-			final TextBlock text2 = GraphicStrings.createBlackOnWhite(getText2());
-			result = TextBlockUtils.mergeTB(result, text2, HorizontalAlignment.LEFT);
-
-			final UImage dotc = new UImage(new PixelImage(PSystemVersion.getDotc(), AffineTransformType.TYPE_BILINEAR));
-			result = TextBlockUtils.mergeTB(result, dotc, HorizontalAlignment.LEFT);
-
-			final TextBlock text3 = GraphicStrings.createBlackOnWhite(getText3());
-			result = TextBlockUtils.mergeTB(result, text3, HorizontalAlignment.LEFT);
-
-			final UImage dotd = new UImage(new PixelImage(PSystemVersion.getDotd(), AffineTransformType.TYPE_BILINEAR));
-			result = TextBlockUtils.mergeTB(result, dotd, HorizontalAlignment.LEFT);
-		}
-		// ::done
-
-		return result;
 	}
 
 	public ShapeType getShapeType() {
@@ -185,6 +192,11 @@ public class GraphvizCrash extends AbstractTextBlock implements IEntityImage {
 
 	public double getOverscanX(StringBounder stringBounder) {
 		return 0;
+	}
+
+	@Override
+	public boolean isCrash() {
+		return true;
 	}
 
 }

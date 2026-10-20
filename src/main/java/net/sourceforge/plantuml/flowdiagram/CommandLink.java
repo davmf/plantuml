@@ -35,10 +35,14 @@
  */
 package net.sourceforge.plantuml.flowdiagram;
 
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.golem.TileGeometry;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -52,6 +56,11 @@ public class CommandLink extends SingleLineCommand2<FlowDiagram> {
 		super(getRegexConcat());
 	}
 
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
+	}
+
 	private static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandLink.class.getName(), RegexLeaf.start(), //
 				new RegexOptional( //
@@ -61,6 +70,13 @@ public class CommandLink extends SingleLineCommand2<FlowDiagram> {
 						)), //
 				new RegexLeaf(1, "ID_DEST", "(\\w+)"), RegexLeaf.end());
 	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		return null;
+	}
+
 
 	@Override
 	protected CommandExecutionResult executeArg(FlowDiagram system, LineLocation location, RegexResult arg,

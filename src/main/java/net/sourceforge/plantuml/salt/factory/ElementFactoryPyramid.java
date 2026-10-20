@@ -45,6 +45,7 @@ import net.sourceforge.plantuml.salt.element.Element;
 import net.sourceforge.plantuml.salt.element.ElementPyramid;
 import net.sourceforge.plantuml.salt.element.ElementText;
 import net.sourceforge.plantuml.salt.element.TableStrategy;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class ElementFactoryPyramid extends AbstractElementFactoryComplex {
 
@@ -58,7 +59,7 @@ public class ElementFactoryPyramid extends AbstractElementFactoryComplex {
 		}
 		final Terminated<String> tmp = getDataSource().next();
 		final String header = tmp.getElement();
-		assert header.startsWith("{");
+		if (TeaVM.a()) assert header.startsWith("{");
 		String title = null;
 
 		TableStrategy strategy = TableStrategy.DRAW_NONE;
@@ -96,7 +97,7 @@ public class ElementFactoryPyramid extends AbstractElementFactoryComplex {
 		if (text.equals("{") || text.equals("{+") || text.equals("{^") || text.equals("{#") || text.equals("{!")
 				|| text.equals("{-")) {
 			final String text1 = getDataSource().peek(1).getElement();
-			if (text1.matches("[NSEW]=|T")) {
+			if (text1.matches("[NSEW]=") || ElementFactoryTree.isTreeMarker(text1)) {
 				return false;
 			}
 			return true;

@@ -43,12 +43,13 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.NoStyleAvailableException;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
-public class MindMap implements UDrawable {
+public class MindMap extends TextBlockMemoized {
 
 	private final Branch regular = new Branch();
 	private final Branch reverse = new Branch();
@@ -73,7 +74,8 @@ public class MindMap implements UDrawable {
 		}
 	}
 
-	XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		this.computeFinger();
 		final double y1 = this.regular.getHalfThickness(stringBounder);
 		final double y2 = this.reverse.getHalfThickness(stringBounder);
@@ -126,7 +128,8 @@ public class MindMap implements UDrawable {
 
 			if (multiplier == 0)
 				multiplier = level;
-			assert multiplier > 0;
+			if (TeaVM.a())
+				assert multiplier > 0;
 
 			if (level % multiplier != 0)
 				return CommandExecutionResult.error("Bad indentation");

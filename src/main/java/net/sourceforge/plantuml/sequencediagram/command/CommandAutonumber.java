@@ -36,7 +36,10 @@
 package net.sourceforge.plantuml.sequencediagram.command;
 
 import java.text.DecimalFormat;
+import java.util.Arrays;
+import java.util.Collection;
 
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -49,6 +52,8 @@ import net.sourceforge.plantuml.sequencediagram.SequenceDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandAutonumber extends SingleLineCommand2<SequenceDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("autonumber");
 
 	public CommandAutonumber() {
 		super(getConcat());
@@ -70,6 +75,33 @@ public class CommandAutonumber extends SingleLineCommand2<SequenceDiagram> {
 								new RegexLeaf(1, "FORMAT", "[%g]([^%g]+)[%g]") //
 						)), //
 				RegexLeaf.spaceZeroOrMore(), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Starts (or restarts) the automatic numbering of messages. Defaults
+		// in executeArg: start at 1, increment by 1, format "<b>0</b>".
+		sb.append("Starting automatic numbering of messages");
+
+		// The starting number may be dotted, like '1.1.1' (see DottedNumber).
+		final String start = arg.get("START", 0);
+		if (start != null)
+			sb.append(" from ").append(start);
+
+		final String step = arg.get("STEP", 0);
+		if (step != null)
+			sb.append(", incrementing by ").append(step);
+
+		// The format is a java.text.DecimalFormat pattern, possibly with
+		// creole markup, like "<b>(0)</b>".
+		final String format = arg.get("FORMAT", 0);
+		if (format != null)
+			sb.append(", with format \"").append(format).append("\"");
+
+		return sb.toString();
 	}
 
 	@Override
@@ -99,6 +131,11 @@ public class CommandAutonumber extends SingleLineCommand2<SequenceDiagram> {
 
 		diagram.autonumberGo(start, inc, decimalFormat);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

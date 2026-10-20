@@ -56,7 +56,6 @@ import net.sourceforge.plantuml.skin.ColorParam;
 import net.sourceforge.plantuml.skin.LineParam;
 import net.sourceforge.plantuml.skin.SkinParamUtils;
 import net.sourceforge.plantuml.stereo.Stereotype;
-import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.text.Guillemet;
@@ -87,9 +86,9 @@ public class EntityImageMachine extends AbstractEntityImage {
 	private UStroke getStroke() {
 		UStroke stroke = getSkinParam().getThickness(LineParam.machineBorder, getStereo());
 
-		if (stroke == null) {
+		if (stroke == null)
 			stroke = UStroke.withThickness(1.5);
-		}
+
 		return stroke;
 	}
 
@@ -126,13 +125,12 @@ public class EntityImageMachine extends AbstractEntityImage {
 
 		ug = ug.apply(SkinParamUtils.getColor(getSkinParam(), getStereo(), ColorParam.machineBorder));
 		HColor backcolor = getEntity().getColors().getColor(ColorType.BACK);
-		if (backcolor == null) {
+		if (backcolor == null)
 			backcolor = SkinParamUtils.getColor(getSkinParam(), getStereo(), ColorParam.machineBackground);
-		}
+
 		ug = ug.apply(backcolor.bg());
-		if (url != null) {
+		if (url != null)
 			ug.startUrl(url);
-		}
 
 		final UStroke stroke = getStroke();
 		ug.apply(stroke).draw(rect);
@@ -142,16 +140,17 @@ public class EntityImageMachine extends AbstractEntityImage {
 		header.add(name);
 		header.drawU(ug.apply(UTranslate.dx(5)), dimTotal.getWidth(), dimTitle.getHeight());
 
-		if (url != null) {
+		if (url != null)
 			ug.closeUrl();
-		}
+
 	}
 
 	public ShapeType getShapeType() {
 		return ShapeType.RECTANGLE;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dimTitle = getTitleDimension(stringBounder);
 		final double width = dimTitle.getWidth();
 		final double height = dimTitle.getHeight();

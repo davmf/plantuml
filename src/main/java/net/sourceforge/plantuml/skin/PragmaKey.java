@@ -38,7 +38,7 @@ package net.sourceforge.plantuml.skin;
 public enum PragmaKey {
 	
 	// Temporary pragma
-	SVGNEWDATA,
+	SEQUENCE_MESSAGE_SPAN,
 	
 	// For debug
 	EMULATE_NO_GRAPHVIZ_INSTALLATION,
@@ -49,6 +49,7 @@ public enum PragmaKey {
 	COMPACT, //
 	DEFAULT_LABEL_ANGLE, //
 	DEFAULT_LABEL_DISTANCE, //
+	EDGE_CORNER_RADIUS, //
 	GRAPH_ATTRIBUTES, //
 	HORIZONTAL_LINE_BETWEEN_DIFFERENT_PACKAGE_ALLOWED, //
 	KERMOR, //
@@ -58,12 +59,28 @@ public enum PragmaKey {
 	SHOW_DEPRECATION, //
 	SVG_FONT, //
 	SVG_INTERACTIVE, //
-	SVEK_TRACE, //
-	TEOZ, //
+	SVG_PARSER, //
+	SVEK_TRACE("true"), //
+	TEOZ("true"), //
 	TEX_SYSTEM, //
 	TEX_PREAMBLE, //
 	USE_INTERMEDIATE_PACKAGES, //
 	USE_VERTICAL_IF;
+	
+	private final String defaultValue;
+	
+	private PragmaKey() {
+		this(null);
+	}
+
+	private PragmaKey(String defaultValue) {
+		this.defaultValue = defaultValue;
+	}
+
+	public final String getDefaultValue() {
+		return defaultValue;
+	}
+
 
 	private static String simplify(String s) {
 		final StringBuilder result = new StringBuilder();

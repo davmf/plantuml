@@ -34,32 +34,24 @@
  */
 package net.sourceforge.plantuml.klimt.drawing.html5;
 
-import java.awt.geom.Rectangle2D;
-
-import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UClip;
 import net.sourceforge.plantuml.klimt.UParam;
 import net.sourceforge.plantuml.klimt.color.ColorMapper;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColorGradient;
 import net.sourceforge.plantuml.klimt.drawing.UDriver;
+import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 
 public class DriverRectangleHtml5 implements UDriver<URectangle, Html5Drawer> {
-
-	private final ClipContainer clipContainer;
-
-	public DriverRectangleHtml5(ClipContainer clipContainer) {
-		this.clipContainer = clipContainer;
-	}
 
 	public void draw(URectangle rect, double x, double y, ColorMapper mapper, UParam param, Html5Drawer html) {
 		double width = rect.getWidth();
 		double height = rect.getHeight();
 
-		final UClip clip = clipContainer.getClip();
+		final UClip clip = param.getClip();
 		if (clip != null) {
-			final Rectangle2D.Double r = clip.getClippedRectangle(new Rectangle2D.Double(x, y, width, height));
+			final XRectangle2D r = clip.getClippedRectangle(new XRectangle2D(x, y, width, height));
 			x = r.x;
 			y = r.y;
 			width = r.width;

@@ -38,10 +38,12 @@ package net.sourceforge.plantuml.sequencediagram;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import net.sourceforge.plantuml.StringUtils;
 
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.warning.Warning;
 
 final public class GroupingLeaf extends Grouping implements EventWithDeactivate, EventWithNote {
 
@@ -119,11 +121,12 @@ final public class GroupingLeaf extends Grouping implements EventWithDeactivate,
 	private List<Note> noteOnMessages = new ArrayList<>();
 
 	@Override
-	public final void addNote(Note note) {
-		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT)
-			throw new IllegalArgumentException();
-
+	public final Warning addNote(Note note) {
 		this.noteOnMessages.add(note);
+		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT)
+			return new Warning("'note " + StringUtils.goLowerCase(note.getPosition().name())
+					+ "' is not supported after 'end': use 'note left' or 'note right'");
+		return null;
 	}
 
 	public final List<Note> getNoteOnMessages() {

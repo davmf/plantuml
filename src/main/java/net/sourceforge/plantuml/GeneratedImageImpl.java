@@ -44,22 +44,27 @@ import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.SFile;
 
 public class GeneratedImageImpl implements GeneratedImage {
-	// ::remove file when __HAXE__
 
 	private final SFile pngFile;
 	private final String description;
 	private final BlockUml blockUml;
 	private final int status;
+	private final Throwable rootCause;
+
+	public final Throwable getRootCause() {
+		return rootCause;
+	}
 
 	public final int getStatus() {
 		return status;
 	}
 
-	public GeneratedImageImpl(SFile pngFile, String description, BlockUml blockUml, int status) {
+	public GeneratedImageImpl(SFile pngFile, String description, BlockUml blockUml, int status, Throwable rootCause) {
 		this.blockUml = blockUml;
 		this.pngFile = pngFile;
 		this.description = description;
 		this.status = status;
+		this.rootCause = rootCause;
 	}
 
 	public File getPngFile() {
@@ -72,9 +77,9 @@ public class GeneratedImageImpl implements GeneratedImage {
 
 	public int lineErrorRaw() {
 		final Diagram system = blockUml.getDiagram();
-		if (system instanceof PSystemError) {
+		if (system instanceof PSystemError)
 			return ((PSystemError) system).getLineLocation().getPosition();
-		}
+
 		return -1;
 	}
 
@@ -83,16 +88,16 @@ public class GeneratedImageImpl implements GeneratedImage {
 		return pngFile.getPrintablePath() + " " + description;
 	}
 
-	public int compareTo(GeneratedImage this2) {
+	public int compareTo(GeneratedImage other) {
 		try {
-			final int cmp = this.getPngFile().getCanonicalPath().compareTo(this2.getPngFile().getCanonicalPath());
-			if (cmp != 0) {
+			final int cmp = this.getPngFile().getCanonicalPath().compareTo(other.getPngFile().getCanonicalPath());
+			if (cmp != 0)
 				return cmp;
-			}
+
 		} catch (IOException e) {
 			Logme.error(e);
 		}
-		return this.description.compareTo(this2.getDescription());
+		return this.description.compareTo(other.getDescription());
 	}
 
 	@Override
@@ -102,8 +107,8 @@ public class GeneratedImageImpl implements GeneratedImage {
 
 	@Override
 	public boolean equals(Object obj) {
-		final GeneratedImageImpl this2 = (GeneratedImageImpl) obj;
-		return this2.pngFile.equals(this.pngFile) && this2.description.equals(this.description);
+		final GeneratedImageImpl other = (GeneratedImageImpl) obj;
+		return other.pngFile.equals(this.pngFile) && other.description.equals(this.description);
 	}
 
 	public BlockUml getBlockUml() {

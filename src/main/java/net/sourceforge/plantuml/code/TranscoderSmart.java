@@ -39,17 +39,17 @@ import java.io.IOException;
 
 public class TranscoderSmart implements Transcoder {
 
-	private final Transcoder zlib = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder zlib = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionZlib());
-	private final Transcoder hexOnly = TranscoderImpl.utf8(new AsciiEncoderHex(), new ArobaseStringCompressor(),
+	private final Transcoder hexOnly = TranscoderImpl.utf8(new AsciiEncoderHex(), new DiagramSourceCompressor(),
 			new CompressionNone());
-	// ::comment when __CORE__
+	// ::comment when __TEAVM__
 	// Legacy encoder
-	private final Transcoder oldOne = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder oldOne = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionHuffman());
-	private final Transcoder zip = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder zip = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionZip());
-	private final Transcoder gzip = TranscoderImpl.utf8(new AsciiEncoder(), new ArobaseStringCompressor(),
+	private final Transcoder gzip = TranscoderImpl.utf8(new AsciiEncoder(), new DiagramSourceCompressor(),
 			new CompressionGZip());
 	// ::done
 
@@ -60,10 +60,9 @@ public class TranscoderSmart implements Transcoder {
 		if (code.startsWith("~0"))
 			return zlib.decode(code.substring(2));
 
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		if (code.startsWith("~1"))
 			return oldOne.decode(code.substring(2));
-		// ::done
 
 		if (code.startsWith("~h"))
 			return hexOnly.decode(code.substring(2));
@@ -71,16 +70,15 @@ public class TranscoderSmart implements Transcoder {
 		if (code.startsWith("~g"))
 			return gzip.decode(code.substring(2));
 
-		// ::comment when __CORE__
 		if (code.startsWith("~zip~"))
 			return zip.decode(code.substring(5));
 		// ::done
 
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		try {
 			// ::done
 			return zlib.decode(code);
-			// ::comment when __CORE__
+			// ::comment when __TEAVM__
 		} catch (Exception ex) {
 			return oldOne.decode(code);
 		}

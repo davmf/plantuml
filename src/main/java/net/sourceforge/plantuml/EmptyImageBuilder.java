@@ -35,31 +35,36 @@
  */
 package net.sourceforge.plantuml;
 
-import java.awt.Color;
+
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
 import net.sourceforge.plantuml.dot.GraphvizUtils;
 import net.sourceforge.plantuml.klimt.UAntiAliasing;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.utils.Log;
 
 public class EmptyImageBuilder {
 	// ::remove file when __HAXE__
 
-	private final BufferedImage im;
-	private final Graphics2D g2d;
+	private final PortableImage im;
 
-	public EmptyImageBuilder(String watermark, int width, int height, Color background, StringBounder stringBounder) {
+	// ::comment when __TEAVM__
+	private final Graphics2D g2d;
+	// ::done
+
+	public EmptyImageBuilder(String watermark, int width, int height, XColor background, StringBounder stringBounder) {
 		if (width <= 0 || height <= 0)
 			throw new IllegalArgumentException("width and height must be positive");
 
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		if (width > GraphvizUtils.getenvImageLimit()) {
 			final int width2 = width;
 			Log.info(() -> "Width too large " + width2 + ". You should set PLANTUML_LIMIT_SIZE");
@@ -71,35 +76,40 @@ public class EmptyImageBuilder {
 			height = GraphvizUtils.getenvImageLimit();
 		}
 		// ::done
+		
 		final int widthFinal = width;
 		final int heightFinal = height;
 		final int type = getType(background);
 		Log.info(() -> "Creating image " + widthFinal + "x" + heightFinal + " type=" + type);
 
-		im = new BufferedImage(width, height, type);
+		im = PortableImageFactory.build(width, height, type);
+
+		// ::comment when __TEAVM__
 		g2d = im.createGraphics();
 		UAntiAliasing.ANTI_ALIASING_ON.apply(g2d);
 		if (background != null) {
-			g2d.setColor(background);
+			g2d.setColor(background.toAwtColor());
 			g2d.fillRect(0, 0, width, height);
 		}
 		if (watermark != null) {
 			final int gray = 200;
-			g2d.setColor(new Color(gray, gray, gray));
+			g2d.setColor(new XColor(gray, gray, gray).toAwtColor());
 			printWatermark(watermark, width, height);
 		}
+		// ::done
 	}
 
-	private int getType(Color background) {
+	private int getType(XColor background) {
 		if (background == null)
-			return BufferedImage.TYPE_INT_ARGB;
+			return PortableImage.TYPE_INT_ARGB;
 
 		if (background.getAlpha() != 255)
-			return BufferedImage.TYPE_INT_ARGB;
+			return PortableImage.TYPE_INT_ARGB;
 
-		return BufferedImage.TYPE_INT_RGB;
+		return PortableImage.TYPE_INT_RGB;
 	}
 
+	// ::comment when __TEAVM__
 	private void printWatermark(String watermark, int maxWidth, int maxHeight) {
 		final Font javaFont = g2d.getFont();
 		final FontMetrics fm = g2d.getFontMetrics(javaFont);
@@ -150,12 +160,13 @@ public class EmptyImageBuilder {
 		return result;
 	}
 
-	public BufferedImage getBufferedImage() {
-		return im;
-	}
-
 	public Graphics2D getGraphics2D() {
 		return g2d;
+	}
+	// ::done
+
+	public PortableImage getPortableImage() {
+		return im;
 	}
 
 }

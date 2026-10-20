@@ -40,38 +40,44 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import net.sourceforge.plantuml.StringUtils;
 
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.skin.ArrowConfiguration;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.style.WithStyle;
 import net.sourceforge.plantuml.url.Url;
+import net.sourceforge.plantuml.klimt.UGroup;
+import net.sourceforge.plantuml.klimt.UGroupType;
+import net.sourceforge.plantuml.utils.LineLocation;
+import net.sourceforge.plantuml.warning.Warning;
 
 public abstract class AbstractMessage extends AbstractEvent implements EventWithDeactivate, WithStyle, EventWithNote {
 
 	private Stereotype stereotype;
+	private LineLocation location;
+	private String uid;
 
 	public void getStereotype(Stereotype stereotype) {
 		this.stereotype = stereotype;
 	}
 
 	final public Style[] getUsedStyles() {
-		Style style = getStyleSignature().getMergedStyle(styleBuilder);
+		Style style = styleBuilder.getMergedStyle(getStyleQuery());
 		if (style != null && arrowConfiguration.getColor() != null)
 			style = style.eventuallyOverride(PName.LineColor, arrowConfiguration.getColor());
 
 		return new Style[] { style };
 	}
 
-	public StyleSignature getStyleSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.sequenceDiagram, SName.arrow)
-				.withTOBECHANGED(stereotype);
+	@Override
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.SEQUENCEDIAG_ARROW.withStereotype(stereotype);
 	}
 
 	private final Display label;
@@ -87,8 +93,9 @@ public abstract class AbstractMessage extends AbstractEvent implements EventWith
 	private List<Note> noteOnMessages = new ArrayList<>();
 
 	public AbstractMessage(StyleBuilder styleBuilder, Display label, ArrowConfiguration arrowConfiguration,
-			String messageNumber) {
+			String messageNumber, LineLocation location) {
 		this.styleBuilder = styleBuilder;
+		this.location = location;
 		this.url = null;
 		this.label = label;
 		this.arrowConfiguration = arrowConfiguration;
@@ -113,8 +120,7 @@ public abstract class AbstractMessage extends AbstractEvent implements EventWith
 
 	public boolean isParallelWith(AbstractMessage message) {
 		boolean hasParallelBrother = parallelBrother != null;
-		return (this == message)
-				|| (hasParallelBrother && parallelBrother == message)
+		return (this == message) || (hasParallelBrother && parallelBrother == message)
 				|| (hasParallelBrother && parallelBrother.isParallelWith(message));
 	}
 
@@ -213,13 +219,15 @@ public abstract class AbstractMessage extends AbstractEvent implements EventWith
 	}
 
 	@Override
-	public final void addNote(Note note) {
+	public final Warning addNote(Note note) {
 		if (note.getPosition() != NotePosition.LEFT && note.getPosition() != NotePosition.RIGHT
 				&& note.getPosition() != NotePosition.BOTTOM && note.getPosition() != NotePosition.TOP)
-			throw new IllegalArgumentException();
+			return new Warning("'note " + StringUtils.goLowerCase(note.getPosition().name())
+					+ "' is not supported on a message: this note is ignored. Use left, right, top or bottom");
 
 		note = note.withPosition(overrideNotePosition(note.getPosition()));
 		this.noteOnMessages.add(note);
+		return null;
 	}
 
 	protected NotePosition overrideNotePosition(NotePosition notePosition) {
@@ -287,11 +295,38 @@ public abstract class AbstractMessage extends AbstractEvent implements EventWith
 	public abstract Participant getParticipant1();
 
 	public abstract Participant getParticipant2();
-	
+
 	public StyleBuilder getStyleBuilder() {
 		return styleBuilder;
 	}
 
+	/**
+	 * Identifier of this message in the SVG (<code>msg1</code>, <code>msg2</code>,
+	 * ...), numbered in the order the messages appear in the diagram.
+	 */
+	public final String getUid() {
+		return uid;
+	}
 
+	public final void setUid(String uid) {
+		this.uid = uid;
+	}
+
+	/**
+	 * The SVG group wrapping the drawing of this message, so that tools can style
+	 * or link it (class, id, source line and the two participants).
+	 */
+	public final UGroup groupTypeMessage() {
+		final UGroup group = new UGroup(location);
+		group.put(UGroupType.CLASS, "message");
+		group.put(UGroupType.DATA_PARTICIPANT_1, getParticipant1().getUid());
+		group.put(UGroupType.DATA_PARTICIPANT_2, getParticipant2().getUid());
+		group.put(UGroupType.DATA_UID, uid);
+		return group;
+	}
+
+	public LineLocation getLineLocation() {
+		return location;
+	}
 
 }

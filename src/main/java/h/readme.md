@@ -22,7 +22,7 @@ Port of the `C header` (`.h`) of Graphviz on Java:
 ## Credit
 - :octocat:  [plantuml/smetana](https://github.com/plantuml/smetana)
 
-## Internaly use by
+## Internally use by
 - [`plantuml/sdot`](../net/sourceforge/plantuml/sdot)
 - [`plantuml/gitlog/SmetanaForGit.java`](../net/sourceforge/plantuml/gitlog/SmetanaForGit.java)
 - [`plantuml/jsondiagram/SmetanaForJson.java`](../net/sourceforge/plantuml/jsondiagram/SmetanaForJson.java)

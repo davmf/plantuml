@@ -35,29 +35,31 @@
  */
 package net.sourceforge.plantuml;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.command.Command;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.core.Diagram;
+import net.sourceforge.plantuml.core.DiagramChromeFactory;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.TextBlockExporter;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.klimt.color.ColorMapper;
+import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.utils.BlocLines;
+import net.sourceforge.plantuml.utils.MyCollections;
 
-public class NewpagedDiagram extends AbstractPSystem {
-	// ::remove file when __HAXE__
+public class NewpagedDiagram extends UgDiagram {
 
-	private final List<Diagram> diagrams = new ArrayList<>();
+	private final List<UgDiagram> diagrams = new ArrayList<>();
 
-	public NewpagedDiagram(UmlSource source, AbstractPSystem diag1, AbstractPSystem diag2,
+	public NewpagedDiagram(UmlSource source, UgDiagram diag1, UgDiagram diag2,
 			PreprocessingArtifact preprocessingArtifact) {
 		super(source, preprocessingArtifact);
 		if (diag1 instanceof NewpagedDiagram)
@@ -75,7 +77,7 @@ public class NewpagedDiagram extends AbstractPSystem {
 		return super.toString() + " SIZE=" + diagrams.size() + " " + diagrams;
 	}
 
-	public Diagram getLastDiagram() {
+	public UgDiagram getLastDiagram() {
 		return diagrams.get(diagrams.size() - 1);
 	}
 
@@ -108,15 +110,47 @@ public class NewpagedDiagram extends AbstractPSystem {
 		return diagrams.size();
 	}
 
+//	@Override
+//	public final ImageData exportDiagram(OutputStream os, int num, FileFormatOption fileFormat) throws IOException {
+//		return diagrams.get(num).exportDiagram(os, 0, fileFormat);
+//	}
+
 	@Override
-	final protected ImageData exportDiagramNow(OutputStream os, int num, FileFormatOption fileFormat)
-			throws IOException {
-		return diagrams.get(num).exportDiagram(os, 0, fileFormat);
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) throws Exception {
+		final TitledDiagram titledDiagram = (TitledDiagram) diagrams.get(num);
+		TextBlock result = titledDiagram.getTextBlock(num, fileFormatOption);
+		result = DiagramChromeFactory.create(result, titledDiagram, titledDiagram.getSkinParam(),
+				titledDiagram.getWarnings(), titledDiagram.getTitle());
+
+		return result;
 	}
 
-	public int getNbImages() {
+	@Override
+	protected TextBlockExporter getExporter(int num, FileFormatOption fileFormatOption) throws Exception {
+
+		TextBlock result = getTextBlock(num, fileFormatOption);
+
+		final HColor backColor = calculateBackColor();
+		if (backColor != null)
+			result = TextBlockUtils.addBackcolor(result, backColor);
+
+		final ColorMapper mutedMapper = muteColorMapper(fileFormatOption.getColorMapper());
+		final FileFormatOption effectiveFormat = fileFormatOption.withColorMapper(mutedMapper);
+
+		final TitledDiagram titledDiagram = (TitledDiagram) diagrams.get(num);
+
+		final TextBlockExporter.Builder builder = TextBlockExporter.builder(result, effectiveFormat,
+				titledDiagram.isHandwritten());
+
+		builder.styled(titledDiagram);
+
+		return builder.build();
+
+	}
+
+	public int getCardinality() {
 		int nb = 0;
-		for (Diagram d : diagrams)
+		for (UgDiagram d : diagrams)
 			nb += d.getNbImages();
 
 		return nb;
@@ -124,7 +158,7 @@ public class NewpagedDiagram extends AbstractPSystem {
 
 	public DiagramDescription getDescription() {
 		final StringBuilder sb = new StringBuilder();
-		for (Diagram d : diagrams) {
+		for (UgDiagram d : diagrams) {
 			if (sb.length() > 0)
 				sb.append(" ");
 
@@ -133,34 +167,34 @@ public class NewpagedDiagram extends AbstractPSystem {
 		return new DiagramDescription(sb.toString());
 	}
 
-	public String getWarningOrError() {
-		final StringBuilder sb = new StringBuilder();
-		for (Diagram d : diagrams) {
-			if (sb.length() > 0)
-				sb.append(" ");
-
-			if (d.getWarningOrError() != null)
-				sb.append(d.getWarningOrError());
-
-		}
-		if (sb.length() == 0)
-			return null;
-
-		return sb.toString();
-	}
+//	public String getWarningOrError() {
+//		final StringBuilder sb = new StringBuilder();
+//		for (Diagram d : diagrams) {
+//			if (sb.length() > 0)
+//				sb.append(" ");
+//
+//			if (d.getWarningOrError() != null)
+//				sb.append(d.getWarningOrError());
+//
+//		}
+//		if (sb.length() == 0)
+//			return null;
+//
+//		return sb.toString();
+//	}
 
 	@Override
 	public void makeDiagramReady() {
 		super.makeDiagramReady();
-		for (Diagram diagram : diagrams)
-			((AbstractPSystem) diagram).makeDiagramReady();
+		for (UgDiagram diagram : diagrams)
+			diagram.makeDiagramReady();
 
 	}
 
 	@Override
 	public String checkFinalError() {
-		for (Diagram p : getDiagrams()) {
-			final String check = ((AbstractPSystem) p).checkFinalError();
+		for (UgDiagram p : getDiagrams()) {
+			final String check = ((Diagram) p).checkFinalError();
 			if (check != null)
 				return check;
 
@@ -168,8 +202,8 @@ public class NewpagedDiagram extends AbstractPSystem {
 		return super.checkFinalError();
 	}
 
-	public final List<Diagram> getDiagrams() {
-		return Collections.unmodifiableList(diagrams);
+	public final List<UgDiagram> getDiagrams() {
+		return MyCollections.unmodifiableList(diagrams);
 	}
 
 }

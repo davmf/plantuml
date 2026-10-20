@@ -35,14 +35,14 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
-public class TextBlockGeneric extends AbstractTextBlock implements TextBlock {
-    // ::remove file when __HAXE__
+public class TextBlockGeneric implements TextBlock {
 
 	private final TextBlock textBlock;
 	private final HColor background;
@@ -54,6 +54,8 @@ public class TextBlockGeneric extends AbstractTextBlock implements TextBlock {
 		this.background = background;
 	}
 
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final XDimension2D dim = textBlock.calculateDimension(stringBounder);
 		return dim;

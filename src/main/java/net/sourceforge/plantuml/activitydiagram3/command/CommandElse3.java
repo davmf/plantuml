@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.activitydiagram3.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.activitydiagram3.ActivityDiagram3;
 import net.sourceforge.plantuml.activitydiagram3.LinkRendering;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -51,6 +55,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandElse3 extends SingleLineCommand2<ActivityDiagram3> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("else");
 
 	public CommandElse3() {
 		super(getRegexConcat());
@@ -73,6 +79,26 @@ public class CommandElse3 extends SingleLineCommand2<ActivityDiagram3> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'else (label)' starts the alternative branch of the enclosing 'if';
+		// the optional '(...)' group labels and colors the branch arrow.
+		sb.append("Starting the 'else' branch of the enclosing if");
+
+		final String when = arg.get("WHEN", 0);
+		if (when != null && when.isEmpty() == false)
+			sb.append(", labelled \"").append(when).append("\"");
+
+		final String color = arg.get("WHEN_COLOR", 0);
+		if (color != null)
+			sb.append(", branch arrow color or style '").append(color).append("'");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram3 diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
 			throws NoSuchColorException {
 		// if (getSystem().getLastEntityConsulted() == null) {
@@ -80,6 +106,11 @@ public class CommandElse3 extends SingleLineCommand2<ActivityDiagram3> {
 		// }
 		final LinkRendering when = CommandBackward3.getBackRendering(diagram, arg, "WHEN");
 		return diagram.else2(when);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

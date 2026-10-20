@@ -35,40 +35,43 @@
  */
 package net.sourceforge.plantuml.flashcode;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
+
 import java.util.Hashtable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
+import net.sourceforge.plantuml.klimt.awt.XColor;
+import net.sourceforge.plantuml.utils.Log;
 import zext.plantuml.com.google.zxing.BarcodeFormat;
 import zext.plantuml.com.google.zxing.EncodeHintType;
 import zext.plantuml.com.google.zxing.client.j2se.MatrixToImageWriter;
 import zext.plantuml.com.google.zxing.common.BitMatrix;
 import zext.plantuml.com.google.zxing.qrcode.QRCodeWriter;
 import zext.plantuml.com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
-import net.sourceforge.plantuml.utils.Log;
 
 public class FlashCodeUtilsZxing implements FlashCodeUtils {
 	// ::remove file when __MIT__ or __EPL__ or __BSD__ or __ASL__ or __LGPL__
-
+	
 	private static final Lock lock = new ReentrantLock();
 
-	public BufferedImage exportFlashcode(String s, Color fore, Color back) {
-		if (lock.tryLock())
-			try {
-				final QRCodeWriter writer = new QRCodeWriter();
-				final Hashtable hints = new Hashtable();
-				hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L);
-				hints.put(EncodeHintType.CHARACTER_SET, "UTF8");
-				final int multiple = 1;
-				final BitMatrix bit = writer.encode(s, BarcodeFormat.QR_CODE, multiple, hints);
-				return MatrixToImageWriter.toBufferedImage(bit, fore.getRGB() | 0xFF000000, back.getRGB() | 0xFF000000);
-			} catch (Exception e) {
-				Log.debug(() -> "Cannot create qrcode " + e);
-			} finally {
-				lock.unlock();
-			}
+	public PortableImage exportFlashcode(String s, XColor fore, XColor back) {
+		lock.lock();
+		try {
+			final QRCodeWriter writer = new QRCodeWriter();
+			final Hashtable hints = new Hashtable();
+			hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L);
+			hints.put(EncodeHintType.CHARACTER_SET, "UTF8");
+			final int multiple = 1;
+			final BitMatrix bit = writer.encode(s, BarcodeFormat.QR_CODE, multiple, hints);
+			return PortableImageFactory.build(MatrixToImageWriter.toBufferedImage(bit, fore.getRGB() | 0xFF000000,
+					back.getRGB() | 0xFF000000));
+		} catch (Exception e) {
+			Log.debug(() -> "Cannot create qrcode " + e);
+		} finally {
+			lock.unlock();
+		}
 
 		return null;
 	}

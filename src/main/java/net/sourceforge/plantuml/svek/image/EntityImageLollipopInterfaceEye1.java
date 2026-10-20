@@ -76,22 +76,23 @@ public class EntityImageLollipopInterfaceEye1 extends AbstractEntityImage {
 
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return new XDimension2D(SIZE, SIZE);
 	}
 
 	final public void drawU(UGraphic ug) {
 		ug = ug.apply(SkinParamUtils.getColor(getSkinParam(), getStereo(), ColorParam.classBorder));
 		ug = ug.apply(SkinParamUtils.getColor(getSkinParam(), getStereo(), ColorParam.classBackground).bg());
-		if (url != null) {
+		if (url != null)
 			ug.startUrl(url);
-		}
+
 		final double sizeSmall = 14;
 		final double diff = (SIZE - sizeSmall) / 2;
 		final UEllipse circle1 = UEllipse.build(sizeSmall, sizeSmall);
-		if (getSkinParam().shadowing(getEntity().getStereotype())) {
-			// circle.setDeltaShadow(4);
-		}
+//		if (getSkinParam().shadowing(getEntity().getStereotype())) {
+//			// circle.setDeltaShadow(4);
+//		}
 		ug.apply(UStroke.withThickness(1.5)).apply(new UTranslate(diff, diff)).draw(circle1);
 		ug = ug.apply(HColors.none().bg());
 
@@ -106,20 +107,12 @@ public class EntityImageLollipopInterfaceEye1 extends AbstractEntityImage {
 			connectedCircle.addSecondaryConnection(pt);
 
 		}
-		// connectedCircle.drawU(ug.apply(UStroke.withThickness(1.5)));
+
 		connectedCircle.drawU(ug);
 
-		//
-		// final Dimension2D dimDesc = desc.calculateDimension(ug.getStringBounder());
-		// final double widthDesc = dimDesc.getWidth();
-		// // final double totalWidth = Math.max(widthDesc, SIZE);
-		//
-		// final double x = SIZE / 2 - widthDesc / 2;
-		// final double y = SIZE;
-		// desc.drawU(ug.apply(new UTranslate(x, y)));
-		if (url != null) {
+		if (url != null)
 			ug.closeUrl();
-		}
+
 	}
 
 	public ShapeType getShapeType() {

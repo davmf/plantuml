@@ -40,9 +40,8 @@ import java.util.List;
 
 import net.sourceforge.plantuml.BlockUml;
 import net.sourceforge.plantuml.ErrorUml;
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.SourceStringReader;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.error.PSystemError;
 import net.sourceforge.plantuml.preproc.Defines;
@@ -50,9 +49,7 @@ import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.utils.LineLocation;
 import net.sourceforge.plantuml.utils.LineLocationImpl;
 
-public class SyntaxChecker {
-	// ::remove folder when __HAXE__
-	// ::remove file when __CORE__
+public class SyntaxChecker {	
 
 	public static SyntaxResult checkSyntax(List<String> source) {
 		final StringBuilder sb = new StringBuilder();
@@ -64,7 +61,7 @@ public class SyntaxChecker {
 	}
 
 	public static SyntaxResult checkSyntax(String source) {
-		OptionFlags.getInstance().setQuiet(true);
+		// GlobalConfig.getInstance().setQuiet(true);
 		final SyntaxResult result = new SyntaxResult();
 
 		if (source.startsWith("@startuml\n") == false) {
@@ -91,8 +88,8 @@ public class SyntaxChecker {
 		}
 		final Diagram system = blocks.get(0).getDiagram();
 		result.setCmapData(system.hasUrl());
-		if (system instanceof UmlDiagram) {
-			result.setUmlDiagramType(((UmlDiagram) system).getUmlDiagramType());
+		if (system instanceof TitledDiagram) {
+			result.setDiagramType(((TitledDiagram) system).getDiagramType());
 			result.setDescription(system.getDescription().getDescription());
 		} else if (system instanceof PSystemError) {
 			result.setError(true);
@@ -122,8 +119,8 @@ public class SyntaxChecker {
 
 		final Diagram system = blocks.get(0).getDiagram();
 		result.setCmapData(system.hasUrl());
-		if (system instanceof UmlDiagram) {
-			result.setUmlDiagramType(((UmlDiagram) system).getUmlDiagramType());
+		if (system instanceof TitledDiagram) {
+			result.setDiagramType(((TitledDiagram) system).getDiagramType());
 			result.setDescription(system.getDescription().getDescription());
 		} else if (system instanceof PSystemError) {
 			result.setError(true);

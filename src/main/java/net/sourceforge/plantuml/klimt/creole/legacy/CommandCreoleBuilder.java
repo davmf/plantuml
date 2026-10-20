@@ -65,10 +65,10 @@ import net.sourceforge.plantuml.security.SecurityUtils;
 
 public class CommandCreoleBuilder {
 
-	final private Map<Character, List<Command>> commands = new HashMap<>();
-
 	public static CommandCreoleBuilder FULL = new CommandCreoleBuilder(CreoleMode.FULL);
 	public static CommandCreoleBuilder OTHER = new CommandCreoleBuilder(null);
+
+	private final Map<String, List<Command>> commands = new HashMap<>();
 
 	private CommandCreoleBuilder(CreoleMode modeSimpleLine) {
 
@@ -106,7 +106,7 @@ public class CommandCreoleBuilder {
 		addCommand(CommandCreoleQrcode.create());
 		addCommand(CommandCreoleOpenIcon.create());
 		addCommand(CommandCreoleEmoji.create());
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		addCommand(CommandCreoleMath.create());
 		addCommand(CommandCreoleLatex.create());
 		// ::done
@@ -116,7 +116,7 @@ public class CommandCreoleBuilder {
 		addCommand(CommandCreoleFontFamilyChange.createEol());
 		addCommand(CommandCreoleMonospaced.create());
 		addCommand(CommandCreoleUrl.create());
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		if (SecurityUtils.allowSvgText())
 			addCommand(CommandCreoleSvgAttributeChange.create());
 		// ::done
@@ -124,19 +124,12 @@ public class CommandCreoleBuilder {
 	}
 
 	private void addCommand(Command cmd) {
-		final String starters = cmd.startingChars();
-		for (int i = 0; i < starters.length(); i++) {
-			final char ch = starters.charAt(i);
-			List<Command> localList = commands.get(ch);
-			if (localList == null) {
-				localList = new ArrayList<Command>();
-				commands.put(ch, localList);
-			}
-			localList.add(cmd);
-		}
+		for (String starter : cmd.starters())
+			commands.computeIfAbsent(starter, key -> new ArrayList<>()).add(cmd);
+
 	}
 
-	public Map<Character, List<Command>> getMap() {
+	public Map<String, List<Command>> getMap() {
 		return commands;
 	}
 

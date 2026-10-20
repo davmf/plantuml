@@ -60,6 +60,10 @@ public class DocBookConverter {
 		XMLReader parser =
 			XMLReaderFactory.createXMLReader
             	("org.apache.crimson.parser.XMLReaderImpl");
+		// Disable external entities to prevent XXE attacks
+		parser.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+		parser.setFeature("http://xml.org/sax/features/external-general-entities", false);
+		parser.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
 		parser.setContentHandler(new HowToHandler( ));
 		parser.parse("howto.xml");
 	}

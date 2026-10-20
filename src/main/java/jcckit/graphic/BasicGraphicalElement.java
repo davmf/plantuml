@@ -49,7 +49,7 @@ public abstract class BasicGraphicalElement implements GraphicalElement {
   /**
    *  Returns whether this basic graphical element has a closed shape
    *  or not. By default always <tt>true</tt>. Subclasses may override
-   *  this behaviour.
+   *  this behavior.
    *  @return <tt>true</tt> if the shape is closed.
    */
   public boolean isClosed() {

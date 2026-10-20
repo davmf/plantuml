@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -85,6 +85,8 @@ import static smetana.core.Macro.NORMAL;
 import static smetana.core.Macro.VIRTUAL;
 import static smetana.core.debug.SmetanaDebug.ENTERING;
 import static smetana.core.debug.SmetanaDebug.LEAVING;
+import static smetana.core.debug.SmetanaDebug.SMETANA_TRACE;
+import static smetana.core.debug.SmetanaDebug.safeName;
 
 import gen.annotation.Difficult;
 import gen.annotation.HasND_Rank;
@@ -191,6 +193,18 @@ try {
 	    else if ((l[0] < lpos[0]) && (r[0] > rpos[0]));	/* ignore */
 	    /* must have intersecting ranges */
 	    else {
+		// [DEBUG-cluster-layout] This is the "genuine crossing" branch: the
+		// already-placed label v's own range [l,r] neither contains nor is
+		// contained by nor disjoint from the new edge's range [lpos,rpos] --
+		// they truly interleave. Note only SLB/SRB (soft bounds) get set here,
+		// never HLB/HRB (hard bounds): flat_limits() has no way to place the
+		// new label consistently with v in this case, it just picks a
+		// best-effort side. This is the exact mechanism behind the Test_1
+		// infeasible X-position cycle -- see SMETANA.md "Root cause CONFIRMED".
+	    	// [DEBUG-Test_15-flatedge] Enabled (SMETANA.md, zdev.Test_15 investigation).
+	    	if (false) SMETANA_TRACE("flat__c", "setbounds: CROSSING existingLabelNodeIdentityHash=" + System.identityHashCode(v)
+				+ " existingLabelOrder=" + ord + " existingRange=[" + l[0] + "," + r[0] + "]"
+				+ " newEdgeRange=[" + lpos[0] + "," + rpos[0] + "] -> soft bound(s) only");
 		if ((l[0] < lpos[0]) || ((l[0] == lpos[0]) && (r[0] < rpos[0])))
 		    bounds[2] = ord;
 		if ((r[0] > rpos[0]) || ((r[0] == rpos[0]) && (l[0] > lpos[0])))
@@ -260,6 +274,18 @@ try {
 	pos = (bounds[HLB] + bounds[HRB] + 1) / 2;
     else
 	pos = (bounds[SLB] + bounds[SRB] + 1) / 2;
+    // [DEBUG-cluster-layout] Records, for this labeled flat edge, the computed
+    // insertion position in the label rank (rank r-1), together with lpos/rpos
+    // (this edge's own real-endpoint range) and the final hard/soft bounds.
+    // "usedSoftBounds=true" means bounds[HLB] > bounds[HRB], i.e. the hard
+    // bounds from setbounds() were mutually inconsistent and flat_limits() had
+    // to fall back to the soft bounds -- a direct symptom of the "genuine
+    // crossing" case logged in setbounds() above. See SMETANA.md "Root cause
+    // CONFIRMED" (Test_1 investigation).
+    if (false) SMETANA_TRACE("flat__c", "flat_limits: edgeIdentityHash=" + System.identityHashCode(e)
+		+ " lpos=" + lpos[0] + " rpos=" + rpos[0]
+		+ " bounds(HLB,HRB,SLB,SRB)=[" + bounds[HLB] + "," + bounds[HRB] + "," + bounds[SLB] + "," + bounds[SRB] + "]"
+		+ " usedSoftBounds=" + (bounds[HLB] > bounds[HRB]) + " -> pos=" + pos);
     return pos;
 } finally {
 LEAVING("3bc4otcsxj1dujj49ydbb19oa","flat_limits");
@@ -328,6 +354,18 @@ try {
     if (GD_rank(g).get__(r - 1).ht2 < h2)
 	GD_rank(g).get__(r - 1).ht2 = h2;
     ND_alg(vn, e);
+    // [DEBUG-cluster-layout] Links this label virtual node's identity hash (the
+    // "<unnamed:NNN>" seen in position__c.dumpAuxEdges/ns__c traces for rank -1
+    // nodes) back to the original edge e it labels, via e's own identity hash --
+    // cross-reference against the "createEdge: ... edgeIdentityHash=" trace in
+    // CucaDiagramFileMakerSmetana, which has the actual PlantUML entity
+    // names/label/roles for that same edge object. (Can't resolve tail/head
+    // names here directly: agnameof()/safeName() need a Globals zz, which this
+    // faithfully-ported method signature -- matching lib/dotgen/flat.c's
+    // flat_node(edge_t*) -- doesn't receive.) See SMETANA.md, Test_1 cluster
+    // layout investigation ("Root cause CONFIRMED" case study).
+    if (false) SMETANA_TRACE("flat__c", "flat_node: labelNodeIdentityHash=" + System.identityHashCode(vn)
+		+ " origEdgeIdentityHash=" + System.identityHashCode(e));
 } finally {
 LEAVING("4cw9yo9ap8ze1r873v6jat4yc","flat_node");
 }
@@ -346,6 +384,10 @@ try {
     int r;
     CArray<ST_rank_t> rptr;
     
+    // [DEBUG-flat-label] Temporary trace, Test_5 (SMETANA.md). Note: the assert
+    // below is a no-op unless -ea; if minrank is already -1 here, this is being
+    // run twice and will corrupt the rank array.
+    if (false) SMETANA_TRACE("flat__c", "abomination: ENTER minrank=" + GD_minrank(g) + " maxrank=" + GD_maxrank(g));
     assert(GD_minrank(g) == 0);
     /* 3 = one for new rank, one for sentinel, one for off-by-one */
     r = GD_maxrank(g) + 3;
@@ -445,6 +487,8 @@ try {
     ST_Agnode_s n;
     ST_Agedge_s e;
     boolean found = false;
+    // [DEBUG-flat-label] Temporary trace, Test_5 (SMETANA.md): phase ordering check
+    if (false) SMETANA_TRACE("flat__c", "flat_edges: ENTER minrank=" + GD_minrank(g) + " maxrank=" + GD_maxrank(g));
     
     for (n = GD_nlist(g); n!=null; n = ND_next(n)) {
 	if (ND_flat_out(n).list!=null) {
@@ -470,11 +514,74 @@ try {
 	    }
 	    if (found)
 		break;
+	    // [FIX-cluster-layout] Not present in upstream Graphviz (which has the
+	    // same gap -- verified against lib/dotgen/flat.c line by line). A labeled
+	    // flat edge that is an "equivalent" duplicate of an earlier, unlabeled
+	    // parallel edge (e.g. "A3->A2" then "A3->A2 : b") lives only in
+	    // ND_other(n), never in ND_flat_in(n) -- so the trigger loop above never
+	    // sees it and never calls abomination(). The second loop further down,
+	    // which actually calls flat_node() for such an edge, DOES scan ND_other,
+	    // so it proceeds to reference rank -1 before abomination() ever created
+	    // it, crashing with an ArrayIndexOutOfBoundsException in flat_limits().
+	    // Mirroring that second loop's ND_other scan here keeps both loops
+	    // consistent about what counts as "a labeled flat edge needing rank -1".
+	    // ED_adjacent(e) is already valid here: checkFlatAdjacent() was run for
+	    // every ND_other edge in the loop above this one. See SMETANA.md,
+	    // zdev.Test_5 investigation.
+	    for (j = 0; j < ND_other(n).size; j++) {
+		e = ND_other(n).list.get_(j);
+		// [FIX-cluster-layout] Test_8 (SMETANA.md): a self-loop (agtail == aghead,
+		// e.g. "A -> A : Hello") also has ND_rank(agtail) == ND_rank(aghead) and can
+		// carry a label, so without this guard it wrongly triggers abomination() and
+		// allocates rank -1. But the vnode-creation loop further down skips self-loops
+		// (its own "if (agtail(e) == aghead(e)) continue; /* skip loops */"), so
+		// flat_node() is never called for it and no label vnode is ever placed on that
+		// rank -1 -- leaving it empty. make_LR_constraints() then dereferences
+		// GD_rank(g)[-1].v[0] == null and NPEs. Excluding self-loops here keeps both
+		// loops consistent about what counts as "a labeled flat edge needing rank -1",
+		// matching the self-loop skip in the creation loop.
+		if (agtail(e) != aghead(e) && ND_rank(agtail(e)) == ND_rank(aghead(e)) && (ED_label(e)!=null) && ED_adjacent(e) == 0) {
+		    abomination(g);
+		    found = true;
+		    break;
+		}
+	    }
+	    if (found)
+		break;
 	}
     }
     
     rec_save_vlists(g);
     for (n = GD_nlist(g); n!=null; n = ND_next(n)) {
+	// [DEBUG-Test_15] zdev.Test_15 investigation (SMETANA.md): dump the
+	// GD_nlist traversal order and, for this node, the order of its
+	// ND_flat_out/ND_other flat-edge lists, before anything below acts on
+	// them. This determines the call order of flat_node() (already traced),
+	// and thus the insertion order into the rank -1 label array -- the goal
+	// is to see directly whether Smetana visits/groups L4 and L5's flat
+	// edges in an order (or with tail/head roles) that differs from what a
+	// correct layout (native dot renders Test_15 fine) would need, rather
+	// than continuing to infer this by hand from flat_limits' bounds output.
+	if (false) SMETANA_TRACE("flat__c", "flat_edges main loop: node=" + safeName(zz, n)
+		+ " ND_flat_out=" + (ND_flat_out(n).list == null ? "null" : String.valueOf(ND_flat_out(n).size))
+		+ " ND_other.size=" + ND_other(n).size);
+	if (ND_flat_out(n).list != null) {
+	    for (int dbg = 0; ND_flat_out(n).list.get_(dbg) != null; dbg++) {
+		final ST_Agedge_s dbgE = ND_flat_out(n).list.get_(dbg);
+		if (false) SMETANA_TRACE("flat__c", "  flat_out[" + dbg + "] edgeIdentityHash=" + System.identityHashCode(dbgE)
+			+ " tail=" + safeName(zz, agtail(dbgE)) + " head=" + safeName(zz, aghead(dbgE))
+			+ " label=" + (ED_label(dbgE) == null ? "null" : "PRESENT")
+			+ " adjacent=" + ED_adjacent(dbgE));
+	    }
+	}
+	for (int dbg = 0; dbg < ND_other(n).size; dbg++) {
+	    final ST_Agedge_s dbgE = ND_other(n).list.get_(dbg);
+	    if (false) SMETANA_TRACE("flat__c", "  other[" + dbg + "] edgeIdentityHash=" + System.identityHashCode(dbgE)
+		    + " tail=" + safeName(zz, agtail(dbgE)) + " head=" + safeName(zz, aghead(dbgE))
+		    + " label=" + (ED_label(dbgE) == null ? "null" : "PRESENT")
+		    + " sameRank=" + (ND_rank(agtail(dbgE)) == ND_rank(aghead(dbgE)))
+		    + " isSelfLoop=" + (agtail(dbgE) == aghead(dbgE)));
+	}
           /* if n is the tail of any flat edge, one will be in flat_out */
 	if (ND_flat_out(n).list!=null) {
 	    for (i = 0; (e = ND_flat_out(n).list.get_(i))!=null; i++) {

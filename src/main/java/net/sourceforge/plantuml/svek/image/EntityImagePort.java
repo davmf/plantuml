@@ -36,6 +36,7 @@
 
 package net.sourceforge.plantuml.svek.image;
 
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.klimt.Shadowable;
@@ -53,9 +54,9 @@ import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.Cluster;
 import net.sourceforge.plantuml.svek.ShapeType;
@@ -68,17 +69,20 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	@Override
-	protected StyleSignatureBasic getSignature() {
-		return StyleSignatureBasic.of(SName.root, SName.element, getStyleName(), SName.port);
+	public StyleQuery getStyleQuery() {
+		return StyleQueries.PORT.add(getStyleName());
 	}
 
 	private boolean upPosition() {
+		if (parent == null)
+			return false;
 		final XPoint2D clusterCenter = parent.getRectangleArea().getPointCenter();
 		final SvekNode node = bibliotekon.getNode(getEntity());
 		return node.getMinY() < clusterCenter.getY();
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	final public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		double sp = EntityPosition.RADIUS * 2;
 		return new XDimension2D(sp, sp);
 	}

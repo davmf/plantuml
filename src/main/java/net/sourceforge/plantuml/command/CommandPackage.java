@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.classdiagram.command.CommandCreateClassMultilines;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
@@ -52,7 +56,9 @@ import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.regex.RegexOr;
 import net.sourceforge.plantuml.regex.RegexResult;
+import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.stereo.Stereotag;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.stereo.StereotypePattern;
@@ -63,22 +69,62 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandPackage extends SingleLineCommand2<AbstractEntityDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"#", "+", "-", "package", "~");
+
 	public CommandPackage() {
 		super(getRegexConcat());
 	}
 
-	private static IRegex getRegexConcat() {
+	// A bare, unquoted identifier: letters/digits/underscore/dot/dollar. '$' is
+	// included for consistency with the other entity-identifier regexes (see
+	// CommandLinkClass.getClassIdentifier()) and because compiler-generated or
+	// deliberately-disambiguated codes such as "foo$1" are legal here too, e.g.
+	// 'package a_$a { ... }'. Zero-or-more (not one-or-more) so that
+	// 'package {' - an anonymous package - still matches branch 1 with an
+	// empty CODE1, exactly like the original NAME group ("[^#%s{}]*") allowed
+	// an empty match.
+	private static final String CODE_BAREWORD = "[%pLN_.$]*";
+	// A quoted display string, e.g. "Hello World".
+	private static final String QUOTED_DISPLAY = "[%g][^%g]+[%g]";
+
+	protected static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandPackage.class.getName(), RegexLeaf.start(), //
+				new RegexLeaf(1, "VISIBILITY", "(" + VisibilityModifier.regexForVisibilityCharacter() + ")?"), //
+				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf(1, "TYPE", "(package)"), //
 				RegexLeaf.spaceOneOrMore(), //
-				new RegexLeaf(1, "NAME", "([%g][^%g]+[%g]|[^#%s{}]*)"), //
-				new RegexOptional( //
+				// Two explicit orderings, each with its own group names, instead of
+				// one NAME/AS pair reinterpreted after the fact:
+				// Branch 1: CODE1 [as DISPLAY1] -> package uid as "Hello"
+				// package uid (no display)
+				// Branch 2: DISPLAY2 as CODE2 -> package "Hello" as uid
+				// Only one branch can ever match a given line, so downstream code
+				// reads whichever of CODE1/CODE2 and DISPLAY1/DISPLAY2 is non-null
+				// (see arg.getLazzy("CODE", 0) / arg.getLazzy("DISPLAY", 0) in
+				// executeArg/explainArg) rather than guessing from quoting.
+				new RegexOr( //
 						new RegexConcat( //
+								new RegexLeaf(1, "CODE1", "(" + CODE_BAREWORD + "|" + QUOTED_DISPLAY + ")"), //
+								new RegexOptional( //
+										new RegexConcat( //
+												RegexLeaf.spaceOneOrMore(), //
+												new RegexLeaf("as"), //
+												RegexLeaf.spaceOneOrMore(), //
+												new RegexLeaf(1, "DISPLAY1", "(" + QUOTED_DISPLAY + ")") //
+										)) //
+						), //
+						new RegexConcat( //
+								new RegexLeaf(1, "DISPLAY2", "(" + QUOTED_DISPLAY + ")"), //
 								RegexLeaf.spaceOneOrMore(), //
 								new RegexLeaf("as"), //
 								RegexLeaf.spaceOneOrMore(), //
-								new RegexLeaf(1, "AS", "([%pLN_.]+)") //
-						)), //
+								// CODE2 requires at least one character: unlike CODE1, there is no
+								// legitimate 'package "Hello" as {' (an explicit but empty id makes
+								// no sense), so this stays one-or-more.
+								new RegexLeaf(1, "CODE2", "([%pLN_.]+)") //
+						) //
+				), //
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf(4, "TAGS1", Stereotag.pattern() + "?"), //
 				StereotypePattern.optional("STEREOTYPE"), //
@@ -100,53 +146,88 @@ public class CommandPackage extends SingleLineCommand2<AbstractEntityDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'package Name {' (or 'package "Display" as code {' or
+		// 'package code as "Display" {') opens a package around the
+		// following elements, closed by '}'. getLazzy("CODE"/"DISPLAY", 0)
+		// transparently finds whichever of CODE1/CODE2 or DISPLAY1/DISPLAY2
+		// actually matched, since only one branch of the RegexOr in
+		// getRegexConcat() ever fires for a given line.
+		final String code = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("CODE", 0));
+		final String display = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("DISPLAY", 0));
+
+		if (display == null) {
+			if (code.length() == 0)
+				return "Starting a package without a name (rejected at execution: a name is required)";
+			sb.append("Starting the package '").append(code).append("'");
+		} else {
+			sb.append("Starting the package '").append(code).append("' displayed as \"").append(display).append("\"");
+		}
+
+		final String visibility = arg.get("VISIBILITY", 0);
+		if (visibility != null)
+			sb.append(", with the visibility modifier '").append(visibility).append("'");
+
+		// When the stereotype names a USymbol (like <<Rectangle>> or
+		// <<Frame>>), it selects the shape of the package instead of being
+		// displayed, like in executeArg.
+		final String stereotype = arg.get("STEREOTYPE", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype)
+					.append(" (a symbol name here selects the shape of the package)");
+
+		final String tags = arg.getLazzy("TAGS", 0);
+		if (tags != null && tags.isEmpty() == false)
+			sb.append(", tagged ").append(tags);
+
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(", with a URL link");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(AbstractEntityDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
-		String idShort;
-		String display;
-		final String name = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.get("NAME", 0));
+		final String idRaw = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("CODE", 0));
+		final String display = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.getLazzy("DISPLAY", 0));
 
-		if (arg.get("AS", 0) == null) {
-			if (name.length() == 0) {
-				idShort = diagram.getUniqueSequence("##");
-				display = null;
-				return CommandExecutionResult.error("Error in name");
-				// throw new IllegalStateException("AS");
-			} else {
-				idShort = name;
-				display = idShort;
-			}
-		} else {
-			display = name;
-			idShort = arg.get("AS", 0);
-		}
+		if (idRaw.length() == 0)
+			return CommandExecutionResult.error("Error in name");
 
-		final Quark<Entity> quark;
-		if (arg.get("AS", 0) == null) {
-			quark = diagram.quarkInContext(false, diagram.cleanId(name));
-			display = quark.getName();
-		} else {
-			quark = diagram.quarkInContext(false, diagram.cleanId(arg.get("AS", 0)));
-			display = name;
-		}
+		final Quark<Entity> quark = diagram.quarkInContext(false, diagram.cleanId(idRaw));
+		final String displayResolved = display == null ? quark.getName() : display;
 
 		final String stereotype = arg.get("STEREOTYPE", 0);
 		final USymbol usymbol = USymbols.fromString(stereotype, diagram.getSkinParam().actorStyle(),
 				diagram.getSkinParam().componentStyle(), diagram.getSkinParam().packageStyle());
 
 		final CommandExecutionResult status = diagram.gotoGroup(location, quark,
-				Display.getWithNewlines(diagram.getPragma(), display), GroupType.PACKAGE, usymbol);
+				Display.getWithNewlines(diagram.getPragma(), displayResolved), GroupType.PACKAGE, usymbol);
 		if (status.isOk() == false)
 			return status;
 
 		final Entity p = diagram.getCurrentGroup();
+
+		final String visibilityString = arg.get("VISIBILITY", 0);
+		if (visibilityString != null) {
+			final VisibilityModifier visibilityModifier = VisibilityModifier
+					.getVisibilityModifier(visibilityString + "FOO", false);
+			p.setVisibilityModifier(visibilityModifier);
+		}
 
 		if (stereotype != null && usymbol == null)
 			p.setStereotype(Stereotype.build(stereotype));
 
 		CommandCreateClassMultilines.addTags(p, arg.getLazzy("TAGS", 0));
 
-		final String urlString = arg.get("URL", 0);
+		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
 			final UrlBuilder urlBuilder = new UrlBuilder(diagram.getSkinParam().getValue("topurl"), UrlMode.STRICT);
 			final Url url = urlBuilder.getUrl(urlString);
@@ -157,6 +238,11 @@ public class CommandPackage extends SingleLineCommand2<AbstractEntityDiagram> {
 		p.setColors(colors);
 
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

@@ -37,50 +37,55 @@ package net.sourceforge.plantuml.version;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import net.sourceforge.plantuml.AbstractPSystem;
 import net.sourceforge.plantuml.command.PSystemSingleLineFactory;
+import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.Log;
 
 public class PSystemVersionFactory extends PSystemSingleLineFactory {
 
 	@Override
-	protected AbstractPSystem executeLine(UmlSource source, String line, PreprocessingArtifact preprocessing) {
+	protected Diagram executeLine(UmlSource source, String line, PreprocessingArtifact preprocessing) {
 		try {
 			if (line.matches("(?i)^(authors?|about)\\s*$"))
-				return PSystemVersion.createShowAuthors2(source, preprocessing);
+				return PSystemVersion.createShowAuthors(source, preprocessing);
 
 			if (line.matches("(?i)^version\\s*$"))
-				return PSystemVersion.createShowVersion2(source, preprocessing);
+				return PSystemVersion.createShowVersion(source, preprocessing);
 
-			// ::comment when __CORE__
-			if (line.matches("(?i)^stdlib\\s*$"))
-				return PSystemVersion.createStdLib(source, preprocessing);
+			if (!TeaVM.isTeaVM()) {
+				if (line.matches("(?i)^stdlib\\s*$"))
+					return PSystemVersion.createStdLib(source, preprocessing);
 
-			if (line.matches("(?i)^testdot\\s*$"))
-				return PSystemVersion.createTestDot(source, preprocessing);
+				if (line.matches("(?i)^testdot\\s*$"))
+					return PSystemVersion.createTestDot(source, preprocessing);
 
-			if (line.matches("(?i)^keydistributor\\s*$"))
-				return PSystemVersion.createKeyDistributor(source, preprocessing);
+				if (line.matches("(?i)^keydistributor\\s*$"))
+					return PSystemVersion.createKeyDistributor(source, preprocessing);
 
-			if (line.matches("(?i)^keygen\\s*$")) {
-				line = line.trim();
-				return new PSystemKeygen(source, "", preprocessing);
+				if (line.matches("(?i)^keygen\\s*$")) {
+					line = line.trim();
+					return new PSystemKeygen(source, "", preprocessing);
+				}
+				if (line.matches("(?i)^keyimport(\\s+[0-9a-z]+)?\\s*$")) {
+					line = line.trim();
+					final String key = line.substring("keyimport".length()).trim();
+					return new PSystemKeygen(source, key, preprocessing);
+				}
+				if (line.matches("(?i)^keycheck\\s+([0-9a-z]+)\\s+([0-9a-z]+)\\s*$")) {
+					final Pattern p = Pattern.compile("(?i)^keycheck\\s+([0-9a-z]+)\\s+([0-9a-z]+)\\s*$");
+					final Matcher m = p.matcher(line);
+					if (m.find())
+						return new PSystemKeycheck(source, m.group(1), m.group(2), preprocessing);
+
+				}
+				if (line.matches("(?i)^keycheck\\s+[0-9a-z]+\\s*$")) {
+					final String key = line.trim().substring("keycheck".length()).trim();
+					return new PSystemKeycheck(source, key, preprocessing);
+				}
 			}
-			if (line.matches("(?i)^keyimport(\\s+[0-9a-z]+)?\\s*$")) {
-				line = line.trim();
-				final String key = line.substring("keyimport".length()).trim();
-				return new PSystemKeygen(source, key, preprocessing);
-			}
-			if (line.matches("(?i)^keycheck\\s+([0-9a-z]+)\\s+([0-9a-z]+)\\s*$")) {
-				final Pattern p = Pattern.compile("(?i)^keycheck\\s+([0-9a-z]+)\\s+([0-9a-z]+)\\s*$");
-				final Matcher m = p.matcher(line);
-				if (m.find())
-					return new PSystemKeycheck(source, m.group(1), m.group(2), preprocessing);
-
-			}
-			// ::done
 		} catch (Exception e) {
 			Log.error("Error " + e);
 

@@ -56,7 +56,6 @@ import net.sourceforge.plantuml.skin.ColorParam;
 import net.sourceforge.plantuml.skin.LineParam;
 import net.sourceforge.plantuml.skin.SkinParamUtils;
 import net.sourceforge.plantuml.stereo.Stereotype;
-import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.text.Guillemet;
@@ -73,23 +72,23 @@ public class EntityImageDesignedDomain extends AbstractEntityImage {
 		this.name = TextBlockUtils.withMargin(entity.getDisplay().create(
 				FontConfiguration.create(getSkinParam(), FontParam.DESIGNED_DOMAIN, stereotype),
 				HorizontalAlignment.CENTER, getSkinParam()), 2, 2);
-		if (stereotype == null || stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR) == null) {
+
+		if (stereotype == null || stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR) == null)
 			this.stereo = null;
-		} else {
+		else
 			this.stereo = Display.create(stereotype.getLabels(getSkinParam().guillemet())).create(
 					FontConfiguration.create(getSkinParam(), FontParam.DESIGNED_DOMAIN_STEREOTYPE, stereotype),
 					HorizontalAlignment.CENTER, getSkinParam());
-		}
+
 		this.url = entity.getUrl99();
-		// System.out.println(entity.getStereotype());
 	}
 
 	private UStroke getStroke() {
 		UStroke stroke = getSkinParam().getThickness(LineParam.designedDomainBorder, getStereo());
 
-		if (stroke == null) {
+		if (stroke == null)
 			stroke = UStroke.withThickness(1.5);
-		}
+
 		return stroke;
 	}
 
@@ -151,7 +150,8 @@ public class EntityImageDesignedDomain extends AbstractEntityImage {
 		return ShapeType.RECTANGLE;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final XDimension2D dimTitle = getTitleDimension(stringBounder);
 		final double width = dimTitle.getWidth();
 		final double height = dimTitle.getHeight();

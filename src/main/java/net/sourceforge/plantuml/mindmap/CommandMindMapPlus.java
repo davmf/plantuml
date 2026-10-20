@@ -35,6 +35,10 @@
  */
 package net.sourceforge.plantuml.mindmap;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -50,6 +54,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMindMapPlus extends SingleLineCommand2<MindMapDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("+", "-");
+
 	public CommandMindMapPlus() {
 		super(false, getRegexConcat());
 	}
@@ -59,8 +65,32 @@ public class CommandMindMapPlus extends SingleLineCommand2<MindMapDiagram> {
 				new RegexLeaf(1, "TYPE", "([+-]+)"), //
 				new RegexOptional(new RegexLeaf(1, "BACKCOLOR", "\\[(#\\w+)\\]")), //
 				new RegexLeaf(1, "SHAPE", "(_)?"), //
-				RegexLeaf.spaceOneOrMore(), //
-				new RegexLeaf(1, "LABEL", "([^%s].*)"), RegexLeaf.end());
+				RegexLeaf.spaceZeroOrMore(), //
+				new RegexLeaf(1, "LABEL", "(.*)"), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String type = arg.get("TYPE", 0);
+		final String label = arg.get("LABEL", 0);
+		final String stringColor = arg.get("BACKCOLOR", 0);
+		final String shape = arg.get("SHAPE", 0);
+		// Depth is the marker count minus one; a '-' anywhere places the node on the left side, otherwise the right
+		final int level = type.length() - 1;
+		final boolean right = type.contains("-") == false;
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Adding a mindmap node at depth ").append(level);
+		sb.append(right ? " on the right side" : " on the left side");
+		if (label != null && label.isEmpty() == false)
+			sb.append(" labelled \"").append(label).append("\"");
+		// fromDesc maps '_' to NONE (no box); the default (absent) is a box
+		if ("_".equals(shape))
+			sb.append(" without a box outline");
+		if (stringColor != null)
+			sb.append(" with background color ").append(stringColor);
+		return sb.toString();
 	}
 
 	@Override
@@ -76,6 +106,11 @@ public class CommandMindMapPlus extends SingleLineCommand2<MindMapDiagram> {
 		final boolean direction = type.contains("-") ? false : true;
 		return diagram.addIdea(backColor, type.length() - 1, Display.getWithNewlines(diagram.getPragma(), label),
 				IdeaShape.fromDesc(arg.get("SHAPE", 0)), direction);
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

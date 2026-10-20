@@ -36,13 +36,11 @@ package net.sourceforge.plantuml.klimt.drawing.svg;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Map;
 
-import javax.xml.transform.TransformerException;
-
+import net.atmp.SvgOption;
+import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.klimt.ClipContainer;
 import net.sourceforge.plantuml.klimt.UGroup;
-import net.sourceforge.plantuml.klimt.UGroupType;
 import net.sourceforge.plantuml.klimt.UPath;
 import net.sourceforge.plantuml.klimt.drawing.AbstractCommonUGraphic;
 import net.sourceforge.plantuml.klimt.drawing.AbstractUGraphic;
@@ -53,17 +51,19 @@ import net.sourceforge.plantuml.klimt.shape.UComment;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.klimt.shape.UImage;
 import net.sourceforge.plantuml.klimt.shape.UImageSvg;
+import net.sourceforge.plantuml.klimt.shape.UImageTikz;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.UPixel;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.klimt.shape.UText;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.url.Url;
 
 public class UGraphicSvg extends AbstractUGraphic<SvgGraphics> implements ClipContainer {
-	// ::remove file when __HAXE__
 
 	private final boolean textAsPath;
+	private final FileFormat fileFormat;
 	private /* final */ SvgOption option;
 
 	public double dpiFactor() {
@@ -72,20 +72,29 @@ public class UGraphicSvg extends AbstractUGraphic<SvgGraphics> implements ClipCo
 
 	@Override
 	protected AbstractCommonUGraphic copyUGraphic() {
-		final UGraphicSvg result = new UGraphicSvg(getStringBounder(), textAsPath);
-		result.copy(this);
-		result.option = this.option;
-		return result;
+		return new UGraphicSvg(this);
 	}
 
-	private UGraphicSvg(StringBounder stringBounder, boolean textAsPath) {
+	// A copy takes its driver table from "other" (see AbstractUGraphic#copy) instead of building
+	// one, so this constructor deliberately does not register anything.
+	private UGraphicSvg(UGraphicSvg other) {
+		super(other.getStringBounder());
+		this.fileFormat = other.fileFormat;
+		this.textAsPath = other.textAsPath;
+		copy(other);
+		this.option = other.option;
+	}
+
+	private UGraphicSvg(StringBounder stringBounder, boolean textAsPath, FileFormat fileFormat) {
 		super(stringBounder);
+		this.fileFormat = fileFormat;
 		this.textAsPath = textAsPath;
 		register();
 	}
 
-	public static UGraphicSvg build(SvgOption option, boolean textAsPath, long seed, StringBounder stringBounder) {
-		final UGraphicSvg result = new UGraphicSvg(stringBounder, textAsPath);
+	public static UGraphicSvg build(SvgOption option, boolean textAsPath, long seed, StringBounder stringBounder,
+			FileFormat fileFormat) {
+		final UGraphicSvg result = new UGraphicSvg(stringBounder, textAsPath, fileFormat);
 		result.copy(option.getBackcolor(), option.getColorMapper(), new SvgGraphics(seed, option));
 		result.option = option;
 		return result;
@@ -107,21 +116,29 @@ public class UGraphicSvg extends AbstractUGraphic<SvgGraphics> implements ClipCo
 	}
 
 	private void register() {
-		registerDriver(URectangle.class, new DriverRectangleSvg(this));
-		if (textAsPath)
-			registerDriver(UText.class, new DriverTextAsPathSvg(this));
-		else
-			registerDriver(UText.class, new DriverTextSvg(getStringBounder(), this));
+		registerDriver(URectangle.class, new DriverRectangleSvg());
 
-		registerDriver(ULine.class, new DriverLineSvg(this));
+		if (TeaVM.isTeaVM())
+			registerDriver(UText.class, new DriverTextSvg(getStringBounder()));
+		else if (textAsPath)
+			registerDriver(UText.class, new DriverTextAsPathSvg());
+		else
+			registerDriver(UText.class, new DriverTextSvg(getStringBounder()));
+
+		registerDriver(ULine.class, new DriverLineSvg());
 		registerDriver(UPixel.class, new DriverPixelSvg());
-		registerDriver(UPolygon.class, new DriverPolygonSvg(this));
-		registerDriver(UEllipse.class, new DriverEllipseSvg(this));
-		registerDriver(UImage.class, new DriverImagePng(this));
+		registerDriver(UPolygon.class, new DriverPolygonSvg());
+		registerDriver(UEllipse.class, new DriverEllipseSvg());
+		if (!TeaVM.isTeaVM())
+			registerDriver(UImage.class, new DriverImagePng());
 		registerDriver(UImageSvg.class, new DriverImageSvgSvg());
-		registerDriver(UPath.class, new DriverPathSvg(this));
+		ignoreShape(UImageTikz.class);
+		registerDriver(UPath.class, new DriverPathSvg());
 		registerDriver(DotPath.class, new DriverDotPathSvg());
-		registerDriver(UCenteredCharacter.class, new DriverCenteredCharacterSvg());
+		if (TeaVM.isTeaVM())
+			registerDriver(UCenteredCharacter.class, new DriverCenteredCharacterSvgDeterministic());
+		else
+			registerDriver(UCenteredCharacter.class, new DriverCenteredCharacterSvg(fileFormat));
 	}
 
 	public SvgGraphics getSvgGraphics() {
@@ -130,14 +147,10 @@ public class UGraphicSvg extends AbstractUGraphic<SvgGraphics> implements ClipCo
 
 	@Override
 	public void writeToStream(OutputStream os, String metadata, int dpi) throws IOException {
-		try {
-			if (metadata != null)
-				getGraphicObject().addCommentMetadata(metadata);
+		if (metadata != null)
+			getGraphicObject().addCommentMetadata(metadata);
 
-			getGraphicObject().createXml(os);
-		} catch (TransformerException e) {
-			throw new IOException(e);
-		}
+		getGraphicObject().createXml(os);
 	}
 
 	@Override

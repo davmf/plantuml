@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.cheneer;
 
 import java.util.List;
 
-import net.sourceforge.plantuml.AbstractPSystem;
 import net.sourceforge.plantuml.Previous;
 import net.sourceforge.plantuml.cheneer.command.CommandAssociate;
 import net.sourceforge.plantuml.cheneer.command.CommandCreateAttribute;
@@ -51,8 +50,8 @@ import net.sourceforge.plantuml.command.CommonCommands;
 import net.sourceforge.plantuml.command.PSystemCommandFactory;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
 public class ChenEerDiagramFactory extends PSystemCommandFactory {
 
@@ -74,13 +73,9 @@ public class ChenEerDiagramFactory extends PSystemCommandFactory {
 	}
 
 	@Override
-	public AbstractPSystem createEmptyDiagram(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
+	public ChenEerDiagram createEmptyDiagram(PathSystem pathSystem, UmlSource source, Previous previous,
+			PreprocessingArtifact preprocessing) {
 		return new ChenEerDiagram(source, previous, preprocessing);
-	}
-
-	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return UmlDiagramType.CHEN_EER;
 	}
 
 }

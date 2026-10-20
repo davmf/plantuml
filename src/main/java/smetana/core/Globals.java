@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2024, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program.
+ * This translation is distributed under the same License as the original C program.
  * 
  * THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC
  * LICENSE ("AGREEMENT"). [Eclipse Public License - v 1.0]
@@ -47,8 +47,6 @@ import static smetana.core.Macro.ARR_TYPE_TEE;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import com.plantuml.api.cheerpj.WasmLog;
 
 import gen.lib.cdt.dttree__c;
 import gen.lib.cgraph.attr__c;
@@ -94,13 +92,15 @@ import h.ST_triangle_t;
 
 final public class Globals {
 
+	// Scratch search template for edge__c.agsubrep (a Globals is used by one
+	// render at a time; dtsearch only reads the template during the call).
+	public final h.ST_Agsubnode_s agsubrepScratch = new h.ST_Agsubnode_s();
+
 	public static Globals open() {
-		WasmLog.log("Starting smetana instance");
 		return new Globals();
 	}
 
 	public static void close() {
-		WasmLog.log("Ending smetana instance");
 	}
 
 	public final Map<Integer, CString> all = new HashMap<Integer, CString>();
@@ -325,6 +325,17 @@ final public class Globals {
 
 	public int isz;
 	public CArray<ST_pointf> ispline;
+
+	// [FIX-Test_15] Not part of upstream Graphviz. Populated by
+	// position__c.make_LR_constraints()'s deferred label-position pass when its
+	// cycle guard (canReachInAuxGraph) skips one of a flat-edge label vnode's
+	// two real-endpoint anchor constraints (see SMETANA.md, zdev.Test_15
+	// investigation). Consumed by position__c.dot_position() right after
+	// set_xcoords() to clamp such a label's final X coordinate back within its
+	// own edge's endpoint span -- an unclamped label can otherwise end up
+	// entirely outside that span, which makes make_flat_labeled_edge()'s box
+	// path degenerate and leaves the edge unrouted (ED_spl stays null).
+	public final java.util.Map<ST_Agnode_s, Boolean> skippedConstraintLabelVnodes = new java.util.IdentityHashMap<ST_Agnode_s, Boolean>();
 
 	private ST_shape_desc __Shapes__(String s, ST_shape_functions shape_functions, ST_polygon_t polygon) {
 		ST_shape_desc result = new ST_shape_desc();

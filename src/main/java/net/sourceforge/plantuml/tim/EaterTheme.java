@@ -34,41 +34,27 @@
  */
 package net.sourceforge.plantuml.tim;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.Reader;
-import java.io.UnsupportedEncodingException;
 
-import net.sourceforge.plantuml.file.AFile;
-import net.sourceforge.plantuml.file.AParentFolder;
-import net.sourceforge.plantuml.file.AParentFolderRegular;
 import net.sourceforge.plantuml.log.Logme;
-import net.sourceforge.plantuml.preproc.FileWithSuffix;
-import net.sourceforge.plantuml.preproc.ImportedFiles;
-import net.sourceforge.plantuml.preproc.ReadLineReader;
-import net.sourceforge.plantuml.preproc2.PreprocessorUtils;
-import net.sourceforge.plantuml.security.SFile;
-import net.sourceforge.plantuml.security.SURL;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.theme.Theme;
 import net.sourceforge.plantuml.theme.ThemeUtils;
 
 public class EaterTheme extends Eater {
 	// ::remove folder when __HAXE__
-
+	
+	
 	private String realName;
 	private String name;
 	private String from;
 	private TContext context;
-	private final ImportedFiles importedFiles;
-	private ImportedFiles newImportedFiles;
+	private final PathSystem pathSystem;
 
-	public EaterTheme(StringLocated s, ImportedFiles importedFiles) {
+	public EaterTheme(StringLocated s, PathSystem pathSystem) {
 		super(s);
-		this.importedFiles = importedFiles;
-		this.newImportedFiles = importedFiles;
+		this.pathSystem = pathSystem;
 	}
 
 	@Override
@@ -91,66 +77,33 @@ public class EaterTheme extends Eater {
 	}
 
 	public final Theme getTheme() throws EaterException {
-		if (from == null) {
-			try {
-				final Theme theme = ThemeUtils.getReaderTheme(realName);
-				if (theme != null)
-					return theme;
-
-				final AFile localFile = importedFiles.getAFile(ThemeUtils.getFilename(realName));
-				if (localFile != null && localFile.isOk()) {
-					final BufferedReader br = localFile.getUnderlyingFile().openBufferedReader();
-					if (br != null)
-						return new Theme(ReadLineReader.create(br, "theme " + realName));
-				}
-			} catch (IOException e) {
-				Logme.error(e);
-			}
-			throw new EaterException("Cannot load " + realName, getStringLocated());
-		}
-
-		if (from.startsWith("<") && from.endsWith(">")) {
-			final Theme theme = ThemeUtils.getReaderTheme(realName, from);
-			if (theme == null)
-				throw new EaterException("No such theme " + realName + " in " + from, getStringLocated());
-			return theme;
-		} else if (from.startsWith("http://") || from.startsWith("https://")) {
-			final SURL url = SURL.create(ThemeUtils.getFullPath(from, realName));
-			if (url == null)
-				throw new EaterException("Cannot open URL", getStringLocated());
-
-			try {
-				return new Theme(PreprocessorUtils.getReaderInclude(url, getStringLocated(), UTF_8));
-			} catch (UnsupportedEncodingException e) {
-				Logme.error(e);
-				throw new EaterException("Cannot decode charset", getStringLocated());
-			}
-		}
-
 		try {
-			final FileWithSuffix file = context.getFileWithSuffix(from, realName);
-			final Reader tmp = file.getReader(UTF_8);
-			if (tmp == null)
-				throw new EaterException("No such theme " + realName, getStringLocated());
-
-			final AFile fromDir = importedFiles.getAFile(from);
-			final AParentFolder parent = new AParentFolderRegular(fromDir.getUnderlyingFile());
-			newImportedFiles = importedFiles.withCurrentDir(parent);
-
-			return new Theme(ReadLineReader.create(tmp, "theme " + realName));
+			final Theme theme = ThemeUtils.loadTheme(pathSystem, realName, from, getStringLocated());
+			if (theme == null) {
+				final String location = (from == null) ? "" : " in " + from;
+				throw new EaterException("Cannot load theme " + realName + location, getStringLocated());
+			}
+			return theme;
 		} catch (IOException e) {
 			Logme.error(e);
-			throw new EaterException("Cannot load " + realName, getStringLocated());
+			throw new EaterException("Cannot load theme " + realName, getStringLocated());
 		}
-
 	}
 
 	public String getName() {
 		return name;
 	}
 
-	public ImportedFiles getNewImportedFiles() {
-		return newImportedFiles;
+	/**
+	 * Whether the theme is read from a folder (<code>!theme NAME from DIR</code>)
+	 * rather than bundled, from the standard library or from a URL.
+	 */
+	public boolean isFromLocalFolder() {
+		return ThemeUtils.isLocalFolder(from);
+	}
+
+	public PathSystem getNewImportedFiles() {
+		return pathSystem;
 	}
 
 }

@@ -35,8 +35,12 @@
  */
 package net.sourceforge.plantuml.objectdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
@@ -64,6 +68,8 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateJsonSingleLine extends SingleLineCommand2<AbstractEntityDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("json");
+
 	public CommandCreateJsonSingleLine() {
 		super(getRegexConcat());
 	}
@@ -90,11 +96,48 @@ public class CommandCreateJsonSingleLine extends SingleLineCommand2<AbstractEnti
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'json name value' embeds a single JSON value (boolean, number, null,
+		// string, array or object), displayed as a table-like element;
+		// executeArg fails when the name already exists. The lazzy lookup
+		// catches whichever of the six DATA_ alternatives matched, like in
+		// getJsonValue.
+		sb.append("Creating the JSON element '").append(arg.get("NAME", 1)).append("'");
+
+		final String display = arg.get("NAME", 0);
+		if (display != null)
+			sb.append(" displayed as \"").append(display).append("\"");
+
+		sb.append(" with the value ").append(arg.getLazzy("DATA_", 0));
+
+		final String stereotype = arg.get("STEREO", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		// Mirror the validation of executeArg: a pure in-memory parse, the
+		// regex alone does not guarantee well-formed JSON.
+		if (getJsonValue(arg) == null)
+			sb.append(" (rejected at execution: bad JSON data)");
+
+		// The URL is parsed but never read by executeArg.
+		if (arg.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(" (the URL is currently ignored)");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(AbstractEntityDiagram diagram, LineLocation location, RegexResult arg,
 			ParserPass currentPass) throws NoSuchColorException {
 		final Entity entity1 = executeArg0(location, diagram, arg);
 		if (entity1 == null)
-			return CommandExecutionResult.error("No such entity");
+			return CommandExecutionResult.error("JSON already exists: " + arg.get("NAME", 1));
 
 		final JsonValue json = getJsonValue(arg);
 
@@ -141,6 +184,11 @@ public class CommandCreateJsonSingleLine extends SingleLineCommand2<AbstractEnti
 		entity.setSpecificColorTOBEREMOVED(ColorType.BACK,
 				s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s));
 		return entity;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

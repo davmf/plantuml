@@ -44,9 +44,11 @@ import net.sourceforge.plantuml.klimt.creole.SheetBuilder;
 import net.sourceforge.plantuml.klimt.creole.legacy.CreoleParser;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.ConfigurationStore;
 import net.sourceforge.plantuml.preproc.OptionKey;
 import net.sourceforge.plantuml.skin.Pragma;
+import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.text.Guillemet;
@@ -64,8 +66,8 @@ public class SpriteContainerEmpty implements SpriteContainer, ISkinSimple {
 	}
 
 	@Override
-	public double getPadding() {
-		return 0;
+	public ClockwiseTopRightBottomLeft getPadding() {
+		return ClockwiseTopRightBottomLeft.none();
 	}
 
 	@Override
@@ -123,7 +125,7 @@ public class SpriteContainerEmpty implements SpriteContainer, ISkinSimple {
 			CreoleMode creoleMode, FontConfiguration stereo) {
 		return new CreoleParser(fontConfiguration, horizontalAlignment, this, creoleMode, stereo);
 	}
-	
+
 	@Override
 	public Pragma getPragma() {
 		return Pragma.createEmpty();
@@ -134,5 +136,14 @@ public class SpriteContainerEmpty implements SpriteContainer, ISkinSimple {
 		return ConfigurationStore.createEmpty();
 	}
 
+	@Override
+	public PathSystem getPathSystem() {
+		return PathSystem.fetch();
+	}
+
+	@Override
+	public String getFromMd5(String md5) {
+		return null;
+	}
 
 }

@@ -37,13 +37,13 @@ package net.sourceforge.plantuml.url;
 
 import java.util.List;
 
+import com.plantuml.ubrex.Capture;
 import com.plantuml.ubrex.TextNavigator;
 import com.plantuml.ubrex.UMatcher;
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 
 // UrlUbrexTest
 public class UbrexUrlBuilder {
-	// ::remove file when __HAXE__
 
 //	public static final IRegex MANDATORY = new RegexLeaf("URL", "(" + UbrexUrlBuilder.getRegexp() + ")");
 //	public static final IRegex OPTIONAL = new RegexOptional(MANDATORY);
@@ -140,7 +140,7 @@ public class UbrexUrlBuilder {
 
 	private UMatcher getMatcher(UnicodeBracketedExpression ubrex, String s) {
 		if (mode == UrlMode.STRICT)
-			return ubrex.match(s);
+			return ubrex.match(s, 0);
 		final TextNavigator tn = TextNavigator.build(s);
 		for (int i = 0; i < tn.length() - 2; i++) {
 			final UMatcher matcher = ubrex.match(tn, i);
@@ -158,7 +158,7 @@ public class UbrexUrlBuilder {
 	}
 
 	private String getValue(UMatcher m, String key) {
-		final List<String> list = m.getCapture(key);
+		final List<String> list = m.findValuesByKey(key);
 		if (list.size() == 0)
 			return null;
 		return list.get(0);
@@ -202,15 +202,19 @@ public class UbrexUrlBuilder {
 		}
 
 		@Override
-		public List<String> getCapture(String path) {
+		public List<String> findValuesByKey(String path) {
 			throw new UnsupportedOperationException();
 		}
 
 		@Override
-		public List<String> getKeysToBeRefactored() {
+		public List<String> findFirstValuesByKeyPrefix(String keyPrefix) {
 			throw new UnsupportedOperationException();
 		}
 
+		@Override
+		public Capture extractByPrefix(String key) {
+			throw new UnsupportedOperationException();
+		}
 	}
 
 }

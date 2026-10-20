@@ -34,8 +34,6 @@
  */
 package net.sourceforge.plantuml.nwdiag;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -45,10 +43,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.jaws.Jaws;
 import net.sourceforge.plantuml.klimt.UTranslate;
@@ -59,7 +57,6 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
@@ -74,16 +71,15 @@ import net.sourceforge.plantuml.nwdiag.next.NBar;
 import net.sourceforge.plantuml.nwdiag.next.NPlayField;
 import net.sourceforge.plantuml.nwdiag.next.NServerDraw;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
-public class NwDiagram extends UmlDiagram {
+public class NwDiagram extends TitledDiagram {
 
-	private boolean initDone;
 	private final Map<String, NServer> servers = new LinkedHashMap<>();
 	private final List<Network> networks = new ArrayList<>();
 	private final List<NwGroup> groups = new ArrayList<>();
@@ -96,11 +92,7 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	public NwDiagram(UmlSource source, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.NWDIAG, null, preprocessing);
-	}
-
-	public void init() {
-		initDone = true;
+		super(source, DiagramType.NWDIAG, null, preprocessing);
 	}
 
 	private Network currentNetwork() {
@@ -129,9 +121,6 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	public CommandExecutionResult openGroup(String name) {
-		if (initDone == false)
-			return errorNoInit();
-
 		for (NStackable element : stack)
 			if (element instanceof NwGroup)
 				return CommandExecutionResult.error("Cannot nest group");
@@ -143,9 +132,6 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	public CommandExecutionResult openNetwork(String name) {
-		if (initDone == false)
-			return errorNoInit();
-
 		if (currentGroup() != null)
 			return CommandExecutionResult.error("Cannot open network in a group");
 
@@ -174,9 +160,6 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	public CommandExecutionResult closeSomething() {
-		if (initDone == false)
-			return errorNoInit();
-
 		if (stack.size() > 0)
 			stack.remove(0);
 
@@ -190,9 +173,6 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	public CommandExecutionResult link(String name1, String name2) {
-		if (initDone == false)
-			return errorNoInit();
-
 		NServer server1 = servers.get(name1);
 		if (server1 == null) {
 			if (networks.size() == 0)
@@ -251,9 +231,6 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	public CommandExecutionResult addElement(String name, String definition) {
-		if (initDone == false)
-			return errorNoInit();
-
 		final Map<String, String> props = toSet(definition);
 		NServer server = servers.get(name);
 		if (server == null) {
@@ -309,13 +286,9 @@ public class NwDiagram extends UmlDiagram {
 		return false;
 	}
 
-	private CommandExecutionResult errorNoInit() {
-		return CommandExecutionResult.error("Maybe you forget 'nwdiag {' in your diagram ?");
-	}
-
 	private static final Pattern p = Pattern.compile("\\s*(\\w+)\\s*=\\s*(\"([^\"]*)\"|[^\\s,]+)");
-	
-	private Map<String, String> toSet(String definition) {
+
+	public static Map<String, String> toSet(String definition) {
 		final Map<String, String> result = new HashMap<String, String>();
 		if (definition == null)
 			return result;
@@ -331,15 +304,8 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormatOption)
-			throws IOException {
-
-		return createImageBuilder(fileFormatOption).drawable(getTextMainBlock(fileFormatOption)).write(os);
-	}
-
-	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		return new AbstractTextBlock() {
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
+		return new TextBlock() {
 			public void drawU(UGraphic ug) {
 				drawMe(ug);
 			}
@@ -351,8 +317,8 @@ public class NwDiagram extends UmlDiagram {
 		};
 	}
 
-	private StyleSignatureBasic getStyleDefinitionNetwork(SName sname) {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.nwdiagDiagram, sname);
+	private StyleQuery getStyleDefinitionNetwork(SName sname) {
+		return StyleQueries.NWDIAG.add(sname);
 	}
 
 	private TextBlock toTextBlockForNetworkName(String name, String s) {
@@ -360,7 +326,7 @@ public class NwDiagram extends UmlDiagram {
 			name += "" + Jaws.BLOCK_E1_NEWLINE + s;
 
 		final StyleBuilder styleBuilder = getSkinParam().getCurrentStyleBuilder();
-		final Style style = getStyleDefinitionNetwork(SName.network).getMergedStyle(styleBuilder);
+		final Style style = styleBuilder.getMergedStyle(getStyleDefinitionNetwork(SName.network));
 		final FontConfiguration fontConfiguration = style.getFontConfiguration(getSkinParam().getIHtmlColorSet());
 		return Display.getWithNewlines(getPragma(), name).create(fontConfiguration, HorizontalAlignment.RIGHT,
 				new SpriteContainerEmpty());
@@ -465,9 +431,6 @@ public class NwDiagram extends UmlDiagram {
 	}
 
 	public CommandExecutionResult setProperty(String property, String value) {
-		if (initDone == false)
-			return errorNoInit();
-
 		if ("address".equalsIgnoreCase(property) && currentNetwork() != null)
 			currentNetwork().setOwnAdress(value);
 

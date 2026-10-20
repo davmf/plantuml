@@ -1,0 +1,200 @@
+# browser-test
+
+Functional checks for the PlantUML browser (TeaVM) engine, run in headless Chromium against a
+real build. Unlike `perf-bench`, which measures speed and never fails a build, these assert
+behaviour and exit non-zero when it is wrong.
+
+## check-themes.js
+
+Checks that `!theme <name>` works in the browser.
+
+Themes live in `src/main/resources/themes` as `.puml` files, which the browser build cannot read
+because it has no classpath. They are shipped to it instead through
+`src/main/teavm/generated/themes.js` (written by `ThemesJsGenerator`, deployed next to
+`plantuml.js`), loaded on demand the same way `emoji.js` is. This check covers that path end
+to end:
+
+- a theme changes the drawing, and changes it to that theme's own colours;
+- loading a theme by name produces exactly what pasting the theme's body into the diagram does,
+  which is the real correctness property (both sides are rendered by the same engine, so only
+  the loading path differs);
+- an unknown theme name is reported rather than ignored;
+- `%get_current_theme()` returns the metadata from the theme's YAML header;
+- `%get_all_theme()` does not advertise more themes than the engine ships;
+- every bundled theme loads and changes the drawing, except ones with an empty body
+  (`_none_` is deliberately empty), which must leave it unchanged;
+- a host that populates `globalThis.PLANTUML_THEMES` itself works without `themes.js` being fetchable,
+  which is what lets themes work inside a Web Worker, where the script loader has no document
+  to append a script tag to;
+- with neither, the directive fails loudly instead of rendering unthemed.
+
+There are no golden files. The expected rendering for a theme is derived from that theme's own
+text, read out of the `themes.js` being tested, so adding or editing a theme needs no fixture
+update.
+
+## check-background.js
+
+Checks that the document background is painted the way the Java build paints it: a
+background style on the svg element plus a rectangle covering the whole viewBox, for
+`skinparam backgroundColor`, the `<style>` document form, and themes. The deliberate
+skips are pinned too: transparent and the default white paint nothing, in dark mode as
+well. Run the same way with `node check-background.js target=...`.
+
+## check-smetana.js
+
+Checks that `!pragma layout smetana` works in the browser. On a page without `viz-global.js`,
+each Graphviz-family diagram type (class, component, deployment, state, usecase) declaring the
+pragma must render a real SVG with zero WebAssembly involvement, observed through a hook on
+`WebAssembly.instantiate`. On a control page with `viz-global.js`, the same diagram without the
+pragma must still go through the Graphviz bridge (the default path is unchanged), and with the
+pragma must not touch WebAssembly even though the bridge is available. Run the same way with
+`node check-smetana.js target=...`.
+
+## check-viz-missing.js
+
+Checks how the engine behaves when `viz-global.js` is missing or broken. With viz absent,
+Graphviz-family diagram types fall back to the Smetana layout engine and render normally
+(check-viz-fallback.js pins the details), and native-layout types (sequence, activity) keep
+rendering as always. With a Viz that is present but broken (its `instance()` rejects, the shape
+of a failed load), the render must produce a visible crash report naming Viz instead of throwing
+an unhandled exception and leaving the target element empty. A control page with a working
+`viz-global.js` pins that the normal path is unchanged. Run the same
+way with `node check-viz-missing.js target=...`.
+
+## check-stdlib-loader.js
+
+Checks how the engine loads stdlib bundles for `!include <lib/...>`, and the two host-provided
+globals that customize it:
+
+- with neither global set, behaviour is unchanged: a bundle next to the page loads through a
+  relative script tag, a missing bundle fails the include visibly instead of hanging, and
+  diagrams without stdlib includes are untouched;
+- `PLANTUML_STDLIB_BASE` prefixes the script URL, so a page importing the engine from a CDN can
+  point bundle loading at the project site or its own assets with one line (relative URLs
+  resolve against the consuming document, not the engine, so without it stdlib only works for
+  pages hosted next to the bundles);
+- `PLANTUML_STDLIB_LOADER` replaces the script tag with a host callback that delivers the
+  bundle as data, the only viable path for hosts that cannot execute remote code (browser
+  extensions under the Chrome MV3 and Mozilla AMO rules) or that have no document (Web
+  Workers). The check asserts no `.min.js` is fetched at all, that concurrent includes of one
+  library coalesce into a single loader call, that a library whose info carries a `link` to
+  another library resolves through two loader calls, and that a loader failure surfaces as a
+  visible include error. Every lazily loaded support script (`themes.js`, `emoji.js`,
+  `openiconic.js`) comes through the same loader, so the hook can decline a URL by returning
+  false, and loading falls back to the script tag; the check pins that with a hook that
+  declines everything;
+- when the host already registered the emoji and OpenIconic data (`PLANTUML_EMOJI`,
+  `PLANTUML_OPENICONIC`, as a bundle that inlined `emoji.js` and `openiconic.js` does), the engine
+  uses it and does not ask for those files again; without registered data they are loaded on
+  demand.
+
+The stdlib libraries used are synthetic (one sequence participant each) and each exists only at
+the location its scenario is supposed to use, so a wrong loading path cannot render by
+accident, no real bundle is needed, and no layout engine is involved.
+`node check-stdlib-loader.js target=...`.
+
+## check-file-loader.js
+
+Checks how the engine reads the file of a local `!include`, `!includesub` or `!theme ... from`,
+which it can only do through the host-provided `PLANTUML_FILE_LOADER` callback, since it has no
+file system:
+
+- with no loader set, a local include fails as a PlantUML error image, as it always did, and so
+  does `!includesub` of a file (it used to be dropped silently); diagrams without a local include
+  are untouched;
+- with a loader, a file delivered asynchronously or synchronously is included; the loader
+  receives the name the directive asks for (variables expanded, a `file!tag` selector split off)
+  and `from = null` for an include in the diagram itself, and the including file's identifier
+  for a nested include, so relative names resolve against that file;
+- the identifier the host returns, compared as it is and with the selector, is what the include
+  strategies use: a repeated `!include` is skipped, `!include_many` includes again and
+  `!include_once` reports an error, as in the Java build, and two diagrams of one file are two
+  includes; a file holding a whole `@startuml` ... `@enduml` diagram contributes the inside of
+  the diagram the selector chooses (`file!1`, `file!ID`), or of its first one, and a selector
+  that chooses none, an invalid ID pattern or an overflowing index is an include error;
+  non-ASCII text arrives unchanged;
+- `!includesub file!PART` takes the sub of a delivered file, `!includesub PART` a sub of the
+  diagram itself (no loader needed), and `!theme NAME from DIR` reads `DIR/puml-theme-NAME.puml`
+  through the loader; its body keeps the caller's `from` (null for the diagram, otherwise
+  the calling file's ID), as in the Java build. An includesub body instead uses the sub file's
+  ID. Both paths restore the caller afterwards; a missing theme reports its name;
+- a fifth argument identifies the request kind (`include`, `includesub` or `theme`),
+  including when a variable chooses the theme and when an ordinary include names a theme
+  file; nested requests report their own kind. A host can allow themes while refusing
+  includes of the same path, and existing four-parameter loaders still work;
+- the first outcome wins (a second `ok`, an `err` after `ok` and an `ok` after a `false` decline
+  change nothing), and only a non-empty string id with a string text is a delivery;
+- a loader that fails, throws, declines (returns `false`) or returns a promise that rejects
+  makes the include fail as a PlantUML error image, never a hang or an unhandled page error,
+  and a failure's message reaches the console; a loader that never settles fails the include
+  after 60 s (exercised by `check-resource-rounds.js`);
+- a standard-library include, a URL `!include` or `!includesub` and a theme from a URL never
+  reach the file loader, and neither does a relative include written in a standard-library file
+  or in a bundled theme, including through `!includesub` or `!theme ... from`. The caller's
+  `from` is restored afterwards, whether the caller is the diagram or a delivered file.
+
+The files live in an in-memory map on the page, keyed by an absolute path the page's loader
+resolves itself, so no file system is involved and no layout engine either.
+`node check-file-loader.js target=...`.
+
+## Running it
+
+```
+gradlew :plantuml-mit:npmPackage -Pci
+cd tools/browser-test && npm ci && npx playwright install --with-deps --only-shell chromium
+node check-themes.js target=../../license-variants/plantuml-mit/build/npm-plantuml
+```
+
+`target` also accepts a path to the engine `.js` itself, and any directory holding a published
+package works, so a release can be checked with `npm pack @plantuml/core && node check-themes.js
+target=package`.
+
+Running it against an engine built before themes were wired up fails 8 of the 12 checks, with
+every bundled theme reported as leaving the drawing unchanged.
+
+## check-viz-fallback.js
+
+Checks that a page which loads only the engine, with no viz-global.js and no
+pragma, still renders every Graphviz-family diagram type: the engine falls
+back to the Smetana layout engine, uses no WebAssembly, and logs a one-time
+console note. A diagram carrying the pragma renders with no note at all (the
+pragma short-circuits the probe), and a partially loaded Viz (the global
+exists but instance() is not a function) falls back the same way as an absent
+one. A control page with viz-global.js pins that the default path is
+unchanged (the Graphviz bridge is still used, and no note is logged).
+`node check-viz-fallback.js target=...`.
+
+## check-resource-rounds.js
+
+Checks how the engine gets what a diagram needs from JavaScript without waiting for it. The
+engine has no thread and uses no TeaVM coroutine: a rendering that misses a resource (the Viz.js
+instance, `themes.js`, `emoji.js`, `openiconic.js`, a `<lib>.min.js` bundle, a file of
+`PLANTUML_FILE_LOADER`) is discarded, the resource is loaded with JavaScript callbacks, and the
+diagram is rendered again. The check pins that:
+
+- a callback is never called before `renderToString` returns;
+- an include chain 13 files deep renders, one level per round, and the host is asked once per
+  file during a rendering, and again at the next one (so an edited file is seen);
+- rendering again is invisible: the same source gives the same SVG, a console warning is written
+  once rather than once per round, and `render()` writes its target only with the final result;
+- `render()` keeps "latest wins" while a request waits for its resources (the engine built with
+  a worker thread drew the older diagram in that case);
+- a request made from a callback is answered after the callback returns;
+- past 20 rounds the request fails with a message naming what is still missing, and a loader
+  that never answers fails the include after 60 seconds; the engine answers later requests in
+  both cases.
+
+It takes a little over a minute, most of it waiting for the loader that never answers.
+`node check-resource-rounds.js target=...`.
+
+## check-render-queue.js
+
+Checks how the engine queues render requests. `renderToString` calls may overlap (several in
+the same JS turn): every call is answered, exactly one of its two callbacks is called, once, in
+the order of the calls. `render` keeps its "latest wins" rule (of several calls in the same turn
+only the last is drawn), and a waiting `render` and waiting `renderToString` calls do not drop
+each other. Callbacks cannot stop the engine: a failure with no `onError` (`undefined` or
+`null`) and an `onSuccess` that throws both leave it answering later requests, and the second is
+reported with `console.error` without calling `onError` for the same request. Only sequence
+diagrams are used, so the page does not load `viz-global.js`.
+`node check-render-queue.js target=...`.

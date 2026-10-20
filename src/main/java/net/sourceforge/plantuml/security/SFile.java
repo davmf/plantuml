@@ -39,6 +39,7 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -46,6 +47,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -54,15 +56,18 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import javax.imageio.stream.ImageInputStream;
 import javax.swing.ImageIcon;
 
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.nio.InputFile;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.nio.NFolder;
+import net.sourceforge.plantuml.nio.NFolderRegular;
 
 /**
  * Secure replacement for java.io.File.
@@ -74,19 +79,20 @@ import net.sourceforge.plantuml.log.Logme;
  * file, so that it cannot be printed to end users.
  *
  */
-public class SFile implements Comparable<SFile> {
+public class SFile implements Comparable<SFile>, InputFile {
 
-	public static String separator = File.separator;
+	public static final String separator = File.separator;
 
-	public static String pathSeparator = File.pathSeparator;
+	public static final String pathSeparator = File.pathSeparator;
 
-	public static char separatorChar = File.separatorChar;
+	public static final char separatorChar = File.separatorChar;
 
 	private final File internal;
 
 	@Override
 	public String toString() {
 		if (SecurityUtils.getSecurityProfile() == SecurityProfile.INTERNET
+				|| SecurityUtils.getSecurityProfile() == SecurityProfile.INTERNET_WITH_DOTSVG
 				|| SecurityUtils.getSecurityProfile() == SecurityProfile.ALLOWLIST)
 			return super.toString();
 		try {
@@ -161,10 +167,6 @@ public class SFile implements Comparable<SFile> {
 		return this.internal.compareTo(other.internal);
 	}
 
-	public String getPath() {
-		return internal.getPath();
-	}
-
 	public long length() {
 		return internal.length();
 	}
@@ -179,18 +181,6 @@ public class SFile implements Comparable<SFile> {
 
 	public void delete() {
 		internal.delete();
-	}
-
-	public Collection<SFile> listFiles() {
-		final File[] tmp = internal.listFiles();
-		if (tmp == null)
-			return Collections.emptyList();
-
-		final List<SFile> result = new ArrayList<>(tmp.length);
-		for (File f : tmp)
-			result.add(new SFile(f));
-
-		return Collections.unmodifiableCollection(result);
 	}
 
 	public String[] list() {
@@ -220,7 +210,7 @@ public class SFile implements Comparable<SFile> {
 	}
 
 	public String getPrintablePath() {
-		if (SecurityUtils.getSecurityProfile() == SecurityProfile.UNSECURE) {
+		if (SecurityUtils.getSecurityProfile() == SecurityProfile.INSECURE) {
 			try {
 				return internal.getCanonicalPath();
 			} catch (IOException e) {
@@ -231,7 +221,9 @@ public class SFile implements Comparable<SFile> {
 	}
 
 	public boolean canRead() {
-		return internal.canRead();
+		if (exists())
+			return internal.canRead();
+		return false;
 	}
 
 	public void deleteOnExit() {
@@ -258,7 +250,7 @@ public class SFile implements Comparable<SFile> {
 	 * Check SecurityProfile to see if this file can be open.
 	 */
 	public boolean isFileOk() {
-		// ::comment when __CORE__
+		// ::comment when __TEAVM__
 		if (SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX)
 			// In SANDBOX, we cannot read any files
 			return false;
@@ -272,20 +264,23 @@ public class SFile implements Comparable<SFile> {
 			return false;
 		}
 		// Files in "plantuml.include.path" and "plantuml.allowlist.path" are ok.
-		if (isInAllowList(SecurityUtils.getPath(SecurityUtils.PATHS_INCLUDES)))
+		if (isInAllowList(SecurityUtils.getPath(NFolder.PATHS_INCLUDES)))
 			return true;
 
-		if (isInAllowList(SecurityUtils.getPath(SecurityUtils.ALLOWLIST_LOCAL_PATHS)))
+		if (isInAllowList(SecurityUtils.getPath(NFolder.ALLOWLIST_LOCAL_PATHS)))
 			return true;
 
 		if (SecurityUtils.getSecurityProfile() == SecurityProfile.INTERNET)
 			return false;
 
+		if (SecurityUtils.getSecurityProfile() == SecurityProfile.INTERNET_WITH_DOTSVG)
+			return false;
+
 		if (SecurityUtils.getSecurityProfile() == SecurityProfile.ALLOWLIST)
 			return false;
 
-		if (SecurityUtils.getSecurityProfile() != SecurityProfile.UNSECURE) {
-			// For UNSECURE, we did not do those checks
+		if (SecurityUtils.getSecurityProfile() != SecurityProfile.INSECURE) {
+			// For INSECURE, we did not do those checks
 			final String path = getCleanPathSecure();
 			if (path.startsWith("/etc/") || path.startsWith("/dev/") || path.startsWith("/boot/")
 					|| path.startsWith("/proc/") || path.startsWith("/sys/"))
@@ -316,9 +311,9 @@ public class SFile implements Comparable<SFile> {
 	 * @throws IOException If an I/O error occurs, which is possible because the
 	 *                     check the pathname may require filesystem queries
 	 */
-	// ::comment when __CORE__
+	// ::comment when __TEAVM__
 	private boolean isDenied() throws IOException {
-		SFile securityPath = SecurityUtils.getSecurityPath();
+		final SFile securityPath = SecurityUtils.getSecurityPath();
 		if (securityPath == null)
 			return false;
 		return getSanitizedPath().startsWith(securityPath.getSanitizedPath());
@@ -349,25 +344,26 @@ public class SFile implements Comparable<SFile> {
 
 	// Reading
 	// http://forum.plantuml.net/9048/img-tag-for-sequence-diagram-participants-does-always-render
-	public BufferedImage readRasterImageFromFile() {
+	public PortableImage readRasterImageFromFile() {
 		// https://www.experts-exchange.com/questions/26171948/Why-are-ImageIO-read-images-losing-their-transparency.html
 		// https://stackoverflow.com/questions/18743790/can-java-load-images-with-transparency
-		if (isFileOk())
-			try {
-				// ::comment when __CORE__
-				if (internal.getName().endsWith(".webp"))
-					return readWebp();
-				else
-					// ::done
-					return SecurityUtils.readRasterImage(new ImageIcon(this.getAbsolutePath()));
-			} catch (Exception e) {
-				Logme.error(e);
-			}
+
+		if (!TeaVM.isTeaVM()) {
+			if (isFileOk())
+				try {
+					if (internal.getName().endsWith(".webp"))
+						return readWebp();
+					else
+						return SecurityUtils.readRasterImage(new ImageIcon(this.getAbsolutePath()));
+				} catch (Exception e) {
+					Logme.error(e);
+				}
+		}
 		return null;
 	}
 
-	// ::comment when __CORE__
-	private BufferedImage readWebp() throws IOException {
+	// ::comment when __TEAVM__
+	private PortableImage readWebp() throws IOException {
 		try (InputStream is = openFile()) {
 			final int riff = read32(is);
 			if (riff != 0x46464952)
@@ -383,7 +379,7 @@ public class SFile implements Comparable<SFile> {
 			if (len1 != len2 + 12)
 				return null;
 
-			return getBufferedImageFromWebpButHeader(is);
+			return getImageFromWebpButHeader(is);
 		}
 	}
 
@@ -391,7 +387,7 @@ public class SFile implements Comparable<SFile> {
 		return (is.read() << 0) + (is.read() << 8) + (is.read() << 16) + (is.read() << 24);
 	}
 
-	public static BufferedImage getBufferedImageFromWebpButHeader(InputStream is) {
+	public static PortableImage getImageFromWebpButHeader(InputStream is) {
 		if (is == null)
 			return null;
 		try {
@@ -404,7 +400,8 @@ public class SFile implements Comparable<SFile> {
 			// vp8Decoder.decodeFrame(iis);
 			iis.close();
 			final Object frame = clVP8Decoder.getMethod("getFrame").invoke(vp8Decoder);
-			return (BufferedImage) frame.getClass().getMethod("getBufferedImage").invoke(frame);
+			return PortableImageFactory
+					.build((BufferedImage) frame.getClass().getMethod("getBufferedImage").invoke(frame));
 			// final VP8Frame frame = vp8Decoder.getFrame();
 			// return frame.getBufferedImage();
 		} catch (Exception e) {
@@ -439,39 +436,52 @@ public class SFile implements Comparable<SFile> {
 		return null;
 	}
 
-	// ::comment when __CORE__
+	// ::comment when __TEAVM__
 	// Writing
 	public BufferedOutputStream createBufferedOutputStream() throws FileNotFoundException {
 		return new BufferedOutputStream(new FileOutputStream(internal));
 	}
 
 	public PrintWriter createPrintWriter() throws FileNotFoundException {
-		return new PrintWriter(internal);
+		// Same as new PrintWriter(File), but built from stream/writer constructors
+		// that exist in the TeaVM C classlib (PrintWriter(File) does not).
+		return new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(internal))));
 	}
 
 	public PrintWriter createPrintWriter(String charset) throws FileNotFoundException, UnsupportedEncodingException {
-		return new PrintWriter(internal, charset);
+		return new PrintWriter(
+				new BufferedWriter(new OutputStreamWriter(new FileOutputStream(internal), charset)));
 	}
 
 	public FileOutputStream createFileOutputStream() throws FileNotFoundException {
 		return new FileOutputStream(internal);
 	}
 
-	public FileOutputStream createFileOutputStream(boolean append) throws FileNotFoundException {
-		return new FileOutputStream(internal, append);
-	}
-
 	public PrintStream createPrintStream() throws FileNotFoundException {
 		return new PrintStream(internal);
-	}
-
-	public PrintStream createPrintStream(String charset) throws FileNotFoundException, UnsupportedEncodingException {
-		return new PrintStream(internal, charset);
 	}
 
 	public PrintStream createPrintStream(Charset charset) throws FileNotFoundException, UnsupportedEncodingException {
 		return new PrintStream(internal, charset.name());
 	}
+
+	public Path toPath() throws IOException {
+		if (isFileOk())
+			return getSanitizedPath();
+		return null;
+	}
 	// ::done
+
+	@Override
+	public InputStream newInputStream() {
+		return openFile();
+	}
+
+	@Override
+	public NFolder getParentFolder() throws IOException {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException("TEAVM96521");
+		return new NFolderRegular(getSanitizedPath().getParent());
+	}
 
 }

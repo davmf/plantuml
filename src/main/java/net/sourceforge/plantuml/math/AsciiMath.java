@@ -35,18 +35,18 @@
  */
 package net.sourceforge.plantuml.math;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
 import javax.script.ScriptException;
 
 import net.sourceforge.plantuml.klimt.MutableImage;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.UImageSvg;
 
 public class AsciiMath implements ScientificEquation {
-	// ::remove folder when __CORE__
+	
 
 	private final LatexBuilder builder;
 	private final String tex;
@@ -60,13 +60,13 @@ public class AsciiMath implements ScientificEquation {
 		return builder.getDimension();
 	}
 
-	public UImageSvg getSvg(double scale, Color foregroundColor, Color backgroundColor)
+	public UImageSvg getSvg(double scale, XColor foregroundColor, XColor backgroundColor)
 			throws ClassNotFoundException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
 			NoSuchMethodException, SecurityException, InstantiationException, IOException {
 		return builder.getSvg(scale, foregroundColor, backgroundColor);
 	}
 
-	public MutableImage getImage(Color foregroundColor, Color backgroundColor)
+	public MutableImage getImage(XColor foregroundColor, XColor backgroundColor)
 			throws ClassNotFoundException, NoSuchMethodException, SecurityException, InstantiationException,
 			IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		return builder.getImage(foregroundColor, backgroundColor);

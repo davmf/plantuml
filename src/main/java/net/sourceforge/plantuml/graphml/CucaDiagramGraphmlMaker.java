@@ -42,23 +42,21 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import net.atmp.CucaDiagram;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.descdiagram.DescriptionDiagram;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.utils.Log;
 import net.sourceforge.plantuml.xmi.XmlDiagramTransformer;
 
 public final class CucaDiagramGraphmlMaker {
-    // ::remove folder when __HAXE__
-	// ::remove folder when __CORE__
-
+	
 	private final CucaDiagram diagram;
 
 	public CucaDiagramGraphmlMaker(CucaDiagram diagram) throws IOException {
 		this.diagram = diagram;
 	}
 
-	public static String getModel(UmlDiagram classDiagram) {
+	public static String getModel(TitledDiagram classDiagram) {
 		return "model1";
 	}
 

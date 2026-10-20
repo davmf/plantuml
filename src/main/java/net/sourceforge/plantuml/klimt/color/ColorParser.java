@@ -39,7 +39,6 @@ import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 
 public class ColorParser {
-	// ::remove file when __HAXE__
 
 	private static final String COLOR_REGEXP = "#\\w+[-\\\\|/]?\\w+";
 

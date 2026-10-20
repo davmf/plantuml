@@ -38,6 +38,8 @@ package net.sourceforge.plantuml.svek;
 import java.util.HashSet;
 import java.util.Set;
 
+import net.sourceforge.plantuml.annotation.Fast;
+import net.sourceforge.plantuml.annotation.PerformanceIssue;
 import net.sourceforge.plantuml.dot.DotData;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -46,18 +48,15 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UHidden;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
-public final class SvekResult extends AbstractTextBlock implements IEntityImage {
-	// ::remove file when __CORE__
+public final class SvekResult implements IEntityImage {
 
 	private final DotData dotData;
 	private final DotStringFactory clusterManager;
@@ -73,8 +72,8 @@ public final class SvekResult extends AbstractTextBlock implements IEntityImage 
 			if (cluster.getGroup().isPacked() == false)
 				cluster.drawU(ug);
 
-		final Style style2 = getDefaultStyleDefinition(null)
-				.getMergedStyle(dotData.getSkinParam().getCurrentStyleBuilder());
+		final Style style2 = dotData.getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(getDefaultStyleDefinition(null));
 
 		final HColor borderColor = HColors
 				.noGradient(style2.value(PName.LineColor).asColor(dotData.getSkinParam().getIHtmlColorSet()));
@@ -108,28 +107,30 @@ public final class SvekResult extends AbstractTextBlock implements IEntityImage 
 			node.fixOverlap();
 	}
 
-	private StyleSignature getDefaultStyleDefinition(Stereotype stereotype) {
-		StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element,
-				dotData.getUmlDiagramType().getStyleName(), SName.arrow);
+	private StyleQuery getDefaultStyleDefinition(Stereotype stereotype) {
+		StyleQuery result = StyleQueries.ARROW.add(dotData.geDiagramType().getStyleName());
 
-		return result.withTOBECHANGED(stereotype);
+		return result.withStereotype(stereotype);
 	}
 
 	// Duplicate SvekResult / GeneralImageBuilder
 	public HColor getBackcolor() {
-		final Style style = StyleSignatureBasic.of(SName.root, SName.document)
-				.getMergedStyle(dotData.getSkinParam().getCurrentStyleBuilder());
+		final Style style = dotData.getSkinParam().getCurrentStyleBuilder()
+				.getMergedStyle(StyleQueries.DOCUMENT);
 		return style.value(PName.BackGroundColor).asColor(dotData.getSkinParam().getIHtmlColorSet());
 	}
 
 	private MinMax minMax;
 
+	@PerformanceIssue
+	@Fast
+	@Override
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		if (minMax == null) {
 			minMax = TextBlockUtils.getMinMax(this, stringBounder, false);
 			clusterManager.moveDelta(6 - minMax.getMinX(), 6 - minMax.getMinY());
 		}
-		return minMax.getDimension().delta(0, 12);
+		return minMax.getDimension().delta(15, 15);
 	}
 
 	public ShapeType getShapeType() {

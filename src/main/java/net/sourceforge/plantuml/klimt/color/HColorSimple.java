@@ -37,13 +37,12 @@ package net.sourceforge.plantuml.klimt.color;
 
 import static net.sourceforge.plantuml.klimt.color.HColor.TransparentFillBehavior.WITH_FILL_NONE;
 
-import java.awt.Color;
-
-import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.klimt.awt.XColor;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 public class HColorSimple extends HColor {
 
-	private final Color color;
+	private final XColor color;
 	private final HColor dark;
 	private final TransparentFillBehavior transparentFillBehavior;
 
@@ -71,10 +70,15 @@ public class HColorSimple extends HColor {
 		if (isTransparent())
 			return "transparent";
 
-		if (color.getAlpha() == 255)
-			return StringUtils.sharp000000(color.getRGB());
+		final int red = color.getRed();
+		final int green = color.getGreen();
+		final int blue = color.getBlue();
+		final int alpha = color.getAlpha();
 
-		return "#" + Integer.toHexString(color.getRGB());
+		if (alpha == 255)
+			return String.format("#%02X%02X%02X", red, green, blue);
+
+		return String.format("#%02x%02x%02x%02x", alpha, red, green, blue);
 	}
 
 	@Override
@@ -92,6 +96,8 @@ public class HColorSimple extends HColor {
 
 	@Override
 	public HColor lighten(int ratio) {
+		if (TeaVM.isTeaVM())
+			return this;
 		final float[] hsl = new HSLColor(color).getHSL();
 		hsl[2] += hsl[2] * (ratio / 100.0);
 		return HColorSimple.create(new HSLColor(hsl).getRGB());
@@ -99,6 +105,8 @@ public class HColorSimple extends HColor {
 
 	@Override
 	public HColor darken(int ratio) {
+		if (TeaVM.isTeaVM())
+			return this;
 		final float[] hsl = new HSLColor(color).getHSL();
 		hsl[2] -= hsl[2] * (ratio / 100.0);
 		return HColorSimple.create(new HSLColor(hsl).getRGB());
@@ -130,17 +138,17 @@ public class HColorSimple extends HColor {
 		return transparentFillBehavior;
 	}
 
-	public static HColorSimple create(Color c) {
+	public static HColorSimple create(XColor c) {
 		return new HColorSimple(c, null, WITH_FILL_NONE);
 	}
 
-	private HColorSimple(Color c, HColor dark, TransparentFillBehavior transparentFillBehavior) {
+	private HColorSimple(XColor c, HColor dark, TransparentFillBehavior transparentFillBehavior) {
 		this.color = c;
 		this.dark = dark;
 		this.transparentFillBehavior = transparentFillBehavior;
 	}
 
-	public Color getAwtColor() {
+	public XColor getAwtColor() {
 		return color;
 	}
 
@@ -150,18 +158,18 @@ public class HColorSimple extends HColor {
 
 	// ::comment when __HAXE__
 	public HColor asMonochrome(HColorSimple colorForMonochrome, double minGray, double maxGray) {
-		final Color tmp = ColorUtils.getGrayScaleColor(color);
+		final XColor tmp = ColorUtils.getGrayScaleColor(color);
 		final int gray = tmp.getGreen();
-		assert gray == tmp.getBlue();
-		assert gray == tmp.getRed();
+		if (TeaVM.a()) assert gray == tmp.getBlue();
+		if (TeaVM.a()) assert gray == tmp.getRed();
 
 		final double coef = (gray - minGray) / 256.0;
-		final Color result = ColorUtils.grayToColor(coef, colorForMonochrome.color);
+		final XColor result = ColorUtils.grayToColor(coef, colorForMonochrome.color);
 		return HColorSimple.create(result);
 	}
 
 	@Override
-	public Color toColor(ColorMapper mapper) {
+	public XColor toColor(ColorMapper mapper) {
 		if (this.isTransparent())
 			return getAwtColor();
 		return mapper.fromColorSimple(this);
@@ -201,9 +209,9 @@ public class HColorSimple extends HColor {
 
 	@Override
 	public HColor opposite() {
-		final Color mono = ColorUtils.getGrayScaleColor(color);
+		final XColor mono = ColorUtils.getGrayScaleColor(color);
 		final int grayScale = 255 - mono.getGreen() > 127 ? 255 : 0;
-		return HColorSimple.create(new Color(grayScale, grayScale, grayScale));
+		return HColorSimple.create(new XColor(grayScale, grayScale, grayScale));
 	}
 
 	public int distanceTo(HColorSimple other) {

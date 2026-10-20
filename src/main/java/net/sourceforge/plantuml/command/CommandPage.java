@@ -35,14 +35,20 @@
  */
 package net.sourceforge.plantuml.command;
 
-import net.sourceforge.plantuml.AbstractPSystem;
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.TitledDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
-public class CommandPage extends SingleLineCommand2<AbstractPSystem> {
+public class CommandPage extends SingleLineCommand2<TitledDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("page");
 
 	public static final CommandPage ME = new CommandPage();
 
@@ -62,7 +68,26 @@ public class CommandPage extends SingleLineCommand2<AbstractPSystem> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(AbstractPSystem system, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'page 2x3' splits the diagram into a grid of pages, here 2
+		// horizontally and 3 vertically.
+		final String horizontal = arg.get("NB1", 0);
+		final String vertical = arg.get("NB2", 0);
+		sb.append("Splitting the diagram into ").append(horizontal).append(" x ").append(vertical).append(" pages (")
+				.append(horizontal).append(" horizontally, ").append(vertical).append(" vertically)");
+
+		if (horizontal.matches("0+") || vertical.matches("0+"))
+			sb.append(" (rejected at execution: arguments must be positive)");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(TitledDiagram system, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 
 		final int horizontal = Integer.parseInt(arg.get("NB1", 0));
 		final int vertical = Integer.parseInt(arg.get("NB2", 0));
@@ -72,6 +97,11 @@ public class CommandPage extends SingleLineCommand2<AbstractPSystem> {
 		system.setSplitPagesHorizontal(horizontal);
 		system.setSplitPagesVertical(vertical);
 		return CommandExecutionResult.ok();
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

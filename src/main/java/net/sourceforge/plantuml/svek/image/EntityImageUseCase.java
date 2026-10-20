@@ -67,10 +67,9 @@ import net.sourceforge.plantuml.klimt.shape.UHorizontalLine;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.text.Guillemet;
@@ -112,7 +111,8 @@ public class EntityImageUseCase extends AbstractEntityImage {
 
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return new TextBlockInEllipse(desc, stringBounder).calculateDimension(stringBounder);
 	}
 
@@ -194,17 +194,15 @@ public class EntityImageUseCase extends AbstractEntityImage {
 	}
 
 	private Style getStyle() {
-		return getDefaultStyleDefinition().getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+		return getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
 	}
 
-	private StyleSignature getDefaultStyleDefinition() {
+	@Override
+	public StyleQuery getStyleQuery() {
 		final LeafType type = getEntity().getLeafType();
 		if (type == LeafType.USECASE_BUSINESS)
-			return StyleSignatureBasic
-					.of(SName.root, SName.element, SName.componentDiagram, SName.usecase, SName.business)
-					.withTOBECHANGED(getStereo());
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.componentDiagram, SName.usecase)
-				.withTOBECHANGED(getStereo());
+			return StyleQueries.COMPONENTDIAG_USECASE_BUSINESS.withStereotype(getStereo());
+		return StyleQueries.COMPONENTDIAG_USECASE.withStereotype(getStereo());
 	}
 
 	private HColor getLineColor() {

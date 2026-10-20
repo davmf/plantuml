@@ -35,7 +35,7 @@
  */
 package net.sourceforge.plantuml.klimt.shape;
 
-import net.atmp.InnerStrategy;
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
@@ -45,8 +45,7 @@ import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.svek.Ports;
 import net.sourceforge.plantuml.svek.WithPorts;
 
-class TextBlockMarged extends AbstractTextBlock implements TextBlock, WithPorts {
-	// ::remove file when __HAXE__
+class TextBlockMarged implements TextBlock, WithPorts {
 
 	private final TextBlock textBlock;
 	private final double top;
@@ -70,6 +69,8 @@ class TextBlockMarged extends AbstractTextBlock implements TextBlock, WithPorts 
 		this.left = margins.getLeft();
 	}
 
+
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		final XDimension2D dim = textBlock.calculateDimension(stringBounder);
 		return dim.delta(left + right, top + bottom);
@@ -86,8 +87,8 @@ class TextBlockMarged extends AbstractTextBlock implements TextBlock, WithPorts 
 	}
 
 	@Override
-	public XRectangle2D getInnerPosition(String member, StringBounder stringBounder, InnerStrategy strategy) {
-		final XRectangle2D parent = textBlock.getInnerPosition(member, stringBounder, strategy);
+	public XRectangle2D getInnerPosition(CharSequence member, StringBounder stringBounder) {
+		final XRectangle2D parent = textBlock.getInnerPosition(member, stringBounder);
 		if (parent == null)
 			return null;
 

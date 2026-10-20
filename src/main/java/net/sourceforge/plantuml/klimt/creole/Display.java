@@ -45,7 +45,11 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.sourceforge.plantuml.EmbeddedDiagram;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.asciiverse.ADimension2D;
+import net.sourceforge.plantuml.asciiverse.AsciiBlock;
+import net.sourceforge.plantuml.asciiverse.InfinitePlan;
 import net.sourceforge.plantuml.jaws.Jaws;
 import net.sourceforge.plantuml.jaws.JawsFlags;
 import net.sourceforge.plantuml.jaws.JawsStrange;
@@ -70,20 +74,22 @@ import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.Value;
-import net.sourceforge.plantuml.style.ValueNull;
+import net.sourceforge.plantuml.style.value.Value;
+import net.sourceforge.plantuml.style.value.ValueNull;
 import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.text.Guillemet;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.url.UrlMode;
+import net.sourceforge.plantuml.utils.MyCollections;
 import net.sourceforge.plantuml.warning.JawsWarning;
 import net.sourceforge.plantuml.warning.Warning;
 
-public class Display implements Iterable<CharSequence> {
+public class Display implements Iterable<CharSequence>, AsciiBlock {
 
 	private final List<CharSequence> displayData;
 	private final HorizontalAlignment naturalHorizontalAlignment;
@@ -162,9 +168,11 @@ public class Display implements Iterable<CharSequence> {
 		return new Display(showStereotype, newDisplay, naturalHorizontalAlignment, isNull, defaultCreoleMode);
 	}
 
+	private static final Pattern ONLY_WHITESPACE = Pattern.compile("\\s*");
+
 	public boolean isWhite() {
-		return displayData == null || displayData.size() == 0
-				|| (displayData.size() == 1 && displayData.get(0).toString().matches("\\s*"));
+		return displayData == null || displayData.isEmpty()
+				|| (displayData.size() == 1 && ONLY_WHITESPACE.matcher(displayData.get(0)).matches());
 	}
 
 	public static Display empty() {
@@ -179,6 +187,11 @@ public class Display implements Iterable<CharSequence> {
 		final List<CharSequence> tmp = new ArrayList<>();
 		for (StringLocated s : data)
 			tmp.add(s.getString());
+
+		if (tmp.size() > 2)
+			if (tmp.get(tmp.size() - 1).toString().isEmpty()
+					&& tmp.get(tmp.size() - 2).toString().equals(EmbeddedDiagram.EMBEDDED_END))
+				tmp.remove(tmp.size() - 1);
 
 		final Display result = create(tmp);
 		// CreoleParser.checkColor(result);
@@ -242,7 +255,7 @@ public class Display implements Iterable<CharSequence> {
 			}
 		}
 		result.add(current.toString());
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	private final static Warning MORE_INFO = new Warning("More info on https://plantuml.com/newline");
@@ -427,7 +440,7 @@ public class Display implements Iterable<CharSequence> {
 	}
 
 	public Display removeEndingStereotype() {
-		final Matcher2 m = patternStereotype.matcher(displayData.get(displayData.size() - 1));
+		final Matcher2 m = patternStereotype.matcher(displayData.get(displayData.size() - 1), 0);
 		if (m.matches()) {
 			final List<CharSequence> result = new ArrayList<>(this.displayData);
 			result.set(result.size() - 1, m.group(1));
@@ -440,7 +453,7 @@ public class Display implements Iterable<CharSequence> {
 	public final static Pattern2 patternStereotype = Pattern2.cmpile("^(.*?)(\\<\\<\\s*(.*)\\s*\\>\\>)\\s*$");
 
 	public Stereotype getEndingStereotype() {
-		final Matcher2 m = patternStereotype.matcher(displayData.get(displayData.size() - 1));
+		final Matcher2 m = patternStereotype.matcher(displayData.get(displayData.size() - 1), 0);
 		if (m.matches())
 			return Stereotype.build(m.group(2));
 
@@ -537,7 +550,7 @@ public class Display implements Iterable<CharSequence> {
 	}
 
 	public ListIterator<CharSequence> iterator() {
-		return Collections.unmodifiableList(displayData).listIterator();
+		return MyCollections.unmodifiableList(displayData).listIterator();
 	}
 
 	public Display subList(int i, int size) {
@@ -548,7 +561,7 @@ public class Display implements Iterable<CharSequence> {
 	public List<? extends CharSequence> asList() {
 		if (displayData == null)
 			return Collections.emptyList();
-		return Collections.unmodifiableList(displayData);
+		return MyCollections.unmodifiableList(displayData);
 	}
 
 	public boolean hasUrl() {
@@ -570,7 +583,7 @@ public class Display implements Iterable<CharSequence> {
 				this.defaultCreoleMode);
 		result.add(pending);
 		for (CharSequence line : displayData) {
-			final Matcher2 m = separator.matcher(line);
+			final Matcher2 m = separator.matcher(line, 0);
 			if (m.find()) {
 				final CharSequence s1 = line.subSequence(0, m.start());
 				pending.displayData.add(s1);
@@ -583,7 +596,7 @@ public class Display implements Iterable<CharSequence> {
 				pending.displayData.add(line);
 			}
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public String toTooltipText() {
@@ -682,7 +695,8 @@ public class Display implements Iterable<CharSequence> {
 			FontConfiguration stereotypeConfiguration, double marginX1, double marginX2) {
 		final Sheet sheet = spriteContainer
 				.sheet(fontConfiguration, horizontalAlignment, creoleMode, stereotypeConfiguration).createSheet(this);
-		final double padding = spriteContainer == null ? 0 : spriteContainer.getPadding();
+		final ClockwiseTopRightBottomLeft padding = spriteContainer == null ? ClockwiseTopRightBottomLeft.none()
+				: spriteContainer.getPadding();
 		final SheetBlock1 sheetBlock1 = new SheetBlock1(sheet, maxMessageSize, padding, marginX1, marginX2);
 		return new SheetBlock2(sheetBlock1, sheetBlock1, UStroke.withThickness(1.5));
 	}
@@ -705,12 +719,12 @@ public class Display implements Iterable<CharSequence> {
 
 	@JawsStrange
 	public static boolean hasSeveralGuideLines(String s) {
-		final List<String> splitted;
+		final List<String> split;
 		if (Pragma.legacyReplaceBackslashNByNewline())
-			splitted = Arrays.asList(s.split("\\\\n"));
+			split = Arrays.asList(s.split("\\\\n"));
 		else
-			splitted = Arrays.asList(s.split("" + Jaws.BLOCK_E1_NEWLINE));
-		return hasSeveralGuideLines(splitted);
+			split = Arrays.asList(s.split("" + Jaws.BLOCK_E1_NEWLINE));
+		return hasSeveralGuideLines(split);
 	}
 
 	private static boolean hasSeveralGuideLines(Collection<? extends CharSequence> all) {
@@ -752,5 +766,32 @@ public class Display implements Iterable<CharSequence> {
 //	public final boolean mayHaveEmbedded() {
 //		return mayHaveEmbedded;
 //	}
+
+	public int contentWidth() {
+		int width = 0;
+		for (int i = 0; i < this.size(); i++) {
+			final int len = this.get(i).length();
+			if (len > width)
+				width = len;
+		}
+		return width;
+	}
+
+	// AsciiBlock: a Display prints as its own lines, one CharSequence per row,
+	// left-aligned from whatever column the caller's InfinitePlan is
+	// positioned at. This replaces the flattening-to-one-line simplification
+	// used throughout the ASCII rendering code (CommunicationTile.asciiLabel(), the
+	// note-drawing tiles): callers that switch to this asciiDraw() get real
+	// multi-line notes/messages instead of every line concatenated together.
+	@Override
+	public ADimension2D asciiDimension() {
+		return new ADimension2D(contentWidth(), size());
+	}
+
+	@Override
+	public void asciiDraw(InfinitePlan plan) {
+		for (int i = 0; i < size(); i++)
+			plan.move(0, i).drawString(get(i).toString());
+	}
 
 }

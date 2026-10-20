@@ -35,9 +35,14 @@
  */
 package net.sourceforge.plantuml.objectdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.Lazy;
+import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.CommandMultilines2;
 import net.sourceforge.plantuml.command.MultilinesStrategy;
@@ -60,12 +65,15 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.stereo.StereotypePattern;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.url.UrlBuilder;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateEntityObjectMultilines extends CommandMultilines2<AbstractClassOrObjectDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("object");
 
 	private final static Lazy<Pattern2> END = new Lazy<>(
 			() -> Pattern2.cmpile("^[%s]*\\}[%s]*$"));
@@ -89,6 +97,44 @@ public class CommandCreateEntityObjectMultilines extends CommandMultilines2<Abst
 	}
 
 	@Override
+	@Explain
+	protected String explainNow(BlocLines lines) {
+		// Mirror executeNow: 'object Name {' opens a block whose lines are the
+		// fields of the object, closed by '}'. Unlike the single line 'object'
+		// command, an already existing entity is reused here.
+		lines = lines.trim().removeEmptyLines();
+		final RegexResult line0 = getStartingPattern().matcher(lines.getFirst().getTrimmed().getString());
+		if (line0 == null)
+			return "Creating an object";
+
+		final StringBuilder sb = new StringBuilder();
+		final String idShort = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(line0.getLazzy("CODE", 0));
+		sb.append("Creating the object '").append(idShort).append("'");
+
+		final String display = line0.getLazzy("DISPLAY", 0);
+		if (display != null)
+			sb.append(" displayed as \"").append(StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(display))
+					.append("\"");
+
+		final int bodyCount = lines.size() > 2 ? lines.size() - 2 : 0;
+		sb.append(" with ").append(bodyCount).append(bodyCount == 1 ? " field" : " fields");
+
+		final String stereotype = line0.get("STEREO", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		if (line0.get("COLOR", 0) != null)
+			sb.append(", background color ").append(line0.get("COLOR", 0));
+
+		// The URL is parsed but never read by executeNow, unlike in the single
+		// line 'object' command.
+		if (line0.get(UrlBuilder.URL_KEY, 0) != null)
+			sb.append(" (the URL is currently ignored)");
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeNow(AbstractClassOrObjectDiagram diagram, BlocLines lines,
 			ParserPass currentPass) throws NoSuchColorException {
 		lines = lines.trim().removeEmptyLines();
@@ -99,7 +145,7 @@ public class CommandCreateEntityObjectMultilines extends CommandMultilines2<Abst
 
 		lines = lines.subExtract(1, 1);
 		for (StringLocated s : lines) {
-			assert s.getString().length() > 0;
+			if (TeaVM.a()) assert s.getString().length() > 0;
 			if (VisibilityModifier.isVisibilityCharacter(s.getString()))
 				diagram.setVisibilityModifierPresent(true);
 
@@ -133,6 +179,11 @@ public class CommandCreateEntityObjectMultilines extends CommandMultilines2<Abst
 		entity.setSpecificColorTOBEREMOVED(ColorType.BACK,
 				s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s));
 		return entity;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

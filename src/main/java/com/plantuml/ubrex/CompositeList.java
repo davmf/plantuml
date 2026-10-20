@@ -35,8 +35,8 @@
 package com.plantuml.ubrex;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class CompositeList implements Challenge {
 
@@ -100,24 +100,22 @@ public class CompositeList implements Challenge {
 	public ChallengeResult runChallenge(TextNavigator string, int position) {
 
 		Capture capture = Capture.EMPTY;
-		// Capture nonMergeableCapture = Capture.EMPTY;
 
 		int current = position;
 		for (Challenge challenge : challenges) {
 			final ChallengeResult shallWePass = challenge.runChallenge(string, current);
 			if (shallWePass.getFullCaptureLength() < 0)
-				return new ChallengeResult(NO_MATCH, capture);
+				return ChallengeResult.NO_MATCH;
 
 			current += shallWePass.getFullCaptureLength();
 			capture = capture.merge(shallWePass.getCapture());
-			capture = capture.merge(shallWePass.getNonMergeableCapture());
 		}
 
 		return new ChallengeResult(current - position, capture);
 	}
 
 	public List<Challenge> getInternalChallengesList() {
-		return Collections.unmodifiableList(challenges);
+		return MyCollections.unmodifiableList(challenges);
 	}
 
 }

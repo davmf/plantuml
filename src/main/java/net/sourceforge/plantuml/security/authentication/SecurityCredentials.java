@@ -46,6 +46,7 @@ import java.util.Objects;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.json.JsonValue;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 /**
  * Defines a configuration for credentials.
@@ -111,6 +112,7 @@ public class SecurityCredentials implements SecurityCredentialsContainer {
 	 *                   "basicauth" or "oauth2")
 	 * @param identifier username, clientId, ...
 	 * @param secret     the secret information to authenticate the client or user
+	 * @param properties extra auth settings (grant type, scope, token URI, ...)
 	 * @param proxy      proxy configuration
 	 */
 	public SecurityCredentials(String name, String type, String identifier, char[] secret,
@@ -322,7 +324,7 @@ public class SecurityCredentials implements SecurityCredentialsContainer {
 	}
 
 	public Map<String, Object> getProperties() {
-		return Collections.unmodifiableMap(properties);
+		return MyCollections.unmodifiableMap(properties);
 	}
 
 	/**

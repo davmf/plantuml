@@ -55,12 +55,14 @@ import org.apache.tools.ant.types.FileSet;
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.GeneratedImage;
-import net.sourceforge.plantuml.Option;
-import net.sourceforge.plantuml.OptionFlags;
 import net.sourceforge.plantuml.SourceFileReader;
 import net.sourceforge.plantuml.Splash;
+import net.sourceforge.plantuml.cli.CliFlag;
+import net.sourceforge.plantuml.cli.CliOptions;
+import net.sourceforge.plantuml.cli.CliParsingException;
+import net.sourceforge.plantuml.cli.GlobalConfig;
+import net.sourceforge.plantuml.cli.GlobalConfigKey;
 import net.sourceforge.plantuml.dot.GraphvizRuntimeEnvironment;
-import net.sourceforge.plantuml.dot.GraphvizUtils;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.preproc.Defines;
 import net.sourceforge.plantuml.stats.StatsUtils;
@@ -78,10 +80,9 @@ import net.sourceforge.plantuml.stats.StatsUtils;
 // Carriage Return in UTF-8 XML: &#13;
 // Line Feed in UTF-8 XML: &#10;
 public class PlantUmlTask extends Task {
-    // ::remove folder when __HAXE__
 
 	private String dir = null;
-	private final Option option = new Option();
+	private final CliOptions option = new CliOptions();
 	private List<FileSet> filesets = new ArrayList<>();
 	private List<FileList> filelists = new ArrayList<>();
 	private AtomicInteger nbFiles = new AtomicInteger(0);
@@ -105,9 +106,8 @@ public class PlantUmlTask extends Task {
 	@Override
 	public void execute() throws BuildException {
 
-		if (option.isSplash()) {
+		if (option.isTrue(CliFlag.SPLASH))
 			Splash.createSplash();
-		}
 
 		this.log("Starting PlantUML");
 
@@ -127,9 +127,9 @@ public class PlantUmlTask extends Task {
 			if (executorService != null) {
 				executorService.shutdown();
 				executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
-				if (option.isSplash()) {
+				if (option.isTrue(CliFlag.SPLASH))
 					Splash.disposeSplash();
-				}
+
 			}
 			this.log("Nb images generated: " + nbFiles.get());
 		} catch (IOException e) {
@@ -157,9 +157,9 @@ public class PlantUmlTask extends Task {
 		for (String src : srcFiles) {
 			final File f = new File(fromDir, src);
 			final boolean error = processingSingleFile(f);
-			if (error) {
+			if (error)
 				return f;
-			}
+
 		}
 		return null;
 	}
@@ -174,35 +174,35 @@ public class PlantUmlTask extends Task {
 		for (String src : srcFiles) {
 			final File f = new File(fromDir, src);
 			final boolean error = processingSingleFile(f);
-			if (error) {
+			if (error)
 				return f;
-			}
+
 		}
 
 		for (String src : srcDirs) {
 			final File dir = new File(fromDir, src);
 			final File errorFile = processingSingleDirectory(dir);
-			if (errorFile != null) {
+			if (errorFile != null)
 				return errorFile;
-			}
+
 		}
 		return null;
 
 	}
 
 	private boolean processingSingleFile(final File f) throws IOException, InterruptedException {
-		if (OptionFlags.getInstance().isVerbose()) {
+		if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.VERBOSE)) {
 			this.log("Processing " + f.getAbsolutePath());
 		}
-		final SourceFileReader sourceFileReader = new SourceFileReader(Defines.createWithFileName(f), f,
-				option.getOutputDir(), option.getConfig(), option.getCharset(), option.getFileFormatOption());
+		final SourceFileReader sourceFileReader = new SourceFileReader(option.isTrue(CliFlag.IGNORE_STARTUML_FILENAME), Defines.createWithFileName(f), f,
+				option.getOutputDir(), option.getConfig(), option.getString(CliFlag.CHARSET),
+				option.getFileFormatOption());
 
-		if (option.isCheckOnly()) {
+		if (option.isTrue(CliFlag.CHECK_ONLY))
 			return sourceFileReader.hasError();
-		}
-		if (executorService == null) {
+
+		if (executorService == null)
 			return doFile(f, sourceFileReader);
-		}
 
 		Splash.incTotal(1);
 		executorService.submit(new Callable<Boolean>() {
@@ -219,21 +219,21 @@ public class PlantUmlTask extends Task {
 		final Collection<GeneratedImage> result = sourceFileReader.getGeneratedImages();
 		boolean error = false;
 		for (GeneratedImage g : result) {
-			if (OptionFlags.getInstance().isVerbose()) {
+			if (GlobalConfig.getInstance().boolValue(GlobalConfigKey.VERBOSE))
 				myLog(g + " " + g.getDescription());
-			}
+
 			nbFiles.addAndGet(1);
-			if (g.lineErrorRaw() != -1) {
+			if (g.lineErrorRaw() != -1)
 				error = true;
-			}
+
 		}
 		Splash.incDone(error);
-		if (error) {
+		if (error)
 			myLog("Error: " + f.getCanonicalPath());
-		}
-		if (error && option.isFailfastOrFailfast2()) {
+
+		if (error && option.isFailfastOrFailfast2())
 			return true;
-		}
+
 		return false;
 	}
 
@@ -264,7 +264,7 @@ public class PlantUmlTask extends Task {
 	}
 
 	private boolean fileToProcess(String name) {
-		return name.matches(Option.getPattern());
+		return name.matches(CliOptions.getPattern());
 	}
 
 	public void setDir(String s) {
@@ -276,13 +276,13 @@ public class PlantUmlTask extends Task {
 	}
 
 	public void setCharset(String s) {
-		option.setCharset(s);
+		option.setValue(CliFlag.CHARSET, s);
 	}
 
 	public void setConfig(String s) {
 		try {
-			option.initConfig(s);
-		} catch (IOException e) {
+			option.addInConfig(s);
+		} catch (IOException | CliParsingException e) {
 			log("Error reading " + s);
 		}
 	}
@@ -292,63 +292,61 @@ public class PlantUmlTask extends Task {
 	}
 
 	public void setDebugSvek(String s) {
-		if ("true".equalsIgnoreCase(s)) {
-			option.setDebugSvek(true);
-		}
+		if ("true".equalsIgnoreCase(s))
+			option.setValue(CliFlag.DEBUG_SVEK, true);
 	}
 
 	public void setVerbose(String s) {
-		if ("true".equalsIgnoreCase(s)) {
-			OptionFlags.getInstance().setVerbose(true);
-		}
+		if ("true".equalsIgnoreCase(s))
+			GlobalConfig.getInstance().put(GlobalConfigKey.VERBOSE, true);
 	}
 
 	public void setFormat(String s) {
-		if ("scxml".equalsIgnoreCase(s)) {
+		if ("scxml".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.SCXML));
-		}
-		if ("xmi".equalsIgnoreCase(s)) {
+
+		if ("xmi".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.XMI_STANDARD));
-		}
-		if ("xmi:argo".equalsIgnoreCase(s)) {
+
+		if ("xmi:argo".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.XMI_ARGO));
-		}
-		if ("xmi:custom".equalsIgnoreCase(s)) {
+
+		if ("xmi:custom".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.XMI_CUSTOM));
-		}
-		if ("xmi:script".equalsIgnoreCase(s)) {
+
+		if ("xmi:script".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.XMI_SCRIPT));
-		}
-		if ("xmi:start".equalsIgnoreCase(s)) {
+
+		if ("xmi:start".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.XMI_STAR));
-		}
-		if ("eps".equalsIgnoreCase(s)) {
+
+		if ("eps".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.EPS));
-		}
-		if ("braille".equalsIgnoreCase(s)) {
+
+		if ("braille".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.BRAILLE_PNG));
-		}
-		if ("pdf".equalsIgnoreCase(s)) {
+
+		if ("pdf".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.PDF));
-		}
-		if ("latex".equalsIgnoreCase(s)) {
+
+		if ("latex".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.LATEX));
-		}
-		if ("latex:nopreamble".equalsIgnoreCase(s)) {
+
+		if ("latex:nopreamble".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.LATEX_NO_PREAMBLE));
-		}
-		if ("eps:text".equalsIgnoreCase(s)) {
+
+		if ("eps:text".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.EPS_TEXT));
-		}
-		if ("svg".equalsIgnoreCase(s)) {
+
+		if ("svg".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.SVG));
-		}
-		if ("txt".equalsIgnoreCase(s)) {
+
+		if ("txt".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.ATXT));
-		}
-		if ("utxt".equalsIgnoreCase(s)) {
+
+		if ("utxt".equalsIgnoreCase(s))
 			option.setFileFormatOption(new FileFormatOption(FileFormat.UTXT));
-		}
+
 	}
 
 	public void setGraphvizDot(String s) {
@@ -357,12 +355,12 @@ public class PlantUmlTask extends Task {
 
 	public void setNbThread(String s) {
 		if (s != null && s.matches("\\d+")) {
-			option.setNbThreads(Integer.parseInt(s));
+			option.setValue(CliFlag.NB_THREAD, Integer.parseInt(s));
 			final int nbThreads = option.getNbThreads();
 			this.executorService = Executors.newFixedThreadPool(nbThreads);
 		}
 		if ("auto".equalsIgnoreCase(s)) {
-			option.setNbThreads(Option.defaultNbThreads());
+			option.setValue(CliFlag.NB_THREAD, CliOptions.defaultNbThreads());
 			final int nbThreads = option.getNbThreads();
 			this.executorService = Executors.newFixedThreadPool(nbThreads);
 		}
@@ -379,26 +377,26 @@ public class PlantUmlTask extends Task {
 
 	public void setFailFast(String s) {
 		final boolean flag = "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s);
-		option.setFailfast(flag);
+		option.setValue(CliFlag.FAIL_FAST, flag);
 	}
 
 	public void setFailFast2(String s) {
 		final boolean flag = "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s);
-		option.setFailfast2(flag);
+		option.setValue(CliFlag.FAIL_FAST2, flag);
 	}
 
 	public void setCheckOnly(String s) {
 		final boolean flag = "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s);
-		option.setCheckOnly(flag);
+		option.setValue(CliFlag.CHECK_ONLY, flag);
 	}
 
 	public void setOverwrite(String s) {
 		final boolean flag = "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s);
-		OptionFlags.getInstance().setOverwrite(flag);
+		GlobalConfig.getInstance().put(GlobalConfigKey.OVERWRITE, flag);
 	}
 
 	public void setFileSeparator(String s) {
-		OptionFlags.getInstance().setFileSeparator(s);
+		GlobalConfig.getInstance().put(GlobalConfigKey.FILE_SEPARATOR, s);
 	}
 
 	public void setHtmlStats(String s) {
@@ -418,12 +416,12 @@ public class PlantUmlTask extends Task {
 
 	public void setEnableStats(String s) {
 		final boolean flag = "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s);
-		OptionFlags.getInstance().setEnableStats(flag);
+		GlobalConfig.getInstance().put(GlobalConfigKey.ENABLE_STATS, true);
 	}
 
 	public void setSplash(String s) {
 		final boolean flag = "true".equalsIgnoreCase(s) || "yes".equalsIgnoreCase(s) || "on".equalsIgnoreCase(s);
-		option.setSplash(flag);
+		option.setValue(CliFlag.SPLASH, flag);
 	}
 
 }

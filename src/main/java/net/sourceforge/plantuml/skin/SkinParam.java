@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -35,13 +35,11 @@
  */
 package net.sourceforge.plantuml.skin;
 
-import java.awt.Font;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -55,9 +53,9 @@ import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.Previous;
 import net.sourceforge.plantuml.StringUtils;
-import net.sourceforge.plantuml.TikzFontDistortion;
 import net.sourceforge.plantuml.activitydiagram3.ftile.ArrowsRegular;
 import net.sourceforge.plantuml.activitydiagram3.ftile.ArrowsTriangle;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.LinkStyle;
 import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.klimt.Arrows;
@@ -72,32 +70,42 @@ import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Parser;
 import net.sourceforge.plantuml.klimt.creole.SheetBuilder;
 import net.sourceforge.plantuml.klimt.creole.legacy.CreoleParser;
-import net.sourceforge.plantuml.klimt.drawing.svg.LengthAdjust;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFace;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
 import net.sourceforge.plantuml.klimt.sprite.SpriteImage;
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.ConfigurationStore;
 import net.sourceforge.plantuml.preproc.OptionKey;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 import net.sourceforge.plantuml.style.FromSkinparamToStyle;
 import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.LengthAdjust;
+import net.sourceforge.plantuml.style.NoStyleAvailableException;
+import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleLoader;
-import net.sourceforge.plantuml.style.parser.StyleParser;
+import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.style.parser.StyleParsingException;
 import net.sourceforge.plantuml.svek.ConditionEndStyle;
 import net.sourceforge.plantuml.svek.ConditionStyle;
 import net.sourceforge.plantuml.svek.PackageStyle;
+import net.sourceforge.plantuml.teavm.EmbeddedResources;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.Guillemet;
+import net.sourceforge.plantuml.tikz.TikzFontDistortion;
 import net.sourceforge.plantuml.utils.BlocLines;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class SkinParam implements ISkinParam {
 
@@ -108,28 +116,45 @@ public class SkinParam implements ISkinParam {
 	// TODO not clear whether SkinParam or ImageBuilder is responsible for defaults
 	public static final String DEFAULT_PRESERVE_ASPECT_RATIO = "none";
 
+	public static final String DEFAULT_SKIN = "plantuml.skin";
+
 	// private String skin = "debug.skin";
-	private String skin = "plantuml.skin";
+	private String skin = DEFAULT_SKIN;
 	private StyleBuilder styleBuilder;
 	private final Pragma pragma;
+	private final PathSystem pathSystem;
 	private final ConfigurationStore<OptionKey> option;
+	final private Map<String, String> md5map;
 
-	private SkinParam(UmlDiagramType type, Pragma pragma, ConfigurationStore<OptionKey> option) {
+	private static final Pattern DIGITS = Pattern.compile("\\d+");
+	private static final Pattern DIGITS_DOT = Pattern.compile("[\\d.]+");
+	private static final Pattern INT_OR_DECIMAL = Pattern.compile("\\d+(\\.\\d+)?");
+
+	private static boolean isDigits(String s) {
+		return s != null && DIGITS.matcher(s).matches();
+	}
+
+	private static boolean isDigitsOrDot(String s) {
+		return s != null && DIGITS_DOT.matcher(s).matches();
+	}
+
+	private static boolean isIntOrDecimal(String s) {
+		return s != null && INT_OR_DECIMAL.matcher(s).matches();
+	}
+
+	private SkinParam(PathSystem pathSystem, DiagramType type, Pragma pragma, ConfigurationStore<OptionKey> option,
+			Map<String, String> md5map) {
 		this.type = type;
 		this.pragma = pragma;
 		this.option = option;
+		this.pathSystem = pathSystem;
+		this.md5map = md5map;
 	}
 
 	@Override
 	public StyleBuilder getCurrentStyleBuilder() {
 		if (styleBuilder == null)
-			try {
-				this.styleBuilder = getCurrentStyleBuilderInternal();
-			} catch (StyleParsingException e) {
-				Logme.error(e);
-			} catch (IOException e) {
-				Logme.error(e);
-			}
+			this.styleBuilder = getCurrentStyleBuilderInternal();
 
 		return styleBuilder;
 	}
@@ -149,12 +174,23 @@ public class SkinParam implements ISkinParam {
 		this.skin = newSkin;
 	}
 
-	private StyleBuilder getCurrentStyleBuilderInternal() throws IOException, StyleParsingException {
-		StyleBuilder result = StyleLoader.loadSkin(this.getDefaultSkin());
-		if (result == null)
-			result = StyleLoader.loadSkin("plantuml.skin");
-
-		return result;
+	// This must never return null: many callers use the result without any check,
+	// so
+	// returning null would only turn a style issue into an unrelated
+	// NullPointerException.
+	private StyleBuilder getCurrentStyleBuilderInternal() {
+		try {
+			return StyleLoader.loadSkin(this.getDefaultSkin());
+		} catch (IOException | StyleParsingException | NoStyleAvailableException e) {
+			Logme.error(e);
+		}
+		// The requested skin is unusable: fall back on the default one rather than
+		// rendering with no style at all.
+		try {
+			return StyleLoader.loadSkin(DEFAULT_SKIN);
+		} catch (IOException | StyleParsingException e) {
+			throw new IllegalStateException("Cannot load " + DEFAULT_SKIN, e);
+		}
 	}
 
 	public static int zeroMargin(int defaultValue) {
@@ -168,7 +204,7 @@ public class SkinParam implements ISkinParam {
 	private final Map<String, String> paramsPendingForStyleMigration = new LinkedHashMap<String, String>();
 	private final Map<String, String> svgCharSizes = new HashMap<String, String>();
 	private Rankdir rankdir = Rankdir.TOP_TO_BOTTOM;
-	private final UmlDiagramType type;
+	private final DiagramType type;
 	private boolean useVizJs;
 
 	@Override
@@ -183,23 +219,27 @@ public class SkinParam implements ISkinParam {
 
 	@Override
 	public Map<String, String> values() {
-		return Collections.unmodifiableMap(params);
+		return MyCollections.unmodifiableMap(params);
 	}
 
 	public void setParam(String key, String value) {
 		for (String key2 : cleanForKey(key)) {
 			params.put(key2, StringUtils.trin(value));
 			applyPendingStyleMigration();
-			final FromSkinparamToStyle convertor = new FromSkinparamToStyle(key2);
-			convertor.convertNow(value, getCurrentStyleBuilder());
-			muteStyle(convertor.getStyles());
+			final FromSkinparamToStyle converter = new FromSkinparamToStyle(key2);
+			converter.convertNow(value, getCurrentStyleBuilder());
+			muteStyle(converter.getStyles());
 		}
 		if ("style".equalsIgnoreCase(key) && "strictuml".equalsIgnoreCase(value)) {
-			final InputStream internalIs = StyleLoader.class.getResourceAsStream("/skin/strictuml.skin");
+			final InputStream internalIs;
+			if (TeaVM.isTeaVM())
+				internalIs = EmbeddedResources.openStrictSkin();
+			else
+				internalIs = StyleLoader.class.getResourceAsStream("/skin/strictuml.skin");
 			final StyleBuilder styleBuilder = this.getCurrentStyleBuilder();
 			try {
 				final BlocLines lines = BlocLines.load(internalIs, null);
-				this.muteStyle(StyleParser.parse(lines, styleBuilder));
+				this.muteStyle(StyleLoader.parseStyleText(lines, styleBuilder));
 
 			} catch (StyleParsingException e) {
 				Logme.error(e);
@@ -211,26 +251,42 @@ public class SkinParam implements ISkinParam {
 
 	public void applyPendingStyleMigration() {
 		for (Entry<String, String> ent : paramsPendingForStyleMigration.entrySet()) {
-			final FromSkinparamToStyle convertor = new FromSkinparamToStyle(ent.getKey());
-			convertor.convertNow(ent.getValue(), getCurrentStyleBuilder());
-			muteStyle(convertor.getStyles());
+			final FromSkinparamToStyle converter = new FromSkinparamToStyle(ent.getKey());
+			converter.convertNow(ent.getValue(), getCurrentStyleBuilder());
+			muteStyle(converter.getStyles());
 		}
 		paramsPendingForStyleMigration.clear();
 	}
 
-	public static SkinParam create(UmlDiagramType type, Pragma pragma, ConfigurationStore<OptionKey> option) {
-		return new SkinParam(type, pragma, option);
+	public static SkinParam create(Map<String, String> md5map, PathSystem pathSystem, DiagramType type, Pragma pragma,
+			ConfigurationStore<OptionKey> option) {
+		return new SkinParam(pathSystem, type, pragma, option, md5map);
 	}
 
-	private final Map<String, List<String>> cacheCleanForKey = new HashMap<String, List<String>>();
+	// cleanForKeySlow() is a pure function of the key, so its results are shared by
+	// all the SkinParam instances (one per diagram). The keys come from the diagram
+	// source (a stereotype is part of the key), so the size is bounded, and the least
+	// recently used entries are the ones dropped: a cache that stopped accepting
+	// entries once full would stay stuck on the first keys it saw, in a long-running
+	// server.
+	private static final int CACHE_CLEAN_FOR_KEY_MAX = 2000;
+	private static final Map<String, List<String>> cacheCleanForKey = new LinkedHashMap<String, List<String>>(
+			CACHE_CLEAN_FOR_KEY_MAX, 0.75f, true) {
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<String, List<String>> eldest) {
+			return size() > CACHE_CLEAN_FOR_KEY_MAX;
+		}
+	};
 
 	List<String> cleanForKey(String key) {
-		List<String> result = cacheCleanForKey.get(key);
-		if (result == null) {
-			result = cleanForKeySlow(key);
-			cacheCleanForKey.put(key, result);
+		synchronized (cacheCleanForKey) {
+			List<String> result = cacheCleanForKey.get(key);
+			if (result == null) {
+				result = cleanForKeySlow(key);
+				cacheCleanForKey.put(key, result);
+			}
+			return result;
 		}
-		return result;
 	}
 
 	private static final Pattern patternCleanUnderscoreDot = Pattern.compile("_|\\.");
@@ -246,7 +302,7 @@ public class SkinParam implements ISkinParam {
 		key = patternCleanArrow.matcher(key).replaceAll("arrow");
 		key = patternCleanAlign.matcher(key).replaceAll("alignment");
 
-		final Matcher2 mm = stereoPattern.matcher(key);
+		final Matcher2 mm = stereoPattern.matcher(key, 0);
 		final List<String> result = new ArrayList<>();
 		while (mm.find()) {
 			final String s = mm.group(1);
@@ -255,7 +311,7 @@ public class SkinParam implements ISkinParam {
 		if (result.size() == 0)
 			result.add(key);
 
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	@Override
@@ -270,18 +326,29 @@ public class SkinParam implements ISkinParam {
 	@Override
 	public HColor getBackgroundColor() {
 		final HColor result = getHtmlColor(ColorParam.background, null, false);
-		return result != null ? result : HColors.WHITE;
+		if (result != null)
+			return result;
+
+		final Style style = getCurrentStyleBuilder().getMergedStyle(StyleQueries.DOCUMENT);
+		return style.value(PName.BackGroundColor).asColor(getIHtmlColorSet());
 	}
+
+	private final Map<String, String> cacheKeyValue = new HashMap<>();
 
 	@Override
 	public String getValue(String key) {
+		if (cacheKeyValue.containsKey(key))
+			return cacheKeyValue.get(key);
 		applyPendingStyleMigration();
 		for (String key2 : cleanForKey(key)) {
 			final String result = params.get(key2);
-			if (result != null)
+			if (result != null) {
+				cacheKeyValue.put(key, result);
 				return result;
+			}
 
 		}
+		cacheKeyValue.put(key, null);
 		return null;
 	}
 
@@ -335,7 +402,8 @@ public class SkinParam implements ISkinParam {
 		if (param == ColorParam.background)
 			return getIHtmlColorSet().getColorOrWhite(value);
 
-		assert param != ColorParam.background;
+		if (TeaVM.a())
+			assert param != ColorParam.background;
 
 		return getIHtmlColorSet().getColorOrWhite(value);
 	}
@@ -388,15 +456,15 @@ public class SkinParam implements ISkinParam {
 			checkStereotype(stereotype);
 			final String value2 = getFirstValueNonNullWithSuffix(
 					"fontsize" + stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR), param);
-			if (value2 != null && value2.matches("\\d+"))
+			if (isDigits(value2))
 				return Integer.parseInt(value2);
 
 		}
 		String value = getFirstValueNonNullWithSuffix("fontsize", param);
-		if (value == null || value.matches("\\d+") == false)
+		if (isDigits(value) == false)
 			value = getValue("defaultfontsize");
 
-		if (value == null || value.matches("\\d+") == false)
+		if (isDigits(value) == false)
 			return param[0].getDefaultSize(this);
 
 		return Integer.parseInt(value);
@@ -459,7 +527,7 @@ public class SkinParam implements ISkinParam {
 		return null;
 	}
 
-	private int getFontStyle(Stereotype stereotype, boolean inPackageTitle, FontParam... param) {
+	private UFontFace getFontFace(Stereotype stereotype, boolean inPackageTitle, FontParam... param) {
 		String value = null;
 		if (stereotype != null) {
 			checkStereotype(stereotype);
@@ -473,16 +541,18 @@ public class SkinParam implements ISkinParam {
 			value = getValue("defaultfontstyle");
 
 		if (value == null)
-			return param[0].getDefaultFontStyle(this, inPackageTitle);
+			return param[0].getDefaultFontFace(this, inPackageTitle);
 
-		int result = Font.PLAIN;
-		if (StringUtils.goLowerCase(value).contains("bold"))
-			result = result | Font.BOLD;
-
-		if (StringUtils.goLowerCase(value).contains("italic"))
-			result = result | Font.ITALIC;
-
-		return result;
+		final String lower = StringUtils.goLowerCase(value);
+		final boolean bold = lower.contains("bold");
+		final boolean italic = lower.contains("italic");
+		if (bold && italic)
+			return UFontFace.boldItalic();
+		if (bold)
+			return UFontFace.bold();
+		if (italic)
+			return UFontFace.italic();
+		return UFontFace.normal();
 	}
 
 	@Override
@@ -491,9 +561,9 @@ public class SkinParam implements ISkinParam {
 			checkStereotype(stereotype);
 
 		final String fontFamily = getFontFamily(stereotype, fontParam);
-		final int fontStyle = getFontStyle(stereotype, inPackageTitle, fontParam);
+		final UFontFace face = getFontFace(stereotype, inPackageTitle, fontParam);
 		final int fontSize = getFontSize(stereotype, fontParam);
-		return UFont.build(fontFamily, fontStyle, fontSize);
+		return UFontFactory.build(fontFamily, face, fontSize);
 	}
 
 	@Override
@@ -582,7 +652,7 @@ public class SkinParam implements ISkinParam {
 			final String h = capitalize(p.name());
 			result.add(h);
 		}
-		return Collections.unmodifiableSet(result);
+		return MyCollections.unmodifiableSet(result);
 	}
 
 	private static String capitalize(String name) {
@@ -743,7 +813,7 @@ public class SkinParam implements ISkinParam {
 
 	@Override
 	public Collection<String> getAllSpriteNames() {
-		return Collections.unmodifiableCollection(new TreeSet<>(sprites.keySet()));
+		return MyCollections.unmodifiableCollection(new TreeSet<>(sprites.keySet()));
 	}
 
 	public void addSprite(String name, Sprite sprite) {
@@ -790,8 +860,8 @@ public class SkinParam implements ISkinParam {
 	}
 
 	@Override
-	public boolean useSwimlanes(UmlDiagramType type) {
-		if (type != UmlDiagramType.ACTIVITY)
+	public boolean useSwimlanes(DiagramType type) {
+		if (type != DiagramType.ACTIVITY)
 			return false;
 
 		return swimlanes();
@@ -814,7 +884,6 @@ public class SkinParam implements ISkinParam {
 	}
 
 	@Override
-
 	public double getDiagonalCorner(CornerParam param, Stereotype stereotype) {
 		final String key = param.getDiagonalKey();
 		Double result = getCornerInternal(key, param, stereotype);
@@ -853,14 +922,28 @@ public class SkinParam implements ISkinParam {
 			key += stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR);
 
 		final String value = getValue(key);
-		if (value != null && value.matches("\\d+"))
+		if (isDigits(value))
 			return Double.parseDouble(value);
 
 		return null;
 	}
 
+	private final Map<String, UStroke> cacheThickness = new HashMap<>();
+
 	@Override
 	public UStroke getThickness(LineParam param, Stereotype stereotype) {
+		// Called for every drawn element; the key building, parsing and
+		// LinkStyle churn below showed up in profiles, same idea as cacheKeyValue
+		final String key = stereotype == null ? param.name()
+				: param.name() + '\0' + stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR);
+		if (cacheThickness.containsKey(key))
+			return cacheThickness.get(key);
+		final UStroke result = getThicknessSlow(param, stereotype);
+		cacheThickness.put(key, result);
+		return result;
+	}
+
+	private UStroke getThicknessSlow(LineParam param, Stereotype stereotype) {
 		LinkStyle style = null;
 		if (stereotype != null) {
 			checkStereotype(stereotype);
@@ -872,7 +955,7 @@ public class SkinParam implements ISkinParam {
 
 			final String value2 = getValue(
 					param.name() + "thickness" + stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR));
-			if (value2 != null && value2.matches("[\\d.]+")) {
+			if (isDigitsOrDot(value2)) {
 				if (style == null)
 					style = LinkStyle.NORMAL();
 
@@ -880,7 +963,7 @@ public class SkinParam implements ISkinParam {
 			}
 		}
 		final String value = getValue(param.name() + "thickness");
-		if (value != null && value.matches("[\\d.]+")) {
+		if (isDigitsOrDot(value)) {
 			if (style == null)
 				style = LinkStyle.NORMAL();
 
@@ -1053,14 +1136,14 @@ public class SkinParam implements ISkinParam {
 		if ("same".equalsIgnoreCase(value))
 			return SWIMLANE_WIDTH_SAME;
 
-		if (value != null && value.matches("\\d+"))
+		if (isDigits(value))
 			return Integer.parseInt(value);
 
 		return 0;
 	}
 
 	@Override
-	public UmlDiagramType getUmlDiagramType() {
+	public DiagramType getDiagramType() {
 		return type;
 	}
 
@@ -1074,28 +1157,28 @@ public class SkinParam implements ISkinParam {
 	}
 
 	@Override
-	public double getPadding() {
+	public ClockwiseTopRightBottomLeft getPadding() {
 		final String name = "padding";
 		return getAsDouble(name);
 	}
 
 	@Override
-	public double getPadding(PaddingParam param) {
+	public ClockwiseTopRightBottomLeft getPaddingTOBEREMOVED(PaddingParam param) {
 		final String name = param.getSkinName();
 		return getAsDouble(name);
 	}
 
-	private double getAsDouble(final String name) {
+	private ClockwiseTopRightBottomLeft getAsDouble(final String name) {
 		final String value = getValue(name);
-		if (value != null && value.matches("\\d+(\\.\\d+)?"))
-			return Double.parseDouble(value);
+		if (isIntOrDecimal(value))
+			return ClockwiseTopRightBottomLeft.same(Double.parseDouble(value));
 
-		return 0;
+		return ClockwiseTopRightBottomLeft.same(0);
 	}
 
 	private int getAsInt(String key, int defaultValue) {
 		final String value = getValue(key);
-		if (value != null && value.matches("\\d+"))
+		if (isDigits(value))
 			return Integer.parseInt(value);
 
 		return defaultValue;
@@ -1144,11 +1227,11 @@ public class SkinParam implements ISkinParam {
 
 	@Override
 	public Padder sequenceDiagramPadder() {
-		final double padding = getAsDouble("SequenceMessagePadding");
-		final double margin = getAsDouble("SequenceMessageMargin");
+		final ClockwiseTopRightBottomLeft padding = getAsDouble("SequenceMessagePadding");
+		final ClockwiseTopRightBottomLeft margin = getAsDouble("SequenceMessageMargin");
 		final String borderColor = getValue("SequenceMessageBorderColor");
 		final String backgroundColor = getValue("SequenceMessageBackGroundColor");
-		if (padding == 0 && margin == 0 && borderColor == null && backgroundColor == null)
+		if (padding.isZero() && margin.isZero() && borderColor == null && backgroundColor == null)
 			return Padder.NONE;
 
 		final HColor border = borderColor == null ? null : getIHtmlColorSet().getColorOrWhite(borderColor);
@@ -1247,6 +1330,16 @@ public class SkinParam implements ISkinParam {
 	@Override
 	public ConfigurationStore<OptionKey> options() {
 		return option;
+	}
+
+	@Override
+	public PathSystem getPathSystem() {
+		return pathSystem;
+	}
+
+	@Override
+	public String getFromMd5(String md5) {
+		return md5map.get(md5);
 	}
 
 }

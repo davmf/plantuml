@@ -35,6 +35,9 @@
  */
 package net.sourceforge.plantuml.activitydiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.plantuml.ubrex.UnicodeBracketedExpression;
 import com.plantuml.ubrex.builder.UBrexConcat;
 import com.plantuml.ubrex.builder.UBrexLeaf;
@@ -45,6 +48,7 @@ import com.plantuml.ubrex.builder.UBrexOr;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.activitydiagram.ActivityDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.UBrexSingleLineCommand2;
@@ -59,6 +63,8 @@ import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class UBrexCommandPartition extends UBrexSingleLineCommand2<ActivityDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("partition");
 
 	public UBrexCommandPartition() {
 		super(getRegexConcat());
@@ -89,6 +95,25 @@ public class UBrexCommandPartition extends UBrexSingleLineCommand2<ActivityDiagr
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// 'partition Name {' opens a container around the following activities
+		// (legacy activity diagram syntax), closed by '}' or 'end partition'.
+		sb.append("Starting the partition '").append(arg.get("NAME", 0)).append("'");
+
+		if (arg.get("COLOR", 0) != null)
+			sb.append(", background color ").append(arg.get("COLOR", 0));
+
+		final String stereotype = arg.get("STEREOTYPE", 0);
+		if (stereotype != null)
+			sb.append(", stereotype ").append(stereotype);
+
+		return sb.toString();
+	}
+
+	@Override
 	protected CommandExecutionResult executeArg(ActivityDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass)
 			throws NoSuchColorException {
 		final Quark<Entity> quark = diagram.quarkInContext(true, diagram.cleanId(arg.get("NAME", 0)));
@@ -103,6 +128,17 @@ public class UBrexCommandPartition extends UBrexSingleLineCommand2<ActivityDiagr
 		p.setStereotype(Stereotype.build(arg.get("STEREOTYPE", 0)));
 
 		return CommandExecutionResult.ok();
+	}
+
+	// Declared by hand: FirstTokens only reads regex patterns, and this one is a UBrex expression.
+	@Override
+	public Collection<String> mandatoryFirstTokensSlow() {
+		return FIRST_TOKENS;
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

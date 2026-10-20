@@ -51,6 +51,7 @@ import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.note.CommandFactoryNote;
 import net.sourceforge.plantuml.command.note.CommandFactoryNoteOnEntity;
 import net.sourceforge.plantuml.command.note.CommandFactoryNoteOnLink;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.descdiagram.command.CommandArchimate;
 import net.sourceforge.plantuml.descdiagram.command.CommandArchimateMultilines;
@@ -61,18 +62,22 @@ import net.sourceforge.plantuml.descdiagram.command.CommandLinkElement;
 import net.sourceforge.plantuml.descdiagram.command.CommandNewpage;
 import net.sourceforge.plantuml.descdiagram.command.CommandPackageWithUSymbol;
 import net.sourceforge.plantuml.descdiagram.command.CommandTogether;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.objectdiagram.command.CommandCreateJson;
 import net.sourceforge.plantuml.objectdiagram.command.CommandCreateJsonSingleLine;
 import net.sourceforge.plantuml.objectdiagram.command.CommandCreateMap;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOr;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
 public class DescriptionDiagramFactory extends PSystemCommandFactory {
 
+	public DescriptionDiagramFactory() {
+		super(DiagramType.DESCRIPTION);
+	}
+
 	@Override
-	public DescriptionDiagram createEmptyDiagram(UmlSource source, Previous previous,
+	public DescriptionDiagram createEmptyDiagram(PathSystem pathSystem, UmlSource source, Previous previous,
 			PreprocessingArtifact preprocessing) {
 		return new DescriptionDiagram(source, previous, preprocessing);
 	}
@@ -124,17 +129,11 @@ public class DescriptionDiagramFactory extends PSystemCommandFactory {
 		cmds.add(new CommandCreateMap());
 		cmds.add(new CommandCreateJson());
 		cmds.add(new CommandCreateJsonSingleLine());
-		// cmds.add(new CommandHideShowSpecificClass());
 
 		cmds.add(new CommandArchimate());
 		cmds.add(new CommandArchimateMultilines());
 		cmds.add(new CommandArchimatePackage());
 		cmds.add(new CommandCreateDomain());
-	}
-
-	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return UmlDiagramType.DESCRIPTION;
 	}
 
 }

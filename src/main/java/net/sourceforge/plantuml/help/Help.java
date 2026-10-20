@@ -34,16 +34,13 @@
  */
 package net.sourceforge.plantuml.help;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.atmp.ImageBuilder;
 import net.sourceforge.plantuml.FileFormatOption;
-import net.sourceforge.plantuml.UmlDiagram;
+import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
-import net.sourceforge.plantuml.core.ImageData;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
@@ -52,13 +49,13 @@ import net.sourceforge.plantuml.klimt.creole.Sheet;
 import net.sourceforge.plantuml.klimt.creole.SheetBlock1;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.UFont;
+import net.sourceforge.plantuml.klimt.font.UFontFactory;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.style.ClockwiseTopRightBottomLeft;
 
-public class Help extends UmlDiagram {
+public class Help extends TitledDiagram {
 
 	private final List<CharSequence> lines = new ArrayList<>();
 
@@ -67,24 +64,7 @@ public class Help extends UmlDiagram {
 	}
 
 	public Help(UmlSource source, PreprocessingArtifact preprocessing) {
-		super(source, UmlDiagramType.HELP, null, preprocessing);
-	}
-
-	@Override
-	public ImageBuilder createImageBuilder(FileFormatOption fileFormatOption) throws IOException {
-		return super.createImageBuilder(fileFormatOption).annotations(false);
-	}
-
-	@Override
-	protected ImageData exportDiagramInternal(OutputStream os, int index, FileFormatOption fileFormat)
-			throws IOException {
-		final Display display = Display.create(lines);
-		final UFont font = UFont.serif(16);
-		final FontConfiguration fontConfiguration = FontConfiguration.blackBlueTrue(font);
-		final Sheet sheet = getSkinParam().sheet(fontConfiguration, HorizontalAlignment.LEFT, CreoleMode.FULL)
-				.createSheet(display);
-		final SheetBlock1 sheetBlock = new SheetBlock1(sheet, LineBreakStrategy.NONE, 0);
-		return createImageBuilder(fileFormat).drawable(sheetBlock).write(os);
+		super(source, DiagramType.HELP, null, preprocessing);
 	}
 
 	public void add(CharSequence line) {
@@ -97,8 +77,13 @@ public class Help extends UmlDiagram {
 	}
 
 	@Override
-	protected TextBlock getTextMainBlock(FileFormatOption fileFormatOption) {
-		throw new UnsupportedOperationException();
+	public TextBlock getTextBlock(int num, FileFormatOption fileFormatOption) {
+		final Display display = Display.create(lines);
+		final UFont font = UFontFactory.serif(16);
+		final FontConfiguration fontConfiguration = FontConfiguration.blackBlueTrue(font);
+		final Sheet sheet = getSkinParam().sheet(fontConfiguration, HorizontalAlignment.LEFT, CreoleMode.FULL)
+				.createSheet(display);
+		return new SheetBlock1(sheet, LineBreakStrategy.NONE, ClockwiseTopRightBottomLeft.none());
 	}
 
 }

@@ -40,7 +40,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.CucaNote;
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.LeafType;
@@ -49,6 +48,7 @@ import net.sourceforge.plantuml.abel.LinkArrow;
 import net.sourceforge.plantuml.abel.LinkStrategy;
 import net.sourceforge.plantuml.abel.NoteLinkStrategy;
 import net.sourceforge.plantuml.annotation.DuplicateCode;
+import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.cruise.XAbstractEdge;
 import net.sourceforge.plantuml.cruise.XEdge;
 import net.sourceforge.plantuml.cucadiagram.EntityPort;
@@ -59,10 +59,12 @@ import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.descdiagram.command.StringWithArrow;
 import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.dot.GraphvizVersion;
+import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
 import net.sourceforge.plantuml.klimt.UStroke;
 import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.awt.XColor;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -78,6 +80,7 @@ import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
 import net.sourceforge.plantuml.klimt.geom.PointAndAngle;
 import net.sourceforge.plantuml.klimt.geom.Positionable;
 import net.sourceforge.plantuml.klimt.geom.PositionableUtils;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
@@ -93,22 +96,21 @@ import net.sourceforge.plantuml.skin.ColorParam;
 import net.sourceforge.plantuml.skin.LineParam;
 import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.skin.PragmaKey;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 import net.sourceforge.plantuml.skin.VisibilityModifier;
 import net.sourceforge.plantuml.skin.rose.Rose;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.extremity.Extremity;
 import net.sourceforge.plantuml.svek.extremity.ExtremityArrow;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactoryExtends;
 import net.sourceforge.plantuml.svek.extremity.ExtremityOther;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.url.Url;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.Log;
@@ -127,6 +129,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	private final TextBlock startTailText;
 	private final TextBlock endHeadText;
+	private final TextBlock startTailRoleText;
+	private final TextBlock endHeadRoleText;
 	private final TextBlock labelText;
 	private boolean divideLabelWidthByTwo = false;
 
@@ -224,13 +228,16 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			FontConfiguration cardinalityFont, Bibliotekon bibliotekon, Pragma pragma,
 			GraphvizVersion graphvizVersion) {
 		super(link, skinParam, bibliotekon);
-		// ::comment when __CORE__
-		if (graphvizVersion.useShieldForQuantifier() && link.getLinkArg().getQuantifier1() != null)
-			link.getEntity1().ensureMargins(Margins.uniform(16));
 
-		if (graphvizVersion.useShieldForQuantifier() && link.getLinkArg().getQuantifier2() != null)
-			link.getEntity2().ensureMargins(Margins.uniform(16));
-		// ::done
+		if (!TeaVM.isTeaVM()) {
+			if (graphvizVersion.useShieldForQuantifier()
+					&& (link.getLinkArg().getQuantifier1() != null || link.getLinkArg().getRole1() != null))
+				link.getEntity1().ensureMargins(Margins.uniform(16));
+
+			if (graphvizVersion.useShieldForQuantifier()
+					&& (link.getLinkArg().getQuantifier2() != null || link.getLinkArg().getRole2() != null))
+				link.getEntity2().ensureMargins(Margins.uniform(16));
+		}
 
 		if (link.getLinkArg().getKal1() != null)
 			this.kal1 = new Kal(this, link.getLinkArg().getKal1(), skinParam, link.getEntity1(), link, stringBounder);
@@ -279,11 +286,17 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		} else {
 			final HorizontalAlignment alignment = getMessageTextAlignment(diagramType(), skinParam);
 			final boolean hasSeveralGuideLines = link.getLabel().hasSeveralGuideLines();
+			final Style arrowStyle = skinParam.getCurrentStyleBuilder()
+					.getMergedStyle(getDefaultStyleDefinition(link.getStereotype()));
+			final LineBreakStrategy styleWidth = arrowStyle.wrapWidth();
+			final LineBreakStrategy wrapWidth = styleWidth.getMaxWidth() > 0
+					? styleWidth
+					: skinParam.maxMessageSize();
 			final TextBlock block;
 			if (hasSeveralGuideLines)
 				block = StringWithArrow.addSeveralMagicArrows(link.getLabel(), this, font, alignment, skinParam);
 			else
-				block = link.getLabel().create0(font, alignment, skinParam, skinParam.maxMessageSize(),
+				block = link.getLabel().create0(font, alignment, skinParam, wrapWidth,
 						CreoleMode.SIMPLE_LINE, null, null);
 
 			labelOnly = addVisibilityModifier(block, link, skinParam);
@@ -316,8 +329,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		if (link.getQuantifier1() == null)
 			startTailText = null;
 		else
-			startTailText = Display.getWithNewlines(skinParam.getPragma(), link.getQuantifier1()).create(cardinalityFont,
-					HorizontalAlignment.CENTER, skinParam);
+			startTailText = Display.getWithNewlines(skinParam.getPragma(), link.getQuantifier1())
+					.create(cardinalityFont, HorizontalAlignment.CENTER, skinParam);
 
 		if (link.getQuantifier2() == null)
 			endHeadText = null;
@@ -325,11 +338,49 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			endHeadText = Display.getWithNewlines(skinParam.getPragma(), link.getQuantifier2()).create(cardinalityFont,
 					HorizontalAlignment.CENTER, skinParam);
 
+		if (link.getRole1() == null)
+			startTailRoleText = null;
+		else
+			startTailRoleText = RoleLabels.create(link.getRole1(), skinParam.getPragma(), cardinalityFont, skinParam);
+
+		if (link.getRole2() == null)
+			endHeadRoleText = null;
+		else
+			endHeadRoleText = RoleLabels.create(link.getRole2(), skinParam.getPragma(), cardinalityFont, skinParam);
+
 		if (link.getType().getMiddleDecor() == LinkMiddleDecor.NONE)
 			this.labelShield = 0;
 		else
 			this.labelShield = 7;
 
+	}
+
+	/**
+	 * Graphviz only knows about the size of the quantifier (see appendLine()), but
+	 * the role is drawn on the other side of the line: whatever the Graphviz
+	 * version, make room for it around the entities, or it lands on the
+	 * neighbouring nodes and labels.
+	 * 
+	 * This must be called for all the links <b>before</b> the first SvekEdge is
+	 * built: building an edge computes (and caches) the shield of its two nodes.
+	 */
+	public static void reserveRoomForRoles(Link link, ISkinParam skinParam, StringBounder stringBounder,
+			FontConfiguration cardinalityFont) {
+		if (TeaVM.isTeaVM())
+			return;
+
+		if (link.getRole1() != null)
+			link.getEntity1().ensureMargins(marginsForRole(link.getRole1(), skinParam, stringBounder, cardinalityFont));
+
+		if (link.getRole2() != null)
+			link.getEntity2().ensureMargins(marginsForRole(link.getRole2(), skinParam, stringBounder, cardinalityFont));
+	}
+
+	private static Margins marginsForRole(String role, ISkinParam skinParam, StringBounder stringBounder,
+			FontConfiguration cardinalityFont) {
+		final TextBlock block = RoleLabels.create(role, skinParam.getPragma(), cardinalityFont, skinParam);
+		final double width = Math.ceil(block.calculateDimension(stringBounder).getWidth()) + 2;
+		return new Margins(width, width, 0, 0);
 	}
 
 	private Kal kal1;
@@ -348,8 +399,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		return TextBlockUtils.withMargin(block, marginLabel, marginLabel);
 	}
 
-	private HorizontalAlignment getMessageTextAlignment(UmlDiagramType umlDiagramType, ISkinParam skinParam) {
-		if (umlDiagramType == UmlDiagramType.STATE)
+	private HorizontalAlignment getMessageTextAlignment(DiagramType diagramType, ISkinParam skinParam) {
+		if (diagramType == DiagramType.STATE)
 			return skinParam.getHorizontalAlignment(AlignmentParam.stateMessageAlignment, null, false, null);
 
 		return skinParam.getDefaultTextAlignment(HorizontalAlignment.CENTER);
@@ -363,7 +414,6 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		return link.getLinkArrow();
 	}
 
-	// ::comment when __CORE__
 	public void appendLine(GraphvizVersion graphvizVersion, StringBuilder sb, DotMode dotMode, DotSplines dotSplines) {
 		// Log.println("inverted=" + isInverted());
 		// if (isInverted()) {
@@ -384,11 +434,15 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		sb.append(decoration);
 
 		int length = link.getLength();
-		if (graphvizVersion.ignoreHorizontalLinks() && length == 1)
-			length = 2;
+
+		if (!TeaVM.isTeaVM()) {
+			if (graphvizVersion.ignoreHorizontalLinks() && length == 1)
+				length = 2;
+		}
 
 		if (useRankSame) {
-			if (pragma.isDefine(PragmaKey.HORIZONTAL_LINE_BETWEEN_DIFFERENT_PACKAGE_ALLOWED) || link.isInvis() || length != 1) {
+			if (pragma.isDefine(PragmaKey.HORIZONTAL_LINE_BETWEEN_DIFFERENT_PACKAGE_ALLOWED) || link.isInvis()
+					|| length != 1) {
 				// if (graphvizVersion.isJs() == false) {
 				sb.append("minlen=" + (length - 1));
 				sb.append(",");
@@ -398,10 +452,12 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			sb.append("minlen=" + (length - 1));
 			sb.append(",");
 		}
-		sb.append("color=\"" + StringUtils.sharp000000(lineColor) + "\"");
+		sb.append("color=\"" + XColor.toHexRGBColor(lineColor) + "\"");
 		if (hasNoteLabelText() || link.getLinkConstraint() != null) {
 			sb.append(",");
-			if (graphvizVersion.useXLabelInsteadOfLabel() || dotMode == DotMode.NO_LEFT_RIGHT_AND_XLABEL
+			if (TeaVM.isTeaVM()) {
+				sb.append("label=<");
+			} else if (graphvizVersion.useXLabelInsteadOfLabel() || dotMode == DotMode.NO_LEFT_RIGHT_AND_XLABEL
 					|| dotSplines == DotSplines.ORTHO) {
 				sb.append("xlabel=<");
 			} else {
@@ -419,11 +475,21 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			sb.append("taillabel=<");
 			appendTable(sb, startTailText.calculateDimension(stringBounder), startTailColor, graphvizVersion);
 			sb.append(">");
+		} else if (startTailRoleText != null) {
+			sb.append(",");
+			sb.append("taillabel=<");
+			appendTable(sb, startTailRoleText.calculateDimension(stringBounder), startTailColor, graphvizVersion);
+			sb.append(">");
 		}
 		if (endHeadText != null) {
 			sb.append(",");
 			sb.append("headlabel=<");
 			appendTable(sb, endHeadText.calculateDimension(stringBounder), endHeadColor, graphvizVersion);
+			sb.append(">");
+		} else if (endHeadRoleText != null) {
+			sb.append(",");
+			sb.append("headlabel=<");
+			appendTable(sb, endHeadRoleText.calculateDimension(stringBounder), endHeadColor, graphvizVersion);
 			sb.append(">");
 		}
 
@@ -441,7 +507,6 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		sb.append("];");
 		SvekUtils.println(sb);
 	}
-	// ::done
 
 	private XDimension2D eventuallyDivideByTwo(XDimension2D dim) {
 		if (divideLabelWidthByTwo)
@@ -454,7 +519,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		// if (graphvizVersion == GraphvizVersion.V2_34_0) {
 		// return null;
 		// }
-		if (pragma.isDefine(PragmaKey.HORIZONTAL_LINE_BETWEEN_DIFFERENT_PACKAGE_ALLOWED) == false && link.getLength() == 1
+		if (pragma.isDefine(PragmaKey.HORIZONTAL_LINE_BETWEEN_DIFFERENT_PACKAGE_ALLOWED) == false
+				&& link.getLength() == 1
 		/* && graphvizVersion.isJs() == false */) {
 			return "{rank=same; " + getStartUidPrefix() + "; " + getEndUidPrefix() + "}";
 		}
@@ -469,7 +535,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	public static void appendTable(StringBuilder sb, int w, int h, int col) {
 		sb.append("<TABLE ");
-		sb.append("BGCOLOR=\"" + StringUtils.sharp000000(col) + "\" ");
+		sb.append("BGCOLOR=\"" + XColor.toHexRGBColor(col) + "\" ");
 		sb.append("FIXEDSIZE=\"TRUE\" WIDTH=\"" + w + "\" HEIGHT=\"" + h + "\">");
 		sb.append("<TR");
 		sb.append(">");
@@ -636,7 +702,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 		final LinkType linkType = link.getType();
 
-		if (getLinkStrategy() == LinkStrategy.SIMPLIER) {
+		if (getLinkStrategy() == LinkStrategy.SIMPLEST) {
 			this.extremity1 = getExtremitySimplier(dotPath.getStartPoint(),
 					linkType.getDecor2().getExtremityFactoryComplete(backgroundColor),
 					dotPath.getStartAngle() + Math.PI, ltail, svekNode1, true, kal1);
@@ -707,19 +773,21 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			}
 		}
 
-		if (this.startTailText != null) {
+		if (this.startTailText != null || this.startTailRoleText != null) {
 			final XPoint2D pos = getXY(fullSvg, this.startTailColor);
 			if (pos != null) {
 //				corner1.manage(pos);
-				this.startTailLabelXY = TextBlockUtils.asPositionable(startTailText, stringBounder, pos);
+				final TextBlock forSize = this.startTailText != null ? startTailText : startTailRoleText;
+				this.startTailLabelXY = TextBlockUtils.asPositionable(forSize, stringBounder, pos);
 			}
 		}
 
-		if (this.endHeadText != null) {
+		if (this.endHeadText != null || this.endHeadRoleText != null) {
 			final XPoint2D pos = getXY(fullSvg, this.endHeadColor);
 			if (pos != null) {
 //				corner1.manage(pos);
-				this.endHeadLabelXY = TextBlockUtils.asPositionable(endHeadText, stringBounder, pos);
+				final TextBlock forSize = this.endHeadText != null ? endHeadText : endHeadRoleText;
+				this.endHeadLabelXY = TextBlockUtils.asPositionable(forSize, stringBounder, pos);
 //				corner1.manage(pos.getX() - 15, pos.getY());
 			}
 		}
@@ -772,11 +840,10 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	}
 
-	private StyleSignature getDefaultStyleDefinition(Stereotype stereotype) {
-		final StyleSignature result = StyleSignatureBasic.of(SName.root, SName.element, diagramType().getStyleName(),
-				SName.arrow);
+	private StyleQuery getDefaultStyleDefinition(Stereotype stereotype) {
+		final StyleQuery result = StyleQueries.ARROW.add(diagramType().getStyleName());
 
-		return result.withTOBECHANGED(stereotype);
+		return result.withStereotype(stereotype);
 	}
 
 	private Set<String> ids;
@@ -808,6 +875,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		group.put(UGroupType.DATA_ENTITY_2, link.getEntity2().getName());
 		group.put(UGroupType.DATA_ENTITY_1_UID, link.getEntity1().getUid());
 		group.put(UGroupType.DATA_ENTITY_2_UID, link.getEntity2().getUid());
+		final String linkTypeName = link.getType().getLinkTypeName();
+		if (linkTypeName != null)
+			group.put(UGroupType.DATA_LINK_TYPE, linkTypeName);
 		ug.startGroup(group);
 		double x = 0;
 		double y = 0;
@@ -827,7 +897,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		y += dy;
 
 		final StyleBuilder currentStyleBuilder = this.getCurrentStyleBuilder();
-		final Style styleLine = getDefaultStyleDefinition(this.getStereotype()).getMergedStyle(currentStyleBuilder);
+		final Style styleLine = currentStyleBuilder.getMergedStyle(getDefaultStyleDefinition(this.getStereotype()));
 		final UStroke suggestedStroke = styleLine.getStroke();
 		final Rainbow rainbow = Rainbow.build(styleLine, this.skinParam.getIHtmlColorSet());
 
@@ -861,6 +931,18 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		ug = ug.apply(stroke);
 
 		DotPath todraw = dotPath.copy();
+
+		// Apply corner rounding if pragma is set
+		final String radiusStr = pragma.getValue(PragmaKey.EDGE_CORNER_RADIUS);
+		if (radiusStr != null) {
+			try {
+				final double radius = Double.parseDouble(radiusStr);
+				if (radius > 0)
+					todraw.muteToRoundOrthogonalPaths(radius);
+			} catch (NumberFormatException e) {
+				// Ignore invalid radius values
+			}
+		}
 
 		UTranslate magneticForce1 = UTranslate.none();
 		if (getSvekNode1() != null) {
@@ -896,13 +978,31 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			this.labelText.drawU(ug.apply(new UTranslate(x + this.labelXY.getPosition().getX() + labelShield,
 					y + this.labelXY.getPosition().getY() + labelShield)));
 
-		if (this.startTailText != null && this.startTailLabelXY != null && this.startTailLabelXY.getPosition() != null)
-			this.startTailText.drawU(ug.apply(new UTranslate(x + this.startTailLabelXY.getPosition().getX(),
-					y + this.startTailLabelXY.getPosition().getY())));
+		if (this.startTailLabelXY != null && this.startTailLabelXY.getPosition() != null) {
+			final double labelX = x + this.startTailLabelXY.getPosition().getX();
+			final double labelY = y + this.startTailLabelXY.getPosition().getY();
+			if (this.startTailText != null) {
+				this.startTailText.drawU(ug.apply(new UTranslate(labelX, labelY)));
+				if (this.startTailRoleText != null)
+					drawRoleLabel(ug, this.startTailRoleText, this.startTailText, this.startTailLabelXY.getPosition(),
+							dotPath.getStartPoint(), dotPath.getEndPoint(), dotPath.sample(), x, y);
+			} else if (this.startTailRoleText != null) {
+				this.startTailRoleText.drawU(ug.apply(new UTranslate(labelX, labelY)));
+			}
+		}
 
-		if (this.endHeadText != null && this.endHeadLabelXY != null && this.endHeadLabelXY.getPosition() != null)
-			this.endHeadText.drawU(ug.apply(new UTranslate(x + this.endHeadLabelXY.getPosition().getX(),
-					y + this.endHeadLabelXY.getPosition().getY())));
+		if (this.endHeadLabelXY != null && this.endHeadLabelXY.getPosition() != null) {
+			final double labelX = x + this.endHeadLabelXY.getPosition().getX();
+			final double labelY = y + this.endHeadLabelXY.getPosition().getY();
+			if (this.endHeadText != null) {
+				this.endHeadText.drawU(ug.apply(new UTranslate(labelX, labelY)));
+				if (this.endHeadRoleText != null)
+					drawRoleLabel(ug, this.endHeadRoleText, this.endHeadText, this.endHeadLabelXY.getPosition(),
+							dotPath.getEndPoint(), dotPath.getStartPoint(), dotPath.sample(), x, y);
+			} else if (this.endHeadRoleText != null) {
+				this.endHeadRoleText.drawU(ug.apply(new UTranslate(labelX, labelY)));
+			}
+		}
 
 		if (linkType.getMiddleDecor() != LinkMiddleDecor.NONE) {
 			final PointAndAngle middle = dotPath.getMiddle();
@@ -944,6 +1044,31 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			kal2.drawU(ug);
 
 		ug.closeGroup();
+	}
+
+	/**
+	 * Draws a role label on the opposite side of the line from the quantifier. For
+	 * vertical lines, the role is placed on the other side of the line's X. For
+	 * horizontal lines, the role is placed on the other side of the line's Y.
+	 */
+	private void drawRoleLabel(UGraphic ug, TextBlock role, TextBlock quantifier, XPoint2D quantifierPos,
+			XPoint2D thisEndpoint, XPoint2D otherEndpoint, Set<XPoint2D> pathSamples, double x, double y) {
+		final XPoint2D pos = RoleLabels.getPosition(quantifier.calculateDimension(stringBounder),
+				role.calculateDimension(stringBounder), quantifierPos, thisEndpoint, otherEndpoint, pathSamples,
+				getNodeAreas());
+		role.drawU(ug.apply(new UTranslate(x + pos.getX(), y + pos.getY())));
+	}
+
+	/**
+	 * The areas of the two nodes of the link, in the coordinates of the path.
+	 */
+	private List<RectangleArea> getNodeAreas() {
+		final List<RectangleArea> result = new ArrayList<>();
+		for (SvekNode node : new SvekNode[] { getSvekNode1(), getSvekNode2() })
+			if (node != null)
+				result.add(node.getRectangleArea().move(-dx, -dy));
+
+		return result;
 	}
 
 	public void computeKal() {
@@ -1085,10 +1210,12 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 	public void manageCollision(Collection<SvekNode> allNodes) {
 		for (SvekNode sh : allNodes) {
 			final Positionable cl = PositionableUtils.addMargin(sh, 8, 8);
-			if (startTailText != null && startTailLabelXY != null && PositionableUtils.intersect(cl, startTailLabelXY))
+			if ((startTailText != null || startTailRoleText != null) && startTailLabelXY != null
+					&& PositionableUtils.intersect(cl, startTailLabelXY))
 				startTailLabelXY = PositionableUtils.moveAwayFrom(cl, startTailLabelXY);
 
-			if (endHeadText != null && endHeadLabelXY != null && PositionableUtils.intersect(cl, endHeadLabelXY))
+			if ((endHeadText != null || endHeadRoleText != null) && endHeadLabelXY != null
+					&& PositionableUtils.intersect(cl, endHeadLabelXY))
 				endHeadLabelXY = PositionableUtils.moveAwayFrom(cl, endHeadLabelXY);
 
 		}
@@ -1192,6 +1319,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 	public XPoint2D getStartContactPoint() {
 		if (dotPath == null)
 			return null;
+		
 		final XPoint2D start = dotPath.getStartPoint();
 		if (start == null)
 			return null;
@@ -1201,6 +1329,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 	}
 
 	public XPoint2D getEndContactPoint() {
+		if (dotPath == null)
+			return null;
+
 		final XPoint2D end = dotPath.getEndPoint();
 		if (end == null)
 			return null;
@@ -1225,6 +1356,11 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 	public void moveEndPoint(double dx, double dy) {
 		dotPath.moveEndPoint(dx, dy);
 		dotPathInit.moveEndPoint(dx, dy);
+	}
+
+	public void replaceDotPath(net.sourceforge.plantuml.klimt.shape.DotPath newPath) {
+		this.dotPath = newPath;
+		this.dotPathInit = newPath.copy();
 	}
 
 }

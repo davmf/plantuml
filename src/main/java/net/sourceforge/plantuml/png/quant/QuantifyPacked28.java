@@ -37,6 +37,18 @@ package net.sourceforge.plantuml.png.quant;
 
 import java.awt.image.BufferedImage;
 
+import net.sourceforge.plantuml.png.PngIO;
+import net.sourceforge.plantuml.utils.Log;
+
+/**
+ * Replaces the least significant bit of each channel by its most significant one
+ * (see {@link QuantUtils#compressPackedARGB}), for a smaller PNG.
+ *
+ * <p>
+ * Ported to C for the TeaVM C build (src/teavm-c/native/plantuml_png.c): keep
+ * both in step.
+ * </p>
+ */
 public final class QuantifyPacked28 {
 
 	public static BufferedImage packMeIfPossible(BufferedImage src) {
@@ -48,19 +60,62 @@ public final class QuantifyPacked28 {
 
 		final int w = src.getWidth();
 		final int h = src.getHeight();
+		final int pixelCount = w * h;
 
-		final BufferedImage dst = new BufferedImage(w, h, type);
+		Log.info(() -> "QuantifyPacked28: starting, image " + w + "x" + h + " (" + pixelCount + " pixels), type="
+				+ type + ", memory: " + PngIO.getUsedMemoryMB() + " MB");
 
-		final int[] pixels = src.getRGB(0, 0, w, h, null, 0, w);
-		final int[] out = new int[pixels.length];
+		try {
+			// Step 1: Create destination image
+			final long startCreate = System.currentTimeMillis();
+			final long memBeforeCreate = PngIO.getUsedMemoryMB();
+			final BufferedImage dst = new BufferedImage(w, h, type);
+			final long createDuration = System.currentTimeMillis() - startCreate;
+			final long memAfterCreate = PngIO.getUsedMemoryMB();
+			Log.info(() -> "QuantifyPacked28: destination image created in " + createDuration + " ms, memory: "
+					+ memBeforeCreate + " -> " + memAfterCreate + " MB (delta: " + (memAfterCreate - memBeforeCreate)
+					+ " MB)");
 
-		for (int i = 0; i < pixels.length; i++) {
-			final int argb = pixels[i];
-			out[i] = QuantUtils.compressPackedARGB(argb);
+			// Step 2: Extract pixels
+			final long startExtract = System.currentTimeMillis();
+			final long memBeforeExtract = PngIO.getUsedMemoryMB();
+			final int[] pixels = src.getRGB(0, 0, w, h, null, 0, w);
+			final long extractDuration = System.currentTimeMillis() - startExtract;
+			final long memAfterExtract = PngIO.getUsedMemoryMB();
+			Log.info(() -> "QuantifyPacked28: pixel extraction in " + extractDuration + " ms, memory: "
+					+ memBeforeExtract + " -> " + memAfterExtract + " MB (delta: "
+					+ (memAfterExtract - memBeforeExtract) + " MB)");
+
+			// Step 3: Compress pixels in place
+			final long startCompress = System.currentTimeMillis();
+			final long memBeforeCompress = PngIO.getUsedMemoryMB();
+			for (int i = 0; i < pixels.length; i++)
+				pixels[i] = QuantUtils.compressPackedARGB(pixels[i]);
+			final long compressDuration = System.currentTimeMillis() - startCompress;
+			final long memAfterCompress = PngIO.getUsedMemoryMB();
+			Log.info(() -> "QuantifyPacked28: pixel compression in " + compressDuration + " ms, memory: "
+					+ memBeforeCompress + " -> " + memAfterCompress + " MB (delta: "
+					+ (memAfterCompress - memBeforeCompress) + " MB)");
+
+			// Step 4: Write to destination
+			final long startWrite = System.currentTimeMillis();
+			final long memBeforeWrite = PngIO.getUsedMemoryMB();
+			dst.setRGB(0, 0, w, h, pixels, 0, w);
+			final long writeDuration = System.currentTimeMillis() - startWrite;
+			final long memAfterWrite = PngIO.getUsedMemoryMB();
+			Log.info(() -> "QuantifyPacked28: pixel write in " + writeDuration + " ms, memory: " + memBeforeWrite
+					+ " -> " + memAfterWrite + " MB (delta: " + (memAfterWrite - memBeforeWrite) + " MB)");
+
+			return dst;
+		} catch (Throwable t) {
+			// Swallowing all throwables is intentional here: any unexpected failure
+			// during pixel extraction or packing (including OutOfMemoryError or JVM-level
+			// errors) prevents safe recovery. Returning null signals that the packed
+			// representation could not be produced.
+			Log.info(() -> "QuantifyPacked28: exception caught: " + t.getClass().getSimpleName() + " - "
+					+ t.getMessage());
+			return null;
 		}
-
-		dst.setRGB(0, 0, w, h, out, 0, w);
-		return dst;
 	}
 
 }

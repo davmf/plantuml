@@ -40,47 +40,53 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+// ::comment when JAVA8
+import org.teavm.jso.JSBody;
+// ::done
+
 import net.sourceforge.plantuml.emoji.data.Dummy;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.svg.parser.ISvgSpriteParser;
+import net.sourceforge.plantuml.svg.parser.SvgSpriteParserFactory;
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.teavm.js.browser.ScriptLoaderJs;
+import net.sourceforge.plantuml.utils.MyCollections;
+
 
 // Emojji from https://twemoji.twitter.com/
 // Shorcut from https://api.github.com/emojis
 
-// ::uncomment when __CORE__
-//import static com.plantuml.api.cheerpj.StaticMemory.cheerpjPath;
-//import java.io.FileInputStream;
-// ::done
-
 public class Emoji {
-	// ::remove folder when __HAXE__
+
 	private final static Map<String, Emoji> ALL = new HashMap<>();
 
 	static {
-		final InputStream is = Dummy.class.getResourceAsStream("emoji.txt");
-		if (is != null)
-			try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
-				String s = null;
-				while ((s = br.readLine()) != null)
-					new Emoji(s);
+		if (!TeaVM.isTeaVM()) {
+			final InputStream is = Dummy.class.getResourceAsStream("emoji.txt");
+			if (is != null)
+				try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+					String s = null;
+					while ((s = br.readLine()) != null)
+						new Emoji(s);
 
-			} catch (IOException e) {
-				Logme.error(e);
-			}
+				} catch (IOException e) {
+					Logme.error(e);
+				}
+		}
 	}
 
 	public static Map<String, Emoji> getAll() {
-		return Collections.unmodifiableMap(new TreeMap<>(ALL));
+		return MyCollections.unmodifiableMap(new TreeMap<>(ALL));
 	}
 
-	private SvgNanoParser nano;
+	private ISvgSpriteParser parser;
 
 	private final String unicode;
 	private final String shortcut;
@@ -91,45 +97,98 @@ public class Emoji {
 			this.shortcut = null;
 		} else {
 			this.shortcut = unicode.substring(x + 1);
-			ALL.put(this.shortcut, this);
+			if (!TeaVM.isTeaVM()) {
+				ALL.put(this.shortcut, this);
+			}
 			unicode = unicode.substring(0, x);
 		}
 		this.unicode = unicode;
-		ALL.put(unicode, this);
+		if (!TeaVM.isTeaVM()) {
+			ALL.put(unicode, this);
+		}
 	}
-
-//	private static String patternOld() {
-//		final StringBuilder sb = new StringBuilder("\\<(#\\w+)?:(");
-//		for (String s : ALL.keySet()) {
-//			if (sb.toString().endsWith("(") == false)
-//				sb.append("|");
-//			sb.append(s);
-//		}
-//		sb.append("):\\>");
-//		return sb.toString();
-//	}
 
 	public static Emoji retrieve(String name) {
-		return ALL.get(name.toLowerCase());
+		// ::comment when JAVA8
+		if (TeaVM.isTeaVM() && TeaVM.isC() == false)
+			return retrieveFromJs(name.toLowerCase());
+		else if (TeaVM.isC())
+			return null;
+		else
+			// ::done
+			return ALL.get(name.toLowerCase());
 	}
 
+	// ::comment when JAVA8
+	private static Emoji retrieveFromJs(String name) {
+		loadEmojiJsIfNeeded();
+		String unicode = jsGetShortcut(name);
+		if (unicode == null)
+			unicode = name;
+		final String svgData = jsGetEmojiSvg(unicode);
+		if (svgData == null)
+			return null;
+		return new Emoji(unicode);
+	}
+	// ::done
+
+	private static volatile boolean emojiJsLoaded = false;
+
+	private static void loadEmojiJsIfNeeded() {
+		// ::comment when JAVA8
+		if (emojiJsLoaded)
+			return;
+		// Same as themes (ThemeUtils.loadJsTheme): data that is already registered, by a
+		// bundler that inlined emoji.js or by the host (inside a Web Worker, say), is
+		// used as is, and emoji.js is only fetched when nothing is there.
+		// Never waits: when emoji.js is not loaded yet, this rendering attempt goes on
+		// without emoji and is rendered again once it is (PendingResources).
+		if (jsHasEmoji() == false && ScriptLoaderJs.require("emoji.js") == false)
+			return;
+		emojiJsLoaded = true;
+		// ::done
+	}
+
+	// ::comment when JAVA8
+	// The data is read from the global object rather than from window, so that it
+	// can be registered where there is no window (a Web Worker). Same lookup as
+	// ScriptLoaderJs.getTheme().
+	private static final String GLOBAL = "var g = (typeof globalThis !== 'undefined') ? globalThis"
+			+ " : ((typeof self !== 'undefined') ? self : this);";
+
+	@JSBody(script = GLOBAL + "return !!(g && g.PLANTUML_EMOJI);")
+	private static native boolean jsHasEmoji();
+
+	@JSBody(params = "name", script = GLOBAL + "var s = g && g.PLANTUML_EMOJI_SHORTCUT;"
+			+ "return (s && s[name]) ? s[name] : null;")
+	private static native String jsGetShortcut(String name);
+
+	@JSBody(params = "unicode", script = GLOBAL + "var e = g && g.PLANTUML_EMOJI;"
+			+ "return (e && e[unicode]) ? e[unicode] : null;")
+	private static native String jsGetEmojiSvg(String unicode);
+	// ::done
+
 	private synchronized void loadIfNeed() throws IOException {
-		if (nano != null)
+		if (parser != null)
 			return;
 
 		final List<String> data = new ArrayList<String>();
-		// ::uncomment when __CORE__
-//		final String fullpath = cheerpjPath + "emoji/" + unicode + ".svg";
-//		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fullpath)))) {
-		// ::done
-		// ::comment when __CORE__
-		try (BufferedReader br = new BufferedReader(
-				new InputStreamReader(Dummy.class.getResourceAsStream(unicode + ".svg")))) {
+		if (TeaVM.isC()) {
+			// No emoji data with TeaVM C
+		} else if (TeaVM.isTeaVM()) {
+			// ::comment when JAVA8
+			final String svgData = jsGetEmojiSvg(unicode);
+			if (svgData != null)
+				data.add(svgData);
 			// ::done
-			final String singleLine = br.readLine();
-			data.add(singleLine);
+		} else {
+			try (BufferedReader br = new BufferedReader(
+					new InputStreamReader(Dummy.class.getResourceAsStream(unicode + ".svg")))) {
+				final String singleLine = br.readLine();
+				data.add(singleLine);
+			}
 		}
-		this.nano = new SvgNanoParser(data);
+		this.parser = SvgSpriteParserFactory.create(data, null, null);
 	}
 
 	public void drawU(UGraphic ug, double scale, HColor colorForMonochrome) {
@@ -138,11 +197,86 @@ public class Emoji {
 		} catch (IOException e) {
 			Logme.error(e);
 		}
-		nano.drawU(ug, scale, colorForMonochrome, colorForMonochrome);
+		parser.drawU(ug, scale, colorForMonochrome, colorForMonochrome);
 	}
 
 	public String getShortcut() {
 		return shortcut;
 	}
+
+//	public static void main(String[] args) throws IOException {
+//		final String outputFile = (args.length > 0) ? args[0]
+//				: "src/main/teavm/generated/emoji.js";
+//
+//		try (PrintWriter pw = new PrintWriter(new FileWriter(outputFile))) {
+//			pw.println("// emoji.js - Generated by Emoji.main()");
+//			pw.println("// Do not edit manually");
+//			pw.println("(function () {");
+//			pw.println("window.PLANTUML_EMOJI = window.PLANTUML_EMOJI || {};");
+//			pw.println("window.PLANTUML_EMOJI_SHORTCUT = window.PLANTUML_EMOJI_SHORTCUT || {};");
+//			pw.println();
+//
+//			final InputStream is = Dummy.class.getResourceAsStream("emoji.txt");
+//			if (is == null)
+//				throw new IOException("Cannot find emoji.txt resource");
+//
+//			int count = 0;
+//			try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+//				String line;
+//				while ((line = br.readLine()) != null) {
+//					line = line.trim();
+//					if (line.isEmpty())
+//						continue;
+//
+//					final String unicode;
+//					final String shortcut;
+//					final int semi = line.indexOf(';');
+//					if (semi == -1) {
+//						unicode = line;
+//						shortcut = null;
+//					} else {
+//						unicode = line.substring(0, semi);
+//						shortcut = line.substring(semi + 1);
+//					}
+//
+//					final String svgContent = readSvgResource(unicode);
+//					if (svgContent == null) {
+//						System.err.println("WARNING: No SVG found for " + unicode);
+//						continue;
+//					}
+//
+//					pw.println("window.PLANTUML_EMOJI[\"" + unicode + "\"]=\""
+//							+ escapeForJs(svgContent) + "\";");
+//
+//					if (shortcut != null)
+//						pw.println("window.PLANTUML_EMOJI_SHORTCUT[\"" + shortcut + "\"]=\""
+//								+ unicode + "\";");
+//
+//					count++;
+//				}
+//			}
+//
+//			pw.println();
+//			pw.println("})();");
+//			System.out.println("Generated " + outputFile + " with " + count + " emojis.");
+//		}
+//	}
+//
+//	private static String readSvgResource(String unicode) {
+//		final InputStream svgStream = Dummy.class.getResourceAsStream(unicode + ".svg");
+//		if (svgStream == null)
+//			return null;
+//
+//		try (BufferedReader br = new BufferedReader(new InputStreamReader(svgStream))) {
+//			return br.readLine();
+//		} catch (IOException e) {
+//			System.err.println("ERROR reading " + unicode + ".svg: " + e.getMessage());
+//			return null;
+//		}
+//	}
+//
+//	private static String escapeForJs(String s) {
+//		return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
+//	}
 
 }

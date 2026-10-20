@@ -56,6 +56,7 @@ import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 import net.sourceforge.plantuml.text.Guillemet;
@@ -73,46 +74,36 @@ public class EntityImageLollipopInterfaceEye2 extends AbstractEntityImage {
 		super(entity);
 		final Stereotype stereotype = entity.getStereotype();
 
-//		final USymbol symbol = Objects.requireNonNull(
-//				entity.getUSymbol() == null ? skinParam.componentStyle().toUSymbol() : entity.getUSymbol());
-
-		// final FontParam fontParam = symbol.getFontParam();
-		final FontParam fontParam = FontParam.COMPONENT;
-
 		this.desc = BodyFactory.create2(getSkinParam().getDefaultTextAlignment(HorizontalAlignment.CENTER),
-				entity.getDisplay(), getSkinParam(), stereotype, entity, getStyle(fontParam));
+				entity.getDisplay(), getSkinParam(), stereotype, entity, getStyle());
 
 		this.url = entity.getUrl99();
 
 		HColor backcolor = getEntity().getColors().getColor(ColorType.BACK);
-//		if (backcolor == null)
-//			backcolor = SkinParamUtils.getColor(getSkinParam(), getStereo(), symbol.getColorParamBack());
 
 		final HColor forecolor = HColors.BLACK;
-		// final HColor forecolor = SkinParamUtils.getColor(getSkinParam(), getStereo(),
-		// symbol.getColorParamBorder());
 		this.ctx = new Fashion(backcolor, forecolor).withStroke(UStroke.withThickness(1.5))
 				.withShadow(getSkinParam().shadowing(getEntity().getStereotype()) ? 3 : 0);
 
 		if (stereotype != null && stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR) != null
-				&& portionShower.showPortion(EntityPortion.STEREOTYPE, entity)) {
-//			final FontParam fontParam = symbol.getFontParamStereotype();
-//			stereo = Display.getWithNewlines(stereotype.getLabel(getSkinParam().guillemet())).create(
-//					FontConfiguration.create(getSkinParam(), fontParam, stereotype), HorizontalAlignment.CENTER,
-//					skinParam);
+				&& portionShower.showPortion(EntityPortion.STEREOTYPE, entity))
 			stereo = TextBlockUtils.empty(0, 0);
-		} else {
+		else
 			stereo = TextBlockUtils.empty(0, 0);
-		}
 
 	}
 
-	private Style getStyle(FontParam fontParam) {
-		return fontParam.getStyleDefinition(SName.componentDiagram)
-				.getMergedStyle(getSkinParam().getCurrentStyleBuilder());
+	@Override
+	public StyleQuery getStyleQuery() {
+		return FontParam.COMPONENT.getStyleDefinition(SName.componentDiagram);
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	private Style getStyle() {
+		return getSkinParam().getCurrentStyleBuilder().getMergedStyle(getStyleQuery());
+	}
+
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		return new XDimension2D(SIZE, SIZE);
 	}
 

@@ -35,17 +35,24 @@
  */
 package net.sourceforge.plantuml.timingdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
+import net.sourceforge.plantuml.regex.RegexOptional;
 import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.timingdiagram.TimingDiagram;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandScalePixel extends SingleLineCommand2<TimingDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("scale");
 
 	public CommandScalePixel() {
 		super(getRegexConcat());
@@ -56,6 +63,10 @@ public class CommandScalePixel extends SingleLineCommand2<TimingDiagram> {
 				new RegexLeaf("scale"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf(1, "TICK", "(\\d+)"), //
+				new RegexOptional(//
+					new RegexConcat( //
+								RegexLeaf.spaceZeroOrOne(), //
+								new RegexLeaf(1, "UNIT", "([smhdDyY])"))), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexLeaf("as"), //
 				RegexLeaf.spaceOneOrMore(), //
@@ -66,14 +77,79 @@ public class CommandScalePixel extends SingleLineCommand2<TimingDiagram> {
 	}
 
 	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String tick = arg.get("TICK", 0);
+		final String unit = arg.get("UNIT", 0);
+		final String pixel = arg.get("PIXEL", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Scaling ").append(tick);
+		// When omitted, the unit defaults to seconds (factor 1)
+		if (unit != null)
+			sb.append(" ").append(describeUnit(unit));
+		else
+			sb.append(" time unit(s)");
+		sb.append(" to ").append(pixel).append(" pixels");
+		// executeArg fails ("Bad value") when the tick or pixel value is not strictly positive
+		return sb.toString();
+	}
+
+	private static String describeUnit(String unit) {
+		switch (unit) {
+		case "s":
+			return "second(s)";
+		case "m":
+			return "minute(s)";
+		case "h":
+			return "hour(s)";
+		case "D":
+		case "d":
+			return "day(s)";
+		case "Y":
+		case "y":
+			return "year(s)";
+		default:
+			return "time unit(s)";
+		}
+	}
+
+	@Override
 	final protected CommandExecutionResult executeArg(TimingDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
-		final long tick = Long.parseLong(arg.get("TICK", 0));
+		final long tick = Long.parseLong(arg.get("TICK", 0)) * getUnitFactor(arg.get("UNIT", 0));
 		final long pixel = Long.parseLong(arg.get("PIXEL", 0));
 		if (tick <= 0 || pixel <= 0)
 			return CommandExecutionResult.error("Bad value");
 
 		diagram.scaleInPixels(tick, pixel);
 		return CommandExecutionResult.ok();
+	}
+
+	private long getUnitFactor(String unit) {
+		if (unit == null)
+			return 1;
+
+		switch (unit) {
+		case "s":
+			return 1;
+		case "m":
+			return 60;
+		case "h":
+			return 3600;
+		case "D":
+		case "d":
+			return 3600L * 24L;
+		case "Y":
+		case "y":
+			return 3600L * 8766L; // 24 * 365.25 = 8766;
+		default:
+			return 1;
+		}
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 }

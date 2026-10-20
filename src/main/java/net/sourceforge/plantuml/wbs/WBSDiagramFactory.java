@@ -43,8 +43,8 @@ import net.sourceforge.plantuml.command.CommonCommands;
 import net.sourceforge.plantuml.command.PSystemCommandFactory;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
-import net.sourceforge.plantuml.skin.UmlDiagramType;
 
 public class WBSDiagramFactory extends PSystemCommandFactory {
 
@@ -55,21 +55,19 @@ public class WBSDiagramFactory extends PSystemCommandFactory {
 	@Override
 	protected void initCommandsList(List<Command> cmds) {
 		CommonCommands.addCommonCommands1(cmds);
-		cmds.add(new CommandWBSItem(1));
-		cmds.add(new CommandWBSItem(0));
-		cmds.add(new CommandWBSItemMultiline());
+		cmds.add(new CommandWBSItemNew(1));
+		cmds.add(new CommandWBSItemNew(0));
+		cmds.add(new CommandWBSItemMultilineNew());
+		cmds.add(new CommandWBSItemOld(1));
+		cmds.add(new CommandWBSItemOld(0));
+		cmds.add(new CommandWBSItemMultilineOld());
 		cmds.add(new CommandWBSLink());
 	}
 
 	@Override
-	public WBSDiagram createEmptyDiagram(UmlSource source, Previous previous, PreprocessingArtifact preprocessing) {
+	public WBSDiagram createEmptyDiagram(PathSystem pathSystem, UmlSource source, Previous previous,
+			PreprocessingArtifact preprocessing) {
 		return new WBSDiagram(source, preprocessing);
 	}
-	
-	@Override
-	public UmlDiagramType getUmlDiagramType() {
-		return UmlDiagramType.WBS;
-	}
-
 
 }

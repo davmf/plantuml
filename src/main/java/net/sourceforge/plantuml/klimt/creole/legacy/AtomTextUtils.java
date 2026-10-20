@@ -46,7 +46,7 @@ import net.sourceforge.plantuml.klimt.creole.Parser;
 import net.sourceforge.plantuml.klimt.creole.atom.Atom;
 import net.sourceforge.plantuml.klimt.creole.atom.AtomHorizontalTexts;
 import net.sourceforge.plantuml.klimt.creole.atom.AtomImg;
-import net.sourceforge.plantuml.klimt.creole.atom.AtomOpenIcon;
+import net.sourceforge.plantuml.klimt.creole.atom.AtomOpenIconic;
 import net.sourceforge.plantuml.klimt.creole.atom.AtomSprite;
 import net.sourceforge.plantuml.klimt.creole.atom.AtomVerticalTexts;
 import net.sourceforge.plantuml.klimt.creole.command.Splitter;
@@ -56,7 +56,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.ImgValign;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.sprite.Sprite;
-import net.sourceforge.plantuml.openiconic.OpenIcon;
+import net.sourceforge.plantuml.openiconic.OpenIconic;
 import net.sourceforge.plantuml.style.ISkinSimple;
 import net.sourceforge.plantuml.url.Url;
 
@@ -111,10 +111,10 @@ public class AtomTextUtils {
 				throw new UnsupportedOperationException();
 
 			if (valOpenicon != null) {
-				final OpenIcon openIcon = OpenIcon.retrieve(valOpenicon);
+				final OpenIconic openIcon = OpenIconic.retrieve(valOpenicon);
 				if (openIcon != null) {
 					final double scale = Parser.getScale(m.group(3), 1);
-					result.add(new AtomOpenIcon(null, scale, openIcon, fontConfiguration, url));
+					result.add(new AtomOpenIconic(null, scale, openIcon, fontConfiguration, url));
 				}
 			} else if (valSprite != null) {
 				// Note: sprites are probably not working in URL
@@ -123,11 +123,11 @@ public class AtomTextUtils {
 					final double scale = Parser.getScale(m.group(6), 1);
 					final HColor fontColor = fontConfiguration.getColor();
 					final HColor forcedColor = null;
-					result.add(new AtomSprite(fontColor, forcedColor, scale, sprite, url));
+					result.add(new AtomSprite(fontColor, forcedColor, scale, sprite, url, null));
 				}
 			} else if (valImg != null) {
 				final double scale = Parser.getScale(m.group(8), 1);
-				result.add(AtomImg.create(valImg, ImgValign.TOP, 0, scale, url));
+				result.add(AtomImg.create(skinSimple, valImg, ImgValign.TOP, 0, scale, url));
 
 			}
 		}

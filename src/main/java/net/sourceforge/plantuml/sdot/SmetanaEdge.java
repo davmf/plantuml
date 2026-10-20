@@ -35,12 +35,18 @@
  */
 package net.sourceforge.plantuml.sdot;
 
+
 import h.ST_Agedge_s;
 import h.ST_Agedgeinfo_t;
 import h.ST_bezier;
 import h.ST_pointf;
 import h.ST_splines;
 import h.ST_textlabel_t;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkStrategy;
 import net.sourceforge.plantuml.cruise.XAbstractEdge;
@@ -55,6 +61,7 @@ import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.DotPath;
@@ -63,12 +70,13 @@ import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.skin.LineParam;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignature;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.Bibliotekon;
 import net.sourceforge.plantuml.svek.Cluster;
+import net.sourceforge.plantuml.svek.RoleLabels;
+import net.sourceforge.plantuml.svek.SvekNode;
 import net.sourceforge.plantuml.svek.extremity.Extremity;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
 import net.sourceforge.plantuml.url.Url;
@@ -81,15 +89,20 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 	private final TextBlock label;
 	private final TextBlock headLabel;
 	private final TextBlock tailLabel;
+	private final TextBlock tailRole;
+	private final TextBlock headRole;
 
 	public SmetanaEdge(Link link, ST_Agedge_s edge, YMirror ymirror, TextBlock label,
-			TextBlock tailLabel, TextBlock headLabel, Bibliotekon bibliotekon, ISkinParam skinParam) {
+			TextBlock tailLabel, TextBlock headLabel, TextBlock tailRole, TextBlock headRole,
+			Bibliotekon bibliotekon, ISkinParam skinParam) {
 		super(link, skinParam, bibliotekon);
 		this.edge = edge;
 		this.ymirror = ymirror;
 		this.label = label;
 		this.tailLabel = tailLabel;
 		this.headLabel = headLabel;
+		this.tailRole = tailRole;
+		this.headRole = headRole;
 	}
 
 	private LinkStrategy getLinkStrategy() {
@@ -109,6 +122,9 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 		group.put(UGroupType.DATA_ENTITY_2, link.getEntity2().getName());
 		group.put(UGroupType.DATA_ENTITY_1_UID, link.getEntity1().getUid());
 		group.put(UGroupType.DATA_ENTITY_2_UID, link.getEntity2().getUid());
+		final String linkTypeName = link.getType().getLinkTypeName();
+		if (linkTypeName != null)
+			group.put(UGroupType.DATA_LINK_TYPE, linkTypeName);
 		ug.startGroup(group);
 
 		DotPath dotPath = getDotPathInternal();
@@ -130,6 +146,29 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 			}
 
 			dotPath = dotPath.simulateCompound(rectangleArea2, rectangleArea1);
+
+			// simulateCompound only clips to the plain bounding rectangle. For a cluster
+			// drawn as a shaped symbol (e.g. a package rendered as a folder, see
+			// USymbolFolder) the visible border is NOT that rectangle: the body top edge
+			// sits htitle below the bounding box because of the title tab. Without the
+			// step below, an arrow pointing at such a cluster stops at the bounding box
+			// and floats above the drawn border (arrows too short towards packages).
+			// Mirror SvekEdge.drawU, which applies Cluster.getMagneticBorder()
+			// (delegating to USymbolFolder) for the very same reason on the dot pipeline.
+			// Moving the path endpoints here also relocates the arrowheads, since
+			// printExtremityAtStart/End read them straight from dotPath below.
+			if (rectangleArea1 != null) {
+				final Cluster cluster1 = bibliotekon.getCluster(link.getEntity1());
+				final UTranslate force = cluster1.getMagneticBorder().getForceAt(ug.getStringBounder(),
+						dotPath.getStartPoint());
+				dotPath.moveStartPoint(force);
+			}
+			if (rectangleArea2 != null) {
+				final Cluster cluster2 = bibliotekon.getCluster(link.getEntity2());
+				final UTranslate force = cluster2.getMagneticBorder().getForceAt(ug.getStringBounder(),
+						dotPath.getEndPoint());
+				dotPath.moveEndPoint(force);
+			}
 
 			final Style styleLine = getStyle();
 
@@ -168,8 +207,19 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 			if (url != null)
 				ug.startUrl(url);
 
-			printExtremityAtStart(dotPath, ug.apply(color));
-			printExtremityAtEnd(dotPath, ug.apply(color));
+			// Filled decorations (eg -->> ) must be painted with the line color, as
+			// SvekEdge.drawU does on the dot pipeline. The background stays none here,
+			// so hollow decorations are already covered by the ug built above.
+			UGraphic ugStart = ug.apply(color);
+			if (linkType.getDecor2().isFill())
+				ugStart = ugStart.apply(color.bg());
+
+			UGraphic ugEnd = ug.apply(color);
+			if (linkType.getDecor1().isFill())
+				ugEnd = ugEnd.apply(color.bg());
+
+			printExtremityAtStart(dotPath, ugStart);
+			printExtremityAtEnd(dotPath, ugEnd);
 			ug.apply(stroke).apply(color).draw(dotPath);
 
 			if (url != null)
@@ -185,15 +235,35 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 		if (getLabelRectangleTranslate("tail_label") != null)
 			tailLabel.drawU(ug.apply(getLabelRectangleTranslate("tail_label")));
 
+		if (dotPath != null) {
+			// Not "dotPath" mirrored again: it is already mirrored, and its ends have been
+			// moved to make room for the decorations.
+			DotPath pathForRoles = getDotPathInternal();
+			if (ymirror != null)
+				pathForRoles = ymirror.getMirrored(pathForRoles);
+
+			if (tailRole != null && getLabelRectangleTranslate("tail_label") != null) {
+				final UTranslate tailTr = getLabelRectangleTranslate("tail_label");
+				final XPoint2D tailLabelPos = new XPoint2D(tailTr.getDx(), tailTr.getDy());
+				drawRoleLabel(ug, tailRole, tailLabel, tailLabelPos,
+						pathForRoles.getStartPoint(), pathForRoles.getEndPoint(), pathForRoles.sample());
+			}
+			if (headRole != null && getLabelRectangleTranslate("head_label") != null) {
+				final UTranslate headTr = getLabelRectangleTranslate("head_label");
+				final XPoint2D headLabelPos = new XPoint2D(headTr.getDx(), headTr.getDy());
+				drawRoleLabel(ug, headRole, headLabel, headLabelPos,
+						pathForRoles.getEndPoint(), pathForRoles.getStartPoint(), pathForRoles.sample());
+			}
+		}
+
 		ug.closeGroup();
 		// printDebug(ug);
 	}
 
 	private Style getStyle() {
-		final StyleSignature result = StyleSignatureBasic
-				.of(SName.root, SName.element, diagramType().getStyleName(), SName.arrow)
-				.withTOBECHANGED(link.getStereotype());
-		return result.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final StyleQuery query = StyleQueries.ARROW.add(diagramType().getStyleName())
+				.withStereotype(link.getStereotype());
+		return skinParam.getCurrentStyleBuilder().getMergedStyle(query);
 	}
 
 	public XPoint2D getStartPoint() {
@@ -226,7 +296,7 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 		try {
 			final Extremity extremity2 = (Extremity) extremityFactory2.createUDrawable(p0, startAngle, null);
 			if (extremity2 != null) {
-				if (getLinkStrategy() == LinkStrategy.SIMPLIER) {
+				if (getLinkStrategy() == LinkStrategy.SIMPLEST) {
 					final double decorationLength = extremity2.getDecorationLength();
 					dotPath.moveStartPoint(new UTranslate(decorationLength, 0).rotate(startAngle - Math.PI));
 				}
@@ -251,7 +321,7 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 		try {
 			final Extremity extremity1 = (Extremity) extremityFactory1.createUDrawable(p0, endAngle, null);
 			if (extremity1 != null) {
-				if (getLinkStrategy() == LinkStrategy.SIMPLIER) {
+				if (getLinkStrategy() == LinkStrategy.SIMPLEST) {
 					final double decorationLength = extremity1.getDecorationLength();
 					dotPath.moveEndPoint(new UTranslate(decorationLength, 0).rotate(endAngle - Math.PI));
 				}
@@ -345,6 +415,28 @@ public class SmetanaEdge extends XAbstractEdge implements XEdge, UDrawable {
 		final ST_bezier beziers = (ST_bezier) splines.list.get__(0);
 		final ST_pointf pt = beziers.list.get__(i);
 		return new XPoint2D(pt.x, pt.y);
+	}
+
+	/**
+	 * The areas of the two nodes of the link, when they are already placed.
+	 */
+	private List<RectangleArea> getNodeAreas() {
+		final List<RectangleArea> result = new ArrayList<>();
+		for (Entity entity : new Entity[] { link.getEntity1(), link.getEntity2() }) {
+			final SvekNode node = bibliotekon.getNode(entity);
+			if (node != null)
+				result.add(node.getRectangleArea());
+		}
+		return result;
+	}
+
+	private void drawRoleLabel(UGraphic ug, TextBlock role, TextBlock quantifier,
+			XPoint2D quantifierPos, XPoint2D thisEndpoint, XPoint2D otherEndpoint, Set<XPoint2D> pathSamples) {
+		final StringBounder stringBounder = ug.getStringBounder();
+		final XPoint2D pos = RoleLabels.getPosition(quantifier.calculateDimension(stringBounder),
+				role.calculateDimension(stringBounder), quantifierPos, thisEndpoint, otherEndpoint, pathSamples,
+				getNodeAreas());
+		role.drawU(ug.apply(new UTranslate(pos.getX(), pos.getY())));
 	}
 
 	@Override

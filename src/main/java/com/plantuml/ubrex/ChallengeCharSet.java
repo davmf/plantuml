@@ -73,6 +73,8 @@ public class ChallengeCharSet implements Challenge {
 				result.addRange(ch, end);
 			} else if (ch == '〃') {
 				result.addChar('\"');
+			} else if (ch == '∙') {
+				result.addChar(' ');
 			} else {
 				result.addChar(ch);
 			}
@@ -92,13 +94,13 @@ public class ChallengeCharSet implements Challenge {
 	@Override
 	public ChallengeResult runChallenge(TextNavigator string, int position) {
 		if (string.length() == position)
-			return new ChallengeResult(NO_MATCH);
+			return ChallengeResult.NO_MATCH;
 
 		final char ch = string.charAt(position);
 		if ((charSet.contains(ch) || CharClassRaw.internalMatchesAny(charClasses, ch)) != reversed)
-			return new ChallengeResult(1);
+			return ChallengeResult.ONE;
 
-		return new ChallengeResult(NO_MATCH);
+		return ChallengeResult.NO_MATCH;
 	}
 
 }

@@ -37,7 +37,11 @@ package net.sourceforge.plantuml.style;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,15 +49,20 @@ import java.util.concurrent.ConcurrentMap;
 
 import net.sourceforge.plantuml.FileSystem;
 import net.sourceforge.plantuml.security.SFile;
-import net.sourceforge.plantuml.style.parser.StyleParser;
+import net.sourceforge.plantuml.style.parser.MergedStyleNode;
+import net.sourceforge.plantuml.style.parser.RawStyleParser;
+import net.sourceforge.plantuml.style.parser.RawStyleSheet;
 import net.sourceforge.plantuml.style.parser.StyleParsingException;
+import net.sourceforge.plantuml.style.value.Value;
+import net.sourceforge.plantuml.style.value.ValueImpl;
+import net.sourceforge.plantuml.teavm.EmbeddedResources;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.utils.BlocLines;
 import net.sourceforge.plantuml.utils.LineLocationImpl;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public final class StyleLoader {
-	// ::remove file when __HAXE__
-
 	private static final ConcurrentMap<String, StyleBuilder> cache = new ConcurrentHashMap<>();
 
 	private StyleLoader() {
@@ -82,6 +91,35 @@ public final class StyleLoader {
 		}
 	}
 
+	/**
+	 * Parses a fragment of .skin/{@code <style>} text into flat legacy {@link Style} objects,
+	 * assigning each property an increasing priority via {@code counter} -- the direct
+	 * replacement for {@code new net.sourceforge.plantuml.style.parser.StyleParser(counter).parse(lines)},
+	 * now going through the {@code parser2} tokenizer ({@link RawStyleParser}) instead of the
+	 * legacy hand-written one. {@code counter} is almost always the {@link StyleBuilder} the
+	 * result will be loaded or muted into, exactly as before: continuing its counter is what
+	 * guarantees an overlay's declarations always outrank whatever that builder already holds.
+	 *
+	 * <p>
+	 * Parsing itself (tokenizing, comma-list handling, {@code @media} detection, {@code
+	 * var(--name)} substitution) is {@link RawStyleParser}'s job; {@link MergedStyleNode} then
+	 * merges duplicate selectors and folds a dark declaration into its light counterpart -- into
+	 * a throwaway, one-shot tree here (this call's {@code counter} is external and not carried
+	 * across calls, so there is no tree identity worth keeping around afterwards) -- before
+	 * {@link LegacyStyleFlattener} turns it back into the flat shape every caller of this method
+	 * still expects.
+	 */
+	public static Collection<Style> parseStyleText(BlocLines lines, AutomaticCounter counter)
+			throws StyleParsingException {
+		if (lines.size() == 0)
+			return Collections.emptyList();
+
+		final RawStyleSheet raw = RawStyleParser.parse(lines);
+		final MergedStyleNode root = MergedStyleNode.newTopLevelContainer();
+		root.mergeAll(raw, counter);
+		return LegacyStyleFlattener.flatten(root);
+	}
+
 	private static StyleBuilder loadSkinSlow(String filename) throws IOException, StyleParsingException {
 		final StyleBuilder styleBuilder = new StyleBuilder();
 
@@ -91,52 +129,90 @@ public final class StyleLoader {
 			throw new NoStyleAvailableException();
 		}
 		final BlocLines lines2 = BlocLines.load(internalIs, new LineLocationImpl(filename, null));
-		for (Style newStyle : StyleParser.parse(lines2, styleBuilder))
-			styleBuilder.loadInternal(newStyle.getSignature(), newStyle);
+		final Collection<Style> styles = parseStyleText(lines2, styleBuilder);
+		// A file that parses without any error but that defines no style at all is not
+		// a style sheet: this happens with legacy skinparam files, where every line is
+		// silently ignored because the key is unknown. Accepting it here would give an
+		// empty StyleBuilder, and every later getStyle() would return null.
+		if (styles.isEmpty())
+			throw new StyleParsingException("No style found in " + filename);
+
+		for (Style newStyle : styles)
+			styleBuilder.loadInternal(newStyle.getQuery(), newStyle);
 
 		return styleBuilder;
 	}
 
 	public static InputStream getInputStreamForStyle(String filename) throws IOException {
-		// ::uncomment when __CORE__
-//		final String res = "/skin/" + filename;
-//		final InputStream is = StyleLoader.class.getResourceAsStream(res);
-//		return is;
-		// ::done
 
-		// ::comment when __CORE__
-		InputStream internalIs = null;
-		SFile localFile = new SFile(filename);
-		Log.info(() -> "Trying to load style " + filename);
-		try {
-			if (localFile.exists() == false)
-				localFile = FileSystem.getInstance().getFile(filename);
-		} catch (IOException e) {
-			Log.info(() -> "Cannot open file. " + e);
-		}
-
-		final SFile localFile2 = localFile;
-		if (localFile.exists()) {
-			Log.info(() -> "File found : " + localFile2.getPrintablePath());
-			internalIs = localFile.openFile();
+		if (TeaVM.isTeaVM()) {
+			return EmbeddedResources.openPlantumlSkin();
 		} else {
-			Log.info(() -> "File not found : " + localFile2.getPrintablePath());
-			final String res = "/skin/" + filename;
-			internalIs = StyleLoader.class.getResourceAsStream(res);
-			if (internalIs != null)
-				Log.info(() -> "... but " + filename + " found inside the .jar");
+			InputStream is = null;
 
+			SFile localFile = new SFile(filename);
+			Log.info(() -> "Trying to load style " + filename);
+			try {
+				if (localFile.exists() == false)
+					localFile = FileSystem.getInstance().getFile(filename);
+			} catch (IOException e) {
+				Log.info(() -> "Cannot open file. " + e);
+			}
+
+			final SFile localFile2 = localFile;
+			if (localFile.exists()) {
+				Log.info(() -> "File found : " + localFile2.getPrintablePath());
+				is = localFile.openFile();
+			} else {
+				Log.info(() -> "File not found : " + localFile2.getPrintablePath());
+				final String res = "/skin/" + filename;
+				is = StyleLoader.class.getResourceAsStream(res);
+				if (is != null)
+					Log.info(() -> "... but " + filename + " found inside the .jar");
+
+			}
+			return is;
 		}
-		return internalIs;
-		// ::done
 	}
 
-	public static final int DELTA_PRIORITY_FOR_STEREOTYPE = 1000;
+	/**
+	 * Properties that any complete style sheet has to define on its root style.
+	 *
+	 * A .skin file that does not define all of them is only a fragment, meant to be
+	 * merged on top of an existing style sheet: this is the case of strictuml.skin,
+	 * which is loaded by "skinparam style strictuml". Using such a fragment with the
+	 * "skin" command would replace the whole style sheet by almost nothing, and the
+	 * drawing would then fail with puzzling errors, for example a missing FontSize
+	 * ending up as "IllegalArgumentException: width=0.0".
+	 *
+	 * Shadowing, RoundCorner, DiagonalCorner and HyperLinkColor are deliberately not
+	 * required here: they all have a harmless default.
+	 */
+	private static final PName[] MANDATORY_ROOT_PROPERTIES = { PName.FontName, PName.FontSize, PName.FontStyle,
+			PName.FontColor, PName.LineColor, PName.LineThickness, PName.BackGroundColor, PName.HorizontalAlignment };
 
-	public static Map<PName, Value> addPriorityForStereotype(Map<PName, Value> tmp) {
+	/**
+	 * Returns the mandatory root properties that this style sheet does not define.
+	 *
+	 * An empty list means the style sheet is complete, and so can be used on its own
+	 * by the "skin" command.
+	 */
+	public static List<PName> getMissingRootProperties(StyleBuilder styleBuilder) {
+		final Style root = styleBuilder == null ? null
+				: styleBuilder.getMergedStyle(StyleQueries.ROOT);
+
+		final List<PName> result = new ArrayList<>();
+		for (PName property : MANDATORY_ROOT_PROPERTIES)
+			if (root == null || root.hasValue(property) == false)
+				result.add(property);
+
+		return MyCollections.unmodifiableList(result);
+	}
+
+	public static Map<PName, Value> addStereotypeCount(Map<PName, Value> tmp, int count) {
 		final Map<PName, Value> result = new EnumMap<>(PName.class);
 		for (Entry<PName, Value> ent : tmp.entrySet())
-			result.put(ent.getKey(), ((ValueImpl) ent.getValue()).addPriority(DELTA_PRIORITY_FOR_STEREOTYPE));
+			result.put(ent.getKey(), ((ValueImpl) ent.getValue()).withStereotypeCount(count));
 
 		return result;
 	}

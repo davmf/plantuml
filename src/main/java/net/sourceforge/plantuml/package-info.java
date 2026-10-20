@@ -42,7 +42,7 @@
  *
  * <ul>
  * <li>
- * Arguments are parsed ({@link Run} constructs {@link Option}),
+ * Arguments are parsed ({@link Run} constructs {@link net.sourceforge.plantuml.cli.CliOptions}),
  * </li>
  * <li>
  * Files are read ({@link Run} constructs {@link SourceFileReaderAbstract}),

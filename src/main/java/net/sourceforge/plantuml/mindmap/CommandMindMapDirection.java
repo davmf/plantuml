@@ -35,9 +35,13 @@
  */
 package net.sourceforge.plantuml.mindmap;
 
+import java.util.Collection;
+
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -46,10 +50,14 @@ import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandMindMapDirection extends SingleLineCommand2<MindMapDiagram> {
-    // ::remove folder when __HAXE__
 
 	public CommandMindMapDirection() {
 		super(getRegexConcat());
+	}
+	
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 	static IRegex getRegexConcat() {
@@ -62,6 +70,13 @@ public class CommandMindMapDirection extends SingleLineCommand2<MindMapDiagram> 
 				new RegexLeaf(1, "(side|direction)"), //
 				new RegexLeaf("[^*#]*"), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String dir = arg.get("DIRECTION", 0);
+		return "Setting the default mindmap direction to " + dir;
 	}
 
 	@Override

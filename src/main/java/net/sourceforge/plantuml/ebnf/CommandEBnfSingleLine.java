@@ -35,12 +35,15 @@
  */
 package net.sourceforge.plantuml.ebnf;
 
+import java.util.Collection;
 import java.util.Collections;
 
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
+import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.IRegex;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
@@ -54,6 +57,11 @@ public class CommandEBnfSingleLine extends SingleLineCommand2<PSystemEbnf> {
 
 	public CommandEBnfSingleLine() {
 		super(true, getRegexConcat());
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FirstTokens.ANYTHING;
 	}
 
 	static IRegex getRegexConcat() {
@@ -82,6 +90,22 @@ public class CommandEBnfSingleLine extends SingleLineCommand2<PSystemEbnf> {
 				RegexLeaf.spaceZeroOrMore(), //
 				new RegexLeaf(1, "LINE", "(.*;)"), //
 				RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final String id = arg.get("ID", 0);
+		final String commentAbove = arg.get("COMMENTA", 0);
+		final String commentBelow = arg.get("COMMENTB", 0);
+
+		final StringBuilder sb = new StringBuilder();
+		sb.append("Declaring the EBNF rule '").append(id).append("'");
+		if (commentAbove != null)
+			sb.append(" with a comment above");
+		if (commentBelow != null)
+			sb.append(" with a comment below");
+		return sb.toString();
 	}
 
 	@Override

@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.sequencediagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.sourceforge.plantuml.StringUtils;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -53,8 +57,16 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandActivate extends SingleLineCommand2<SequenceDiagram> {
 
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
+			"activate", "deactivate", "destroy", "create");
+
 	public CommandActivate() {
 		super(getRegexConcat());
+	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
 	}
 
 	static IRegex getRegexConcat() {
@@ -69,6 +81,36 @@ public class CommandActivate extends SingleLineCommand2<SequenceDiagram> {
 								RegexLeaf.spaceOneOrMore(), //
 								new RegexLeaf(1, "LINE", "(#\\w+)") //
 						)), RegexLeaf.end());
+	}
+
+	@Override
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// The keyword maps directly to a LifeEventType on the participant's
+		// life line (see executeArg).
+		final String type = StringUtils.goLowerCase(arg.get("TYPE", 0));
+		final String who = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(arg.get("WHO", 0));
+
+		if ("activate".equals(type))
+			sb.append("Activating the life line of '").append(who).append("'");
+		else if ("deactivate".equals(type))
+			sb.append("Deactivating the life line of '").append(who).append("'");
+		else if ("destroy".equals(type))
+			sb.append("Destroying the life line of '").append(who).append("'");
+		else
+			sb.append("Creating '").append(who).append("'");
+
+		final String back = arg.get("BACK", 0);
+		if (back != null)
+			sb.append(", background color ").append(back);
+
+		final String line = arg.get("LINE", 0);
+		if (line != null)
+			sb.append(", line color ").append(line);
+
+		return sb.toString();
 	}
 
 	@Override

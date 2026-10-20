@@ -35,15 +35,17 @@
  */
 package net.sourceforge.plantuml.jsondiagram;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import net.sourceforge.plantuml.annotation.DuplicateCode;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.NoStyleAvailableException;
+import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.parser.StyleParser;
+import net.sourceforge.plantuml.style.StyleLoader;
 import net.sourceforge.plantuml.style.parser.StyleParsingException;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
@@ -64,11 +66,20 @@ public class StyleExtractor {
 			if (s.length() == 0)
 				continue;
 			if (startStyle(s)) {
+				// Neither the opening "<style>" (already consumed as "line" above, never
+				// added) nor the closing "</style>" join the collected content: a diagram can
+				// carry more than one such block back to back -- "!theme xxx" is itself
+				// expanded into its own inline "<style>...</style>" ahead of the source, so a
+				// diagram with its own explicit <style> block accumulates two occurrences here,
+				// one straight after the other. Keeping a boundary tag in the collected content
+				// would leave it sitting mid-stream once every block's tags are concatenated
+				// together below, which RawStyleParser (unlike the legacy tokenizer) does not
+				// tolerate wherever it appears -- see applyStyles.
 				while (data.hasNext()) {
-					style.add(line);
+					line = data.next();
 					if (endStyle(line))
 						break;
-					line = data.next();
+					style.add(line);
 				}
 			} else if (list.size() <= 1 && s.startsWith("!assume ")) {
 				// Ignore
@@ -111,13 +122,30 @@ public class StyleExtractor {
 	public void applyStyles(ISkinParam skinParam) throws StyleParsingException {
 		if (newSkin != null) {
 			final String filename = newSkin + ".skin";
+			// Check the file right now, so that an invalid style is reported here
+			// instead of crashing later. StyleLoader caches, so this costs nothing.
+			final StyleBuilder loaded;
+			try {
+				loaded = StyleLoader.loadSkin(filename);
+			} catch (IOException | NoStyleAvailableException e) {
+				throw new StyleParsingException("Cannot find style " + newSkin);
+			}
+			// As in TitledDiagram: a fragment cannot replace the whole style sheet.
+			final List<PName> missing = StyleLoader.getMissingRootProperties(loaded);
+			if (missing.size() > 0)
+				throw new StyleParsingException("Incomplete style " + newSkin + ": root does not define " + missing);
+
 			skinParam.setDefaultSkin(filename);
 		}
 
 		if (style.size() > 0) {
+			// "style" never carries a "<style>"/"</style>" boundary line -- see the comment
+			// where it is collected above -- so there is nothing left to strip here, unlike
+			// every other muteStyle caller (CommandStyleMultilinesCSS and friends), which strips
+			// its own opening/closing marker line with subExtract(1, 1) instead.
 			final StyleBuilder styleBuilder = skinParam.getCurrentStyleBuilder();
 			final BlocLines blocLines = BlocLines.from(style);
-			skinParam.muteStyle(StyleParser.parse(blocLines, styleBuilder));
+			skinParam.muteStyle(StyleLoader.parseStyleText(blocLines, styleBuilder));
 		}
 	}
 

@@ -37,7 +37,6 @@ package net.sourceforge.plantuml.braille;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import net.atmp.ImageBuilder;
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.klimt.ClipContainer;
@@ -55,6 +54,7 @@ import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.klimt.shape.UPolygon;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.klimt.shape.UText;
+import net.sourceforge.plantuml.core.TextBlockExporter;
 
 // https://www.branah.com/braille-translator
 public class UGraphicBraille extends AbstractUGraphic<BrailleGrid> implements ClipContainer {
@@ -76,7 +76,6 @@ public class UGraphicBraille extends AbstractUGraphic<BrailleGrid> implements Cl
 	private UGraphicBraille(UGraphicBraille other) {
 		super(other.getStringBounder());
 		copy(other);
-		register();
 	}
 
 	// public UGraphicBraille(ColorMapper colorMapper, String backcolor, boolean
@@ -101,10 +100,10 @@ public class UGraphicBraille extends AbstractUGraphic<BrailleGrid> implements Cl
 
 	private void register() {
 		ignoreShape(URectangle.class);
-		registerDriver(URectangle.class, new DriverRectangleBraille(this));
+		registerDriver(URectangle.class, new DriverRectangleBraille());
 		registerDriver(UText.class, new DriverTextBraille());
-		registerDriver(ULine.class, new DriverLineBraille(this));
-		registerDriver(UPolygon.class, new DriverPolygonBraille(this));
+		registerDriver(ULine.class, new DriverLineBraille());
+		registerDriver(UPolygon.class, new DriverPolygonBraille());
 		ignoreShape(UEllipse.class);
 		ignoreShape(UImage.class);
 		ignoreShape(UPath.class);
@@ -114,6 +113,7 @@ public class UGraphicBraille extends AbstractUGraphic<BrailleGrid> implements Cl
 
 	@Override
 	public void writeToStream(OutputStream os, String metadata, int dpi) throws IOException {
-		ImageBuilder.create(new FileFormatOption(FileFormat.PNG), new BrailleDrawer(getGraphicObject())).metadata(metadata).write(os);
+		TextBlockExporter.builder(new BrailleDrawer(getGraphicObject()), new FileFormatOption(FileFormat.PNG), false)
+				.metadata(metadata).build().exportTo(os);
 	}
 }

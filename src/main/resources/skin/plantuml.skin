@@ -65,6 +65,9 @@ document {
   }
 }
 
+map {
+    HorizontalAlignment center
+}
 
 package {
   title {
@@ -125,6 +128,16 @@ sequenceDiagram {
 	  FontStyle bold
 	}
 
+	partition {
+	  BackGroundColor transparent
+	  LineColor black
+	  LineThickness 1.5
+	  header {
+	    FontSize 13
+	    FontStyle bold
+	  }
+	}
+
 	lifeLine {
 	  LineStyle 5
 	}
@@ -170,6 +183,7 @@ sequenceDiagram {
 
 	  FontSize 13
 	  FontStyle bold
+	  Padding 4
 	}
 
   newpage {
@@ -183,15 +197,27 @@ sequenceDiagram {
 	participant,actor,boundary,control,entity,queue,database,collections {
 	  BackgroundColor: var(--grey-blue);
 	  HorizontalAlignment center
+	  Padding 7
 	}
 }
 
 classDiagram,componentDiagram,objectDiagram {
+  object {
+   Padding 2 2 
+  }
   element {
     RoundCorner 5
   }
   generic {
     BackgroundColor white
+  }
+}
+
+classDiagram {
+  class {
+    stereotype {
+      FontSize 12
+    }
   }
 }
 
@@ -258,20 +284,16 @@ spot {
 stateDiagram {
   state {
     RoundCorner 25
-  }
-  stateBody {
-    BackGroundColor transparent
-  }
-  element {
-	title {
+    body {
+      BackGroundColor transparent
+    }
+	name {
 	  FontStyle plain
-	}
+      HorizontalAlignment center
+    }
   }
   group {
     LineThickness 0.5
-  }
-  header {
-    FontSize 12
   }
   circle {
    start, stop, end {

@@ -43,12 +43,12 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
-import net.sourceforge.plantuml.klimt.shape.AbstractTextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockMemoized;
 import net.sourceforge.plantuml.utils.Direction;
 import net.sourceforge.plantuml.utils.MathUtils;
 
-public class Opale extends AbstractTextBlock implements TextBlock {
+public class Opale extends TextBlockMemoized {
 
 	private static final int cornersize = 10;
 	private final HColor noteBackgroundColor;
@@ -95,7 +95,8 @@ public class Opale extends AbstractTextBlock implements TextBlock {
 		return size.getHeight() + 2 * marginY;
 	}
 
-	public XDimension2D calculateDimension(StringBounder stringBounder) {
+	@Override
+	public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		final double height = getHeight(stringBounder);
 		final double width = getWidth(stringBounder);
 		return new XDimension2D(width, height);

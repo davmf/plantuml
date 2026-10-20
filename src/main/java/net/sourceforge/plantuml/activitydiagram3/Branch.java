@@ -46,9 +46,10 @@ import net.sourceforge.plantuml.activitydiagram3.gtile.Gtile;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.decoration.Rainbow;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
-import net.sourceforge.plantuml.klimt.color.HColorSet;
+import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
@@ -60,11 +61,9 @@ import net.sourceforge.plantuml.sequencediagram.NotePosition;
 import net.sourceforge.plantuml.sequencediagram.NoteType;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.ISkinParam;
-import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleBuilder;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 
 public class Branch {
 
@@ -78,32 +77,34 @@ public class Branch {
 	private LinkRendering special;
 
 	private final HColor color;
+	private Colors specialColors;
 
 	private Ftile ftile;
-	// ::comment when __CORE__
 	private Gtile gtile;
-	// ::done
 
-	public StyleSignatureBasic getDefaultStyleDefinitionArrow() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.arrow);
+	public StyleQuery getDefaultStyleDefinitionArrow() {
+		return StyleQueries.ACTIVITYDIAG_ARROW;
 	}
 
-	public StyleSignatureBasic getDefaultStyleDefinitionDiamond() {
-		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
-	}
+//	public StyleSignatureBasic getDefaultStyleDefinitionDiamond() {
+//		return StyleSignatureBasic.of(SName.root, SName.element, SName.activityDiagram, SName.activity, SName.diamond);
+//	}
 
 	public boolean containsBreak() {
 		return list.containsBreak();
 	}
 
-	public Branch(StyleBuilder styleBuilder, Swimlane swimlane, LinkRendering labelPositive, Display labelTest,
-			HColor color, LinkRendering inlabel, Stereotype stereotype, HColorSet colorSet) {
+	public Branch(Swimlane swimlane, LinkRendering labelPositive, Display labelTest, HColor color,
+			LinkRendering inlabel, Stereotype stereotype) {
 		this.inlabel = Objects.requireNonNull(inlabel);
 		this.labelTest = Objects.requireNonNull(labelTest);
 		this.labelPositive = Objects.requireNonNull(labelPositive);
 
-		final Style style = getDefaultStyleDefinitionDiamond().withTOBECHANGED(stereotype).getMergedStyle(styleBuilder);
-		this.color = color == null ? style.value(PName.BackGroundColor).asColor(colorSet) : color;
+		// final Style style =
+		// getDefaultStyleDefinitionDiamond().withTOBECHANGED(stereotype).getMergedStyle(styleBuilder);
+		// this.color = color == null ?
+		// style.value(PName.BackGroundColor).asColor(colorSet) : color;
+		this.color = color;
 
 		this.list = new InstructionList(swimlane);
 	}
@@ -130,15 +131,13 @@ public class Branch {
 		this.inlinkRendering = Objects.requireNonNull(inlinkRendering);
 	}
 
-	public void updateFtile(FtileFactory factory) {
+	public void updateFtile(FtileFactory factory) throws NoSuchColorException {
 		this.ftile = factory.decorateOut(list.createFtile(factory), inlinkRendering);
 	}
 
-	// ::comment when __CORE__
 	public void updateGtile(ISkinParam skinParam, StringBounder stringBounder) {
 		this.gtile = list.createGtile(skinParam, stringBounder);
 	}
-	// ::done
 
 	public Collection<? extends Swimlane> getSwimlanes() {
 		return list.getSwimlanes();
@@ -192,21 +191,19 @@ public class Branch {
 		return ftile;
 	}
 
-	// ::comment when __CORE__
 	public Gtile getGtile() {
 		return gtile;
 	}
-	// ::done
 
 	public ISkinParam skinParam() {
-		// ::comment when __CORE__
 		if (gtile != null)
 			return gtile.skinParam();
-		// ::done
 		return ftile.skinParam();
 	}
 
 	public final HColor getColor() {
+		if (specialColors != null && specialColors.getColor(ColorType.BACK) != null)
+			return specialColors.getColor(ColorType.BACK);
 		return color;
 	}
 
@@ -222,8 +219,9 @@ public class Branch {
 		return list.isOnlySingleStopOrSpot();
 	}
 
-	public void setSpecial(LinkRendering link) {
+	public void setSpecial(LinkRendering link, Colors colors) {
 		this.special = link;
+		this.specialColors = colors;
 	}
 
 	public final LinkRendering getSpecial() {
@@ -251,7 +249,7 @@ public class Branch {
 		if (display == null)
 			return TextBlockUtils.EMPTY_TEXT_BLOCK;
 
-		final Style style = getDefaultStyleDefinitionArrow().getMergedStyle(skinParam().getCurrentStyleBuilder());
+		final Style style = skinParam().getCurrentStyleBuilder().getMergedStyle(getDefaultStyleDefinitionArrow());
 		final LineBreakStrategy lineBreak = style.wrapWidth();
 		final FontConfiguration fcArrow = style.getFontConfiguration(skinParam().getIHtmlColorSet());
 

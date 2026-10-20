@@ -76,8 +76,8 @@ public class EbnfExpression implements TextBlockable {
 			} else if (ch == '-') {
 				tokens.add(new Token(Symbol.NOT, null));
 			} else if (isLetterOrDigit(ch)) {
-				final String litteral = readLitteral(it);
-				tokens.add(new Token(Symbol.LITTERAL, litteral));
+				final String literal = readLitteral(it);
+				tokens.add(new Token(Symbol.LITERAL, literal));
 				continue;
 			} else if (ch == '*') {
 				tokens.add(new Token(Symbol.REPETITION_SYMBOL, null));
@@ -111,14 +111,14 @@ public class EbnfExpression implements TextBlockable {
 				// it.next();
 				break;
 			} else if (ch == '\"') {
-				final String litteral = readString(it);
-				tokens.add(new Token(Symbol.TERMINAL_STRING1, protect(litteral)));
+				final String literal = readString(it);
+				tokens.add(new Token(Symbol.TERMINAL_STRING1, protect(literal)));
 			} else if (ch == '\'') {
-				final String litteral = readString(it);
-				tokens.add(new Token(Symbol.TERMINAL_STRING2, protect(litteral)));
+				final String literal = readString(it);
+				tokens.add(new Token(Symbol.TERMINAL_STRING2, protect(literal)));
 			} else if (ch == '?') {
-				final String litteral = readString(it);
-				tokens.add(new Token(Symbol.SPECIAL_SEQUENCE, protect(litteral)));
+				final String literal = readString(it);
+				tokens.add(new Token(Symbol.SPECIAL_SEQUENCE, protect(literal)));
 			} else {
 				tokens.clear();
 				return;
@@ -128,13 +128,13 @@ public class EbnfExpression implements TextBlockable {
 		}
 	}
 
-	private static String protect(final String litteral) {
-		return litteral.length() == 0 ? " " : litteral;
+	private static String protect(final String literal) {
+		return literal.length() == 0 ? " " : literal;
 	}
 
 	@Override
 	public TextBlock getUDrawable(ISkinParam skinParam, PreprocessingArtifact preprocessing) {
-		final Style style = ETile.getStyleSignature().getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(ETile.getStyleQuery());
 		final FontConfiguration fc = style.getFontConfiguration(skinParam.getIHtmlColorSet());
 
 		if (tokens.size() == 0)
@@ -194,7 +194,7 @@ public class EbnfExpression implements TextBlockable {
 		while (it.hasNext()) {
 			final Token element = it.next();
 			if (element.getSymbol() == Symbol.TERMINAL_STRING1 || element.getSymbol() == Symbol.TERMINAL_STRING2
-					|| element.getSymbol() == Symbol.LITTERAL || element.getSymbol() == Symbol.SPECIAL_SEQUENCE)
+					|| element.getSymbol() == Symbol.LITERAL || element.getSymbol() == Symbol.SPECIAL_SEQUENCE)
 				engine.push(element);
 			else if (element.getSymbol() == Symbol.COMMENT_ABOVE)
 				engine.commentAbove(element.getData());

@@ -36,6 +36,9 @@
 package net.sourceforge.plantuml.sequencediagram.teoz;
 
 import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
@@ -44,7 +47,7 @@ import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.real.Real;
-import net.sourceforge.plantuml.sequencediagram.Delay;
+import net.sourceforge.plantuml.real.RealUtils;
 import net.sourceforge.plantuml.sequencediagram.Event;
 import net.sourceforge.plantuml.sequencediagram.Participant;
 import net.sourceforge.plantuml.sequencediagram.ParticipantEnglober;
@@ -77,7 +80,9 @@ public class LivingSpace {
 	private Real posD;
 
 	private boolean create = false;
-	private double createY = 0;
+	// Life segments: y -> true for a create, false for a destroy. A TreeMap is
+	// used so that the repeated layout passes do not duplicate entries.
+	private final SortedMap<Double, Boolean> aliveChanges = new TreeMap<Double, Boolean>();
 
 	private final ParticipantEnglober englober;
 
@@ -144,8 +149,36 @@ public class LivingSpace {
 	}
 
 	public void drawLineAndLiveboxes(UGraphic ug, double height, Context2D context) {
-		mutingLine.drawLine(ug, context, createY, height);
-		liveboxes.drawBoxes(ug, context, createY, height);
+		// Only the line is in the lifeline group, not the liveboxes
+		ug.startGroup(p.groupTypeLifeline(skinParam.getPragma()));
+		drawLine(ug, height, context);
+		ug.closeGroup();
+		liveboxes.drawBoxes(ug, context, getFirstCreateY(), height);
+	}
+
+	private void drawLine(UGraphic ug, double height, Context2D context) {
+		// The line is drawn only over the alive segments: a participant may be
+		// created and destroyed several times
+		boolean alive = create == false;
+		double aliveSince = 0;
+		for (Map.Entry<Double, Boolean> ent : aliveChanges.entrySet()) {
+			if (alive == false && ent.getValue())
+				aliveSince = ent.getKey();
+			else if (alive && ent.getValue() == false)
+				mutingLine.drawLine(ug, context, aliveSince, ent.getKey());
+
+			alive = ent.getValue();
+		}
+		if (alive)
+			mutingLine.drawLine(ug, context, aliveSince, height);
+	}
+
+	private double getFirstCreateY() {
+		for (Map.Entry<Double, Boolean> ent : aliveChanges.entrySet())
+			if (ent.getValue())
+				return ent.getKey();
+
+		return 0;
 	}
 
 	// public void addDelayTile(DelayTile tile) {
@@ -154,10 +187,20 @@ public class LivingSpace {
 
 	public void drawHead(UGraphic ug, Context2D context, VerticalAlignment verticalAlignment,
 			HorizontalAlignment horizontalAlignment) {
+		drawHeadOrTail(ug, context, verticalAlignment, horizontalAlignment, headType);
+	}
+
+	public void drawTail(UGraphic ug, Context2D context, VerticalAlignment verticalAlignment,
+			HorizontalAlignment horizontalAlignment) {
+		drawHeadOrTail(ug, context, verticalAlignment, horizontalAlignment, tailType);
+	}
+
+	private void drawHeadOrTail(UGraphic ug, Context2D context, VerticalAlignment verticalAlignment,
+			HorizontalAlignment horizontalAlignment, ComponentType type) {
 		if (create && verticalAlignment == VerticalAlignment.BOTTOM) {
 			return;
 		}
-		final Component comp = rose.createComponentParticipant(p, headType, null, skinParam,
+		final Component comp = rose.createComponentParticipant(p, type, null, skinParam,
 				p.getDisplay(skinParam.forceSequenceParticipantUnderlined()));
 		final XDimension2D dim = comp.getPreferredDimension(ug.getStringBounder());
 		if (horizontalAlignment == HorizontalAlignment.RIGHT) {
@@ -168,6 +211,8 @@ public class LivingSpace {
 		}
 		final Area area = new Area(dim);
 		final Url url = getParticipant().getUrl();
+		final boolean isHead = type == headType;
+		ug.startGroup(isHead ? p.groupTypeHead(skinParam.getPragma()) : p.groupTypeTail(skinParam.getPragma()));
 		if (url != null) {
 			ug.startUrl(url);
 		}
@@ -175,6 +220,7 @@ public class LivingSpace {
 		if (url != null) {
 			ug.closeUrl();
 		}
+		ug.closeGroup();
 	}
 
 	public XDimension2D getHeadPreferredDimension(StringBounder stringBounder) {
@@ -217,12 +263,16 @@ public class LivingSpace {
 	}
 
 	public void goCreate(double y) {
-		this.createY = y;
+		this.aliveChanges.put(y, Boolean.TRUE);
 		this.create = true;
 	}
 
 	public void goCreate() {
 		this.create = true;
+	}
+
+	public void goDestroy(double y) {
+		this.aliveChanges.put(y, Boolean.FALSE);
 	}
 
 	public void delayOn(double y, double height) {
@@ -255,6 +305,134 @@ public class LivingSpace {
 
 	public Real getPosE(StringBounder stringBounder) {
 		return getPosD(stringBounder).addFixed(marginAfter);
+	}
+
+	// Live counterparts of getPosA()/getPosE() above, for the one caller that
+	// actually needs them: Doll's neighbour-clearing checks (issue #2791).
+	//
+	// getPosA()/getPosE() bake the CURRENT value of the mutable
+	// marginBefore/marginAfter field as a plain Java literal into the
+	// returned Real, at the moment they are CALLED -- not a live reference
+	// to the field. That is fine for every caller that already runs late
+	// enough to see the final margin (Doll.drawMe(), which draws the box
+	// from a fresh call right before painting), or that has always run
+	// early and is unaffected by this fix's scope (LivingSpaces.
+	// addConstraints()'s plain participant spacing, Doll.getMinX()/getMaxX()
+	// feeding PlayingSpace's own canvas-size capture, GroupingTile's frame-
+	// clearing check) -- changing THEIR timing or values is outside what
+	// #2791 was ever about, and doing so anyway ballooned an unrelated set
+	// of existing references across the whole test suite the first time
+	// this was tried.
+	//
+	// Doll's neighbour-clearing checks are different: they must see the
+	// FINAL margin (grown by mainTile.addConstraints() from a self-message
+	// loop or box-edge note) to constrain the actually-drawn edge, but they
+	// also need to run early -- registered in the very same
+	// Dolls.addConstraints() pass as everything else -- because running
+	// them in a separate later pass (see the removed
+	// Dolls.addLateConstraints()) perturbs the shared RealLine's
+	// PositiveForce evaluation order and can trigger a premature,
+	// permanently-wrong read of an unrelated RealMin/RealMax elsewhere in
+	// the graph (GroupingTile's own frame bounds), visible as a misplaced
+	// loop/box frame whenever a box is combined with a parallel (&)
+	// construct.
+	//
+	// getPosALive()/getPosELive() resolve that: unlike addFixed(), they
+	// read the margin lazily, at getCurrentValue() time. Every
+	// getCurrentValue() call anywhere in this codebase happens only
+	// during/after RealLine.compile() (see AbstractReal/RealImpl), which
+	// itself only runs once, strictly AFTER every ensureMarginBefore()/
+	// ensureMarginAfter() call has already executed -- so by construction
+	// the margin they read is always the final one, regardless of when
+	// they were called or when their constraint was registered. Confined
+	// to just this one call site, that keeps every other Real in the graph
+	// -- and every other existing reference -- exactly as it already was.
+	public Real getPosALive(StringBounder stringBounder) {
+		return RealUtils.withLiveOffset(getPosB(stringBounder), () -> -marginBefore);
+	}
+
+	public Real getPosELive(StringBounder stringBounder) {
+		return RealUtils.withLiveOffset(getPosD(stringBounder), () -> marginAfter);
+	}
+
+	// ---------------------------------------------------------------------
+	// ASCII rendering positions.
+	//
+	// Exact character-grid counterparts of posB/C/D/A/E above, expressed as
+	// Real on a dedicated ASCII RealLine (created in
+	// SequenceDiagramFileMakerTeoz.getAsciiBlock(), separate from the pixel
+	// xorigin) with the convention 1.0 = 1 character. The derivation formulas
+	// mirror the pixel ones, but every delta is an integer number of cells,
+	// so the values resolved by asciiXOrigin.compileNow() are exact integers
+	// (no quantization).
+	//
+	// asciiPosB is the box's left column; the box width is code.length()+2
+	// (see Participant.asciiDimension()); the lifeline runs through the
+	// middle. Widths come from the participant, never from a Rose Component.
+	// ---------------------------------------------------------------------
+	private Real asciiPosB;
+	private Real asciiPosC;
+	private Real asciiPosD;
+
+	private int asciiWidth() {
+		return p.asciiDimension().getWidth();
+	}
+
+	public void setAsciiPosB(Real asciiPosB) {
+		this.asciiPosB = asciiPosB;
+	}
+
+	public Real getAsciiPosB() {
+		return asciiPosB;
+	}
+
+	public Real getAsciiPosC() {
+		if (asciiPosC == null)
+			this.asciiPosC = asciiPosB.addFixed(asciiWidth() / 2);
+
+		return asciiPosC;
+	}
+
+	public Real getAsciiPosD() {
+		if (asciiPosD == null)
+			this.asciiPosD = asciiPosB.addFixed(asciiWidth());
+
+		return asciiPosD;
+	}
+
+	private int asciiMarginBefore;
+	private int asciiMarginAfter;
+
+	public void ensureAsciiMarginBefore(int margin) {
+		if (margin < 0)
+			throw new IllegalArgumentException();
+		this.asciiMarginBefore = Math.max(asciiMarginBefore, margin);
+	}
+
+	public void ensureAsciiMarginAfter(int margin) {
+		if (margin < 0)
+			throw new IllegalArgumentException();
+		this.asciiMarginAfter = Math.max(asciiMarginAfter, margin);
+	}
+
+	// Live, like getPosALive()/getPosELive() above, and for the same reason:
+	// LivingSpaces.asciiAddConstraints() reads these before the tiles'
+	// asciiAddConstraints() grow the margins (see NoteTile), so a margin
+	// baked in at call time would always be 0
+	public Real getAsciiPosA() {
+		return RealUtils.withLiveOffset(getAsciiPosB(), () -> -asciiMarginBefore);
+	}
+
+	public Real getAsciiPosE() {
+		return RealUtils.withLiveOffset(getAsciiPosD(), () -> asciiMarginAfter);
+	}
+
+	public Real getAsciiLifeColumn() {
+		return getAsciiPosC();
+	}
+
+	public Real getAsciiLeftColumn() {
+		return getAsciiPosB();
 	}
 
 }

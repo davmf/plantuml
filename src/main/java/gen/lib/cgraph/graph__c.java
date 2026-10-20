@@ -14,7 +14,7 @@
  *
  * (C) Copyright 2009-2022, Arnaud Roques
  *
- * This translation is distributed under the same Licence as the original C program:
+ * This translation is distributed under the same License as the original C program:
  * 
  *************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
@@ -171,7 +171,7 @@ try {
     par = agparent(g);
     if (par!=null) {
 	AGSEQ(g, agnextseq(par, AGRAPH));
-  	par.g_dict.searchf.exe(zz, par.g_dict,g,0000001);
+  	par.g_dict.searchf.exeSearch(zz, par.g_dict,g,0000001);
     }				/* else AGSEQ=0 */
     if ((par) == null || ((ST_Agdesc_s)par.desc).has_attrs!=0)
 	agraphattr_init(zz, g);
@@ -322,6 +322,11 @@ public static CFunction agraphidcmpf = new CFunctionAbstract("agraphidcmpf") {
 	
 	public Object exe(Globals zz, Object... args) {
 		return agraphidcmpf((ST_dt_s)args[0], (ST_Agraph_s)args[1], (ST_Agraph_s)args[2], (ST_dtdisc_s)args[3]);
+	}
+
+	@Override
+	public int exeCmpInt(Globals zz, Object a0, Object a1, Object a2, Object a3) {
+		return agraphidcmpf((ST_dt_s)a0, (ST_Agraph_s)a1, (ST_Agraph_s)a2, (ST_dtdisc_s)a3);
 	}};
 	
 //3 dhbtfzzp8n5yygqmhmluo9bxl

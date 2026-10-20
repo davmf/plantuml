@@ -114,7 +114,7 @@ public class DotxMaker {
 			if (samePackage) {
 				sb.append("{rank=same; b" + p.getStart().getUid() + "; b" + p.getEnd().getUid() + "}");
 			} else {
-				Log.println("!!!!!!!!!!!!!!!!!TURNING ARROUND DOT BUG!!!!!!!!!!!!!!!!!!");
+				Log.println("!!!!!!!!!!!!!!!!!TURNING AROUND DOT BUG!!!!!!!!!!!!!!!!!!");
 			}
 		}
 

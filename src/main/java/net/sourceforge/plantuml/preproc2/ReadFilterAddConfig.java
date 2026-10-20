@@ -74,7 +74,7 @@ public class ReadFilterAddConfig implements ReadFilter {
 					}
 				}
 				result = raw.readLine();
-				if (result != null && StartUtils.isArobaseStartDiagram(result.getString()) && config.size() > 0) {
+				if (result != null && StartUtils.isStartDirective(result.getString()) && config.size() > 0) {
 					inserted = new ReadFilterQuoteComment().applyFilter(new ReadLineList(config, result.getLocation()));
 				}
 				return result;

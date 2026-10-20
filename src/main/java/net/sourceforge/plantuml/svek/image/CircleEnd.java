@@ -35,22 +35,22 @@
  */
 package net.sourceforge.plantuml.svek.image;
 
+import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.klimt.UShape;
 import net.sourceforge.plantuml.klimt.UTranslate;
-import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
-import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UEllipse;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 
-public class CircleEnd implements UDrawable {
+public class CircleEnd implements TextBlock {
 
 	private static final int SIZE = 22;
 
@@ -64,6 +64,7 @@ public class CircleEnd implements UDrawable {
 		this.skinParam = skinParam;
 	}
 
+	@Fast
 	public XDimension2D calculateDimension(StringBounder stringBounder) {
 		return new XDimension2D(SIZE, SIZE);
 	}
@@ -71,13 +72,13 @@ public class CircleEnd implements UDrawable {
 	final public void drawU(UGraphic ug) {
 		final UEllipse circle = UEllipse.build(SIZE, SIZE);
 
-		HColor backColor = style.value(PName.BackGroundColor).asColor(skinParam.getIHtmlColorSet());
-		HColor lineColor = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
+		final HColor backColor = colors.getColor(style, PName.BackGroundColor, skinParam.getIHtmlColorSet());
+		final HColor lineColor = colors.getColor(style, PName.LineColor, skinParam.getIHtmlColorSet());
 
-		if (colors.getColor(ColorType.BACK) != null) {
-			lineColor = colors.getColor(ColorType.BACK);
-			backColor = colors.getColor(ColorType.BACK);
-		}
+//		if (colors.getColor(ColorType.BACK) != null) {
+//			lineColor = colors.getColor(ColorType.BACK);
+//			backColor = colors.getColor(ColorType.BACK);
+//		}
 
 		final double shadowing = style.getShadowing();
 

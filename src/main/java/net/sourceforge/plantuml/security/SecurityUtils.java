@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.security;
 
 import java.awt.Image;
-import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -50,7 +49,6 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
@@ -60,6 +58,8 @@ import javax.swing.ImageIcon;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.json.Json;
 import net.sourceforge.plantuml.json.JsonValue;
+import net.sourceforge.plantuml.klimt.awt.PortableImage;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.security.authentication.SecurityAccessInterceptor;
 import net.sourceforge.plantuml.security.authentication.SecurityAuthentication;
@@ -75,20 +75,13 @@ import net.sourceforge.plantuml.security.authentication.oauth.OAuth2ResourceOwne
 import net.sourceforge.plantuml.security.authentication.token.TokenAuthAccessInterceptor;
 import net.sourceforge.plantuml.security.authentication.token.TokenAuthAuthorizeManager;
 import net.sourceforge.plantuml.utils.Log;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class SecurityUtils {
 
-	// ::uncomment when __CORE__
-//	public static SecurityProfile getSecurityProfile() {
-//		return SecurityProfile.UNSECURE;
-//	}
-	// ::done
-
 	public static boolean ignoreThisLink(String url) {
-		// ::comment when __CORE__
 		if (allowJavascriptInLink() == false && isJavascriptLink(url))
 			return true;
-		// ::done
 		return false;
 	}
 
@@ -97,33 +90,17 @@ public class SecurityUtils {
 	 */
 	public static final String NO_CREDENTIALS = "<none>";
 
-	public synchronized static BufferedImage readRasterImage(final ImageIcon imageIcon) {
+	public synchronized static PortableImage readRasterImage(final ImageIcon imageIcon) {
 		final Image tmpImage = imageIcon.getImage();
 		if (imageIcon.getIconWidth() == -1)
 			return null;
 
-		final BufferedImage image = new BufferedImage(imageIcon.getIconWidth(), imageIcon.getIconHeight(),
-				BufferedImage.TYPE_INT_ARGB);
+		final PortableImage image = PortableImageFactory.build(imageIcon.getIconWidth(), imageIcon.getIconHeight(),
+				PortableImage.TYPE_INT_ARGB);
 		image.getGraphics().drawImage(tmpImage, 0, 0, null);
 		tmpImage.flush();
 		return image;
 	}
-
-	// ::comment when __CORE__
-	/**
-	 * Java class paths to import files from.
-	 */
-	public static final String PATHS_CLASSES = "java.class.path";
-
-	/**
-	 * Paths to include files.
-	 */
-	public static final String PATHS_INCLUDES = "plantuml.include.path";
-
-	/**
-	 * Whitelist of paths from where scripts can load data.
-	 */
-	public static final String ALLOWLIST_LOCAL_PATHS = "plantuml.allowlist.path";
 
 	/**
 	 * Whitelist of urls
@@ -248,7 +225,7 @@ public class SecurityUtils {
 		final List<SFile> result = new ArrayList<>();
 		String paths = getenv(prop);
 		if (paths == null) {
-			return Collections.unmodifiableList(result);
+			return MyCollections.unmodifiableList(result);
 		}
 		paths = StringUtils.eventuallyRemoveStartingAndEndingDoubleQuote(paths);
 		final StringTokenizer st = new StringTokenizer(paths, System.getProperty("path.separator"));
@@ -262,7 +239,7 @@ public class SecurityUtils {
 				Log.info(() -> "Cannot access to " + tmp + ". " + e);
 			}
 		}
-		return Collections.unmodifiableList(result);
+		return MyCollections.unmodifiableList(result);
 	}
 
 	public static boolean allowSvgText() {
@@ -446,6 +423,5 @@ public class SecurityUtils {
 		}
 		return Json.object();
 	}
-	// ::done
 
 }

@@ -35,7 +35,6 @@
 package net.sourceforge.plantuml.filesdiagram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -49,14 +48,17 @@ import net.sourceforge.plantuml.klimt.creole.Sheet;
 import net.sourceforge.plantuml.klimt.creole.SheetBlock1;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
+import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
-import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
-import net.sourceforge.plantuml.style.StyleSignatureBasic;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.image.Opale;
+import net.sourceforge.plantuml.utils.MyCollections;
 
 public class FEntry implements Iterable<FEntry> {
 
@@ -108,7 +110,7 @@ public class FEntry implements Iterable<FEntry> {
 
 	@Override
 	public Iterator<FEntry> iterator() {
-		return Collections.unmodifiableCollection(children).iterator();
+		return MyCollections.unmodifiableCollection(children).iterator();
 	}
 
 	public FEntry getParent() {
@@ -135,6 +137,21 @@ public class FEntry implements Iterable<FEntry> {
 		return ug;
 	}
 
+	public XDimension2D calculateDimension(StringBounder stringBounder, FontConfiguration fontConfiguration,
+			ISkinParam skinParam, double deltax) {
+		final TextBlock result = getTextBlock(fontConfiguration, skinParam);
+		final XDimension2D dim = result.calculateDimension(stringBounder);
+		double width = deltax + dim.getWidth();
+		double height = dim.getHeight() + 2;
+		for (FEntry child : children) {
+			final XDimension2D childDim = child.calculateDimension(stringBounder, fontConfiguration, skinParam,
+					deltax + 21);
+			width = Math.max(width, childDim.getWidth());
+			height += childDim.getHeight();
+		}
+		return new XDimension2D(width, height);
+	}
+
 	private TextBlock getTextBlock(FontConfiguration fontConfiguration, ISkinParam skinParam) {
 		if (type == FilesType.NOTE)
 			return createOpale(skinParam);
@@ -147,9 +164,8 @@ public class FEntry implements Iterable<FEntry> {
 
 	private Opale createOpale(ISkinParam skinParam) {
 
-		final StyleSignatureBasic signature = StyleSignatureBasic.of(SName.root, SName.element, SName.filesDiagram,
-				SName.note);
-		final Style style = signature.getMergedStyle(skinParam.getCurrentStyleBuilder());
+		final StyleQuery signature = StyleQueries.FILESDIAG_NOTE;
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(signature);
 
 		final FontConfiguration fc = FontConfiguration.create(skinParam, style);
 		final double shadowing = style.getShadowing();

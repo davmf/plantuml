@@ -42,6 +42,7 @@ import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.regex.Matcher2;
 import net.sourceforge.plantuml.regex.Pattern2;
 import net.sourceforge.plantuml.style.NoStyleAvailableException;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.StringLocated;
 import net.sourceforge.plantuml.utils.BlocLines;
 
@@ -84,13 +85,13 @@ public class SkinLoader {
 			lines = lines.trim().removeEmptyLines();
 
 			for (StringLocated s : lines) {
-				assert s.getString().length() > 0;
+				if (TeaVM.a()) assert s.getString().length() > 0;
 
 				if (s.getString().equals("}")) {
 					this.pop();
 					continue;
 				}
-				final Matcher2 m = p1.matcher(s.getString());
+				final Matcher2 m = p1.matcher(s.getString(), 0);
 				if (m.find() == false) {
 					throw new IllegalStateException();
 				}

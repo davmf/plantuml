@@ -35,7 +35,11 @@
  */
 package net.sourceforge.plantuml.classdiagram.command;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import net.atmp.CucaDiagram;
+import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
 import net.sourceforge.plantuml.command.ParserPass;
 import net.sourceforge.plantuml.command.SingleLineCommand2;
@@ -46,6 +50,8 @@ import net.sourceforge.plantuml.regex.RegexResult;
 import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandHideShow2 extends SingleLineCommand2<CucaDiagram> {
+
+	private static final Collection<String> FIRST_TOKENS = Arrays.asList("hide", "show");
 
 	public CommandHideShow2() {
 		super(getRegexConcat());
@@ -60,7 +66,33 @@ public class CommandHideShow2 extends SingleLineCommand2<CucaDiagram> {
 	}
 
 	@Override
-	protected CommandExecutionResult executeArg(CucaDiagram diagram, LineLocation location, RegexResult arg, ParserPass currentPass) {
+	@Explain
+	protected String explainArg(LineLocation location, RegexResult arg) {
+		final StringBuilder sb = new StringBuilder();
+
+		// Hides or shows whole elements, designated by their name or by a
+		// stereotype (see CucaDiagram.hideOrShow2).
+		final char tmp = arg.get("COMMAND", 0).charAt(0);
+		final boolean show = tmp == 's' || tmp == 'S';
+		sb.append(show ? "Showing" : "Hiding");
+
+		final String what = arg.get("WHAT", 0).trim();
+		if (what.startsWith("<<"))
+			sb.append(" the elements stereotyped ").append(what);
+		else
+			sb.append(" the elements matching '").append(what).append("'");
+
+		// Only the first letter of COMMAND is read by executeArg, so the
+		// '-class' variants behave like the plain keywords.
+		if (arg.get("COMMAND", 0).contains("-"))
+			sb.append(" (the '-class' suffix has no specific effect)");
+
+		return sb.toString();
+	}
+
+	@Override
+	protected CommandExecutionResult executeArg(CucaDiagram diagram, LineLocation location, RegexResult arg,
+			ParserPass currentPass) {
 
 		final char tmp = arg.get("COMMAND", 0).charAt(0);
 		final boolean show = tmp == 's' || tmp == 'S';
@@ -68,4 +100,10 @@ public class CommandHideShow2 extends SingleLineCommand2<CucaDiagram> {
 		diagram.hideOrShow2(what, show);
 		return CommandExecutionResult.ok();
 	}
+
+	@Override
+	public Collection<String> mandatoryFirstTokensFast() {
+		return FIRST_TOKENS;
+	}
+
 }

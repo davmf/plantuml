@@ -44,17 +44,18 @@ import jcckit.GraphicsPlotCanvas;
 import jcckit.data.DataPlot;
 import jcckit.util.ConfigParameters;
 import jcckit.util.PropertiesBasedConfigData;
-import net.sourceforge.plantuml.AbstractPSystem;
+import net.sourceforge.plantuml.DirectOsDiagram;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.core.UmlSource;
+import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
 import net.sourceforge.plantuml.preproc.PreprocessingArtifact;
 import net.sourceforge.plantuml.security.SImageIO;
 
-public class PSystemJcckit extends AbstractPSystem {
-	// ::remove folder when __CORE__
+public class PSystemJcckit extends DirectOsDiagram {
+	
 	// ::remove folder when __MIT__ or __EPL__ or __BSD__ or __ASL__ or __LGPL__
 
 	private final PropertiesBasedConfigData prop;
@@ -80,7 +81,7 @@ public class PSystemJcckit extends AbstractPSystem {
 		plotCanvas.paint();
 
 		// Writes the off-screen image into a PNG file
-		SImageIO.write(image, "png", os);
+		SImageIO.write(PortableImageFactory.build(image), "png", os);
 
 		return new ImageDataSimple(width, height);
 	}
