@@ -56,7 +56,6 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
-import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.ULine;
@@ -66,6 +65,9 @@ import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleQueries;
 
 public class TimingRuler {
+
+	private static final double TICK_HEIGHT = 5;
+	private static final double UNIT_GAP = 6;
 
 	private final SortedSet<TimeTick> times = new TreeSet<>();
 
@@ -104,6 +106,8 @@ public class TimingRuler {
 
 	}
 
+	private String unit;
+
 	static public UGraphic applyForVLines(UGraphic ug, Style style, ISkinParam skinParam) {
 		final UStroke stroke = new UStroke(3, 5, 0.5);
 		final HColor color = style.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
@@ -122,6 +126,10 @@ public class TimingRuler {
 
 	public TimingRuler(ISkinParam skinParam) {
 		this.skinParam = skinParam;
+	}
+
+	public void setUnit(String unit) {
+		this.unit = unit;
 	}
 
 	public void scaleInPixels(long tick, long pixel) {
@@ -311,73 +319,112 @@ public class TimingRuler {
 			return;
 
 		final Style styleTimeline = getStyleTimeline();
-		final Style styleTimegrid = getStyleTimegrid();
 
 		final HColor color = styleTimeline.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
 		final UStroke stroke = styleTimeline.getStroke();
 
 		ug = ug.apply(stroke).apply(color);
 
-		if (timeAxisStategy == TimeAxisStategy.AUTOMATIC)
-			drawTimeAxisAutomatic(ug);
-		else
-			drawTimeAxisManual(ug, codes);
+		final ULine line = ULine.vline(TICK_HEIGHT);
+		final double firstTickPosition = getFirstTickPosition();
+		final double axisEnd = getAxisEnd();
+		if (timeAxisStategy == TimeAxisStategy.AUTOMATIC) {
+			if (breaks.isEmpty())
+				for (int i = 0; firstTickPosition + i * tickIntervalInPixels <= axisEnd; i++)
+					ug.apply(UTranslate.dx(firstTickPosition + i * tickIntervalInPixels)).draw(line);
+			else {
+				for (double time : getRegularTimes(getFirstPositiveOrZeroValue().doubleValue()))
+					ug.apply(UTranslate.dx(getPosInPixelInternal(time))).draw(line);
+				for (Break b : breaks) {
+					ug.apply(UTranslate.dx(getBreakStart(b))).draw(line);
+					ug.apply(UTranslate.dx(getBreakEnd(b))).draw(line);
+				}
+			}
+		} else
+			for (TimeTick tick : times)
+				if (getBreakContaining(tick.getTime().doubleValue()) == null)
+					ug.apply(UTranslate.dx(getPosInPixel(tick))).draw(line);
+
+		drawAxisLine(ug, firstTickPosition, axisEnd - firstTickPosition);
+
+		for (TimeLabel label : getTimeLabels(ug.getStringBounder(), timeAxisStategy, codes))
+			label.text.drawU(ug.apply(new UTranslate(label.x, TICK_HEIGHT + 1)));
 
 	}
 
-	private void drawTimeAxisManual(UGraphic ug, Map<String, TimeTick> codes) {
-		final double tickHeight = 5;
-		final ULine line = ULine.vline(tickHeight);
-		final double firstTickPosition = getPosInPixelInternal(getFirstPositiveOrZeroValue().doubleValue());
+	private double getFirstTickPosition() {
+		return getPosInPixelInternal(getFirstPositiveOrZeroValue().doubleValue());
+	}
+
+	private double getAxisEnd() {
+		final double firstTickPosition = getFirstTickPosition();
+		if (breaks.isEmpty() == false) {
+			final List<Double> ticks = getRegularTimes(getFirstPositiveOrZeroValue().doubleValue());
+			return getPosInPixelInternal(ticks.get(ticks.size() - 1));
+		}
 		int nb = 0;
 		while (firstTickPosition + nb * tickIntervalInPixels <= getWidth())
 			nb++;
 
-		drawAxisLine(ug, firstTickPosition, (nb - 1) * tickIntervalInPixels);
+		return firstTickPosition + (nb - 1) * tickIntervalInPixels;
+	}
 
-		for (TimeTick tick : times) {
-			if (getBreakContaining(tick.getTime().doubleValue()) != null)
-				continue;
-			ug.apply(UTranslate.dx(getPosInPixel(tick))).draw(line);
-			final String label = getLabel(tick, codes);
-			if (label.length() == 0)
-				continue;
-			final TextBlock text = getTimeTextBlock(label);
-			final XDimension2D dim = text.calculateDimension(ug.getStringBounder());
-			text.drawU(ug.apply(new UTranslate(getLabelX(tick.getTime().doubleValue(), dim.getWidth()), tickHeight + 1)));
+	static class TimeLabel {
+		private final TextBlock text;
+		private final double x;
+		private final double width;
 
+		private TimeLabel(TextBlock text, double x, double width) {
+			this.text = text;
+			this.x = x;
+			this.width = width;
+		}
+
+		private double getRight() {
+			return x + width;
 		}
 	}
 
-	private void drawTimeAxisAutomatic(UGraphic ug) {
-		final double tickHeight = 5;
-		final ULine line = ULine.vline(tickHeight);
-		final double firstTickPosition = getPosInPixelInternal(getFirstPositiveOrZeroValue().doubleValue());
-		if (breaks.isEmpty()) {
-			int nb = 0;
-			while (firstTickPosition + nb * tickIntervalInPixels <= getWidth()) {
-				ug.apply(UTranslate.dx(firstTickPosition + nb * tickIntervalInPixels)).draw(line);
-				nb++;
+	private List<TimeLabel> getTimeLabels(StringBounder stringBounder, TimeAxisStategy timeAxisStategy,
+			Map<String, TimeTick> codes) {
+		final List<Double> times = new ArrayList<>();
+		final List<String> labels = new ArrayList<>();
+		if (timeAxisStategy == TimeAxisStategy.AUTOMATIC) {
+			for (long round : roundValues()) {
+				times.add((double) round);
+				labels.add(format.formatTime(round));
 			}
-			ug.apply(UTranslate.dx(firstTickPosition)).draw(ULine.hline((nb - 1) * tickIntervalInPixels));
 		} else {
-			final List<Double> ticks = getRegularTimes(getFirstPositiveOrZeroValue().doubleValue());
-			for (double time : ticks)
-				ug.apply(UTranslate.dx(getPosInPixelInternal(time))).draw(line);
-			for (Break b : breaks) {
-				ug.apply(UTranslate.dx(getPosInPixelInternal(b.from))).draw(line);
-				ug.apply(UTranslate.dx(getPosInPixelInternal(b.to))).draw(line);
+			for (TimeTick tick : this.times) {
+				if (getBreakContaining(tick.getTime().doubleValue()) != null)
+					continue;
+				final String label = getLabel(tick, codes);
+				if (label.length() == 0)
+					continue;
+				times.add(tick.getTime().doubleValue());
+				labels.add(label);
 			}
-			final double firstPosition = getPosInPixelInternal(ticks.get(0));
-			final double lastPosition = getPosInPixelInternal(ticks.get(ticks.size() - 1));
-			drawAxisLine(ug, firstPosition, lastPosition - firstPosition);
 		}
 
-		for (long round : roundValues()) {
-			final TextBlock text = getTimeTextBlock(round);
-			final XDimension2D dim = text.calculateDimension(ug.getStringBounder());
-			text.drawU(ug.apply(new UTranslate(getLabelX(round, dim.getWidth()), tickHeight + 1)));
+		final List<TimeLabel> result = new ArrayList<>();
+		for (int i = 0; i < labels.size(); i++) {
+			final TextBlock text = getTimeTextBlock(labels.get(i));
+			final double width = text.calculateDimension(stringBounder).getWidth();
+			result.add(new TimeLabel(text, getLabelX(times.get(i), width), width));
 		}
+		if (unit == null)
+			return result;
+
+		// The unit is right-aligned on the last tick of the axis, so that it never makes the
+		// diagram wider: the time values it would overlap are removed instead
+		final TextBlock unitText = getTimeTextBlock(unit);
+		final double unitWidth = unitText.calculateDimension(stringBounder).getWidth();
+		final double unitX = getAxisEnd() - unitWidth;
+		while (result.size() > 0 && result.get(result.size() - 1).getRight() + UNIT_GAP > unitX)
+			result.remove(result.size() - 1);
+
+		result.add(new TimeLabel(unitText, unitX, unitWidth));
+		return result;
 	}
 
 	private String getLabel(TimeTick tick, Map<String, TimeTick> codes) {
