@@ -47,6 +47,7 @@ import java.util.TreeMap;
 
 // ::comment when JAVA8
 import org.teavm.jso.JSBody;
+import net.sourceforge.plantuml.teavm.c.EmbeddedFiles;
 // ::done
 
 import net.sourceforge.plantuml.emoji.data.Dummy;
@@ -68,6 +69,11 @@ public class Emoji {
 	private final static Map<String, Emoji> ALL = new HashMap<>();
 
 	static {
+		// ::comment when JAVA8
+		if (TeaVM.isC())
+			loadEmbeddedList();
+		else
+		// ::done
 		if (!TeaVM.isTeaVM()) {
 			final InputStream is = Dummy.class.getResourceAsStream("emoji.txt");
 			if (is != null)
@@ -81,6 +87,33 @@ public class Emoji {
 				}
 		}
 	}
+
+	// ::comment when JAVA8
+	// The C build embeds the list (emoji.txt) and the SVG files in the executable
+	private static void loadEmbeddedList() {
+		final String all = embeddedText("emoji/emoji.txt", false);
+		if (all == null)
+			return;
+		for (String line : all.split("\n")) {
+			line = line.trim();
+			if (line.length() > 0)
+				new Emoji(line);
+		}
+	}
+
+	private static String embeddedText(String name, boolean firstLineOnly) {
+		final byte[] data = EmbeddedFiles.read(name);
+		if (data == null)
+			return null;
+		final StringBuilder sb = new StringBuilder();
+		for (byte b : data) {
+			if (firstLineOnly && b == '\n')
+				break;
+			sb.append((char) (b & 0xFF));
+		}
+		return sb.toString();
+	}
+	// ::done
 
 	public static Map<String, Emoji> getAll() {
 		return MyCollections.unmodifiableMap(new TreeMap<>(ALL));
@@ -97,13 +130,13 @@ public class Emoji {
 			this.shortcut = null;
 		} else {
 			this.shortcut = unicode.substring(x + 1);
-			if (!TeaVM.isTeaVM()) {
+			if (!TeaVM.isTeaVM() || TeaVM.isC()) {
 				ALL.put(this.shortcut, this);
 			}
 			unicode = unicode.substring(0, x);
 		}
 		this.unicode = unicode;
-		if (!TeaVM.isTeaVM()) {
+		if (!TeaVM.isTeaVM() || TeaVM.isC()) {
 			ALL.put(unicode, this);
 		}
 	}
@@ -112,8 +145,6 @@ public class Emoji {
 		// ::comment when JAVA8
 		if (TeaVM.isTeaVM() && TeaVM.isC() == false)
 			return retrieveFromJs(name.toLowerCase());
-		else if (TeaVM.isC())
-			return null;
 		else
 			// ::done
 			return ALL.get(name.toLowerCase());
@@ -174,7 +205,11 @@ public class Emoji {
 
 		final List<String> data = new ArrayList<String>();
 		if (TeaVM.isC()) {
-			// No emoji data with TeaVM C
+			// ::comment when JAVA8
+			final String svgData = embeddedText("emoji/" + unicode + ".svg", true);
+			if (svgData != null)
+				data.add(svgData);
+			// ::done
 		} else if (TeaVM.isTeaVM()) {
 			// ::comment when JAVA8
 			final String svgData = jsGetEmojiSvg(unicode);

@@ -50,6 +50,11 @@ import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 
 public class StringBounderOpenPdf implements StringBounder {
 
+	static {
+		// Before the first measure, which happens while the diagram is laid out
+		OpenPdfSetup.ensure();
+	}
+
 	private static final Map<String, BaseFont> fontCache = new ConcurrentHashMap<>();
 
 	@Override
@@ -123,7 +128,8 @@ public class StringBounderOpenPdf implements StringBounder {
 				baseName = BaseFont.COURIER_OBLIQUE;
 			else
 				baseName = BaseFont.COURIER;
-		} else if (lower.contains("times") || lower.contains("serif")) {
+		} else if (lower.contains("times") || (lower.contains("serif") && lower.contains("sans") == false)) {
+			// ("sans-serif" and "SansSerif" contain "serif": they are Helvetica)
 			if (bold && italic)
 				baseName = BaseFont.TIMES_BOLDITALIC;
 			else if (bold)

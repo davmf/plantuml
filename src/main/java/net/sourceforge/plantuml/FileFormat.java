@@ -89,6 +89,8 @@ public enum FileFormat {
 	XMI_SCRIPT("xmi-script", "application/vnd.xmi+xml"), //
 	SCXML("scxml", "application/scxml+xml"), //
 	GRAPHML("graphml", "application/graphml+xml"), //
+	// Declared before PDF: fromCli("pdf") must give PDF
+	PDF_DETERMINISTIC("pdf", "application/pdf"), //
 	PDF("pdf", "application/pdf"), //
 	HTML("html", "text/html"), //
 	HTML5("html5", "text/html"), //
@@ -138,6 +140,12 @@ public enum FileFormat {
 	 * @return a string starting by a point.
 	 */
 	public String getFileSuffix() {
+		// Also in the TeaVM builds: the name() fallback below would give ".svg_deterministic"
+		if (this == SVG_DETERMINISTIC)
+			return ".svg";
+		if (this == PDF_DETERMINISTIC)
+			return ".pdf";
+
 		if (!TeaVM.isTeaVM()) {
 			if (name().startsWith("XMI_CUSTOM"))
 				return ".xmi_custom";
@@ -181,6 +189,12 @@ public enum FileFormat {
 		if (TeaVM.isTeaVM()) {
 			if (this == SVG_DETERMINISTIC)
 				return new StringBounderFromWidthTable(this);
+			// The PDF is written with the base-14 fonts: it measures with their AFM metrics, as on the JVM
+			if (this == PDF || this == PDF_DETERMINISTIC)
+				return new StringBounderOpenPdf();
+			// The text formats measure in character cells, not in pixels, in every build
+			if (TeaVM.isC() && (this == ATXT || this == UTXT))
+				return new TextStringBounder(this);
 			// TeaVM C has no canvas to measure the text: the metrics of the fonts it
 			// embeds, which measure as Java does on Windows
 			if (TeaVM.isC())
@@ -223,6 +237,7 @@ public enum FileFormat {
 
 		// ::comment when JAVA8
 		case PDF:
+		case PDF_DETERMINISTIC:
 			return new StringBounderOpenPdf();
 		// ::done
 		}
@@ -269,7 +284,6 @@ public enum FileFormat {
 		}
 	}
 
-	// ::comment when __TEAVM__
 	static public XDimension2D getJavaDimension(UFont font, String text) {
 		if (text.length() == 0)
 			return new XDimension2D(0, 0);
@@ -382,6 +396,5 @@ public enum FileFormat {
 		}
 		return false;
 	}
-	// ::done
 
 }

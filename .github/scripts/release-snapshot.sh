@@ -24,10 +24,25 @@ cp "build/java8/plantuml.jar" "github_release/plantuml-java8-SNAPSHOT.jar"
 cp "build/libs/plantuml-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-SNAPSHOT-javadoc.jar"
 cp "build/libs/plantuml-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-SNAPSHOT-sources.jar"
 cp "build/libs/js-plantuml-${RELEASE_VERSION}.zip" "github_release/js-plantuml-SNAPSHOT.zip"
-cp "build/native-image/native-plantuml-windows-amd64-SNAPSHOT.zip" "github_release/native-plantuml-windows-amd64-SNAPSHOT.zip"
-cp "build/native-image/native-plantuml-linux-amd64-SNAPSHOT.zip" "github_release/native-plantuml-linux-amd64-SNAPSHOT.zip"
-cp "build/native-image/native-plantuml-linux-arm64-SNAPSHOT.zip" "github_release/native-plantuml-linux-arm64-SNAPSHOT.zip"
-cp "build/native-image/native-plantuml-macos-arm64-SNAPSHOT.zip" "github_release/native-plantuml-macos-arm64-SNAPSHOT.zip"
+# Experimental C executables (Java -> C with TeaVM): optional, their build must not block the snapshot.
+# Each entry is <artifact suffix>:<name in the release>:<executable>; every artifact is downloaded
+# in its own folder (build/executable/plantuml-<artifact suffix>).
+for target in \
+  linux-x64:linux-amd64:plantuml \
+  linux-arm64:linux-arm64:plantuml \
+  macos-x64:macos-amd64:plantuml \
+  macos-arm64:macos-arm64:plantuml \
+  windows-x64:windows-amd64:plantuml.exe \
+  windows-arm64:windows-arm64:plantuml.exe; do
+  IFS=: read -r artifact asset exe <<< "${target}"
+  if [[ -f "build/executable/plantuml-${artifact}/${exe}" ]]; then
+    # upload-artifact does not keep the executable bit
+    chmod +x "build/executable/plantuml-${artifact}/${exe}"
+    zip -j "github_release/plantuml-${asset}-SNAPSHOT.zip" "build/executable/plantuml-${artifact}/${exe}"
+  else
+    echo "::warning title=release snapshot::The C executable (${asset}) is missing: it is not attached to the snapshot"
+  fi
+done
 cp "license-variants/plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}.jar" "github_release/plantuml-asl-SNAPSHOT.jar"
 cp "license-variants/plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-javadoc.jar" "github_release/plantuml-asl-SNAPSHOT-javadoc.jar"
 cp "license-variants/plantuml-asl/build/libs/plantuml-asl-${RELEASE_VERSION}-sources.jar" "github_release/plantuml-asl-SNAPSHOT-sources.jar"
@@ -87,10 +102,12 @@ echo -n "${DATE_TIME_UTC}" > "github_release/plantuml-SNAPSHOT.timestamp"
 
 cat <<-EOF >notes.txt
   ## Version ~v${RELEASE_VERSION%-SNAPSHOT} of the ${DATE_TIME_UTC}
-  This is a [JAR](https://en.wikipedia.org/wiki/JAR_(file_format))/[JS](https://en.wikipedia.org/wiki/JavaScript) pre-release of [the latest development work](https://github.com/plantuml/plantuml/commits/).
+  This is a [JAR](https://en.wikipedia.org/wiki/JAR_(file_format))/[JS](https://en.wikipedia.org/wiki/JavaScript)/[EXE](https://en.wikipedia.org/wiki/Executable) pre-release of [the latest development work](https://github.com/plantuml/plantuml/commits/).
   ⚠️  **It is not ready for general use** ⚠️
   ⏱  _Snapshot taken the ${DATE_TIME_UTC}_
 EOF
+
+cat .github/scripts/notes-for-snapshot.md >> notes.txt
 
 gh release create \
   --prerelease \
@@ -99,4 +116,4 @@ gh release create \
   --notes-file notes.txt \
   "${TAG}" github_release/*
 
-echo "::notice title=release snapshot::snapshot - JAR/JS (~v${RELEASE_VERSION%-SNAPSHOT}) released at ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG} and taken the ${DATE_TIME_UTC}"
+echo "::notice title=release snapshot::snapshot - JAR/JS/EXE (~v${RELEASE_VERSION%-SNAPSHOT}) released at ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG} and taken the ${DATE_TIME_UTC}"

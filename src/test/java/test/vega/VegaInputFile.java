@@ -32,6 +32,7 @@ import net.sourceforge.plantuml.core.Diagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
 import net.sourceforge.plantuml.core.ImageData;
 import net.sourceforge.plantuml.error.PSystemError;
+import net.sourceforge.plantuml.preproc.Defines;
 import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.yaml.parser.Monomorph;
@@ -79,6 +80,7 @@ public class VegaInputFile {
 		CHECKERS.put(FileFormat.XMI_SCRIPT, new VegaCheckerXmi());
 		CHECKERS.put(FileFormat.ATXT, new VegaCheckerAtxt());
 		CHECKERS.put(FileFormat.UTXT, new VegaCheckerUtxt());
+		CHECKERS.put(FileFormat.PDF_DETERMINISTIC, new VegaCheckerPdf());
 	}
 
 	private final Path path;
@@ -260,6 +262,8 @@ public class VegaInputFile {
 				result.add(FileFormat.UTXT);
 			else if (trimmed.equals("ATXT"))
 				result.add(FileFormat.ATXT);
+			else if (trimmed.equals("PDF"))
+				result.add(FileFormat.PDF_DETERMINISTIC);
 			else
 				result.add(FileFormat.valueOf(trimmed));
 		}
@@ -304,6 +308,14 @@ public class VegaInputFile {
 		}
 	}
 
+	// The same file name as the C build, which reads a file (see Defines.VEGA_FILENAME)
+	private SourceStringReader newSourceStringReader(String source) {
+		final Defines defines = Defines.createEmpty();
+		defines.overrideFilename(Defines.VEGA_FILENAME);
+		return new SourceStringReader(defines, source, UTF_8, java.util.Collections.<String>emptyList(),
+				getCurrentDir());
+	}
+
 	private SFile getCurrentDir() {
 		final Path parent = path.toAbsolutePath().getParent();
 		return new SFile(parent.toString());
@@ -336,7 +348,7 @@ public class VegaInputFile {
 			if (verbose)
 				GlobalConfig.getInstance().put(GlobalConfigKey.VERBOSE, true);
 			System.setErr(newPrintStream(errCapture));
-			final SourceStringReader ssrForFormat = new SourceStringReader(source, getCurrentDir());
+			final SourceStringReader ssrForFormat = newSourceStringReader(source);
 			return ssrForFormat.outputImage(baos, imageIndex, fileFormatOption);
 		} finally {
 			System.setErr(originalErr);
@@ -379,7 +391,7 @@ public class VegaInputFile {
 		assertFalse(getPumlSource().isEmpty(), "PlantUML source in " + getDisplayPath());
 
 		final String source = getPumlSourceAsString();
-		final SourceStringReader ssr = new SourceStringReader(source, getCurrentDir());
+		final SourceStringReader ssr = newSourceStringReader(source);
 		final Diagram diagram = ssr.getBlocks().get(0).getDiagram();
 		this.diagramClass = diagram.getClass();
 		this.rootCause = diagram.getRootCause();

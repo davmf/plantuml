@@ -12,6 +12,10 @@ import org.teavm.jso.dom.html.HTMLCanvasElement;
 import org.teavm.jso.dom.html.HTMLDocument;
 import org.teavm.jso.typedarrays.Int8Array;
 import org.teavm.jso.typedarrays.Uint8ClampedArray;
+
+import net.sourceforge.plantuml.teavm.TeaVM;
+import net.sourceforge.plantuml.teavm.c.PngImageC;
+import net.sourceforge.plantuml.utils.Base64Coder;
 // ::done
 
 /**
@@ -68,18 +72,31 @@ class PortableImageTeaVM implements PortableImage {
 	 * stored as a data URL so that {@link #toPngDataUrl()} can return them
 	 * directly without re-encoding.
 	 * <p>
-	 * Pixel data is not decoded; {@link #getRGB(int, int)} returns 0.
-	 * This is acceptable because in TeaVM the image is rendered via the
-	 * SVG {@code <image>} element using the data URL.
+	 * In the JavaScript build, pixel data is not decoded; {@link #getRGB(int, int)}
+	 * returns 0. This is acceptable because there the image is rendered via the
+	 * SVG {@code <image>} element using the data URL. The C build decodes the
+	 * pixels, which the PNG output draws (see {@code DriverImageRaster}).
 	 */
 	PortableImageTeaVM(byte[] pngBytes, String base64) {
 		if (pngBytes.length < 24)
 			throw new IllegalArgumentException("Invalid PNG: too short (" + pngBytes.length + " bytes)");
 
-		this.width = readInt32BE(pngBytes, 16);
-		this.height = readInt32BE(pngBytes, 20);
+		int decodedWidth = readInt32BE(pngBytes, 16);
+		int decodedHeight = readInt32BE(pngBytes, 20);
+		int[] decodedPixels = new int[0];
+		if (TeaVM.isC()) {
+			final int[] size = new int[2];
+			final int[] decoded = PngImageC.decode(pngBytes, size);
+			if (decoded != null) {
+				decodedWidth = size[0];
+				decodedHeight = size[1];
+				decodedPixels = decoded;
+			}
+		}
+		this.width = decodedWidth;
+		this.height = decodedHeight;
 		this.imageType = TYPE_INT_ARGB;
-		this.pixels = new int[0];
+		this.pixels = decodedPixels;
 		this.pngDataUrl = "data:image/png;base64," + base64;
 	}
 
@@ -167,6 +184,10 @@ class PortableImageTeaVM implements PortableImage {
 		if (pngDataUrl != null)
 			return pngDataUrl;
 
+		if (TeaVM.isC())
+			return "data:image/png;base64,"
+					+ new String(Base64Coder.encode(PngImageC.encode(pixels, width, height, false)));
+
 		HTMLDocument doc = HTMLDocument.current();
 		HTMLCanvasElement canvas = (HTMLCanvasElement) doc.createElement("canvas");
 		canvas.setWidth(width);
@@ -222,10 +243,20 @@ class PortableImageTeaVM implements PortableImage {
 
 		final int[] dstPixels = new int[dstW * dstH];
 
-		if (interpolationType == 2)
-			scaleBilinear(pixels, width, height, dstPixels, dstW, dstH);
-		else
-			scaleNearestNeighbor(pixels, width, height, dstPixels, dstW, dstH);
+		// The C build gets the same pixels as AffineTransformOp on the JVM (see MlibAffine).
+		// TeaVM.isC() is folded at compile time, so MlibAffine is left out of the JavaScript
+		// build: it made plantuml.js fail with "Uncaught SyntaxError: Unexpected number".
+		if (TeaVM.isC()) {
+			if (interpolationType == 2)
+				MlibAffine.bilinear(pixels, width, height, dstPixels, dstW, dstH, scaleFactor);
+			else
+				MlibAffine.nearest(pixels, width, height, dstPixels, dstW, dstH, scaleFactor);
+		} else {
+			if (interpolationType == 2)
+				scaleBilinear(pixels, width, height, dstPixels, dstW, dstH);
+			else
+				scaleNearestNeighbor(pixels, width, height, dstPixels, dstW, dstH);
+		}
 
 		return new PortableImageTeaVM(dstW, dstH, imageType, dstPixels);
 	}

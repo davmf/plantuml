@@ -103,8 +103,6 @@ public class OptionPrint {
 		return MyCollections.unmodifiableCollection(strings);
 	}
 
-	// ::comment when __TEAVM__
-
 	static public void printCheckGraphviz() {
 		final ReportLog result = new ReportLog();
 		final int errorCode = GraphvizUtils.addDotStatus(result, false);
@@ -176,7 +174,7 @@ public class OptionPrint {
 	}
 
 	private static String format(final long value) {
-		return String.format(Locale.US, "%,d", value);
+		return String.format(Locale.ROOT, "%,d", value);
 	}
 
 	public static void printAbout() {
@@ -188,6 +186,5 @@ public class OptionPrint {
 	public static void printListKeywords() {
 		new LanguageDescriptor().print(System.out);
 	}
-	// ::done
 
 }

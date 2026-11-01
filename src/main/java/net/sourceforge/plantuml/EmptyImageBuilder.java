@@ -52,19 +52,14 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.utils.Log;
 
 public class EmptyImageBuilder {
-	// ::remove file when __HAXE__
-
 	private final PortableImage im;
 
-	// ::comment when __TEAVM__
 	private final Graphics2D g2d;
-	// ::done
 
 	public EmptyImageBuilder(String watermark, int width, int height, XColor background, StringBounder stringBounder) {
 		if (width <= 0 || height <= 0)
 			throw new IllegalArgumentException("width and height must be positive");
 
-		// ::comment when __TEAVM__
 		if (width > GraphvizUtils.getenvImageLimit()) {
 			final int width2 = width;
 			Log.info(() -> "Width too large " + width2 + ". You should set PLANTUML_LIMIT_SIZE");
@@ -75,7 +70,6 @@ public class EmptyImageBuilder {
 			Log.info(() -> "Height too large " + height2 + ". You should set PLANTUML_LIMIT_SIZE");
 			height = GraphvizUtils.getenvImageLimit();
 		}
-		// ::done
 		
 		final int widthFinal = width;
 		final int heightFinal = height;
@@ -84,7 +78,6 @@ public class EmptyImageBuilder {
 
 		im = PortableImageFactory.build(width, height, type);
 
-		// ::comment when __TEAVM__
 		g2d = im.createGraphics();
 		UAntiAliasing.ANTI_ALIASING_ON.apply(g2d);
 		if (background != null) {
@@ -96,7 +89,6 @@ public class EmptyImageBuilder {
 			g2d.setColor(new XColor(gray, gray, gray).toAwtColor());
 			printWatermark(watermark, width, height);
 		}
-		// ::done
 	}
 
 	private int getType(XColor background) {
@@ -109,7 +101,6 @@ public class EmptyImageBuilder {
 		return PortableImage.TYPE_INT_RGB;
 	}
 
-	// ::comment when __TEAVM__
 	private void printWatermark(String watermark, int maxWidth, int maxHeight) {
 		final Font javaFont = g2d.getFont();
 		final FontMetrics fm = g2d.getFontMetrics(javaFont);
@@ -163,7 +154,6 @@ public class EmptyImageBuilder {
 	public Graphics2D getGraphics2D() {
 		return g2d;
 	}
-	// ::done
 
 	public PortableImage getPortableImage() {
 		return im;

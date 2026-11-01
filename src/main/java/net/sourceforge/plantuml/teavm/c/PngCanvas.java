@@ -177,6 +177,11 @@ public final class PngCanvas implements RasterCanvas {
 	}
 
 	@Override
+	public void drawImage(int[] argb, int width, int height, double x, double y, double scale) {
+		NativeCanvas.drawImage(handle(), argb, width, height, x, y, scale);
+	}
+
+	@Override
 	public void drawString(String text, UFont font, double x, double y, double angle) {
 		setFont(font);
 		final char[] chars = text.toCharArray();
@@ -200,6 +205,15 @@ public final class PngCanvas implements RasterCanvas {
 		final double[] metrics = new double[3];
 		NativeCanvas.fontMetrics(handle, metrics);
 		return metrics;
+	}
+
+	@Override
+	public double[] getInkBounds(String text, UFont font) {
+		setFont(font);
+		final char[] chars = text.toCharArray();
+		final double[] bounds = new double[4];
+		NativeCanvas.textBounds(handle, chars, chars.length, bounds);
+		return bounds;
 	}
 
 	private void setFont(UFont font) {

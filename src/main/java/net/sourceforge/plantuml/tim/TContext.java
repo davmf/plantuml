@@ -63,6 +63,7 @@ import net.sourceforge.plantuml.json.JsonObject;
 import net.sourceforge.plantuml.json.JsonValue;
 import net.sourceforge.plantuml.log.Logme;
 import net.sourceforge.plantuml.nio.InputFile;
+import net.sourceforge.plantuml.nio.InputFileIo;
 import net.sourceforge.plantuml.nio.PathSystem;
 import net.sourceforge.plantuml.preproc.Environment;
 import net.sourceforge.plantuml.preproc.DiagramDetector;
@@ -457,6 +458,12 @@ public class TContext {
 	}
 
 	private void executeImport(TMemory memory, StringLocated s) throws EaterException {
+		// ::comment when JAVA8
+		if (TeaVM.isC()) {
+			executeImportInC(memory, s);
+			return;
+		}
+		// ::done
 		if (!TeaVM.isTeaVM()) {
 			final EaterImport _import = new EaterImport(s.getTrimmed());
 			_import.analyze(this, memory);
@@ -480,6 +487,29 @@ public class TContext {
 		}
 		throw new EaterException("Cannot import", s);
 	}
+
+	// ::comment when JAVA8
+	/**
+	 * The C build imports an archive found like an included file (relative to the
+	 * folder of the diagram), with java.io.
+	 */
+	private void executeImportInC(TMemory memory, StringLocated s) throws EaterException {
+		final EaterImport _import = new EaterImport(s.getTrimmed());
+		_import.analyze(this, memory);
+
+		final String what = applyFunctionsAndVariables(memory, new StringLocated(_import.getWhat(), s.getLocation()));
+		try {
+			final InputFile found = pathSystem.getInputFile(what);
+			if (found instanceof InputFileIo) {
+				pathSystem.addImportFile(((InputFileIo) found).getFile());
+				return;
+			}
+		} catch (IOException e) {
+			throw new EaterException("Cannot import " + e.getMessage(), s);
+		}
+		throw new EaterException("Cannot import", s);
+	}
+	// ::done
 
 	private void executeLog(TMemory memory, StringLocated s) throws EaterException {
 		final EaterLog log = new EaterLog(s.getTrimmed());
@@ -678,14 +708,16 @@ public class TContext {
 						// The library's file is the engine's own: a relative include written
 						// in it must not reach the browser host (restored with the rest).
 						this.pathSystem = this.pathSystem.withoutHostFiles();
-						reader = ReadLineReader.create(new InputStreamReader(is), what);
+						// The C build extracts the diagram of the file, as the JVM does
+						reader = TeaVM.isC() ? PreprocessorUtils.getReaderStdlibInclude(s, stdlibPath)
+								: ReadLineReader.create(new InputStreamReader(is), what);
 					}
 				} else {
 					InputFile tmp = this.pathSystem.getInputFile(what);
 					this.pathSystem = this.pathSystem.changeCurrentDirectory(tmp.getParentFolder());
 					reader = PreprocessorUtils.getReaderStdlibInclude(s, stdlibPath);
 				}
-			} else if (what.startsWith("http://") || what.startsWith("https://")) {
+			} else if ((what.startsWith("http://") || what.startsWith("https://")) && TeaVM.isC() == false) {
 				if (!TeaVM.isTeaVM()) {
 					final SURL url = SURL.create(what);
 					if (url == null)
@@ -699,6 +731,9 @@ public class TContext {
 				// what.length() - 1));
 			} else {
 				final InputFile f2 = this.pathSystem.getInputFile(what);
+				// The C build reads a URL here: refused by the security profile, or unreachable
+				if (f2 == null && TeaVM.isC() && (what.startsWith("http://") || what.startsWith("https://")))
+					throw new EaterException("Cannot open URL", s);
 				if (f2 != null) {
 					final File used = f2 instanceof SFile ? ((SFile) f2).getCanonicalFile().conv() : null;
 					final String identity = used != null ? used.getPath() : this.pathSystem.getTeaVMFileId(f2);

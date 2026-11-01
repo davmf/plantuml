@@ -36,6 +36,7 @@ package net.sourceforge.plantuml.chart;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import net.sourceforge.plantuml.klimt.UStroke;
@@ -214,8 +215,10 @@ public class BarRenderer {
 			final double barWidth = Math.abs((value - axis.getMin()) / (axis.getMax() - axis.getMin()) * plotWidth);
 			final double x = 0; // Start from left
 
-			final URectangle rect = URectangle.build(barWidth, barHeight);
-			ug.apply(lineColor).apply(stroke).apply(color.bg()).apply(UTranslate.dx(x).compose(UTranslate.dy(y))).draw(rect);
+			if (barHeight > 0) {
+				final URectangle rect = URectangle.build(barWidth, barHeight);
+				ug.apply(lineColor).apply(stroke).apply(color.bg()).apply(UTranslate.dx(x).compose(UTranslate.dy(y))).draw(rect);
+			}
 
 			// Draw label if enabled
 			if (series.isShowLabels()) {
@@ -279,8 +282,10 @@ public class BarRenderer {
 					lineColor = color; // Use fill color if no line color specified
 				}
 
-				final URectangle rect = URectangle.build(barWidth, barHeight);
-				ug.apply(lineColor).apply(stroke).apply(color.bg()).apply(UTranslate.dx(x).compose(UTranslate.dy(y))).draw(rect);
+				if (barHeight > 0) {
+					final URectangle rect = URectangle.build(barWidth, barHeight);
+					ug.apply(lineColor).apply(stroke).apply(color.bg()).apply(UTranslate.dx(x).compose(UTranslate.dy(y))).draw(rect);
+				}
 
 				// Draw label if enabled
 				if (series.isShowLabels()) {
@@ -366,8 +371,10 @@ public class BarRenderer {
 					lineColor = color; // Use fill color if no line color specified
 				}
 
-				final URectangle rect = URectangle.build(barWidth, barHeight);
-				ug.apply(lineColor).apply(stroke).apply(color.bg()).apply(UTranslate.dx(x).compose(UTranslate.dy(y))).draw(rect);
+				if (barHeight > 0) {
+					final URectangle rect = URectangle.build(barWidth, barHeight);
+					ug.apply(lineColor).apply(stroke).apply(color.bg()).apply(UTranslate.dx(x).compose(UTranslate.dy(y))).draw(rect);
+				}
 
 				// Draw label if enabled
 				if (series.isShowLabels()) {
@@ -414,9 +421,9 @@ public class BarRenderer {
 
 	private String formatValue(double value) {
 		if (Math.abs(value) < 0.01 && value != 0)
-			return String.format("%.2e", value);
+			return String.format(Locale.ROOT, "%.2e", value);
 		if (value == (long) value)
-			return String.format("%d", (long) value);
-		return String.format("%.2f", value);
+			return String.format(Locale.ROOT, "%d", (long) value);
+		return String.format(Locale.ROOT, "%.2f", value);
 	}
 }

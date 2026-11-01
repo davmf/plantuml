@@ -43,8 +43,10 @@ import java.util.List;
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.cli.OptionPrint;
 import net.sourceforge.plantuml.eggs.QuoteUtils;
+import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.text.BackSlash;
 import net.sourceforge.plantuml.utils.MyCollections;
+import net.sourceforge.plantuml.version.LicenseInfo;
 import net.sourceforge.plantuml.version.Version;
 
 public class ReportLog implements Iterable<String> {
@@ -106,9 +108,12 @@ public class ReportLog implements Iterable<String> {
 			add("An error has occurred!");
 		else
 			add("An error has occurred : " + exception);
-		// ::comment when __TEAVM__
-		final String quote = StringUtils.rot(QuoteUtils.getSomeQuote());
-		add("<i>" + quote);
+		// The quotes would add some 27 KB to the TeaVM output: the browser report
+		// goes without them
+		if (TeaVM.isTeaVM() == false)
+			if (LicenseInfo.retrieveNamedOrDistributorQuickIsValid() == false)
+				add("<i>" + StringUtils.rot(QuoteUtils.getSomeQuote()));
+		
 		addEmptyLine();
 
 		add("PlantUML (" + Version.versionString() + ") has crashed.");
@@ -116,7 +121,6 @@ public class ReportLog implements Iterable<String> {
 		checkOldVersionWarning();
 		add("Diagram size: " + lines(fullDiagramText) + " lines / " + fullDiagramText.length() + " characters.");
 		addEmptyLine();
-		// ::done
 	}
 
 	private int lines(String text) {
@@ -146,10 +150,8 @@ public class ReportLog implements Iterable<String> {
 	}
 
 	public void addProperties() {
-		// ::comment when __TEAVM__
 		addAll(OptionPrint.interestingProperties());
 		addAll(OptionPrint.interestingValues());
-		// ::done
 	}
 
 }

@@ -7,8 +7,6 @@ import java.util.Locale;
  * {@link Color} with hue, saturation and brightness.
  */
 public class ColorHSB extends Color {
-	// ::remove file when __HAXE__
-	
 	
 	private final float hue;
 	private final float saturation;
@@ -40,7 +38,7 @@ public class ColorHSB extends Color {
 
 	@Override
 	public String toString() {
-		return String.format(Locale.US, "%s[a=%02X r=%02X g=%02X b=%02X / h=%f s=%f b=%f]", getClass().getSimpleName(),
+		return String.format(Locale.ROOT, "%s[a=%02X r=%02X g=%02X b=%02X / h=%f s=%f b=%f]", getClass().getSimpleName(),
 				getAlpha(), getRed(), getGreen(), getBlue(), getHue(), getSaturation(), getBrightness());
 	}
 }

@@ -1,15 +1,19 @@
 name: TeaVM C (experimental)
 
-# Java -> C with TeaVM, then a native Windows executable built with MSVC.
-# See src/teavm-c/README.md.
+# Java -> C with TeaVM, then a native executable: MSVC on Windows, the C compiler
+# of the runner on Linux and macOS. See src/teavm-c/README.md.
 #
 # The generated C is platform independent: it is produced once on Linux, then
-# compiled and smoke-tested on one Windows runner per architecture.
+# compiled and smoke-tested on one runner per system and architecture
+# (Windows, Linux and macOS, x64 and arm64).
+#
+# Called by ci.yml on every push to master (so it runs once, there is no push
+# trigger here). The executables "plantuml-{windows,linux,macos}-{x64,arm64}"
+# are then attached to the snapshot release. Can also be started by hand.
 
 on:
-  push:
-    branches: [ master-c ]
   workflow_dispatch:
+  workflow_call:
 
 defaults:
   run:
@@ -32,6 +36,10 @@ jobs:
           java-version: 21
           distribution: temurin
           cache: gradle
+
+      # Version, git commit and timestamp reported by the executable (-version)
+      - name: Patch build metadata (version / git commit / timestamp)
+        run: ./gradlew --no-daemon patchCompilationInfo
 
       # ":" prefix: only the root project (plantuml-mcp-js also has a TeaVM
       # plugin, and therefore a generateC task, without any C configuration)
@@ -103,17 +111,17 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: cmake --build c-build --config Release
+        run: cmake --build c-build --config Release --parallel
 
       - name: Smoke test (mindmap to SVG)
         shell: pwsh
         run: |
-          $exe = "c-sources/bin/Release/plantuml-c.exe"
+          $exe = "c-sources/bin/Release/plantuml.exe"
           Write-Host "Size: $((Get-Item $exe).Length) bytes"
           $src = "@startmindmap`n* Root`n** Alpha`n** Beta`n@endmindmap`n"
           [System.IO.File]::WriteAllText("mindmap.puml", $src)
           & $exe -tsvg mindmap.puml
-          if ($LASTEXITCODE -ne 0) { throw "plantuml-c.exe exited with code $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "plantuml.exe exited with code $LASTEXITCODE" }
           if ((Test-Path mindmap.svg) -eq $false) { throw "No SVG was written" }
           $svg = Get-Content -Raw mindmap.svg
           Write-Host $svg
@@ -125,9 +133,9 @@ jobs:
       - name: Smoke test (mindmap to PNG)
         shell: pwsh
         run: |
-          $exe = "c-sources/bin/Release/plantuml-c.exe"
+          $exe = "c-sources/bin/Release/plantuml.exe"
           & $exe -tpng mindmap.puml
-          if ($LASTEXITCODE -ne 0) { throw "plantuml-c.exe exited with code $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "plantuml.exe exited with code $LASTEXITCODE" }
           if ((Test-Path mindmap.png) -eq $false) { throw "No PNG was written" }
           $bytes = [System.IO.File]::ReadAllBytes("mindmap.png")
           Write-Host "PNG: $($bytes.Length) bytes"
@@ -142,9 +150,9 @@ jobs:
       - name: Smoke test (help)
         shell: pwsh
         run: |
-          $exe = "c-sources/bin/Release/plantuml-c.exe"
+          $exe = "c-sources/bin/Release/plantuml.exe"
           $help = (& $exe --help) -join "`n"
-          if ($LASTEXITCODE -ne 0) { throw "plantuml-c.exe exited with code $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "plantuml.exe exited with code $LASTEXITCODE" }
           Write-Host $help
           if ($help -notmatch "Show help and usage information" -or $help -notmatch "Generate SVG images") {
             Write-Host "::error::The help is not the expected one"
@@ -154,10 +162,12 @@ jobs:
       - name: Smoke test (exit code)
         shell: pwsh
         run: |
-          $exe = "c-sources/bin/Release/plantuml-c.exe"
+          $exe = "c-sources/bin/Release/plantuml.exe"
           & $exe no-such-file.puml
           # 50: no file found, as on the JVM
           if ($LASTEXITCODE -ne 50) { throw "Expected the exit code 50, got $LASTEXITCODE" }
+          # The expected non-zero code must not become the exit code of the step
+          $global:LASTEXITCODE = 0
 
       - name: Upload the SVG and the PNG
         uses: actions/upload-artifact@v7
@@ -171,6 +181,158 @@ jobs:
       - name: Upload executable
         uses: actions/upload-artifact@v7
         with:
-          name: plantuml-c-windows-${{ matrix.arch }}
-          path: c-sources/bin/Release/plantuml-c.exe
+          name: plantuml-windows-${{ matrix.arch }}
+          path: c-sources/bin/Release/plantuml.exe
+          retention-days: 30
+
+  build_unix:
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    needs: generate_c
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - os: macos
+            arch: x64
+            runner: macos-15-intel
+          - os: macos
+            arch: arm64
+            runner: macos-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v7
+
+      - name: Download C sources
+        uses: actions/download-artifact@v8
+        with:
+          name: teavm-c-sources
+          path: c-sources
+
+      # libcurl reads the URL of !include (macOS has it; the Linux runners may lack the
+      # development files)
+      - name: Install libcurl (Linux)
+        if: matrix.os == 'linux'
+        run: sudo apt-get install -y libcurl4-openssl-dev
+
+      # Single-configuration generator (Unix Makefiles): the executable is
+      # c-sources/bin/plantuml (CMakeLists.txt builds in Release by default)
+      - name: Configure
+        run: cmake -S c-sources -B c-build -DCMAKE_BUILD_TYPE=Release
+
+      # An explicit number of jobs: a bare --parallel gives make an unlimited -j, which
+      # spawns one cc process per generated file at once and exhausts the process
+      # limit of the macOS runner ("posix_spawn failed: Resource
+      # temporarily unavailable", "make: wait: No child processes")
+      - name: Build
+        run: cmake --build c-build --parallel "$(getconf _NPROCESSORS_ONLN)"
+
+      - name: Smoke test (mindmap to SVG)
+        run: |
+          exe="c-sources/bin/plantuml"
+          echo "Size: $(wc -c < "$exe") bytes"
+          printf '@startmindmap\n* Root\n** Alpha\n** Beta\n@endmindmap\n' > mindmap.puml
+          "$exe" -tsvg mindmap.puml
+          test -f mindmap.svg || { echo "::error::No SVG was written"; exit 1; }
+          cat mindmap.svg
+          if ! grep -q "<svg" mindmap.svg || ! grep -q "Alpha" mindmap.svg; then
+            echo "::error::The output is not the expected SVG"
+            exit 1
+          fi
+
+      - name: Smoke test (mindmap to PNG)
+        run: |
+          exe="c-sources/bin/plantuml"
+          "$exe" -tpng mindmap.puml
+          test -f mindmap.png || { echo "::error::No PNG was written"; exit 1; }
+          echo "PNG: $(wc -c < mindmap.png) bytes"
+          signature="$(head -c 4 mindmap.png | tail -c 3)"
+          if [ "$signature" != "PNG" ] || ! grep -aq "iTXtplantuml" mindmap.png; then
+            echo "::error::The output is not the expected PNG"
+            exit 1
+          fi
+
+      # -pipe: the source on the standard input, the image on the standard output (what
+      # Kroki does). TeaVM's System.in cannot read in the C build (StdinStream replaces it).
+      - name: Smoke test (pipe)
+        run: |
+          exe="c-sources/bin/plantuml"
+          cat mindmap.puml | "$exe" -pipe -tsvg > pipe.svg
+          if ! grep -q "<svg" pipe.svg || ! grep -q "Alpha" pipe.svg; then
+            echo "::error::The SVG of -pipe is not the expected one"
+            exit 1
+          fi
+          # Standard input redirected from a file, not from a pipe
+          "$exe" -pipe -tsvg < mindmap.puml > pipe-redirect.svg
+          cmp pipe.svg pipe-redirect.svg \
+            || { echo "::error::-pipe gives another SVG when the input is a file"; exit 1; }
+          cat mindmap.puml | "$exe" -pipe -tpng > pipe.png
+          signature="$(head -c 4 pipe.png | tail -c 3)"
+          if [ "$signature" != "PNG" ]; then
+            echo "::error::The PNG of -pipe is not the expected one"
+            exit 1
+          fi
+
+      # Text output (no AWT, no native code): the sequence diagrams have their own text
+      # renderer, the other diagrams are drawn by UGraphicTxt
+      - name: Smoke test (text)
+        run: |
+          exe="c-sources/bin/plantuml"
+          printf '@startuml\nAlice -> Bob: Hello\n@enduml\n' > seq.puml
+          for format in txt utxt; do
+            "$exe" -pipe -t$format < seq.puml > seq.$format
+            if ! grep -q "Alice" seq.$format || ! grep -q "Hello" seq.$format; then
+              echo "::error::The output of -t$format is not the expected text"
+              cat seq.$format
+              exit 1
+            fi
+            cat seq.$format
+          done
+
+      # The executable has the entry point of the JVM (Run): same help, same flags
+      - name: Smoke test (help)
+        run: |
+          exe="c-sources/bin/plantuml"
+          help="$("$exe" --help)"
+          echo "$help"
+          if ! grep -q "Show help and usage information" <<< "$help" \
+            || ! grep -q "Generate SVG images" <<< "$help"; then
+            echo "::error::The help is not the expected one"
+            exit 1
+          fi
+
+      - name: Smoke test (exit code)
+        run: |
+          exe="c-sources/bin/plantuml"
+          code=0
+          "$exe" no-such-file.puml || code=$?
+          # 50: no file found, as on the JVM
+          if [ "$code" -ne 50 ]; then
+            echo "::error::Expected the exit code 50, got $code"
+            exit 1
+          fi
+
+      - name: Upload the SVG and the PNG
+        uses: actions/upload-artifact@v7
+        with:
+          name: mindmap-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            mindmap.svg
+            mindmap.png
+          retention-days: 7
+
+      # upload-artifact does not keep the executable bit: release-snapshot.sh sets it again
+      - name: Upload executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: plantuml-${{ matrix.os }}-${{ matrix.arch }}
+          path: c-sources/bin/plantuml
           retention-days: 30

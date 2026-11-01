@@ -46,14 +46,12 @@ import net.sourceforge.plantuml.utils.Log;
 
 public class SvekUtils {
 
-	// ::comment when __TEAVM__
 	static public void traceString(final SFile f, String text) throws IOException {
 		Log.info(() -> "Creating intermediate file " + f.getPrintablePath());
 		try (PrintWriter pw = f.createPrintWriter()) {
 			pw.print(text);
 		}
 	}
-	// ::done
 
 	static public double getValue(String svg, int starting, String varName) {
 		final String varNameString = varName + "=\"";
@@ -98,7 +96,7 @@ public class SvekUtils {
 
 	public static String pixelToInches(double pixel) {
 		final double v = pixel / 72.0;
-		return String.format(Locale.US, "%6.6f", v);
+		return String.format(Locale.ROOT, "%6.6f", v);
 	}
 
 }

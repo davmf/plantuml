@@ -42,6 +42,7 @@ import java.awt.LinearGradientPaint;
 import java.awt.MultipleGradientPaint.CycleMethod;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;
@@ -145,6 +146,17 @@ class Java2DRasterCanvas implements RasterCanvas {
 	}
 
 	@Override
+	public void drawImage(int[] argb, int width, int height, double x, double y, double scale) {
+		final BufferedImage bitmap = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		bitmap.setRGB(0, 0, width, height, argb, 0, width);
+		final AffineTransform orig = g2d.getTransform();
+		g2d.translate(x, y);
+		g2d.scale(scale, scale);
+		g2d.drawImage(bitmap, 0, 0, null);
+		g2d.setTransform(orig);
+	}
+
+	@Override
 	public void drawString(String text, UFont font, double x, double y, double angle) {
 		g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		g2d.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
@@ -158,6 +170,16 @@ class Java2DRasterCanvas implements RasterCanvas {
 		g2d.rotate(angle);
 		g2d.drawString(text, 0, 0);
 		g2d.setTransform(orig);
+	}
+
+	@Override
+	public double[] getInkBounds(String text, UFont font) {
+		// Same hints as drawString: the bounds depend on them
+		g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		g2d.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+		final Rectangle2D bounds = new TextLayout(text, font.getUnderlayingFont(text), g2d.getFontRenderContext())
+				.getBounds();
+		return new double[] { bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight() };
 	}
 
 	// Encoded as -tpng encodes (PngIO, which reduces the colors when it can)

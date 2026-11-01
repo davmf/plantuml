@@ -46,8 +46,6 @@ import net.sourceforge.plantuml.klimt.awt.PortableImage;
 import net.sourceforge.plantuml.klimt.awt.PortableImageFactory;
 
 public class UnusedSpace {
-	// ::remove file when __HAXE__
-
 	static class Point {
 		final private double x;
 		final private double y;
@@ -84,8 +82,6 @@ public class UnusedSpace {
 	}
 
 	private UnusedSpace(UFont font, char c) {
-
-		// ::comment when __TEAVM__
 
 		final PortableImage im = PortableImageFactory.build(2 * HALF_SIZE, 2 * HALF_SIZE, PortableImage.TYPE_INT_RGB);
 		final Graphics2D g2d = im.createGraphics();
@@ -129,7 +125,6 @@ public class UnusedSpace {
 					this.meanY2 = j / 4.0 - HALF_SIZE;
 				}
 			}
-		// ::done
 
 	}
 

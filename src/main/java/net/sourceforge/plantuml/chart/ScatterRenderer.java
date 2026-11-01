@@ -35,6 +35,7 @@
 package net.sourceforge.plantuml.chart;
 
 import java.util.List;
+import java.util.Locale;
 
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -98,17 +99,14 @@ public class ScatterRenderer {
 		// Get scatter style (with stereotype support)
 		final Style scatterStyle = getScatterStyle(series);
 
-		// Extract marker color from style - priority: MarkerColor > LineColor > explicit color
+		// Marker color - priority: explicit color > MarkerColor > LineColor (given by ChartRenderer)
 		HColor markerColor = color;
-		HColor styleMarkerColor = scatterStyle.value(PName.MarkerColor).asColor(skinParam.getIHtmlColorSet());
-		if (styleMarkerColor != null) {
-			markerColor = styleMarkerColor;
-		} else {
-			HColor styleLineColor = scatterStyle.value(PName.LineColor).asColor(skinParam.getIHtmlColorSet());
-			if (styleLineColor != null && color == null) {
-				markerColor = styleLineColor;
-			}
-		}
+		if (series.getColor() == null && scatterStyle.hasValue(PName.MarkerColor))
+			markerColor = scatterStyle.value(PName.MarkerColor).asColor(skinParam.getIHtmlColorSet());
+
+		// Label color - priority: explicit color > FontColor
+		final HColor labelColor = series.getColor() != null ? series.getColor()
+				: scatterStyle.value(PName.FontColor).asColor(skinParam.getIHtmlColorSet());
 
 		// Extract marker size from style (default 8)
 		double markerSize = 8.0;
@@ -158,7 +156,7 @@ public class ScatterRenderer {
 
 				// Draw label if enabled
 				if (series.isShowLabels()) {
-					drawLabel(ug, yVal, x, y - markerSize / 2 - 8, stringBounder);
+					drawLabel(ug, yVal, x, y - markerSize / 2 - 8, labelColor, stringBounder);
 				}
 			}
 		} else {
@@ -175,7 +173,7 @@ public class ScatterRenderer {
 
 				// Draw label if enabled
 				if (series.isShowLabels()) {
-					drawLabel(ug, value, x, y - markerSize / 2 - 8, stringBounder);
+					drawLabel(ug, value, x, y - markerSize / 2 - 8, labelColor, stringBounder);
 				}
 			}
 		}
@@ -216,11 +214,11 @@ public class ScatterRenderer {
 		ug.apply(color).apply(color.bg()).apply(UTranslate.dx(x).compose(UTranslate.dy(y))).draw(triangle);
 	}
 
-	private void drawLabel(UGraphic ug, double value, double x, double y, StringBounder stringBounder) {
+	private void drawLabel(UGraphic ug, double value, double x, double y, HColor labelColor,
+			StringBounder stringBounder) {
 		try {
 			final String label = formatValue(value);
 			final UFont font = UFontFactory.sansSerif(10).withFontFace(UFontFace.bold());
-			final HColor labelColor = skinParam.getIHtmlColorSet().getColor("#000000");
 			final FontConfiguration fontConfig = FontConfiguration.create(font, labelColor, labelColor, null);
 			final TextBlock textBlock = Display.getWithNewlines(skinParam.getPragma(), label)
 					.create(fontConfig, HorizontalAlignment.CENTER, skinParam);
@@ -235,9 +233,9 @@ public class ScatterRenderer {
 
 	private String formatValue(double value) {
 		if (Math.abs(value) < 0.01 && value != 0)
-			return String.format("%.2e", value);
+			return String.format(Locale.ROOT, "%.2e", value);
 		if (value == (long) value)
-			return String.format("%d", (long) value);
-		return String.format("%.2f", value);
+			return String.format(Locale.ROOT, "%d", (long) value);
+		return String.format(Locale.ROOT, "%.2f", value);
 	}
 }

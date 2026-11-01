@@ -50,7 +50,6 @@ dependencies {
     implementation(libs.elk.alg.layered)
     implementation(libs.elk.alg.mrtree)
     implementation(libs.xtext.xbase.lib)
-	implementation(libs.openpdf)
 
 	// JDepend for package metrics
 	jdependConfig(libs.jdepend)
@@ -108,7 +107,10 @@ teavm {
 		// transformation of async methods fail with an ArrayIndexOutOfBoundsException
 
 		optimization.set(org.teavm.gradle.api.OptimizationLevel.BALANCED)
-		// Heap size in MB (TeaVM default: 1 to 16)
+		// Heap size in MB (TeaVM default: 1 to 16). The heap starts at its maximum size, so that
+		// it is never resized: with a smaller start (1 MB), plantuml.exe crashed with an access
+		// violation (0xC0000005) on Windows ARM64, for instance on a diagram made of a single class.
+		minHeapSize.set(64)
 		maxHeapSize.set(64)
 		// outputDir defaults to build/generated/teavm/c
 	}
@@ -155,6 +157,46 @@ val copyNativeSources = tasks.register<Copy>("copyNativeSources") {
 	from("src/teavm-c/native") {
 		into("native")
 	}
+	// Files that Java reads at run time (EmbeddedFiles), embedded by CMake
+	from("src/main/resources/themes") {
+		include("*.puml")
+		into("native/resources/themes")
+	}
+	// The CSS and JavaScript of the interactive SVG (!pragma svginteractive)
+	from("src/main/resources/svg") {
+		include("*.min.css", "*.min.js")
+		into("native/resources/svg")
+	}
+	// The SVG sprites of the stereotypes (archimate)
+	from("src/main/resources/sprites") {
+		include("**/*.svg")
+		into("native/resources/sprites")
+	}
+	// The OpenIconic icons (<&name>), and their list (listopeniconic)
+	from("src/main/resources/openiconic") {
+		include("*.svg", "all.txt")
+		into("native/resources/openiconic")
+	}
+	// The emoji (<:name:>): the list and one SVG file per emoji
+	from("src/main/resources/net/sourceforge/plantuml/emoji/data") {
+		include("emoji.txt", "*.svg")
+		into("native/resources/emoji")
+	}
+	// The standard library: its list, and for each library its description, its
+	// puml, json, sprite and svg files; image.spm (raster images)
+	from("src/main/resources/stdlib") {
+		include("home.spm", "*/info.spm", "*/puml.spm", "*/json.spm", "*/sprite.spm", "*/svg.spm",
+				"*/image.spm")
+		into("native/resources/stdlib")
+	}
+	// The resources OpenPDF reads (AFM font metrics, glyph list, messages): there is no
+	// class loader in the C build, see OpenPdfResources
+	from("src/main/resources") {
+		include("org/openpdf/text/pdf/fonts/*.afm", "org/openpdf/text/pdf/fonts/glyphlist.txt",
+				"org/openpdf/text/error_messages/en.lng")
+		includeEmptyDirs = false
+		into("native/resources/openpdf")
+	}
 	into(layout.buildDirectory.dir("generated/teavm/c"))
 }
 tasks.matching { it.name == "generateC" }.configureEach {
@@ -172,21 +214,23 @@ tasks.compileJava {
 apply(from = "tools/linters/superlinter.gradle.kts")
 
 // teavm-classlib 0.15+ is published for JVM 17+ only, and the TeaVM plugin adds it
-// to compileClasspath. With --release 11 Gradle refuses to resolve it. The Java
-// sources only need the JSO/interop APIs (Java 11 compatible), never the classlib
-// (it is only needed by the TeaVM compiler itself, which has its own classpath).
+// to compileClasspath: with -PjavacRelease=11 Gradle refuses to resolve it. The Java
+// sources never need the classlib (only the TeaVM compiler does, on its own classpath).
 configurations.compileClasspath {
 	exclude(group = "org.teavm", module = "teavm-classlib")
 }
 
-// TeaVM 0.15+ must RUN on Java 17+, but it can still consume Java 11 bytecode.
-// So the JAR stays compiled with --release 11 (see javacRelease above), and only
-// the JavaScript / WebAssembly / C generation needs a JDK 17+ running Gradle.
+// teavm-classlib 0.15+ is published for JVM 17+ only: with --release 21 (see
+// javacRelease above), Gradle resolves it on the compile classpath without trouble.
+// The Java sources only need the JSO/interop APIs, never the classlib.
+
+// TeaVM 0.15+ must RUN on Java 17+: the JavaScript / WebAssembly / C generation
+// needs a JDK 17+ running Gradle.
 tasks.matching { it.name == "generateJavaScript" || it.name == "generateWasmGC" || it.name == "generateC" }.configureEach {
 	doFirst {
 		check(JavaVersion.current() >= JavaVersion.VERSION_17) {
 			"TeaVM requires running Gradle on JDK 17+ (current: ${JavaVersion.current()}). " +
-				"The Java bytecode itself remains --release $javacRelease."
+				"The Java bytecode itself is --release $javacRelease."
 		}
 	}
 }

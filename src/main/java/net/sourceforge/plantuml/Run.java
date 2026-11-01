@@ -44,6 +44,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.util.ArrayList;
@@ -85,13 +86,16 @@ import net.sourceforge.plantuml.security.SecurityUtils;
 import net.sourceforge.plantuml.swing.MainWindow;
 import net.sourceforge.plantuml.syntax.LanguageDescriptor;
 import net.sourceforge.plantuml.teavm.TeaVM;
+// ::comment when JAVA8
+import net.sourceforge.plantuml.teavm.c.StderrStream;
+import net.sourceforge.plantuml.teavm.c.StdinStream;
+import net.sourceforge.plantuml.teavm.c.StdoutStream;
+// ::done
 import net.sourceforge.plantuml.utils.Log;
 import net.sourceforge.plantuml.utils.Obfuscate;
 import net.sourceforge.plantuml.version.Version;
 
 public class Run {
-
-	// ::remove file when __HAXE__
 
 	public static void main(String[] argsArray)
 			throws NoPlantumlCompressionException, IOException, InterruptedException {
@@ -187,7 +191,7 @@ public class Run {
 					exit.eventuallyExit();
 					return;
 				}
-				new Pipe(option, System.out, System.in, charset).managePipe(exit);
+				new Pipe(option, standardOutput(), standardError(), standardInput(), charset).managePipe(exit);
 				exit.eventuallyExit();
 				return;
 			}
@@ -250,6 +254,34 @@ public class Run {
 
 		exit.eventuallyExit();
 
+	}
+
+	private static InputStream standardInput() {
+		// ::comment when JAVA8
+		// The System.in of the TeaVM C backend cannot read: it always throws
+		if (TeaVM.isC())
+			return new StdinStream();
+		// ::done
+		return System.in;
+	}
+
+	private static PrintStream standardOutput() {
+		// ::comment when JAVA8
+		// The System.out of the TeaVM C backend is a text stream: it alters a PNG
+		if (TeaVM.isC())
+			return new PrintStream(new StdoutStream(), false);
+		// ::done
+		return System.out;
+	}
+
+	private static PrintStream standardError() {
+		// ::comment when JAVA8
+		// Kroki reads the line number and the message of a syntax error here: the
+		// System.err of the TeaVM C backend stayed empty
+		if (TeaVM.isC())
+			return new PrintStream(new StderrStream(), true);
+		// ::done
+		return System.err;
 	}
 
 	private static void detectDisplay(String[] argsArray) {
@@ -609,11 +641,13 @@ public class Run {
 	}
 
 	/**
-	 * The formats the C build writes: SVG and PNG (see
+	 * The formats the C build writes: SVG, PNG and text (see
 	 * {@code UgDiagram#exportDiagram}), and the preprocessed source.
 	 */
 	private static boolean isAvailableInC(FileFormat format) {
-		return format == FileFormat.SVG || format == FileFormat.PNG || format == FileFormat.PREPROC;
+		return format == FileFormat.SVG || format == FileFormat.SVG_DETERMINISTIC || format == FileFormat.PNG
+				|| format == FileFormat.ATXT || format == FileFormat.UTXT || format == FileFormat.PREPROC
+				|| format == FileFormat.PDF || format == FileFormat.PDF_DETERMINISTIC;
 	}
 
 	/**
