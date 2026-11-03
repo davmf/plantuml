@@ -36,6 +36,7 @@
 package net.sourceforge.plantuml.svek;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -164,6 +165,13 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 	private HColor arrowLollipopColor;
 
 	private final double labelShield;
+
+	/**
+	 * Whether this edge is given to Graphviz from its end to its start, so that
+	 * Graphviz ranks its end above its start. Only the dot source changes: the
+	 * path Graphviz returns is put back in order by {@link #solveLine}.
+	 */
+	private boolean rankFlipped;
 
 	@Override
 	public String toString() {
@@ -421,12 +429,13 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		// sb.append("->");
 		// sb.append(startUid);
 		// } else {
-		sb.append(startUid.getFullString());
+		sb.append((rankFlipped ? endUid : startUid).getFullString());
 		sb.append("->");
-		sb.append(endUid.getFullString());
+		sb.append((rankFlipped ? startUid : endUid).getFullString());
 		// }
 		sb.append("[");
-		final LinkType linkType = link.getTypePatchCluster();
+		final LinkType linkType = rankFlipped ? link.getTypePatchCluster().getInversed()
+				: link.getTypePatchCluster();
 		String decoration = linkType.getSpecificDecorationSvek(getLinkStrategy());
 		if (decoration.length() > 0 && decoration.endsWith(",") == false)
 			decoration += ",";
@@ -470,25 +479,27 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			sb.append(">");
 		}
 
+		final String startLabel = rankFlipped ? "headlabel" : "taillabel";
+		final String endLabel = rankFlipped ? "taillabel" : "headlabel";
 		if (startTailText != null) {
 			sb.append(",");
-			sb.append("taillabel=<");
+			sb.append(startLabel + "=<");
 			appendTable(sb, startTailText.calculateDimension(stringBounder), startTailColor, graphvizVersion);
 			sb.append(">");
 		} else if (startTailRoleText != null) {
 			sb.append(",");
-			sb.append("taillabel=<");
+			sb.append(startLabel + "=<");
 			appendTable(sb, startTailRoleText.calculateDimension(stringBounder), startTailColor, graphvizVersion);
 			sb.append(">");
 		}
 		if (endHeadText != null) {
 			sb.append(",");
-			sb.append("headlabel=<");
+			sb.append(endLabel + "=<");
 			appendTable(sb, endHeadText.calculateDimension(stringBounder), endHeadColor, graphvizVersion);
 			sb.append(">");
 		} else if (endHeadRoleText != null) {
 			sb.append(",");
-			sb.append("headlabel=<");
+			sb.append(endLabel + "=<");
 			appendTable(sb, endHeadRoleText.calculateDimension(stringBounder), endHeadColor, graphvizVersion);
 			sb.append(">");
 		}
@@ -502,7 +513,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			sb.append(",constraint=false");
 
 		if (link.getSametail() != null)
-			sb.append(",sametail=" + link.getSametail());
+			sb.append((rankFlipped ? ",samehead=" : ",sametail=") + link.getSametail());
 
 		sb.append("];");
 		SvekUtils.println(sb);
@@ -797,6 +808,97 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	}
 
+	/**
+	 * With orthogonal routing, rewrites the ends of this edge that touch an
+	 * entry/exit point so they meet its circle perpendicularly (see
+	 * {@link BorderPointPath}), keeping any jog added clear of the other
+	 * {@code nodes} and of {@code labels}. Must run once every edge is solved.
+	 */
+	public void alignOnBorderPoints(Collection<SvekNode> nodes, Collection<RectangleArea> labels,
+			Collection<SvekEdge> lines) {
+		if (dotPath == null || isAutolink() || getLinkStrategy() != LinkStrategy.SIMPLEST)
+			return;
+
+		final SvekNode svekNode1 = getSvekNode1();
+		final SvekNode svekNode2 = getSvekNode2();
+		final List<RectangleArea> obstacles = getObstacles(nodes, labels);
+		final List<DotPath> others = new ArrayList<>();
+		for (SvekEdge line : lines)
+			if (line != this && line.dotPath != null)
+				others.add(line.dotPath);
+
+		if (ltail == null)
+			setStartPath(
+					BorderPointPath.alignStart(dotPath, svekNode1, svekNode2, stringBounder, obstacles, others));
+		if (lhead == null)
+			setEndPath(BorderPointPath.alignEnd(dotPath, svekNode2, svekNode1, stringBounder, obstacles, others));
+	}
+
+	/**
+	 * With orthogonal routing, rewrites the ends of this edge that touch a state
+	 * or pseudo-state so they leave it at right angles (see {@link OrthoStem}),
+	 * without hitting more of the other {@code nodes}, {@code labels},
+	 * {@code frames} and {@code lines} than before. Must run once every edge is
+	 * solved.
+	 */
+	public void alignStems(Collection<SvekNode> nodes, Collection<RectangleArea> labels, List<RectangleArea> frames,
+			Collection<SvekEdge> lines) {
+		if (dotPath == null || isAutolink() || getLinkStrategy() != LinkStrategy.SIMPLEST)
+			return;
+
+		final List<DotPath> others = new ArrayList<>();
+		for (SvekEdge line : lines)
+			if (line != this && line.dotPath != null)
+				others.add(line.dotPath);
+
+		final OrthoStem stem = new OrthoStem(getObstacles(nodes, labels), frames, others);
+		if (ltail == null)
+			setStartPath(stem.alignStart(dotPath, getSvekNode1(), getSvekNode2()));
+		if (lhead == null)
+			setEndPath(stem.alignEnd(dotPath, getSvekNode2(), getSvekNode1()));
+	}
+
+	private List<RectangleArea> getObstacles(Collection<SvekNode> nodes, Collection<RectangleArea> labels) {
+		final List<RectangleArea> result = new ArrayList<>(labels);
+		for (SvekNode node : nodes)
+			if (node != getSvekNode1() && node != getSvekNode2())
+				result.add(node.getRectangleArea());
+		return result;
+	}
+
+	/** Replaces the path by {@code path}, which starts right on the first node. */
+	private void setStartPath(DotPath path) {
+		if (path == dotPath)
+			return;
+
+		dotPath = path;
+		this.extremity1 = getExtremitySimplier(dotPath.getStartPoint(),
+				link.getType().getDecor2().getExtremityFactoryComplete(backgroundColor),
+				dotPath.getStartAngle() + Math.PI, ltail, getSvekNode1(), true, kal1);
+	}
+
+	/** Replaces the path by {@code path}, which ends right on the second node. */
+	private void setEndPath(DotPath path) {
+		if (path == dotPath)
+			return;
+
+		dotPath = path;
+		this.extremity2 = getExtremitySimplier(dotPath.getEndPoint(),
+				link.getType().getDecor1().getExtremityFactoryComplete(backgroundColor), dotPath.getEndAngle(),
+				lhead, getSvekNode2(), false, kal2);
+	}
+
+	/** Where this edge's labels are drawn, once solved. */
+	public List<RectangleArea> getLabelAreas() {
+		final List<RectangleArea> result = new ArrayList<>();
+		for (Positionable label : Arrays.asList(labelXY, startTailLabelXY, endHeadLabelXY))
+			if (label != null && label.getPosition() != null)
+				result.add(new RectangleArea(label.getPosition().getX(), label.getPosition().getY(),
+						label.getPosition().getX() + label.getSize().getWidth(),
+						label.getPosition().getY() + label.getSize().getHeight()));
+		return result;
+	}
+
 	private boolean isThereTwo(final LinkType linkType) {
 		return linkType.getDecor2().getExtremityFactoryLegacy(backgroundColor) != null
 				&& linkType.getDecor1().getExtremityFactoryLegacy(backgroundColor) != null;
@@ -811,11 +913,19 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		return nb;
 	}
 
-	private SvekNode getSvekNode2() {
+	boolean isRankFlipped() {
+		return rankFlipped;
+	}
+
+	void setRankFlipped(boolean rankFlipped) {
+		this.rankFlipped = rankFlipped;
+	}
+
+	SvekNode getSvekNode2() {
 		return bibliotekon.getNode(link.getEntity2());
 	}
 
-	private SvekNode getSvekNode1() {
+	SvekNode getSvekNode1() {
 		return bibliotekon.getNode(link.getEntity1());
 	}
 
