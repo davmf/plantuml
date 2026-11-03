@@ -124,6 +124,16 @@ cmake --build build/c-native
 build/generated/teavm/c/bin/plantuml -tsvg mindmap.puml
 ```
 
+**gcc 15 needs `-fno-optimize-crc`.** gcc 15 has a new pass, `-foptimize-crc`, that recognizes the loops computing
+a CRC. On the loop that fills the table of `com.jcraft.jzlib.CRC32` (as TeaVM generates it) it replaces the whole
+function by `__builtin_unreachable ()`: without the option the executable crashes (segmentation fault, or
+`NullPointerException`) at the first use of `java.util.zip.CRC32`, which `-tpng` needs for the chunks of the PNG.
+`CMakeLists.txt` adds `-fno-optimize-crc` when the compiler knows it (gcc 15 and later). It was found in the CI when
+`ubuntu-latest` became Ubuntu 26.04 (gcc 15.2); the story, the minimal test case and the CI are in
+https://github.com/plantuml/gcc-2. The same pass has another wrong-code bug,
+[GCC PR 127984](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127984), still open in gcc 15.3, 16 and 17: the option
+is needed for now.
+
 ## Continuous integration
 
 `.github/workflows/teavm-c.yml` is called by `ci.yml` on every push to `master`: it generates

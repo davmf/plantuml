@@ -12,6 +12,16 @@ endif()
 
 project(plantuml_c C)
 
+# gcc 15 miscompiles the loop that fills the table of the CRC32 (the static initializer of
+# com.jcraft.jzlib.CRC32): its new pass -foptimize-crc replaces the whole function by
+# __builtin_unreachable(), and the executable crashes at the first use of java.util.zip.CRC32
+# (-tpng). See GCC PR 127984 (same pass, another symptom) and https://github.com/plantuml/gcc-2
+# Remove this when a fixed gcc is what ubuntu-latest has.
+if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+	include(CheckCCompilerFlag)
+	check_c_compiler_flag(-fno-optimize-crc PLANTUML_HAS_NO_OPTIMIZE_CRC)
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
@@ -28,6 +38,9 @@ else()
 	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
 	# No fused multiply-add: the images must be scaled bit for bit like the JVM
 	add_compile_options(-w -ffp-contract=off)
+	if (PLANTUML_HAS_NO_OPTIMIZE_CRC)
+		add_compile_options(-fno-optimize-crc)
+	endif()
 endif()
 if (APPLE)
 	add_compile_definitions(_DARWIN_C_SOURCE)
