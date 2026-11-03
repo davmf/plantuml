@@ -35,18 +35,23 @@
  */
 package net.sourceforge.plantuml.svek;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.annotation.PerformanceIssue;
 import net.sourceforge.plantuml.dot.DotData;
+import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UHidden;
@@ -55,6 +60,7 @@ import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 
 public final class SvekResult implements IEntityImage {
 
@@ -93,11 +99,51 @@ public final class SvekResult implements IEntityImage {
 
 		computeKal();
 
+		clusterManager.getBibliotekon().clearPlacedSegments();
+		clusterManager.getBibliotekon().clearBlockedShifts();
 		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
 			final UGraphic ug2 = svekEdge.isHidden() ? ug.apply(UHidden.HIDDEN) : ug;
 			svekEdge.setSharedIds(ids);
 			svekEdge.drawU(ug2);
 		}
+
+		final List<SvekPortConnector> portConnectors = new ArrayList<SvekPortConnector>();
+		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
+			if (svekEdge.isHidden() || svekEdge.getLink().isInvis())
+				continue;
+			if (svekEdge.getLink().isIntraBoardPortConnection())
+				portConnectors.add(new SvekPortConnector(svekEdge,
+						dotData.getSkinParam(), clusterManager.getBibliotekon()));
+		}
+
+		// Find board cluster bounds for boundary enforcement
+		RectangleArea boardBounds = null;
+		if (portConnectors.isEmpty() == false) {
+			final SvekEdge firstEdge = portConnectors.get(0).getEdge();
+			final net.sourceforge.plantuml.abel.Entity entity1 =
+					firstEdge.getLink().getEntity1();
+			final net.sourceforge.plantuml.abel.Entity portParent =
+					entity1.getParentContainer();
+			if (portParent != null) {
+				final net.sourceforge.plantuml.abel.Entity board;
+				if (EntityImagePort.isBoardPort(entity1))
+					board = portParent;
+				else
+					board = portParent.getParentContainer();
+				if (board != null) {
+					final Cluster boardCluster =
+							clusterManager.getBibliotekon().getCluster(board);
+					if (boardCluster != null)
+						boardBounds = boardCluster.getRectangleArea();
+				}
+			}
+		}
+
+		// Pre-compute all connector paths, then draw
+		SvekPortConnector.resolveAllPaths(portConnectors,
+				Collections.<RectangleArea>emptyList(), boardBounds);
+		for (SvekPortConnector pc : portConnectors)
+			pc.drawU(ug);
 	}
 
 	private void computeKal() {
@@ -121,6 +167,7 @@ public final class SvekResult implements IEntityImage {
 	}
 
 	private MinMax minMax;
+	private int clusterSpacingPasses;
 
 	@PerformanceIssue
 	@Fast
@@ -129,8 +176,71 @@ public final class SvekResult implements IEntityImage {
 		if (minMax == null) {
 			minMax = TextBlockUtils.getMinMax(this, stringBounder, false);
 			clusterManager.moveDelta(6 - minMax.getMinX(), 6 - minMax.getMinY());
+			if (clusterSpacingPasses < 3 && adjustClusterSpacingIfNeeded()) {
+				clusterSpacingPasses++;
+				minMax = null;
+				return calculateDimension(stringBounder);
+			}
 		}
 		return minMax.getDimension().delta(15, 15);
+	}
+
+	/**
+	 * After the first layout pass, check for blocked segment shifts that need
+	 * more cluster spacing. Applies the largest needed shift per cluster.
+	 * Returns true if adjustments were made.
+	 */
+	private boolean adjustClusterSpacingIfNeeded() {
+		if (dotData.getSkinParam().getDotSplines() != DotSplines.ORTHO)
+			return false;
+		final Bibliotekon bib = clusterManager.getBibliotekon();
+		final List<double[]> blocked = bib.getBlockedShifts();
+		if (blocked.isEmpty())
+			return false;
+		// Aggregate: for each cluster, find the max absolute shift needed per axis
+		final List<Cluster> clusters = bib.allCluster();
+		final double[] maxDx = new double[clusters.size()];
+		final double[] maxDy = new double[clusters.size()];
+		for (double[] bs : blocked) {
+			final int idx = (int) bs[0];
+			if (idx < 0 || idx >= clusters.size())
+				continue;
+			if (Math.abs(bs[1]) > Math.abs(maxDx[idx]))
+				maxDx[idx] = bs[1];
+			if (Math.abs(bs[2]) > Math.abs(maxDy[idx]))
+				maxDy[idx] = bs[2];
+		}
+		boolean adjusted = false;
+		for (int i = 0; i < clusters.size(); i++) {
+			final double dx = maxDx[i];
+			final double dy = maxDy[i];
+			if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1)
+				continue;
+			final Cluster target = clusters.get(i);
+			final RectangleArea targetRect = target.getRectangleArea();
+			if (targetRect == null)
+				continue;
+			// Push the target cluster and all clusters further in the shift direction
+			final double targetCenter = dx > 0
+					? (targetRect.getMinX() + targetRect.getMaxX()) / 2.0
+					: dy > 0 ? (targetRect.getMinY() + targetRect.getMaxY()) / 2.0 : 0;
+			for (Cluster cl : clusters) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final double clCenter = dx != 0
+						? (rect.getMinX() + rect.getMaxX()) / 2.0
+						: (rect.getMinY() + rect.getMaxY()) / 2.0;
+				if (clCenter >= targetCenter - 1) {
+					cl.moveDelta(dx, dy);
+					for (SvekNode node : cl.getNodes())
+						node.moveDelta(dx, dy);
+				}
+			}
+			adjusted = true;
+		}
+		bib.clearBlockedShifts();
+		return adjusted;
 	}
 
 	public ShapeType getShapeType() {

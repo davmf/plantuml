@@ -447,6 +447,33 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 				&& getEntity1().getParentContainer() == getEntity2().getParentContainer();
 	}
 
+	public boolean isIntraBoardPortConnection() {
+		if (getEntity1().isGroup() || getEntity2().isGroup())
+			return false;
+		if (getEntity1().getEntityPosition().isPort() == false)
+			return false;
+		if (getEntity2().getEntityPosition().isPort() == false)
+			return false;
+		final Entity parent1 = getEntity1().getParentContainer();
+		final Entity parent2 = getEntity2().getParentContainer();
+		if (parent1 == parent2)
+			return false;
+		if (parent1 == null || parent2 == null)
+			return false;
+		// Both ports in sibling components under the same board
+		if (parent1.getParentContainer() != null
+				&& parent1.getParentContainer() == parent2.getParentContainer())
+			return true;
+		// Board port (parent is board) to component port (grandparent is board)
+		if (parent2.getParentContainer() != null
+				&& parent1 == parent2.getParentContainer())
+			return true;
+		if (parent1.getParentContainer() != null
+				&& parent2 == parent1.getParentContainer())
+			return true;
+		return false;
+	}
+
 	public Url getUrl() {
 		return url;
 	}

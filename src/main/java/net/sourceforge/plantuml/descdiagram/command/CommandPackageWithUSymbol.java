@@ -50,6 +50,7 @@ import net.sourceforge.plantuml.command.SingleLineCommand2;
 import net.sourceforge.plantuml.decoration.symbol.USymbol;
 import net.sourceforge.plantuml.decoration.symbol.USymbols;
 import net.sourceforge.plantuml.klimt.color.ColorParser;
+import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.Colors;
 import net.sourceforge.plantuml.klimt.color.NoSuchColorException;
@@ -74,7 +75,7 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 	private static final Collection<String> FIRST_TOKENS = Arrays.asList( //
 			"action", "artifact", "card", "cloud", "component", "database", "file", "folder",
 			"frame", "hexagon", "node", "package", "process", "queue", "rectangle", "stack",
-			"storage");
+			"storage", "connector");
 
 	public CommandPackageWithUSymbol() {
 		super(getRegexConcat());
@@ -83,7 +84,7 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 	private static IRegex getRegexConcat() {
 		return RegexConcat.build(CommandPackageWithUSymbol.class.getName(), RegexLeaf.start(), //
 				new RegexLeaf(1, "SYMBOL",
-						"(package|rectangle|hexagon|node|artifact|folder|file|frame|cloud|action|process|database|storage|component|card|queue|stack)"), //
+						"(package|rectangle|hexagon|node|artifact|folder|file|frame|cloud|action|process|database|storage|component|card|queue|stack|connector)"), //
 				RegexLeaf.spaceOneOrMore(), //
 				new RegexOr(//
 						new RegexConcat( //
@@ -198,12 +199,19 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 			display = displayArg;
 
 		final String symbol = arg.get("SYMBOL", 0);
+		final boolean isConnector = symbol.equalsIgnoreCase("connector");
 
-		final USymbol usymbol = USymbols.fromString(symbol, diagram.getSkinParam().actorStyle(),
+		if (isConnector && diagram.getCurrentGroup().isRoot())
+			return CommandExecutionResult.error("Connector can only be used inside a component");
+
+		final GroupType groupType = isConnector ? GroupType.CONNECTOR : GroupType.PACKAGE;
+		final USymbol usymbol = isConnector ? USymbols.fromString("rectangle", diagram.getSkinParam().actorStyle(),
+				diagram.getSkinParam().componentStyle(), diagram.getSkinParam().packageStyle())
+				: USymbols.fromString(symbol, diagram.getSkinParam().actorStyle(),
 				diagram.getSkinParam().componentStyle(), diagram.getSkinParam().packageStyle());
 
 		final CommandExecutionResult status = diagram.gotoGroup(location, ident,
-				Display.getWithNewlines(diagram.getPragma(), display), GroupType.PACKAGE, usymbol);
+				Display.getWithNewlines(diagram.getPragma(), display), groupType, usymbol);
 		if (status.isOk() == false)
 			return status;
 
@@ -212,6 +220,9 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 		final String stereotype = arg.getLazzy("STEREOTYPE", 0);
 		if (stereotype != null)
 			p.setStereotype(Stereotype.build(stereotype, false));
+
+		if (isConnector)
+			p.setConnectorSide(extractSide(stereotype));
 
 		final String urlString = arg.get(UrlBuilder.URL_KEY, 0);
 		if (urlString != null) {
@@ -230,4 +241,18 @@ public class CommandPackageWithUSymbol extends SingleLineCommand2<AbstractEntity
 		return FIRST_TOKENS;
 	}
 
+	private static Side extractSide(String stereotype) {
+		if (stereotype == null)
+			return Side.EAST;
+		final String lower = stereotype.toLowerCase();
+		if (lower.contains("left"))
+			return Side.WEST;
+		if (lower.contains("right"))
+			return Side.EAST;
+		if (lower.contains("top"))
+			return Side.NORTH;
+		if (lower.contains("bottom"))
+			return Side.SOUTH;
+		return Side.EAST;
+	}
 }

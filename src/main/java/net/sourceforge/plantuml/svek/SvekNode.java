@@ -94,6 +94,10 @@ public class SvekNode implements XNode {
 
 	private final Entity leaf;
 
+	public final Entity getEntity() {
+		return leaf;
+	}
+
 	public final Together getTogether() {
 		if (leaf == null)
 			return null;

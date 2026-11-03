@@ -39,6 +39,7 @@ package net.sourceforge.plantuml.svek;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -72,6 +73,7 @@ import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
+import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
 import net.sourceforge.plantuml.klimt.geom.Moveable;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
@@ -91,6 +93,7 @@ import net.sourceforge.plantuml.style.StyleBuilder;
 import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.svek.image.EntityImageState;
 import net.sourceforge.plantuml.svek.image.EntityImageStateCommon;
 import net.sourceforge.plantuml.url.Url;
@@ -124,6 +127,7 @@ public class Cluster implements Moveable {
 	private XPoint2D xyNoteBottom;
 
 	private RectangleArea rectangleArea;
+	private boolean insidePortsRepositioned;
 	private final LineLocation location;
 
 	public void moveDelta(double deltaX, double deltaY) {
@@ -343,8 +347,10 @@ public class Cluster implements Moveable {
 			ug.startUrl(url);
 
 		try {
-			if (entityPositionsExceptNormal().size() > 0)
+			if (entityPositionsExceptNormal().size() > 0 && group.getGroupType() != GroupType.CONNECTOR)
 				manageEntryExitPoint(ug.getStringBounder());
+
+			repositionConnectorGroups(ug.getStringBounder());
 
 			if (skinParam.useSwimlanes(diagramType)) {
 				drawSwinLinesState(ug, borderColor);
@@ -410,6 +416,9 @@ public class Cluster implements Moveable {
 	}
 
 	void manageEntryExitPoint(StringBounder stringBounder) {
+		if (insidePortsRepositioned)
+			return;
+
 		final Collection<RectangleArea> insides = new ArrayList<>();
 		final List<XPoint2D> points = new ArrayList<>();
 		for (SvekNode sh : nodes)
@@ -430,11 +439,323 @@ public class Cluster implements Moveable {
 			frontierCalculator.ensureMinWidth(getTitleAndAttributeWidth() + 10);
 
 		this.rectangleArea = frontierCalculator.getSuggestedPosition();
+		adjustRectangleForInsidePorts(stringBounder);
 
 		final double widthTitle = clusterHeader.getTitle().calculateDimension(stringBounder).getWidth();
 		final double minX = rectangleArea.getMinX();
 		final double minY = rectangleArea.getMinY();
 		this.xyTitle = new XPoint2D(minX + ((rectangleArea.getWidth() - widthTitle) / 2), minY + IEntityImage.MARGIN);
+	}
+
+	private void adjustRectangleForInsidePorts(StringBounder stringBounder) {
+		int maxInsidePortCount = 0;
+		double maxLeftLabelWidth = 0;
+		double maxRightLabelWidth = 0;
+		for (SvekNode node : nodes) {
+			if (node.getEntityPosition().isPort() == false)
+				continue;
+			if (EntityImagePort.hasInsideLabel(node.getEntity()) == false)
+				continue;
+			final EnumSet<EntityPosition> positions = node.getEntityPosition().isInput()
+					? EntityPosition.getInputs() : EntityPosition.getOutputs();
+			int count = 0;
+			for (SvekNode other : nodes)
+				if (positions.contains(other.getEntityPosition())
+						&& EntityImagePort.hasInsideLabel(other.getEntity()))
+					count++;
+			maxInsidePortCount = Math.max(maxInsidePortCount, count);
+			if (node.getImage() instanceof EntityImagePort) {
+				final double labelWidth = ((EntityImagePort) node.getImage())
+						.getInsideLabelWidth(stringBounder);
+				if (node.getEntityPosition().isInput())
+					maxLeftLabelWidth = Math.max(maxLeftLabelWidth, labelWidth);
+				else
+					maxRightLabelWidth = Math.max(maxRightLabelWidth, labelWidth);
+			}
+		}
+		if (maxInsidePortCount == 0)
+			return;
+		final boolean hasBoardPorts = hasBoardPortNodes();
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		final double spacing = EntityImagePort.getInsidePortSpacing();
+		final double titleHeight = getTitleAndAttributeHeight();
+		final double labelGap = 5;
+		final double gap = labelGap * 3;
+		if (hasBoardPorts == false) {
+			final double neededHeight = titleHeight + gap
+					+ (maxInsidePortCount - 1) * spacing + symbolSize + gap;
+			final double currentHeight = rectangleArea.getHeight();
+			if (neededHeight < currentHeight)
+				this.rectangleArea = rectangleArea.withMaxY(
+						rectangleArea.getMinY() + neededHeight);
+		} else {
+			final double margin = titleHeight + symbolSize;
+			final double neededHeight = 2 * margin
+					+ (maxInsidePortCount - 1) * spacing;
+			final double currentHeight = rectangleArea.getHeight();
+			if (neededHeight > currentHeight)
+				this.rectangleArea = rectangleArea.withMaxY(
+						rectangleArea.getMinY() + neededHeight);
+		}
+		final double innerGap = symbolSize * 3;
+		final double neededWidth = maxLeftLabelWidth + maxRightLabelWidth
+				+ symbolSize * 2 + labelGap * 4 + innerGap;
+		final double titleWidth = getTitleAndAttributeWidth() + 10;
+		final double minWidth = Math.max(neededWidth, titleWidth);
+		final double currentWidth = rectangleArea.getWidth();
+		if (hasBoardPorts == false && minWidth != currentWidth) {
+			final double delta = (currentWidth - minWidth) / 2;
+			this.rectangleArea = rectangleArea
+					.addMinX(delta)
+					.addMaxX(-delta);
+		} else if (hasBoardPorts && minWidth > currentWidth) {
+			final double delta = (minWidth - currentWidth) / 2;
+			this.rectangleArea = rectangleArea
+					.addMinX(-delta)
+					.addMaxX(delta);
+		}
+		if (insidePortsRepositioned == false) {
+			repositionInsidePortNodes();
+			insidePortsRepositioned = true;
+		}
+	}
+
+	private void repositionInsidePortNodes() {
+		final boolean hasBoardPorts = hasBoardPortNodes();
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		final double labelGap = 5;
+		final double gap = labelGap * 3;
+		final double spacing = EntityImagePort.getInsidePortSpacing();
+		final double titleHeight = getTitleAndAttributeHeight();
+		final double startY = rectangleArea.getMinY() + titleHeight + gap;
+
+		final List<SvekNode> inputs = new ArrayList<>();
+		final List<SvekNode> outputs = new ArrayList<>();
+		for (SvekNode node : nodes) {
+			if (node.getEntityPosition().isPort() == false)
+				continue;
+			if (EntityImagePort.hasInsideLabel(node.getEntity()) == false)
+				continue;
+			if (node.getEntityPosition().isInput())
+				inputs.add(node);
+			else
+				outputs.add(node);
+		}
+		Collections.sort(inputs, new Comparator<SvekNode>() {
+			public int compare(SvekNode a, SvekNode b) {
+				return Double.compare(a.getMinY(), b.getMinY());
+			}
+		});
+		Collections.sort(outputs, new Comparator<SvekNode>() {
+			public int compare(SvekNode a, SvekNode b) {
+				return Double.compare(a.getMinY(), b.getMinY());
+			}
+		});
+		if (hasBoardPorts) {
+			repositionBoardPorts(inputs, symbolSize, true);
+			repositionBoardPorts(outputs, symbolSize, false);
+		} else {
+			for (int i = 0; i < inputs.size(); i++) {
+				final SvekNode node = inputs.get(i);
+				final double targetX = rectangleArea.getMinX() - symbolSize / 2;
+				final double targetY = startY + i * spacing;
+				node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
+			}
+			for (int i = 0; i < outputs.size(); i++) {
+				final SvekNode node = outputs.get(i);
+				final double targetX = rectangleArea.getMaxX() - symbolSize / 2;
+				final double targetY = startY + i * spacing;
+				node.moveDelta(targetX - node.getMinX(), targetY - node.getMinY());
+			}
+		}
+	}
+
+	private void repositionBoardPorts(List<SvekNode> ports,
+			double symbolSize, boolean isInput) {
+		if (ports.isEmpty())
+			return;
+		final double titleHeight = getTitleAndAttributeHeight();
+		final double margin = titleHeight + symbolSize;
+		final double availableHeight = rectangleArea.getHeight() - 2 * margin;
+		final double spacing = ports.size() > 1
+				? availableHeight / (ports.size() - 1)
+				: 0;
+		final double targetX = isInput
+				? rectangleArea.getMinX() - symbolSize / 2
+				: rectangleArea.getMaxX() - symbolSize / 2;
+		for (int i = 0; i < ports.size(); i++) {
+			final SvekNode node = ports.get(i);
+			final double targetY;
+			if (ports.size() == 1)
+				targetY = rectangleArea.getMinY() + margin
+						+ availableHeight / 2;
+			else
+				targetY = rectangleArea.getMinY() + margin + i * spacing;
+			node.moveDelta(targetX - node.getMinX(),
+					targetY - node.getMinY());
+		}
+	}
+
+	private boolean hasBoardPortNodes() {
+		for (SvekNode node : nodes)
+			if (node.getEntityPosition().isPort()
+					&& EntityImagePort.isBoardPort(node.getEntity())
+					&& EntityImagePort.hasInsideLabel(node.getEntity()) == false)
+				return true;
+		return false;
+	}
+
+	private boolean connectorsRepositioned;
+
+	private void repositionConnectorGroups(StringBounder stringBounder) {
+		if (connectorsRepositioned)
+			return;
+
+		final List<Cluster> connectors = new ArrayList<>();
+		for (Cluster child : children)
+			if (child.getGroup().getGroupType() == GroupType.CONNECTOR)
+				connectors.add(child);
+
+		if (connectors.isEmpty())
+			return;
+
+		connectorsRepositioned = true;
+
+		final double connectorPadding = 10;
+		final double pinSpacing = 30;
+		final double pinSize = 12;
+		final double connectorInternalPadding = 8;
+
+		final Map<Side, List<Cluster>> bySide = new HashMap<>();
+		for (Side s : Side.values())
+			bySide.put(s, new ArrayList<Cluster>());
+
+		for (Cluster connector : connectors) {
+			final Side side = connector.getGroup().getConnectorSide();
+			bySide.get(side != null ? side : Side.EAST).add(connector);
+		}
+
+		for (Map.Entry<Side, List<Cluster>> entry : bySide.entrySet()) {
+			final Side side = entry.getKey();
+			final List<Cluster> sideConnectors = entry.getValue();
+			if (sideConnectors.isEmpty())
+				continue;
+
+			if (side == Side.EAST || side == Side.WEST)
+				repositionConnectorsVertical(sideConnectors, side, pinSpacing, pinSize,
+						connectorInternalPadding, connectorPadding, stringBounder);
+			else
+				repositionConnectorsHorizontal(sideConnectors, side, pinSpacing, pinSize,
+						connectorInternalPadding, connectorPadding, stringBounder);
+		}
+	}
+
+	private double getMaxPinLabelWidth(List<SvekNode> pins, StringBounder stringBounder) {
+		double maxWidth = 0;
+		for (SvekNode pin : pins) {
+			if (pin.getImage() instanceof EntityImagePort) {
+				final double w = ((EntityImagePort) pin.getImage()).getInsideLabelWidth(stringBounder);
+				maxWidth = Math.max(maxWidth, w);
+			}
+		}
+		return maxWidth;
+	}
+
+	private void repositionConnectorsVertical(List<Cluster> sideConnectors, Side side,
+			double pinSpacing, double pinSize, double internalPad, double connectorPad,
+			StringBounder stringBounder) {
+		final double boardEdgeX = (side == Side.EAST)
+				? rectangleArea.getMaxX() : rectangleArea.getMinX();
+		final double labelGap = 5;
+
+		double curY = rectangleArea.getMinY() + getTitleAndAttributeHeight() + connectorPad;
+
+		for (Cluster connector : sideConnectors) {
+			final List<SvekNode> pins = connector.getNodes();
+			final int pinCount = Math.max(pins.size(), 1);
+			final double titleHeight = connector.getTitleAndAttributeHeight();
+			final double connectorHeight = internalPad * 2 + titleHeight
+					+ (pinCount - 1) * pinSpacing + pinSize;
+			final double maxLabelWidth = getMaxPinLabelWidth(pins, stringBounder);
+			final double connectorWidth = Math.max(60,
+					internalPad * 2 + pinSize + labelGap + maxLabelWidth);
+
+			final double connectorX;
+			if (side == Side.EAST)
+				connectorX = boardEdgeX - connectorWidth / 2;
+			else
+				connectorX = boardEdgeX - connectorWidth / 2;
+
+			final RectangleArea targetRect = new RectangleArea(
+					connectorX, curY, connectorX + connectorWidth, curY + connectorHeight);
+
+			moveClusterTo(connector, targetRect);
+
+			final double pinStartY = curY + titleHeight + internalPad;
+			final double pinX = connectorX + internalPad;
+			for (int i = 0; i < pins.size(); i++) {
+				final SvekNode pin = pins.get(i);
+				final double targetPinY = pinStartY + i * pinSpacing;
+				pin.moveDelta(pinX - pin.getMinX(), targetPinY - pin.getMinY());
+			}
+
+			this.rectangleArea = this.rectangleArea.merge(targetRect);
+
+			curY += connectorHeight + connectorPad;
+		}
+	}
+
+	private void repositionConnectorsHorizontal(List<Cluster> sideConnectors, Side side,
+			double pinSpacing, double pinSize, double internalPad, double connectorPad,
+			StringBounder stringBounder) {
+		final double boardEdgeY = (side == Side.SOUTH)
+				? rectangleArea.getMaxY() : rectangleArea.getMinY();
+		final double labelGap = 5;
+
+		double curX = rectangleArea.getMinX() + connectorPad;
+
+		for (Cluster connector : sideConnectors) {
+			final List<SvekNode> pins = connector.getNodes();
+			final int pinCount = Math.max(pins.size(), 1);
+			final double maxLabelWidth = getMaxPinLabelWidth(pins, stringBounder);
+			final double effectivePinSpacing = Math.max(pinSpacing,
+					maxLabelWidth + labelGap);
+			final double titleHeight = connector.getTitleAndAttributeHeight();
+			final double connectorWidth = internalPad * 2
+					+ (pinCount - 1) * effectivePinSpacing + pinSize;
+			final double connectorHeight = titleHeight + internalPad * 2 + pinSize
+					+ labelGap + 14;
+
+			final double connectorY;
+			if (side == Side.SOUTH)
+				connectorY = boardEdgeY - connectorHeight / 2;
+			else
+				connectorY = boardEdgeY - connectorHeight / 2;
+
+			final RectangleArea targetRect = new RectangleArea(
+					curX, connectorY, curX + connectorWidth, connectorY + connectorHeight);
+
+			moveClusterTo(connector, targetRect);
+
+			final double pinStartX = curX + internalPad;
+			final double pinY = connectorY + titleHeight + internalPad;
+			for (int i = 0; i < pins.size(); i++) {
+				final SvekNode pin = pins.get(i);
+				final double targetPinX = pinStartX + i * effectivePinSpacing;
+				pin.moveDelta(targetPinX - pin.getMinX(), pinY - pin.getMinY());
+			}
+
+			this.rectangleArea = this.rectangleArea.merge(targetRect);
+
+			curX += connectorWidth + connectorPad;
+		}
+	}
+
+	private void moveClusterTo(Cluster cluster, RectangleArea target) {
+		if (cluster.getRectangleArea() == null)
+			return;
+		cluster.rectangleArea = target;
+		cluster.xyTitle = null;
 	}
 
 	private void drawSwinLinesState(UGraphic ug, HColor borderColor) {
