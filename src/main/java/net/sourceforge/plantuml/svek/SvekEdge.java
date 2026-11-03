@@ -42,7 +42,6 @@ import java.util.Set;
 
 import net.sourceforge.plantuml.abel.CucaNote;
 import net.sourceforge.plantuml.abel.Entity;
-import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArrow;
@@ -84,9 +83,10 @@ import net.sourceforge.plantuml.klimt.geom.PositionableUtils;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
-import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
@@ -112,6 +112,7 @@ import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactoryExtends;
 import net.sourceforge.plantuml.svek.extremity.ExtremityOther;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.url.Url;
@@ -146,6 +147,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	private DotPath dotPath;
 	private DotPath dotPathInit;
+	private DotPath renderedPath;
 
 	private Positionable startTailLabelXY;
 	private Positionable endHeadLabelXY;
@@ -1902,6 +1904,9 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		if (link.isInvis())
 			return;
 
+		if (link.isPartOfHarness())
+			return;
+
 		if (link.isIntraBoardPortConnection())
 			return;
 
@@ -2032,6 +2037,8 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 		todraw.setCommentAndCodeLine(uniq(ids, link.idCommentForSvg()), link.getCodeLine());
 
+		this.renderedPath = todraw.copy();
+		this.renderedPath.moveDelta(x, y);
 
 		drawRainbow(ug.apply(new UTranslate(x, y)), color, arrowHeadColor, todraw, link.getSupplementaryColors(),
 				stroke, magneticForce1.compose(insidePortShift1), magneticForce2.compose(insidePortShift2));
@@ -2317,6 +2324,10 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		final DotPath result = dotPath.copy();
 		result.moveDelta(dx, dy);
 		return result;
+	}
+
+	public DotPath getRenderedPath() {
+		return renderedPath;
 	}
 
 	public int getLength() {

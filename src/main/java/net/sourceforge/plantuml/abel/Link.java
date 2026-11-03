@@ -98,6 +98,9 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	private Url url;
 
+	private Harness harness;
+	private String sourceLabel;
+
 	public LinkStrategy getLinkStrategy() {
 		// return LinkStrategy.LEGACY;
 		return LinkStrategy.SIMPLEST;
@@ -448,6 +451,8 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 	}
 
 	public boolean isIntraBoardPortConnection() {
+		if (harness != null)
+			return false;
 		if (getEntity1().isGroup() || getEntity2().isGroup())
 			return false;
 		if (getEntity1().getEntityPosition().isPort() == false)
@@ -480,6 +485,26 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	public void setUrl(Url url) {
 		this.url = url;
+	}
+
+	public void setHarness(Harness harness) {
+		this.harness = harness;
+	}
+
+	public Harness getHarness() {
+		return harness;
+	}
+
+	public boolean isPartOfHarness() {
+		return harness != null;
+	}
+
+	public void setSourceLabel(String sourceLabel) {
+		this.sourceLabel = sourceLabel;
+	}
+
+	public String getSourceLabel() {
+		return sourceLabel;
 	}
 
 	public boolean isHidden() {
