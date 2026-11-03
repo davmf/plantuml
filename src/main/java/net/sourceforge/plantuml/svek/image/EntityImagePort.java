@@ -37,8 +37,18 @@
 package net.sourceforge.plantuml.svek.image;
 
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.List;
+
 import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityPosition;
+import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.abel.LeafType;
+import net.sourceforge.plantuml.decoration.symbol.USymbol;
+import net.sourceforge.plantuml.decoration.symbol.USymbols;
 import net.sourceforge.plantuml.klimt.Shadowable;
 import net.sourceforge.plantuml.klimt.UGroup;
 import net.sourceforge.plantuml.klimt.UGroupType;
@@ -49,6 +59,7 @@ import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
@@ -81,6 +92,114 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		return node.getMinY() < clusterCenter.getY();
 	}
 
+	private boolean isLabelInside() {
+		return hasInsideLabel(getEntity());
+	}
+
+	public static boolean isBoardPort(Entity entity) {
+		final Entity parent = (Entity) entity.getParentContainer();
+		if (parent == null || parent.isRoot())
+			return false;
+		if (parent.isGroup() == false || parent.getGroupType() != GroupType.PACKAGE)
+			return false;
+		final USymbol parentSymbol = parent.getUSymbol();
+		if (parentSymbol != USymbols.RECTANGLE
+				&& parentSymbol != USymbols.COMPONENT_RECTANGLE)
+			return false;
+		// Only the outermost rectangle (whose parent is root) is the
+		// "board". Ports on nested rectangle components are not
+		// board ports and must stub outward from their own parent.
+		final Entity grandparent = (Entity) parent.getParentContainer();
+		return grandparent == null || grandparent.isRoot();
+	}
+
+	public static boolean hasInsideLabel(Entity entity) {
+		if (entity.getLeafType() == LeafType.PIN)
+			return true;
+		return entity.getSkinParam().portLabelsInside(entity.getStereotype());
+	}
+
+	public static double getInsidePortSpacing() {
+		return EntityPosition.RADIUS * 2 * 2.5;
+	}
+
+	private Side getPortSide() {
+		if (getEntity().getLeafType() == LeafType.PIN) {
+			final Entity parentEntity = (Entity) getEntity().getParentContainer();
+			final Side connectorSide = parentEntity.getConnectorSide();
+			if (connectorSide == Side.EAST || connectorSide == Side.WEST)
+				return Side.WEST;
+			if (connectorSide == Side.NORTH)
+				return Side.SOUTH;
+			return Side.NORTH;
+		}
+		if (isLabelInside()) {
+			if (entityPosition.isInput())
+				return Side.WEST;
+			else
+				return Side.EAST;
+		}
+		final SvekNode node = bibliotekon.getNode(getEntity());
+		if (parent == null)
+			return entityPosition.isInput() ? Side.WEST : Side.EAST;
+		return parent.getRectangleArea().getClosestSide(node.getPosition());
+	}
+
+	private double getEdgeAdjustX() {
+		if (getEntity().getLeafType() == LeafType.PIN)
+			return 0;
+		if (isBoardPort(getEntity()))
+			return 0;
+		if (parent == null)
+			return 0;
+		final SvekNode thisNode = bibliotekon.getNode(getEntity());
+		final Side side = getPortSide();
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		if (side == Side.WEST) {
+			final double targetX = parent.getRectangleArea().getMinX() - symbolSize / 2;
+			return targetX - thisNode.getMinX();
+		} else if (side == Side.EAST) {
+			final double targetX = parent.getRectangleArea().getMaxX() - symbolSize / 2;
+			return targetX - thisNode.getMinX();
+		}
+		return 0;
+	}
+
+	private double getEvenSpacingAdjustY() {
+		if (getEntity().getLeafType() == LeafType.PIN)
+			return 0;
+		if (isBoardPort(getEntity()))
+			return 0;
+		if (parent == null)
+			return 0;
+		final SvekNode thisNode = bibliotekon.getNode(getEntity());
+		final EnumSet<EntityPosition> positions = entityPosition.isInput()
+				? EntityPosition.getInputs() : EntityPosition.getOutputs();
+		final List<SvekNode> sameSide = new ArrayList<SvekNode>(parent.getNodes(positions));
+		Collections.sort(sameSide, new Comparator<SvekNode>() {
+			public int compare(SvekNode a, SvekNode b) {
+				return Double.compare(a.getMinY(), b.getMinY());
+			}
+		});
+		int index = -1;
+		for (int i = 0; i < sameSide.size(); i++) {
+			if (sameSide.get(i) == thisNode) {
+				index = i;
+				break;
+			}
+		}
+		if (index < 0)
+			return 0;
+
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		final double spacing = symbolSize * 2.5;
+		final double clusterMinY = parent.getRectangleArea().getMinY();
+		final int titleHeight = parent.getTitleAndAttributeHeight();
+		final double startY = clusterMinY + titleHeight + LABEL_GAP * 3;
+		final double targetY = startY + index * spacing;
+		return targetY - thisNode.getMinY();
+	}
+
 	@Override
 	final public XDimension2D calculateDimensionSlow(StringBounder stringBounder) {
 		double sp = EntityPosition.RADIUS * 2;
@@ -88,9 +207,18 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 	}
 
 	public double getMaxWidthFromLabelForEntryExit(StringBounder stringBounder) {
+		if (isLabelInside())
+			return 0;
 		final TextBlock desc = getDesc();
 		final XDimension2D dimDesc = desc.calculateDimension(stringBounder);
 		return dimDesc.getWidth();
+	}
+
+	public double getInsideLabelWidth(StringBounder stringBounder) {
+		if (isLabelInside() == false)
+			return 0;
+		final TextBlock desc = getDesc();
+		return desc.calculateDimension(stringBounder).getWidth();
 	}
 
 	private void drawSymbol(UGraphic ug) {
@@ -98,16 +226,57 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		ug.draw(rect);
 	}
 
+	private static final double LABEL_GAP = 5;
+
 	final public void drawU(UGraphic ug) {
 		final TextBlock desc = getDesc();
-		double y = 0;
 		final XDimension2D dimDesc = desc.calculateDimension(ug.getStringBounder());
-		final double x = 0 - (dimDesc.getWidth() - 2 * EntityPosition.RADIUS) / 2;
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		double x;
+		double y;
+		double titleShiftY = 0;
+		double edgeShiftX = 0;
 
-		if (upPosition())
-			y -= 2 * EntityPosition.RADIUS + dimDesc.getHeight();
-		else
-			y += 2 * EntityPosition.RADIUS;
+		if (isLabelInside()) {
+			final Side side = getPortSide();
+			if (side == Side.WEST) {
+				x = symbolSize + LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+				titleShiftY = getEvenSpacingAdjustY();
+				edgeShiftX = getEdgeAdjustX();
+			} else if (side == Side.EAST) {
+				x = -dimDesc.getWidth() - LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+				titleShiftY = getEvenSpacingAdjustY();
+				edgeShiftX = getEdgeAdjustX();
+			} else if (side == Side.NORTH) {
+				x = -(dimDesc.getWidth() - symbolSize) / 2;
+				y = symbolSize + LABEL_GAP;
+			} else {
+				x = -(dimDesc.getWidth() - symbolSize) / 2;
+				y = -dimDesc.getHeight() - LABEL_GAP;
+			}
+		} else if (isBoardPort(getEntity())) {
+			final Side side = getPortSide();
+			if (side == Side.WEST) {
+				x = -dimDesc.getWidth() - LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else if (side == Side.EAST) {
+				x = symbolSize + LABEL_GAP;
+				y = (symbolSize - dimDesc.getHeight()) / 2;
+			} else {
+				x = -(dimDesc.getWidth() - symbolSize) / 2;
+				y = (side == Side.NORTH)
+						? -dimDesc.getHeight() - LABEL_GAP
+						: symbolSize + LABEL_GAP;
+			}
+		} else {
+			x = -(dimDesc.getWidth() - symbolSize) / 2;
+			y = upPosition() ? -(symbolSize + dimDesc.getHeight()) : symbolSize;
+		}
+
+		if (titleShiftY != 0 || edgeShiftX != 0)
+			ug = ug.apply(new UTranslate(edgeShiftX, titleShiftY));
 
 		final UGroup group = new UGroup(getEntity().getLocation());
 		group.put(UGroupType.CLASS, "entity");
