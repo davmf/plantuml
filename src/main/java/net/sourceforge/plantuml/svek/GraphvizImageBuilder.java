@@ -66,6 +66,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.Rankdir;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XRectangle2D;
 import net.sourceforge.plantuml.klimt.shape.GraphicStrings;
@@ -283,7 +284,7 @@ public final class GraphvizImageBuilder {
 						|| SecurityUtils.getSecurityProfile() == SecurityProfile.SANDBOX))
 			basefile = new BaseFile(null);
 
-		final String svg;
+		String svg;
 		try {
 			svg = dotStringFactory.getSvg(stringBounder, dotMode, basefile, dotStrings);
 		} catch (IOException e) {
@@ -292,6 +293,8 @@ public final class GraphvizImageBuilder {
 		if (svg.length() == 0)
 			return GraphvizCrash.build(source.getPlainString(BackSlash.lineSeparator()), false,
 					new EmptySvgException());
+
+		svg = rankLabelsBetweenTheirNodes(svg, stringBounder, basefile, dotStrings);
 
 		final String graphvizVersion = extractGraphvizVersion(svg);
 		try {
@@ -305,6 +308,39 @@ public final class GraphvizImageBuilder {
 					source.getPlainString(BackSlash.lineSeparator()));
 		}
 
+	}
+
+	/**
+	 * When Graphviz ranks node-style edge labels outside the two nodes they join
+	 * (see {@link LabelRanks}), lays the diagram out once more with those edges
+	 * given the other way round, and keeps that layout if it has fewer such
+	 * labels. Returns the SVG to use.
+	 */
+	private String rankLabelsBetweenTheirNodes(String svg, StringBounder stringBounder, BaseFile basefile,
+			String dotStrings[]) {
+		final boolean leftToRight = dotData.getSkinParam().getRankdir() == Rankdir.LEFT_TO_RIGHT;
+		final Bibliotekon bibliotekon = dotStringFactory.getBibliotekon();
+		final List<SvekEdge> misplaced = LabelRanks.misplaced(svg, bibliotekon, leftToRight);
+		if (misplaced.isEmpty())
+			return svg;
+
+		for (SvekEdge edge : misplaced)
+			edge.setRankFlipped(edge.isRankFlipped() == false);
+
+		String retry;
+		try {
+			retry = dotStringFactory.getSvg(stringBounder, dotMode, basefile, dotStrings);
+		} catch (IOException | IllegalStateException e) {
+			retry = "";
+		}
+		if (retry.contains("<svg") && LabelRanks.misplaced(retry, bibliotekon, leftToRight).size() < misplaced
+				.size())
+			return retry;
+
+		for (SvekEdge edge : misplaced)
+			edge.setRankFlipped(edge.isRankFlipped() == false);
+
+		return svg;
 	}
 
 	private boolean isSvekTrace() {
