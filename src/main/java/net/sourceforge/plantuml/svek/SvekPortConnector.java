@@ -57,6 +57,7 @@ import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.svek.image.EntityImagePort;
+import net.sourceforge.plantuml.svek.orthoroute.OrthoRouteEngine;
 import net.sourceforge.plantuml.utils.Log;
 
 public class SvekPortConnector implements UDrawable {
@@ -110,27 +111,100 @@ public class SvekPortConnector implements UDrawable {
 		// Phase 1b: separate stub tips that are too close at the same X
 		separateStubTips(connectors);
 
-		// Phase 2: route the middle (between stub tips)
-		for (SvekPortConnector pc : connectors)
-			pc.routeMiddle(extraObstacles, boardBounds);
+		// Phase 2: route via orthogonal visibility graph + A*
+		routeViaVisGraph(connectors, extraObstacles, boardBounds);
 
-		// Phase 2b: separate parallel segments that are too close
-		separateParallelSegments(connectors);
-
-		// Phase 2c: re-check segments that may now collide after
-		// separation shifted verticals/horizontals
-		for (SvekPortConnector pc : connectors)
-			pc.fixCrossoversAfterSeparation(extraObstacles);
-
-		// Phase 2d: re-separate after fixup (2c can collapse segments
-		// back to the same position), then fixup again
-		separateParallelSegments(connectors);
-		for (SvekPortConnector pc : connectors)
-			pc.fixCrossoversAfterSeparation(extraObstacles);
+		// Phase 2 fallback: any connector without waypoints gets
+		// routed via the old scan-and-test method
+		for (SvekPortConnector pc : connectors) {
+			if (pc.waypoints == null || pc.waypoints.isEmpty())
+				pc.routeMiddle(extraObstacles, boardBounds);
+		}
 
 		// Phase 3: validate all segments
 		for (SvekPortConnector pc : connectors)
 			pc.validate(extraObstacles, boardBounds);
+	}
+
+	private static void routeViaVisGraph(
+			List<SvekPortConnector> connectors,
+			List<RectangleArea> extraObstacles,
+			RectangleArea boardBounds) {
+
+		final List<OrthoRouteEngine.ConnectorData> data =
+				new ArrayList<OrthoRouteEngine.ConnectorData>();
+		Bibliotekon bib = null;
+		for (SvekPortConnector pc : connectors) {
+			if (pc.srcPortX == 0 && pc.srcPortY == 0)
+				continue;
+			if (bib == null)
+				bib = pc.bibliotekon;
+			data.add(new OrthoRouteEngine.ConnectorData(
+					pc.edge.getLink().getEntity1(),
+					pc.edge.getLink().getEntity2(),
+					pc.srcPortX, pc.srcPortY,
+					pc.dstPortX, pc.dstPortY,
+					pc.srcDir, pc.dstDir,
+					pc.srcTipX, pc.dstTipX));
+		}
+
+		// Collect all obstacles from within the svek package
+		// (Cluster.getGroup() is package-private).
+		// Skip the board (the outer container we're routing inside)
+		// and any cluster that owns a port on one of these
+		// connectors: those clusters must be passable at their port
+		// positions, otherwise A* can never enter or leave them.
+		final List<RectangleArea> obstacles =
+				new ArrayList<RectangleArea>();
+		if (bib != null) {
+			Entity boardEntity = null;
+			final java.util.Set<Entity> portOwners =
+					new java.util.HashSet<Entity>();
+			for (OrthoRouteEngine.ConnectorData cd : data) {
+				final Entity p1 = cd.entity1.getParentContainer();
+				final Entity p2 = cd.entity2.getParentContainer();
+				if (p1 != null)
+					portOwners.add(p1);
+				if (p2 != null)
+					portOwners.add(p2);
+				if (boardEntity == null && cd.srcParent != null) {
+					if (EntityImagePort.isBoardPort(cd.entity1))
+						boardEntity = cd.srcParent;
+					else if (cd.srcParent.getParentContainer()
+							!= null)
+						boardEntity = cd.srcParent
+								.getParentContainer();
+				}
+			}
+			for (Cluster cl : bib.allCluster()) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final Entity group = cl.getGroup();
+				if (boardEntity != null && group == boardEntity)
+					continue;
+				if (portOwners.contains(group))
+					continue;
+				obstacles.add(rect);
+			}
+		}
+		for (RectangleArea extra : extraObstacles)
+			if (extra != null)
+				obstacles.add(extra);
+
+		OrthoRouteEngine.routeConnectors(data, obstacles,
+				boardBounds);
+
+		// Copy results back
+		int idx = 0;
+		for (SvekPortConnector pc : connectors) {
+			if (pc.srcPortX == 0 && pc.srcPortY == 0)
+				continue;
+			final OrthoRouteEngine.ConnectorData cd = data.get(idx);
+			if (cd.resultWaypoints != null)
+				pc.waypoints = cd.resultWaypoints;
+			idx++;
+		}
 	}
 
 	// ==================================================================
@@ -423,237 +497,6 @@ public class SvekPortConnector implements UDrawable {
 		waypoints.add(new XPoint2D(vertX, srcPortY));
 		waypoints.add(new XPoint2D(vertX, dstPortY));
 		waypoints.add(new XPoint2D(dstEdge, dstPortY));
-	}
-
-	// ==================================================================
-	// Phase 2c: Fix crossovers after separation
-	// ==================================================================
-
-	private void fixCrossoversAfterSeparation(
-			List<RectangleArea> extraObstacles) {
-		if (waypoints == null || waypoints.size() < 4)
-			return;
-		final List<RectangleArea> obstacles =
-				collectObstacles(extraObstacles);
-		for (int i = 1; i < waypoints.size() - 2; i++) {
-			final XPoint2D a = waypoints.get(i);
-			final XPoint2D b = waypoints.get(i + 1);
-			if (Math.abs(a.getY() - b.getY()) < 0.5) {
-				// Horizontal segment
-				final double y = a.getY();
-				final double xMin = Math.min(a.getX(), b.getX());
-				final double xMax = Math.max(a.getX(), b.getX());
-				if (horizontalCollides(y, xMin, xMax, obstacles)) {
-					final double newY = findClearHorizontal(y, xMin,
-							xMax, obstacles);
-					waypoints.set(i, new XPoint2D(a.getX(), newY));
-					waypoints.set(i + 1, new XPoint2D(b.getX(), newY));
-				}
-			} else if (Math.abs(a.getX() - b.getX()) < 0.5) {
-				// Vertical segment shifted by separation
-				final double x = a.getX();
-				final double yMin = Math.min(a.getY(), b.getY());
-				final double yMax = Math.max(a.getY(), b.getY());
-				if (verticalCollides(x, yMin, yMax, obstacles)) {
-					final double newX =
-							findClearVerticalBidirectional(x,
-									yMin, yMax, obstacles);
-					waypoints.set(i, new XPoint2D(newX, a.getY()));
-					waypoints.set(i + 1,
-							new XPoint2D(newX, b.getY()));
-					// Update connected horizontal endpoints
-					if (i > 0) {
-						final XPoint2D prev = waypoints.get(i - 1);
-						if (Math.abs(prev.getY() - a.getY()) < 0.5)
-							waypoints.set(i - 1,
-									new XPoint2D(prev.getX(),
-											a.getY()));
-					}
-					if (i + 2 < waypoints.size()) {
-						final XPoint2D next =
-								waypoints.get(i + 2);
-						if (Math.abs(next.getY() - b.getY()) < 0.5)
-							waypoints.set(i + 2,
-									new XPoint2D(next.getX(),
-											b.getY()));
-					}
-				}
-			}
-		}
-	}
-
-	// ==================================================================
-	// Phase 2b: Separate parallel segments
-	// ==================================================================
-
-	private static final class SegRef {
-		final SvekPortConnector owner;
-		final int index;
-		SegRef(SvekPortConnector owner, int index) {
-			this.owner = owner;
-			this.index = index;
-		}
-		XPoint2D a() { return owner.waypoints.get(index); }
-		XPoint2D b() { return owner.waypoints.get(index + 1); }
-	}
-
-	private static void separateParallelSegments(
-			List<SvekPortConnector> connectors) {
-		final List<SegRef> verticals = new ArrayList<SegRef>();
-		final List<SegRef> horizontals = new ArrayList<SegRef>();
-		for (SvekPortConnector pc : connectors) {
-			if (pc.waypoints == null || pc.waypoints.size() < 2)
-				continue;
-			final int lastSeg = pc.waypoints.size() - 2;
-			for (int i = 0; i <= lastSeg; i++) {
-				// Skip stub segments — their endpoints are
-				// anchored to port positions
-				if (i == 0 || i == lastSeg)
-					continue;
-				final XPoint2D a = pc.waypoints.get(i);
-				final XPoint2D b = pc.waypoints.get(i + 1);
-				if (Math.abs(a.getX() - b.getX()) < 0.5
-						&& Math.abs(a.getY() - b.getY()) > 1)
-					verticals.add(new SegRef(pc, i));
-				else if (Math.abs(a.getY() - b.getY()) < 0.5
-						&& Math.abs(a.getX() - b.getX()) > 1)
-					horizontals.add(new SegRef(pc, i));
-			}
-		}
-		separateVerticalSegs(verticals);
-		separateHorizontalSegs(horizontals);
-	}
-
-	private static void separateVerticalSegs(List<SegRef> segments) {
-		Collections.sort(segments,
-				new java.util.Comparator<SegRef>() {
-					public int compare(SegRef a, SegRef b) {
-						return Double.compare(a.a().getX(), b.a().getX());
-					}
-				});
-		int i = 0;
-		while (i < segments.size()) {
-			final List<SegRef> cluster = new ArrayList<SegRef>();
-			cluster.add(segments.get(i));
-			int j = i + 1;
-			while (j < segments.size()) {
-				final SegRef candidate = segments.get(j);
-				boolean close = false;
-				for (SegRef member : cluster) {
-					if (Math.abs(candidate.a().getX()
-							- member.a().getX()) < PORT_WIDTH
-							&& yOverlap(candidate, member)) {
-						close = true;
-						break;
-					}
-				}
-				if (close) {
-					cluster.add(candidate);
-					j++;
-				} else {
-					break;
-				}
-			}
-			if (cluster.size() > 1)
-				distributeVerticalSegs(cluster);
-			i = j;
-		}
-	}
-
-	private static void separateHorizontalSegs(List<SegRef> segments) {
-		Collections.sort(segments,
-				new java.util.Comparator<SegRef>() {
-					public int compare(SegRef a, SegRef b) {
-						return Double.compare(a.a().getY(), b.a().getY());
-					}
-				});
-		int i = 0;
-		while (i < segments.size()) {
-			final List<SegRef> cluster = new ArrayList<SegRef>();
-			cluster.add(segments.get(i));
-			int j = i + 1;
-			while (j < segments.size()) {
-				final SegRef candidate = segments.get(j);
-				boolean close = false;
-				for (SegRef member : cluster) {
-					if (Math.abs(candidate.a().getY()
-							- member.a().getY()) < PORT_WIDTH
-							&& xOverlap(candidate, member)) {
-						close = true;
-						break;
-					}
-				}
-				if (close) {
-					cluster.add(candidate);
-					j++;
-				} else {
-					break;
-				}
-			}
-			if (cluster.size() > 1)
-				distributeHorizontalSegs(cluster);
-			i = j;
-		}
-	}
-
-	private static boolean yOverlap(SegRef a, SegRef b) {
-		final double aMin = Math.min(a.a().getY(), a.b().getY());
-		final double aMax = Math.max(a.a().getY(), a.b().getY());
-		final double bMin = Math.min(b.a().getY(), b.b().getY());
-		final double bMax = Math.max(b.a().getY(), b.b().getY());
-		return aMax > bMin && bMax > aMin;
-	}
-
-	private static boolean xOverlap(SegRef a, SegRef b) {
-		final double aMin = Math.min(a.a().getX(), a.b().getX());
-		final double aMax = Math.max(a.a().getX(), a.b().getX());
-		final double bMin = Math.min(b.a().getX(), b.b().getX());
-		final double bMax = Math.max(b.a().getX(), b.b().getX());
-		return aMax > bMin && bMax > aMin;
-	}
-
-	private static void distributeVerticalSegs(List<SegRef> cluster) {
-		double sumX = 0;
-		for (SegRef s : cluster)
-			sumX += s.a().getX();
-		final double centreX = sumX / cluster.size();
-		final int n = cluster.size();
-		final double span = (n - 1) * PORT_WIDTH;
-		final double startX = centreX - span / 2;
-		for (int k = 0; k < n; k++)
-			shiftVertical(cluster.get(k), startX + k * PORT_WIDTH);
-	}
-
-	private static void distributeHorizontalSegs(List<SegRef> cluster) {
-		double sumY = 0;
-		for (SegRef s : cluster)
-			sumY += s.a().getY();
-		final double centreY = sumY / cluster.size();
-		final int n = cluster.size();
-		final double span = (n - 1) * PORT_WIDTH;
-		final double startY = centreY - span / 2;
-		for (int k = 0; k < n; k++)
-			shiftHorizontal(cluster.get(k), startY + k * PORT_WIDTH);
-	}
-
-	private static void shiftVertical(SegRef seg, double newX) {
-		final List<XPoint2D> wp = seg.owner.waypoints;
-		final int ia = seg.index;
-		final int ib = seg.index + 1;
-		if (ia != 0)
-			wp.set(ia, new XPoint2D(newX, wp.get(ia).getY()));
-		if (ib != wp.size() - 1)
-			wp.set(ib, new XPoint2D(newX, wp.get(ib).getY()));
-	}
-
-	private static void shiftHorizontal(SegRef seg, double newY) {
-		final List<XPoint2D> wp = seg.owner.waypoints;
-		final int ia = seg.index;
-		final int ib = seg.index + 1;
-		if (ia != 0)
-			wp.set(ia, new XPoint2D(wp.get(ia).getX(), newY));
-		if (ib != wp.size() - 1)
-			wp.set(ib, new XPoint2D(wp.get(ib).getX(), newY));
 	}
 
 	// ==================================================================
