@@ -35,6 +35,7 @@
  */
 package net.sourceforge.plantuml.elk;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -79,11 +80,15 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.UDrawable;
 import net.sourceforge.plantuml.klimt.shape.ULine;
 import net.sourceforge.plantuml.skin.LineParam;
+import net.sourceforge.plantuml.skin.PragmaKey;
 import net.sourceforge.plantuml.style.ISkinParam;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.SName;
@@ -149,6 +154,12 @@ public class MyElkEdge implements UDrawable {
 		if (link.isHidden())
 			return;
 
+		if (link.isPartOfHarness())
+			return;
+
+		if (link.isJumper())
+			return;
+
 		ug = ug.apply(translate);
 		UGraphic ugOrig = ug;
 
@@ -205,24 +216,63 @@ public class MyElkEdge implements UDrawable {
 			drawSections(ug, sections, magneticBorder1, magneticBorder2);
 		}
 
-		final UDrawable extremityFactory1 = getDecors(link.getType().getDecor1(), Math.PI / 2, HColors.WHITE);
-		final UDrawable extremityFactory2 = getDecors(link.getType().getDecor2(), -Math.PI / 2, HColors.WHITE);
+		// Compute the head/tail angles from the actual section
+		// geometry so the arrowheads point along the line, the same
+		// way SvekEdge derives them from DotPath.getEndAngle.
+		final ElkEdgeSection s0 = sections.get(0);
+		final double headAngle = endAngleOf(s0);
+		final double tailAngle = startAngleOf(s0) + Math.PI;
+		final UDrawable extremityFactory1 = getDecors(link.getType().getDecor1(), headAngle, HColors.WHITE);
+		final UDrawable extremityFactory2 = getDecors(link.getType().getDecor2(), tailAngle, HColors.WHITE);
 
 		if (extremityFactory1 != null) {
-			final double x = sections.get(0).getEndX();
-			final double y = sections.get(0).getEndY();
+			final double x = s0.getEndX();
+			final double y = s0.getEndY();
 			final UTranslate force = magneticBorder2.getForceAt(ug.getStringBounder(), new XPoint2D(x, y));
 			extremityFactory1.drawU(ug.apply(stroke.onlyThickness()).apply(new UTranslate(x, y).compose(force)));
 		}
 
 		if (extremityFactory2 != null) {
-			final double x = sections.get(0).getStartX();
-			final double y = sections.get(0).getStartY();
+			final double x = s0.getStartX();
+			final double y = s0.getStartY();
 			final UTranslate force = magneticBorder1.getForceAt(ug.getStringBounder(), new XPoint2D(x, y));
 			extremityFactory2.drawU(ug.apply(stroke.onlyThickness()).apply(new UTranslate(x, y).compose(force)));
 		}
 
 		drawLabels(ugOrig);
+	}
+
+	// Angle of the section's final segment heading into the end point.
+	// Returns Math.atan2(dy, dx) so 0 = rightward, PI/2 = downward, PI = leftward.
+	private double endAngleOf(ElkEdgeSection s) {
+		final List<ElkBendPoint> bends = new ArrayList<ElkBendPoint>(s.getBendPoints());
+		final double fromX;
+		final double fromY;
+		if (bends.isEmpty()) {
+			fromX = s.getStartX();
+			fromY = s.getStartY();
+		} else {
+			final ElkBendPoint last = bends.get(bends.size() - 1);
+			fromX = last.getX();
+			fromY = last.getY();
+		}
+		return Math.atan2(s.getEndY() - fromY, s.getEndX() - fromX);
+	}
+
+	// Angle of the section's first segment leaving the start point.
+	private double startAngleOf(ElkEdgeSection s) {
+		final List<ElkBendPoint> bends = new ArrayList<ElkBendPoint>(s.getBendPoints());
+		final double toX;
+		final double toY;
+		if (bends.isEmpty()) {
+			toX = s.getEndX();
+			toY = s.getEndY();
+		} else {
+			final ElkBendPoint first = bends.get(0);
+			toX = first.getX();
+			toY = first.getY();
+		}
+		return Math.atan2(toY - s.getStartY(), toX - s.getStartX());
 	}
 
 	private UDrawable getDecors(LinkDecor decors, double angle, HColor backColor) {
@@ -287,31 +337,123 @@ public class MyElkEdge implements UDrawable {
 	private void drawSections(UGraphic ug, final Collection<ElkEdgeSection> sections, MagneticBorder magneticBorder1,
 			MagneticBorder magneticBorder2) {
 		for (ElkEdgeSection section : sections) {
-			final Collection<ElkBendPoint> points = section.getBendPoints();
+			final List<XPoint2D> pts = new ArrayList<XPoint2D>();
 
-			double x1 = section.getStartX();
-			double y1 = section.getStartY();
-
-			final XPoint2D tmpStart = new XPoint2D(x1, y1);
+			final XPoint2D tmpStart = new XPoint2D(section.getStartX(), section.getStartY());
 			final UTranslate force1 = magneticBorder1.getForceAt(ug.getStringBounder(),
 					translate.getTranslated(tmpStart));
-			final XPoint2D start = force1.getTranslated(tmpStart);
-			x1 = start.x;
-			y1 = start.y;
+			pts.add(force1.getTranslated(tmpStart));
 
-			for (ElkBendPoint pt : points) {
-				drawLine(ug, x1, y1, pt.getX(), pt.getY());
-				x1 = pt.getX();
-				y1 = pt.getY();
-			}
+			for (ElkBendPoint pt : section.getBendPoints())
+				pts.add(new XPoint2D(pt.getX(), pt.getY()));
 
 			final XPoint2D tmpEnd = new XPoint2D(section.getEndX(), section.getEndY() + magicY2);
 			final UTranslate force2 = magneticBorder2.getForceAt(ug.getStringBounder(),
 					translate.getTranslated(tmpEnd));
-			final XPoint2D end = force2.getTranslated(tmpEnd);
+			pts.add(force2.getTranslated(tmpEnd));
 
-			drawLine(ug, x1, y1, end.x, end.y);
+			drawPolyline(ug, simplifyMonotoneStaircase(pts));
 		}
+	}
+
+	// Collapse a monotone orthogonal staircase to a single L-corner (3
+	// segments). ELK sometimes routes simple "go right and up" edges through
+	// two or more intermediate columns/rows, yielding 5+ visible segments
+	// when the geometry only requires three. Only triggers when the polyline
+	// is monotone in both X and Y; non-monotone (U-shaped or back-tracking)
+	// paths are left intact because they imply ELK was steering around
+	// obstacles we don't know about.
+	private static List<XPoint2D> simplifyMonotoneStaircase(List<XPoint2D> pts) {
+		if (pts.size() <= 4)
+			return pts;
+		final double EPS = 1.0;
+		int xDir = 0;
+		int yDir = 0;
+		for (int i = 1; i < pts.size(); i++) {
+			final double dx = pts.get(i).getX() - pts.get(i - 1).getX();
+			final double dy = pts.get(i).getY() - pts.get(i - 1).getY();
+			if (Math.abs(dx) > EPS) {
+				final int dir = dx > 0 ? 1 : -1;
+				if (xDir == 0)
+					xDir = dir;
+				else if (xDir != dir)
+					return pts;
+			}
+			if (Math.abs(dy) > EPS) {
+				final int dir = dy > 0 ? 1 : -1;
+				if (yDir == 0)
+					yDir = dir;
+				else if (yDir != dir)
+					return pts;
+			}
+		}
+		if (xDir == 0 || yDir == 0)
+			return pts;
+		final XPoint2D start = pts.get(0);
+		final XPoint2D end = pts.get(pts.size() - 1);
+		final boolean startsHoriz =
+				Math.abs(pts.get(1).getY() - start.getY()) < EPS;
+		double pivotV = start.getX();
+		double pivotVlen = 0;
+		double pivotH = start.getY();
+		double pivotHlen = 0;
+		for (int i = 1; i < pts.size(); i++) {
+			final double dx = pts.get(i).getX() - pts.get(i - 1).getX();
+			final double dy = pts.get(i).getY() - pts.get(i - 1).getY();
+			if (Math.abs(dx) < EPS && Math.abs(dy) > pivotVlen) {
+				pivotVlen = Math.abs(dy);
+				pivotV = pts.get(i).getX();
+			}
+			if (Math.abs(dy) < EPS && Math.abs(dx) > pivotHlen) {
+				pivotHlen = Math.abs(dx);
+				pivotH = pts.get(i).getY();
+			}
+		}
+		final List<XPoint2D> result = new ArrayList<XPoint2D>();
+		result.add(start);
+		if (startsHoriz) {
+			result.add(new XPoint2D(pivotV, start.getY()));
+			result.add(new XPoint2D(pivotV, end.getY()));
+		} else {
+			result.add(new XPoint2D(start.getX(), pivotH));
+			result.add(new XPoint2D(end.getX(), pivotH));
+		}
+		result.add(end);
+		return result;
+	}
+
+	private void drawPolyline(UGraphic ug, List<XPoint2D> pts) {
+		if (pts.size() < 2)
+			return;
+
+		final DotPath path = buildDotPath(pts);
+		final String radiusStr = diagram.getPragma()
+				.getValue(PragmaKey.EDGE_CORNER_RADIUS);
+		if (radiusStr != null) {
+			try {
+				final double radius = Double.parseDouble(radiusStr);
+				if (radius > 0)
+					path.muteToRoundOrthogonalPaths(radius);
+			} catch (NumberFormatException e) {
+				// Ignore invalid radius values
+			}
+		}
+		ug.draw(path);
+	}
+
+	private static DotPath buildDotPath(List<XPoint2D> pts) {
+		final List<XCubicCurve2D> beziers =
+				new ArrayList<XCubicCurve2D>();
+		for (int i = 0; i < pts.size() - 1; i++) {
+			final XPoint2D a = pts.get(i);
+			final XPoint2D b = pts.get(i + 1);
+			beziers.add(new XCubicCurve2D(
+					a.getX(), a.getY(),
+					a.getX(), a.getY(),
+					b.getX(), b.getY(),
+					b.getX(), b.getY()));
+		}
+		return DotPath.fromBeziers(beziers);
 	}
 
 	private void drawLine(UGraphic ug, double x1, double y1, double x2, double y2) {

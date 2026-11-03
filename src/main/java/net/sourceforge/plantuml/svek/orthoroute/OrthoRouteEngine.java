@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.svek.orthoroute;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;

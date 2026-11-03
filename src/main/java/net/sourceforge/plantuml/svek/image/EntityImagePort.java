@@ -57,8 +57,10 @@ import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.ColorType;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
+import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
@@ -119,6 +121,25 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		return entity.getSkinParam().portLabelsInside(entity.getStereotype());
 	}
 
+	// 0-based index of `ent` within its parent header's declaration-order
+	// port list, or -1 if `ent` is not a port of a header. Used to decide
+	// which side of the header (WEST or EAST) the port sits on.
+	public static int headerPinIndex(Entity ent) {
+		final Entity parent = (Entity) ent.getParentContainer();
+		if (parent == null || parent.isHeader() == false)
+			return -1;
+		int idx = 0;
+		for (Entity child : parent.leafs()) {
+			final EntityPosition cp = child.getEntityPosition();
+			if (cp == null || cp.isPort() == false)
+				continue;
+			if (child == ent)
+				return idx;
+			idx++;
+		}
+		return -1;
+	}
+
 	public static double getInsidePortSpacing() {
 		return EntityPosition.RADIUS * 2 * 2.5;
 	}
@@ -133,6 +154,14 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 				return Side.SOUTH;
 			return Side.NORTH;
 		}
+		// Header pins ignore portin/portout and instead alternate by
+		// declaration order so paired pins sit on opposing faces. Match
+		// the side CucaDiagramFileMakerElk feeds ELK (even index = WEST,
+		// odd index = EAST) so the inside label lands on the right side
+		// of the glyph.
+		final Entity parentEntity = (Entity) getEntity().getParentContainer();
+		if (parentEntity != null && parentEntity.isHeader())
+			return (headerPinIndex(getEntity()) % 2 == 0) ? Side.WEST : Side.EAST;
 		if (isLabelInside()) {
 			if (entityPosition.isInput())
 				return Side.WEST;
@@ -151,6 +180,12 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		if (isBoardPort(getEntity()))
 			return 0;
 		if (parent == null)
+			return 0;
+		// Under ELK the port has already been positioned on the
+		// cluster boundary; Svek's edge-centre adjustment is not
+		// needed and would shift the glyph away from where ELK
+		// placed it.
+		if (getEntity().getDiagram().isUseElk())
 			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final Side side = getPortSide();
@@ -171,6 +206,10 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		if (isBoardPort(getEntity()))
 			return 0;
 		if (parent == null)
+			return 0;
+		// Under ELK the port row Y has been chosen by ELK; do not
+		// re-space ports according to Svek's row layout.
+		if (getEntity().getDiagram().isUseElk())
 			return 0;
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final EnumSet<EntityPosition> positions = entityPosition.isInput()
@@ -226,10 +265,22 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		ug.draw(rect);
 	}
 
+	// Like getDesc() but, if the entity has a Colors.TEXT (set when the
+	// port lives inside a `group "Name" #Color { ... }` block), tint the
+	// label text with that colour.
+	private TextBlock getDescColored() {
+		final HColor textColor = getEntity().getColors().getColor(ColorType.TEXT);
+		if (textColor == null)
+			return getDesc();
+		final FontConfiguration fc = FontConfiguration.create(getSkinParam(), getStyle())
+				.changeColor(textColor);
+		return getEntity().getDisplay().create(fc, HorizontalAlignment.CENTER, getSkinParam());
+	}
+
 	private static final double LABEL_GAP = 5;
 
 	final public void drawU(UGraphic ug) {
-		final TextBlock desc = getDesc();
+		final TextBlock desc = getDescColored();
 		final XDimension2D dimDesc = desc.calculateDimension(ug.getStringBounder());
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		double x;

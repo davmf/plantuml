@@ -52,8 +52,10 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorder;
 import net.sourceforge.plantuml.klimt.geom.MagneticBorderNone;
 import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
+import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.skin.AlignmentParam;
 import net.sourceforge.plantuml.style.ISkinParam;
@@ -107,8 +109,11 @@ public class MyElkCluster {
 		final RectangleArea rectangleArea = new RectangleArea(0, 0, elkNode.getWidth(), elkNode.getHeight());
 		final ClusterHeader clusterHeader = new ClusterHeader(group, diagram, ug.getStringBounder());
 
+		// Draw the cluster rectangle without an internal title;
+		// render the title above the rectangle separately so the
+		// cluster body width is determined purely by its contents.
 		final ClusterDecoration decoration = new ClusterDecoration(packageStyle, group.getUSymbol(),
-				clusterHeader.getTitle(), clusterHeader.getStereo(), rectangleArea, stroke);
+				TextBlockUtils.EMPTY_TEXT_BLOCK, TextBlockUtils.EMPTY_TEXT_BLOCK, rectangleArea, stroke);
 
 		HColor borderColor = group.getColors().getColor(ColorType.LINE);
 		if (borderColor == null)
@@ -117,6 +122,13 @@ public class MyElkCluster {
 				skinParam.getHorizontalAlignment(AlignmentParam.packageTitleAlignment, null, false, null),
 				skinParam.getStereotypeAlignment(), 0);
 
+		final TextBlock title = clusterHeader.getTitle();
+		final XDimension2D titleDim = title.calculateDimension(ug.getStringBounder());
+		final double titleGap = 4;
+		final double titleX = corner.getX() + (elkNode.getWidth() - titleDim.getWidth()) / 2;
+		final double titleY = corner.getY() - titleDim.getHeight() - titleGap;
+		title.drawU(ug.apply(new UTranslate(titleX, titleY)));
+
 //			// Print a simple rectangle right now
 //			ug.apply(HColorUtils.BLACK).apply(UStroke.withThickness(1.5)).apply(new UTranslate(corner)).draw(rect);
 	}
@@ -124,6 +136,7 @@ public class MyElkCluster {
 	private HColor getBackColor(DiagramType diagramType) {
 		return null;
 	}
+
 
 	@DuplicateCode(reference = "Cluster")
 	public MagneticBorder getMagneticBorder(StringBounder stringBounder) {
