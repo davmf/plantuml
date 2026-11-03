@@ -166,6 +166,13 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 
 	private final double labelShield;
 
+	/**
+	 * Whether this edge is given to Graphviz from its end to its start, so that
+	 * Graphviz ranks its end above its start. Only the dot source changes: the
+	 * path Graphviz returns is put back in order by {@link #solveLine}.
+	 */
+	private boolean rankFlipped;
+
 	@Override
 	public String toString() {
 		return super.toString() + " color=" + lineColor;
@@ -422,12 +429,13 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		// sb.append("->");
 		// sb.append(startUid);
 		// } else {
-		sb.append(startUid.getFullString());
+		sb.append((rankFlipped ? endUid : startUid).getFullString());
 		sb.append("->");
-		sb.append(endUid.getFullString());
+		sb.append((rankFlipped ? startUid : endUid).getFullString());
 		// }
 		sb.append("[");
-		final LinkType linkType = link.getTypePatchCluster();
+		final LinkType linkType = rankFlipped ? link.getTypePatchCluster().getInversed()
+				: link.getTypePatchCluster();
 		String decoration = linkType.getSpecificDecorationSvek(getLinkStrategy());
 		if (decoration.length() > 0 && decoration.endsWith(",") == false)
 			decoration += ",";
@@ -471,25 +479,27 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			sb.append(">");
 		}
 
+		final String startLabel = rankFlipped ? "headlabel" : "taillabel";
+		final String endLabel = rankFlipped ? "taillabel" : "headlabel";
 		if (startTailText != null) {
 			sb.append(",");
-			sb.append("taillabel=<");
+			sb.append(startLabel + "=<");
 			appendTable(sb, startTailText.calculateDimension(stringBounder), startTailColor, graphvizVersion);
 			sb.append(">");
 		} else if (startTailRoleText != null) {
 			sb.append(",");
-			sb.append("taillabel=<");
+			sb.append(startLabel + "=<");
 			appendTable(sb, startTailRoleText.calculateDimension(stringBounder), startTailColor, graphvizVersion);
 			sb.append(">");
 		}
 		if (endHeadText != null) {
 			sb.append(",");
-			sb.append("headlabel=<");
+			sb.append(endLabel + "=<");
 			appendTable(sb, endHeadText.calculateDimension(stringBounder), endHeadColor, graphvizVersion);
 			sb.append(">");
 		} else if (endHeadRoleText != null) {
 			sb.append(",");
-			sb.append("headlabel=<");
+			sb.append(endLabel + "=<");
 			appendTable(sb, endHeadRoleText.calculateDimension(stringBounder), endHeadColor, graphvizVersion);
 			sb.append(">");
 		}
@@ -503,7 +513,7 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 			sb.append(",constraint=false");
 
 		if (link.getSametail() != null)
-			sb.append(",sametail=" + link.getSametail());
+			sb.append((rankFlipped ? ",samehead=" : ",sametail=") + link.getSametail());
 
 		sb.append("];");
 		SvekUtils.println(sb);
@@ -903,11 +913,19 @@ public class SvekEdge extends XAbstractEdge implements XEdge, UDrawable {
 		return nb;
 	}
 
-	private SvekNode getSvekNode2() {
+	boolean isRankFlipped() {
+		return rankFlipped;
+	}
+
+	void setRankFlipped(boolean rankFlipped) {
+		this.rankFlipped = rankFlipped;
+	}
+
+	SvekNode getSvekNode2() {
 		return bibliotekon.getNode(link.getEntity2());
 	}
 
-	private SvekNode getSvekNode1() {
+	SvekNode getSvekNode1() {
 		return bibliotekon.getNode(link.getEntity1());
 	}
 
