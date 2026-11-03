@@ -4,7 +4,7 @@ import net.sourceforge.plantuml.elk.proxy.ElkObjectProxy;
 import net.sourceforge.plantuml.elk.proxy.Reflect;
 
 public enum SizeConstraint implements ElkObjectProxy {
-	NODE_LABELS;
+	NODE_LABELS, PORTS, PORT_LABELS, MINIMUM_SIZE;
 
 	@Override
 	public Enum getTrueObject() {

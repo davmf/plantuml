@@ -340,6 +340,15 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 
 		entity.setDisplay(Display.getWithNewlines(diagram.getPragma(), display));
 
+		// If we're inside a `group "Name" { ... }` block, tag the port
+		// with its group label, group ordinal, and within-group index so
+		// the ELK port-emission code can place it.
+		if (type == LeafType.PORTIN || type == LeafType.PORTOUT) {
+			final net.sourceforge.plantuml.abel.PortGroup pg = diagram.getCurrentPortGroup();
+			if (pg != null)
+				entity.setPortGroup(pg.getLabel(), pg.getGroupOrder(), pg.nextPortIndex());
+		}
+
 		if (stereotype != null)
 			entity.setStereotype(Stereotype.build(stereotype, diagram.getSkinParam().getCircledCharacterRadius(),
 					diagram.getSkinParam().getFont(null, false, FontParam.CIRCLED_CHARACTER),
@@ -360,6 +369,22 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 		final HColor lineColor = s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s);
 		if (lineColor != null)
 			colors = colors.add(ColorType.LINE, lineColor);
+
+		// Inherit colour from an enclosing `group "Name" #Color { ... }`
+		// when the port itself has no explicit BACK colour. Mirror the
+		// BACK colour into TEXT so EntityImagePort tints the label too.
+		if (type == LeafType.PORTIN || type == LeafType.PORTOUT) {
+			final net.sourceforge.plantuml.abel.PortGroup pg = diagram.getCurrentPortGroup();
+			if (pg != null && pg.getColors() != null) {
+				final HColor groupColor = pg.getColors().getColor(ColorType.BACK);
+				if (groupColor != null) {
+					if (colors.getColor(ColorType.BACK) == null)
+						colors = colors.add(ColorType.BACK, groupColor);
+					if (colors.getColor(ColorType.TEXT) == null)
+						colors = colors.add(ColorType.TEXT, groupColor);
+				}
+			}
+		}
 
 		entity.setColors(colors);
 
