@@ -657,7 +657,8 @@ public class SvekPortConnector implements UDrawable {
 					? clusterOnly : allObstacles;
 			if (segmentCollides(a.getX(), a.getY(), b.getX(), b.getY(),
 					obs)) {
-				Log.error("Port connector " + ent1 + "->" + ent2
+				final StringBuilder sb = new StringBuilder();
+				sb.append("Port connector " + ent1 + "->" + ent2
 						+ " seg " + i + " obstacle collision ("
 						+ a.getX() + "," + a.getY() + ")->("
 						+ b.getX() + "," + b.getY() + ")");
@@ -665,10 +666,12 @@ public class SvekPortConnector implements UDrawable {
 					if (segmentCollides(a.getX(), a.getY(),
 							b.getX(), b.getY(),
 							Collections.singletonList(r)))
-						Log.error("  hit: x=[" + r.getMinX()
+						sb.append("\n  hit: x=[" + r.getMinX()
 								+ ".." + r.getMaxX() + "] y=["
 								+ r.getMinY() + ".."
 								+ r.getMaxY() + "]");
+				final String msg = sb.toString();
+				Log.info(() -> msg);
 			}
 
 			final boolean srcBoardStub = i == 0
@@ -680,9 +683,11 @@ public class SvekPortConnector implements UDrawable {
 			if (boardBounds != null
 					&& srcBoardStub == false && dstBoardStub == false
 					&& segmentOutsideBoard(a.getX(), a.getY(),
-							b.getX(), b.getY(), boardBounds))
-				Log.error("Port connector " + ent1 + "->" + ent2
-						+ " seg " + i + " outside board boundary");
+							b.getX(), b.getY(), boardBounds)) {
+				final int seg = i;
+				Log.info(() -> "Port connector " + ent1 + "->" + ent2
+						+ " seg " + seg + " outside board boundary");
+			}
 		}
 	}
 

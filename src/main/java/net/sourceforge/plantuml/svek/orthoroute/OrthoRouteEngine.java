@@ -98,7 +98,7 @@ public final class OrthoRouteEngine {
 					srcTip, true, dstTip);
 
 			if (path.isEmpty()) {
-				Log.error("OrthoRouteEngine: no path for "
+				Log.info(() -> "OrthoRouteEngine: no path for "
 						+ cd.entity1Name + " -> "
 						+ cd.entity2Name);
 				allOk = false;

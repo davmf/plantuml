@@ -275,13 +275,15 @@ public class SvekHarness implements UDrawable {
 						break;
 					}
 				}
-				if (stillConflicting && iter == maxIterations - 1)
-					Log.error("Harness '"
+				if (stillConflicting && iter == maxIterations - 1) {
+					final String msg = "Harness '"
 							+ h.harness.getLabel()
 							+ "' spine cannot achieve minimum clearance ("
 							+ PORT_WIDTH
 							+ "px) from adjacent connectors. "
-							+ "Consider increasing ranksep to provide more space.");
+							+ "Consider increasing ranksep to provide more space.";
+					Log.info(() -> msg);
+				}
 				final double newOffset = bestX - naturalX;
 				if (Math.abs(newOffset - oldOffset) > 0.5)
 					stable = false;

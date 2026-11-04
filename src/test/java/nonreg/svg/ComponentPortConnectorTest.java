@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -122,6 +123,19 @@ class ComponentPortConnectorTest extends SvekSvgTest {
 						"connector segment " + a[0] + "," + a[1] + " - " + b[0] + "," + b[1] + " is not axis-aligned");
 			}
 		}
+	}
+
+	@Test
+	void routing_diagnostics_stay_off_stderr() throws IOException {
+		final PrintStream stderr = System.err;
+		final ByteArrayOutputStream captured = new ByteArrayOutputStream();
+		System.setErr(new PrintStream(captured, true, "UTF-8"));
+		try {
+			render(BOARD);
+		} finally {
+			System.setErr(stderr);
+		}
+		assertEquals("", new String(captured.toByteArray(), UTF_8), "stderr");
 	}
 
 	@Test
