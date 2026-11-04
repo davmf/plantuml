@@ -431,7 +431,7 @@ public class DefaultTeXFontParser {
             // iterate all attributes
             for (String name : parameters.getAttributeNames()) {
                 // set float value (if valid)
-                res.put(name, new Float(getFloatAndCheck(name, parameters)));
+                res.put(name, Float.valueOf(getFloatAndCheck(name, parameters)));
             }
             return res;
         }

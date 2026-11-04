@@ -204,6 +204,10 @@ global, as upstream, on purpose: the commands of `\newcommand` and the colors of
 `\definecolor` stay defined for the next formulas (a formula that uses `\R`
 works after another one has defined it).
 
+The boxing constructors removed from recent JDKs (`new Float`, `new Character`,
+`new Integer`) are replaced by `valueOf` in `FontInfo`, `DefaultTeXFontParser` and
+`PredefMacros`, so that the build has no `[removal]` warnings.
+
 Everything else is as upstream. The package is listed in `CLAUDE.md` among the
 external packages, so that edits stay deliberate.
 

@@ -146,7 +146,7 @@ public class FontInfo {
      *           kern value
      */
     public void addKern(char left, char right, float k) {
-        kern.put(new CharCouple(left, right), new Float(k));
+        kern.put(new CharCouple(left, right), Float.valueOf(k));
     }
 
     /**
@@ -158,7 +158,7 @@ public class FontInfo {
      *           ligature to replace left and right character
      */
     public void addLigature(char left, char right, char ligChar) {
-        lig.put(new CharCouple(left, right), new Character(ligChar));
+        lig.put(new CharCouple(left, right), Character.valueOf(ligChar));
     }
 
     public int[] getExtension(char ch) {

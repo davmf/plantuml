@@ -938,7 +938,7 @@ public class PredefMacros {
         }
 
         if (args[3] == null)
-            nbArgs = new Integer(0);
+            nbArgs = Integer.valueOf(0);
         else
             nbArgs = Integer.parseInt(args[3]);
 
@@ -962,7 +962,7 @@ public class PredefMacros {
         }
 
         if (args[3] == null)
-            nbArgs = new Integer(0);
+            nbArgs = Integer.valueOf(0);
         else
             nbArgs = Integer.parseInt(args[3]);
 

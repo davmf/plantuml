@@ -110,7 +110,12 @@
               define="JAVA8" />
 
         <!-- Compile Java sources from preprocessed sources -->
-        <javac target="1.8" source="1.8" srcdir="build/sjpp-out" destdir="build" debug="on" encoding="UTF-8">
+        <!-- release (not source/target) compiles against the Java 8 API, so no bootstrap
+             class path is needed; -Xlint:-options silences "source value 8 is obsolete". -->
+        <javac release="8" srcdir="build/sjpp-out" destdir="build" debug="on" encoding="UTF-8" includeantruntime="false">
+            <compilerarg value="-Xlint:-options" />
+            <!-- net.sourceforge.plantuml.ant needs ant.jar, and only that from Ant's runtime -->
+            <classpath path="${ant.core.lib}" />
             <exclude name="test/**" />
         </javac>
 
