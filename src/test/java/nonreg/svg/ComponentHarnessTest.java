@@ -81,6 +81,32 @@ class ComponentHarnessTest extends SvekSvgTest {
 	}
 
 	@Test
+	void bundle_stays_beside_its_source_component() throws IOException {
+		final String svg = render(NESTED);
+		final Matcher cluster = Pattern.compile("<g class=\"cluster\" data-qualified-name=\"Ctrl\"[^>]*><rect x=\"([-\\d.]+)\" y=\"[-\\d.]+\" width=\"([\\d.]+)\"")
+				.matcher(svg);
+		assertTrue(cluster.find(), "no cluster Ctrl");
+		final double left = Double.parseDouble(cluster.group(1));
+		final double right = left + Double.parseDouble(cluster.group(2));
+
+		final Matcher trunk = Pattern.compile("<line x1=\"([-\\d.]+)\"[^>]*style=\"stroke:#00F;stroke-width:4.5;\"").matcher(svg);
+		assertTrue(trunk.find(), "no trunk");
+		final double trunkX = Double.parseDouble(trunk.group(1));
+		assertTrue(trunkX > left && trunkX < right, "trunk at " + trunkX + " is not over Ctrl " + left + ".." + right);
+
+		// No stub loops back round the source component: nothing in the harness colour
+		// is drawn to the left of it.
+		final Matcher path = Pattern.compile("<path d=\"([^\"]+)\" style=\"stroke:#00F;").matcher(svg);
+		while (path.find()) {
+			final Matcher n = Pattern.compile("-?\\d+(?:\\.\\d+)?").matcher(path.group(1));
+			int i = 0;
+			while (n.find())
+				if (i++ % 2 == 0)
+					assertTrue(Double.parseDouble(n.group()) >= left - 1, "stub goes round Ctrl: " + path.group(1));
+		}
+	}
+
+	@Test
 	void harness_and_nested_harness_labels_are_drawn() throws IOException {
 		final String svg = render(NESTED);
 		assertEquals(1, count(text("Loom A"), svg), "harness label");

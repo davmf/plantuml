@@ -853,7 +853,7 @@ public class SvekHarness implements UDrawable {
 		// Avoid routing spine through component clusters
 		final List<RectangleArea> obstacles = collectObstacles();
 		spineX = SvekPortConnector.findClearVerticalBidirectional(spineX,
-				spineTopY, spineBottomY, obstacles);
+				spineTopY, spineBottomY, spineObstacles(obstacles));
 
 		// Dual-spine detection: when the source-to-destination X distance
 		// is large AND there are multiple distinct source and destination
@@ -920,7 +920,7 @@ public class SvekHarness implements UDrawable {
 			double spine1X = clampSpineForMinStub(
 					(nearSrcX + nearDstX) / 2, nearEdges, nearSrcX);
 			spine1X = SvekPortConnector.findClearVerticalBidirectional(
-					spine1X, spineTopY, spineBottomY, obstacles);
+					spine1X, spineTopY, spineBottomY, spineObstacles(obstacles));
 			spine1X = findClearXAgainstVerts(spine1X, spineTopY, spineBottomY);
 			drawSplitHorizontalFlow(ugLine, edges, nearEdges, farEdges,
 					spine1X, srcX, obstacles, style);
@@ -991,7 +991,7 @@ public class SvekHarness implements UDrawable {
 			final boolean detour = stubCrossesOwnCluster(endX, spineX, e.endCluster);
 			final RectangleArea externalBlocker = detour ? null
 					: firstExternalObstacle(endX, spineX, endY,
-							e.endCluster, obstacles);
+							e.endCluster, spineObstacles(obstacles));
 			if (detour) {
 				drawStubDetour(ugFanE, endX, endY,
 						spineX, spineTopY, spineBottomY, e.endCluster, r);
@@ -1529,7 +1529,7 @@ public class SvekHarness implements UDrawable {
 		// Y range; now that spine1 has been stretched to crossbarY an
 		// obstacle in the extension could block the line.
 		spine1X = SvekPortConnector.findClearVerticalBidirectional(
-				spine1X, spine1Top, spine1Bottom, obstacles);
+				spine1X, spine1Top, spine1Bottom, spineObstacles(obstacles));
 		spine1X = findClearXAgainstVerts(spine1X, spine1Top, spine1Bottom);
 		spine2X = SvekPortConnector.findClearVerticalBidirectional(
 				spine2X, spine2Top, spine2Bottom, obstacles);
@@ -1693,7 +1693,7 @@ public class SvekHarness implements UDrawable {
 		// Avoid routing spine through component clusters
 		final List<RectangleArea> obstacles = collectObstacles();
 		spineX = SvekPortConnector.findClearVerticalBidirectional(spineX,
-				spineTopY, spineBottomY, obstacles);
+				spineTopY, spineBottomY, spineObstacles(obstacles));
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(fanStroke(style));
@@ -1746,7 +1746,7 @@ public class SvekHarness implements UDrawable {
 			final boolean detour = stubCrossesOwnCluster(endX, spineX, e.endCluster);
 			final RectangleArea externalBlocker = detour ? null
 					: firstExternalObstacle(endX, spineX, endY,
-							e.endCluster, obstacles);
+							e.endCluster, spineObstacles(obstacles));
 			if (detour)
 				drawStubDetour(ugFanE, endX, endY,
 						spineX, spineTopY, spineBottomY, e.endCluster, r4);
@@ -2058,6 +2058,34 @@ public class SvekHarness implements UDrawable {
 		return new XPoint2D(medianX(points), medianY(points));
 	}
 
+	/**
+	 * The obstacles a spine next to the sources must clear: all of them but
+	 * the components owning this harness's source ports. The spine hugs
+	 * their outer face, and with the ports on the top or bottom edge its
+	 * natural place is over the component; pushing it out of the component
+	 * instead would send every stub on a detour around it. Siblings' spines
+	 * and every stub still treat these components as obstacles.
+	 */
+	private List<RectangleArea> spineObstacles(List<RectangleArea> obstacles) {
+		if (bibliotekon == null)
+			return obstacles;
+		final java.util.Set<RectangleArea> own = java.util.Collections
+				.newSetFromMap(new java.util.IdentityHashMap<RectangleArea, Boolean>());
+		for (Link link : memberLinks) {
+			final Entity comp = owningComponentEntity(link.getEntity1());
+			final RectangleArea rect = comp == null ? null : fullComponentRect(bibliotekon.getCluster(comp));
+			if (rect != null)
+				own.add(rect);
+		}
+		if (own.isEmpty())
+			return obstacles;
+		final List<RectangleArea> result = new ArrayList<RectangleArea>();
+		for (RectangleArea rect : obstacles)
+			if (own.contains(rect) == false)
+				result.add(rect);
+		return result;
+	}
+
 	private List<RectangleArea> collectObstacles() {
 		final List<RectangleArea> obstacles = new ArrayList<RectangleArea>();
 		if (bibliotekon == null)
@@ -2098,7 +2126,10 @@ public class SvekHarness implements UDrawable {
 	// node, just above its top edge (NodeLabelPlacement.OUTSIDE + V_TOP), so the
 	// back-filled getRectangleArea() covers only the body. Harness routing must
 	// treat the whole titled box as the obstacle, otherwise a spine or trunk
-	// slips through the title band. Returns null when the cluster has no rect.
+	// slips through the title band. Graphviz draws the title inside the
+	// rectangle, which then needs no expanding: expanding it anyway puts the
+	// ports on its top edge inside it, and every stub detours around a band
+	// that is not there. Returns null when the cluster has no rect.
 	private RectangleArea fullComponentRect(Cluster cl) {
 		if (cl == null)
 			return null;
@@ -2106,7 +2137,7 @@ public class SvekHarness implements UDrawable {
 			return fullRectCache.get(cl);
 		final RectangleArea rect = cl.getRectangleArea();
 		RectangleArea full = rect;
-		if (rect != null) {
+		if (rect != null && cl.getGroup().getDiagram().isUseElk()) {
 			final double header = cl.getTitleAndAttributeHeight();
 			if (header > 0)
 				full = new RectangleArea(rect.getMinX(), rect.getMinY() - header,
