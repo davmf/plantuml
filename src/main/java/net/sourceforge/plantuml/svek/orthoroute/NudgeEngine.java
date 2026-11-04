@@ -45,8 +45,9 @@ import net.sourceforge.plantuml.klimt.geom.XPoint2D;
 
 /**
  * Nudges apart parallel connector segments that share the same
- * corridor, and centers them within the available space between
- * obstacles. Based on Wybrow/Marriott/Stuckey, GD 2009, Section 4.
+ * corridor, spreading them around where they are while keeping them
+ * clear of the obstacles on either side. Based on
+ * Wybrow/Marriott/Stuckey, GD 2009, Section 4.
  */
 public final class NudgeEngine {
 
@@ -184,9 +185,9 @@ public final class NudgeEngine {
 
 		// Find nearest obstacle boundaries on each side
 		double corridorLeft = boardBounds != null
-				? boardBounds.getMinX() : centreX - 500;
+				? boardBounds.getMinX() : Double.NEGATIVE_INFINITY;
 		double corridorRight = boardBounds != null
-				? boardBounds.getMaxX() : centreX + 500;
+				? boardBounds.getMaxX() : Double.POSITIVE_INFINITY;
 		for (RectangleArea obs : obstacles) {
 			if (obs.getMaxY() <= minY || obs.getMinY() >= maxY)
 				continue;
@@ -199,10 +200,8 @@ public final class NudgeEngine {
 		}
 
 		final int n = cluster.size();
-		final double span = (n - 1) * MIN_SPACING;
-		final double corridorCentre =
-				(corridorLeft + corridorRight) / 2;
-		final double startX = corridorCentre - span / 2;
+		final double startX = spreadStart(n, centreX,
+				corridorLeft, corridorRight);
 
 		// Sort cluster by current X to maintain relative ordering
 		Collections.sort(cluster, new Comparator<SegRef>() {
@@ -232,9 +231,9 @@ public final class NudgeEngine {
 		final double centreY = sumY / cluster.size();
 
 		double corridorTop = boardBounds != null
-				? boardBounds.getMinY() : centreY - 500;
+				? boardBounds.getMinY() : Double.NEGATIVE_INFINITY;
 		double corridorBottom = boardBounds != null
-				? boardBounds.getMaxY() : centreY + 500;
+				? boardBounds.getMaxY() : Double.POSITIVE_INFINITY;
 		for (RectangleArea obs : obstacles) {
 			if (obs.getMaxX() <= minX || obs.getMinX() >= maxX)
 				continue;
@@ -247,10 +246,8 @@ public final class NudgeEngine {
 		}
 
 		final int n = cluster.size();
-		final double span = (n - 1) * MIN_SPACING;
-		final double corridorCentre =
-				(corridorTop + corridorBottom) / 2;
-		final double startY = corridorCentre - span / 2;
+		final double startY = spreadStart(n, centreY,
+				corridorTop, corridorBottom);
 
 		Collections.sort(cluster, new Comparator<SegRef>() {
 			public int compare(SegRef a, SegRef b) {
@@ -263,6 +260,26 @@ public final class NudgeEngine {
 			final double newY = startY + k * MIN_SPACING;
 			shiftHorizontal(cluster.get(k), newY);
 		}
+	}
+
+	/**
+	 * Where the first of n segments goes when they are spread MIN_SPACING
+	 * apart around their current mean, keeping MIN_SPACING clear of the
+	 * corridor walls (or centred, if the corridor is too narrow).
+	 */
+	private static double spreadStart(int n, double centre, double wallMin,
+			double wallMax) {
+		final double span = (n - 1) * MIN_SPACING;
+		final double lo = wallMin + MIN_SPACING;
+		final double hi = wallMax - MIN_SPACING;
+		if (hi - lo < span)
+			return (wallMin + wallMax) / 2 - span / 2;
+		final double start = centre - span / 2;
+		if (start < lo)
+			return lo;
+		if (start + span > hi)
+			return hi - span;
+		return start;
 	}
 
 	private static boolean rangeOverlaps(SegRef a, SegRef b) {

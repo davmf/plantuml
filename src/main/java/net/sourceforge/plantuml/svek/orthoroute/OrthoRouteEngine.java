@@ -81,7 +81,8 @@ public final class OrthoRouteEngine {
 
 		// Build the shared visibility graph
 		final VisGraphBuilder builder = new VisGraphBuilder(
-				obstacles, portPoints, boardBounds, PORT_WIDTH);
+				clearTips(obstacles, portPoints), portPoints,
+				boardBounds, PORT_WIDTH);
 		final VisGraph graph = builder.build();
 
 		// Route each connector via A*
@@ -118,10 +119,10 @@ public final class OrthoRouteEngine {
 				waypoints.add(pt);
 			waypoints.add(new XPoint2D(dstEdge, cd.dstPortY));
 
-			cd.resultWaypoints = waypoints;
+			cd.resultWaypoints = simplify(waypoints);
 		}
 
-		// Nudge parallel segments apart and center in corridors
+		// Nudge overlapping parallel segments apart
 		final List<List<XPoint2D>> allWaypoints =
 				new ArrayList<List<XPoint2D>>();
 		for (ConnectorData cd : connectors)
@@ -129,6 +130,72 @@ public final class OrthoRouteEngine {
 		NudgeEngine.nudge(allWaypoints, obstacles, boardBounds);
 
 		return allOk;
+	}
+
+	/**
+	 * The graph keeps PORT_WIDTH of clearance around every obstacle. Where
+	 * components are packed closer than that, a stub tip falls inside a
+	 * neighbour's clearance and could not be reached at all. Each obstacle
+	 * is shrunk just enough for the tips to sit on or outside its clearance,
+	 * so only the obstacles that crowd a tip lose any of it.
+	 */
+	static List<RectangleArea> clearTips(List<RectangleArea> obstacles,
+			List<XPoint2D> tips) {
+		final List<RectangleArea> result = new ArrayList<RectangleArea>();
+		for (RectangleArea obs : obstacles) {
+			double clearance = PORT_WIDTH;
+			for (XPoint2D tip : tips)
+				clearance = Math.min(clearance, distance(obs, tip));
+			final double shrink = PORT_WIDTH - clearance;
+			if (shrink > 0 && obs.getWidth() > 2 * shrink
+					&& obs.getHeight() > 2 * shrink)
+				result.add(new RectangleArea(obs.getMinX() + shrink,
+						obs.getMinY() + shrink, obs.getMaxX() - shrink,
+						obs.getMaxY() - shrink));
+			else
+				result.add(obs);
+		}
+		return result;
+	}
+
+	/** Chebyshev distance from a point to a rectangle (0 inside). */
+	private static double distance(RectangleArea rect, XPoint2D pt) {
+		final double dx = Math.max(0, Math.max(rect.getMinX() - pt.getX(),
+				pt.getX() - rect.getMaxX()));
+		final double dy = Math.max(0, Math.max(rect.getMinY() - pt.getY(),
+				pt.getY() - rect.getMaxY()));
+		return Math.max(dx, dy);
+	}
+
+	/**
+	 * Drops repeated points and the middle point of any three collinear ones,
+	 * so that consecutive segments always turn. This also removes the
+	 * back-tracking where a path leaves a stub tip the way it came, and gives
+	 * the nudging pass whole segments to move: two collinear pieces of one
+	 * segment would otherwise be moved apart, leaving a diagonal between them.
+	 * The first and last points (the port edges) are kept.
+	 */
+	static List<XPoint2D> simplify(List<XPoint2D> points) {
+		final List<XPoint2D> result = new ArrayList<XPoint2D>();
+		for (XPoint2D pt : points) {
+			if (result.isEmpty() == false && same(result.get(result.size() - 1), pt))
+				continue;
+			while (result.size() >= 2 && collinear(result.get(result.size() - 2), result.get(result.size() - 1), pt))
+				result.remove(result.size() - 1);
+			result.add(pt);
+		}
+		return result;
+	}
+
+	private static final double EPSILON = 0.1;
+
+	private static boolean same(XPoint2D a, XPoint2D b) {
+		return Math.abs(a.getX() - b.getX()) < EPSILON && Math.abs(a.getY() - b.getY()) < EPSILON;
+	}
+
+	private static boolean collinear(XPoint2D a, XPoint2D b, XPoint2D c) {
+		return (Math.abs(a.getX() - b.getX()) < EPSILON && Math.abs(b.getX() - c.getX()) < EPSILON)
+				|| (Math.abs(a.getY() - b.getY()) < EPSILON && Math.abs(b.getY() - c.getY()) < EPSILON);
 	}
 
 

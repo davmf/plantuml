@@ -147,6 +147,48 @@ class ComponentPortConnectorTest extends SvekSvgTest {
 	}
 
 	@Test
+	void port_connectors_go_around_components_and_stay_in_the_drawing() throws IOException {
+		final String svg = render(String.join("\n", //
+				"@startuml", //
+				"skinparam componentPortLabels inside", //
+				"component A {", //
+				"  portout \"one\" as a1", //
+				"  portout \"two\" as a2", //
+				"}", //
+				"component B {", //
+				"  portin \"b1\" as b1", //
+				"  portin \"b2\" as b2", //
+				"}", //
+				"a1 --> b1", //
+				"a2 --> b2", //
+				"@enduml"));
+		final double[][] components = { clusterRect(svg, "A"), clusterRect(svg, "B") };
+		final Matcher size = Pattern.compile("<svg[^>]* viewBox=\"0 0 (\\d+) (\\d+)\"").matcher(svg);
+		assertTrue(size.find(), "no viewBox");
+		final double width = Double.parseDouble(size.group(1));
+		final double height = Double.parseDouble(size.group(2));
+		final List<String> connectors = connectorPaths(svg);
+		assertEquals(2, connectors.size(), "port connectors");
+		for (String d : connectors) {
+			final List<double[]> corners = corners(d);
+			for (double[] p : corners)
+				assertTrue(p[0] >= 0 && p[0] <= width && p[1] >= 0 && p[1] <= height,
+						"corner " + p[0] + "," + p[1] + " is outside the " + width + "x" + height + " drawing");
+			for (int i = 0; i + 1 < corners.size(); i++)
+				for (double[] rect : components)
+					assertFalse(crosses(corners.get(i), corners.get(i + 1), rect), "segment " + corners.get(i)[0]
+							+ "," + corners.get(i)[1] + " - " + corners.get(i + 1)[0] + "," + corners.get(i + 1)[1]
+							+ " goes through a component");
+		}
+	}
+
+	/** True when the axis-aligned segment a-b enters the inside of rect (x, y, width, height). */
+	private static boolean crosses(double[] a, double[] b, double[] rect) {
+		return Math.max(a[0], b[0]) > rect[0] + EPSILON && Math.min(a[0], b[0]) < rect[0] + rect[2] - EPSILON
+				&& Math.max(a[1], b[1]) > rect[1] + EPSILON && Math.min(a[1], b[1]) < rect[1] + rect[3] - EPSILON;
+	}
+
+	@Test
 	void routing_diagnostics_stay_off_stderr() throws IOException {
 		final PrintStream stderr = System.err;
 		final ByteArrayOutputStream captured = new ByteArrayOutputStream();

@@ -150,23 +150,14 @@ public class SvekPortConnector implements UDrawable {
 
 		// Collect all obstacles from within the svek package
 		// (Cluster.getGroup() is package-private).
-		// Skip the board (the outer container we're routing inside)
-		// and any cluster that owns a port on one of these
-		// connectors: those clusters must be passable at their port
-		// positions, otherwise A* can never enter or leave them.
+		// Skip the board (the outer container we're routing inside).
+		// Components that own the ports stay obstacles: the stub tips
+		// are already outside them, so A* never has to enter one.
 		final List<RectangleArea> obstacles =
 				new ArrayList<RectangleArea>();
 		if (bib != null) {
 			Entity boardEntity = null;
-			final java.util.Set<Entity> portOwners =
-					new java.util.HashSet<Entity>();
 			for (OrthoRouteEngine.ConnectorData cd : data) {
-				final Entity p1 = cd.entity1.getParentContainer();
-				final Entity p2 = cd.entity2.getParentContainer();
-				if (p1 != null)
-					portOwners.add(p1);
-				if (p2 != null)
-					portOwners.add(p2);
 				if (boardEntity == null && cd.srcParent != null) {
 					if (EntityImagePort.isBoardPort(cd.entity1))
 						boardEntity = cd.srcParent;
@@ -182,8 +173,6 @@ public class SvekPortConnector implements UDrawable {
 					continue;
 				final Entity group = cl.getGroup();
 				if (boardEntity != null && group == boardEntity)
-					continue;
-				if (portOwners.contains(group))
 					continue;
 				obstacles.add(rect);
 			}
