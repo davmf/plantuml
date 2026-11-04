@@ -214,7 +214,13 @@ public class EntityImagePort extends AbstractEntityImageBorder {
 		final SvekNode thisNode = bibliotekon.getNode(getEntity());
 		final EnumSet<EntityPosition> positions = entityPosition.isInput()
 				? EntityPosition.getInputs() : EntityPosition.getOutputs();
-		final List<SvekNode> sameSide = new ArrayList<SvekNode>(parent.getNodes(positions));
+		// Only the inside-label ports are stacked on this side (see
+		// Cluster.repositionInsidePortNodes): ports labelled outside stay on
+		// the top or bottom edge and must not take a slot.
+		final List<SvekNode> sameSide = new ArrayList<SvekNode>();
+		for (SvekNode node : parent.getNodes(positions))
+			if (hasInsideLabel(node.getEntity()))
+				sameSide.add(node);
 		Collections.sort(sameSide, new Comparator<SvekNode>() {
 			public int compare(SvekNode a, SvekNode b) {
 				return Double.compare(a.getMinY(), b.getMinY());

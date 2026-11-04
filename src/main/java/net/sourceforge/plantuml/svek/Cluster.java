@@ -479,6 +479,7 @@ public class Cluster implements Moveable {
 		}
 		if (maxInsidePortCount == 0)
 			return;
+		final RectangleArea beforeResize = rectangleArea;
 		final boolean hasBoardPorts = hasBoardPortNodes();
 		final double symbolSize = 2 * EntityPosition.RADIUS;
 		final double spacing = EntityImagePort.getInsidePortSpacing();
@@ -505,7 +506,12 @@ public class Cluster implements Moveable {
 		final double neededWidth = maxLeftLabelWidth + maxRightLabelWidth
 				+ symbolSize * 2 + labelGap * 4 + innerGap;
 		final double titleWidth = getTitleAndAttributeWidth() + 10;
-		final double minWidth = Math.max(neededWidth, titleWidth);
+		final Map<Side, List<SvekNode>> outsidePorts = outsidePortsBySide(beforeResize);
+		double outsideWidth = 0;
+		for (Side side : new Side[] { Side.NORTH, Side.SOUTH })
+			outsideWidth = Math.max(outsideWidth,
+					totalSlotWidth(outsidePorts.get(side), stringBounder) + symbolSize * 2);
+		final double minWidth = Math.max(Math.max(neededWidth, titleWidth), outsideWidth);
 		final double currentWidth = rectangleArea.getWidth();
 		if (hasBoardPorts == false && minWidth != currentWidth) {
 			final double delta = (currentWidth - minWidth) / 2;
@@ -520,8 +526,93 @@ public class Cluster implements Moveable {
 		}
 		if (insidePortsRepositioned == false) {
 			repositionInsidePortNodes();
+			moveOutsidePortNodes(outsidePorts, stringBounder);
 			insidePortsRepositioned = true;
 		}
+	}
+
+	/**
+	 * Ports labelled outside, still where Graphviz put them on the frontier of
+	 * {@code before}, grouped by the side they sit on and sorted along it.
+	 */
+	private Map<Side, List<SvekNode>> outsidePortsBySide(RectangleArea before) {
+		final Map<Side, List<SvekNode>> result = new HashMap<>();
+		for (Side side : Side.values())
+			result.put(side, new ArrayList<SvekNode>());
+		for (SvekNode node : nodes) {
+			if (node.getEntityPosition().isPort() == false)
+				continue;
+			if (EntityImagePort.hasInsideLabel(node.getEntity()))
+				continue;
+			final Side side = before.getClosestSide(node.getRectangleArea().getPointCenter());
+			if (side != null)
+				result.get(side).add(node);
+		}
+		for (Map.Entry<Side, List<SvekNode>> entry : result.entrySet()) {
+			final boolean horizontal = entry.getKey() == Side.NORTH || entry.getKey() == Side.SOUTH;
+			Collections.sort(entry.getValue(), new Comparator<SvekNode>() {
+				public int compare(SvekNode a, SvekNode b) {
+					return horizontal ? Double.compare(a.getMinX(), b.getMinX())
+							: Double.compare(a.getMinY(), b.getMinY());
+				}
+			});
+		}
+		return result;
+	}
+
+	/** Room taken along a top or bottom edge by a port and its outside label. */
+	private static double slotWidth(SvekNode node, StringBounder stringBounder) {
+		final double labelGap = 5;
+		double width = 2 * EntityPosition.RADIUS;
+		if (node.getImage() instanceof EntityImagePort)
+			width = Math.max(width,
+					((EntityImagePort) node.getImage()).getMaxWidthFromLabelForEntryExit(stringBounder));
+		return width + 2 * labelGap;
+	}
+
+	private static double totalSlotWidth(List<SvekNode> ports, StringBounder stringBounder) {
+		double total = 0;
+		for (SvekNode node : ports)
+			total += slotWidth(node, stringBounder);
+		return total;
+	}
+
+	/**
+	 * The rectangle has just been resized for the inside-label ports, so the
+	 * ports labelled outside are no longer on its frontier. Put each one back on
+	 * the same side, in the same order: spread evenly along the top and bottom
+	 * edges so their labels cannot overlap, and kept at the same relative height
+	 * on the left and right edges.
+	 */
+	private void moveOutsidePortNodes(Map<Side, List<SvekNode>> outsidePorts, StringBounder stringBounder) {
+		final double symbolSize = 2 * EntityPosition.RADIUS;
+		for (Side side : new Side[] { Side.NORTH, Side.SOUTH }) {
+			final List<SvekNode> ports = outsidePorts.get(side);
+			if (ports.isEmpty())
+				continue;
+			final double y = side == Side.NORTH ? rectangleArea.getMinY() : rectangleArea.getMaxY();
+			final double length = rectangleArea.getWidth() - 2 * symbolSize;
+			final double extra = Math.max(0, length - totalSlotWidth(ports, stringBounder)) / ports.size();
+			double cursor = rectangleArea.getMinX() + symbolSize + extra / 2;
+			for (SvekNode node : ports) {
+				final double slot = slotWidth(node, stringBounder);
+				moveCenterTo(node, cursor + slot / 2, y);
+				cursor += slot + extra;
+			}
+		}
+		for (Side side : new Side[] { Side.WEST, Side.EAST }) {
+			final double x = side == Side.WEST ? rectangleArea.getMinX() : rectangleArea.getMaxX();
+			for (SvekNode node : outsidePorts.get(side)) {
+				final double y = Math.max(rectangleArea.getMinY() + symbolSize,
+						Math.min(rectangleArea.getMaxY() - symbolSize, node.getRectangleArea().getPointCenter().getY()));
+				moveCenterTo(node, x, y);
+			}
+		}
+	}
+
+	private static void moveCenterTo(SvekNode node, double x, double y) {
+		final XPoint2D center = node.getRectangleArea().getPointCenter();
+		node.moveDelta(x - center.getX(), y - center.getY());
 	}
 
 	private void repositionInsidePortNodes() {

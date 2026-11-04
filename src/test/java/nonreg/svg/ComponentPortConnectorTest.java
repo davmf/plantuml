@@ -81,6 +81,27 @@ class ComponentPortConnectorTest extends SvekSvgTest {
 			"a2 --> b2", //
 			"@enduml");
 
+	/** Inside and outside labels mixed within each component. */
+	private static final String MIXED_LABELS = String.join("\n", //
+			"@startuml", //
+			"skinparam componentPortLabels<<in>> inside", //
+			"component A {", //
+			"  portin \"in A\" as ai <<in>>", //
+			"  portin \"top A\" as at", //
+			"  portout \"inside one\" as a1 <<in>>", //
+			"  portout \"outside two\" as a2", //
+			"  portout \"outside three\" as a3", //
+			"}", //
+			"component B {", //
+			"  portin \"b1\" as b1 <<in>>", //
+			"  portin \"b2\" as b2", //
+			"  portin \"b3\" as b3 <<in>>", //
+			"}", //
+			"a1 --> b1", //
+			"a2 --> b2", //
+			"a3 --> b3", //
+			"@enduml");
+
 	private static final String PINS = String.join("\n", //
 			"@startuml", //
 			"skinparam linetype ortho", //
@@ -185,6 +206,23 @@ class ComponentPortConnectorTest extends SvekSvgTest {
 	}
 
 	@Test
+	void mixed_label_placements_keep_ports_on_their_component() throws IOException {
+		final String svg = render(MIXED_LABELS);
+		final double[] a = clusterRect(svg, "A");
+		for (String port : new String[] { "ai", "at", "a1", "a2", "a3" })
+			assertOnBorder(portCenter(svg, "A." + port), a, port);
+		final double[] b = clusterRect(svg, "B");
+		for (String port : new String[] { "b1", "b2", "b3" })
+			assertOnBorder(portCenter(svg, "B." + port), b, port);
+		assertInside(svg, "inside one", a);
+		assertInside(svg, "b1", b);
+		final double[] two = textBox(svg, "outside two");
+		final double[] three = textBox(svg, "outside three");
+		assertTrue(two[0] + two[2] <= three[0] || three[0] + three[2] <= two[0],
+				"outside labels overlap: " + two[0] + "+" + two[2] + " and " + three[0] + "+" + three[2]);
+	}
+
+	@Test
 	void pins_of_a_connector_are_linked_with_qualified_names() throws IOException {
 		final Diagram diagram = diagram(PINS);
 		assertFalse(diagram instanceof PSystemError, "unexpected error: " + errorOf(diagram));
@@ -217,6 +255,25 @@ class ComponentPortConnectorTest extends SvekSvgTest {
 
 	private static void assertInside(String svg, String label, double[] rect) {
 		assertTrue(isInside(textBox(svg, label), rect), label + " is not inside its component");
+	}
+
+	/** The centre of the 12x12 square drawn for a port, by qualified name. */
+	private static double[] portCenter(String svg, String qualifiedName) {
+		final Matcher m = Pattern.compile("<g class=\"entity\" data-qualified-name=\"" + Pattern.quote(qualifiedName)
+				+ "\"[^>]*>(?:(?!<g ).)*?<rect x=\"([-\\d.]+)\" y=\"([-\\d.]+)\" width=\"12\" height=\"12\"",
+				Pattern.DOTALL).matcher(svg);
+		assertTrue(m.find(), "no port " + qualifiedName);
+		return new double[] { Double.parseDouble(m.group(1)) + 6, Double.parseDouble(m.group(2)) + 6 };
+	}
+
+	private static void assertOnBorder(double[] p, double[] rect, String port) {
+		final boolean withinX = p[0] >= rect[0] - EPSILON && p[0] <= rect[0] + rect[2] + EPSILON;
+		final boolean withinY = p[1] >= rect[1] - EPSILON && p[1] <= rect[1] + rect[3] + EPSILON;
+		final boolean onVertical = Math.abs(p[0] - rect[0]) <= EPSILON || Math.abs(p[0] - rect[0] - rect[2]) <= EPSILON;
+		final boolean onHorizontal = Math.abs(p[1] - rect[1]) <= EPSILON || Math.abs(p[1] - rect[1] - rect[3]) <= EPSILON;
+		assertTrue((onVertical && withinY) || (onHorizontal && withinX),
+				port + " at " + p[0] + "," + p[1] + " is off its component " + rect[0] + "," + rect[1] + " " + rect[2]
+						+ "x" + rect[3]);
 	}
 
 	/** True when box (x, y, width, height) lies within rect (x, y, width, height). */
