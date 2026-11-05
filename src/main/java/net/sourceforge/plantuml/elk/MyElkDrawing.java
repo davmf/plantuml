@@ -391,7 +391,11 @@ class MyElkDrawing implements TextBlock {
 		if (minMax == null)
 			throw new UnsupportedOperationException();
 
-		return minMax.getDimension().delta(20, 20);
+		// drawU does not shift the drawing by the measured minimum, so the
+		// image must reach from the origin to the far edge plus the margin.
+		// Using maxX - minX here cut off the bottom of diagrams that start
+		// lower than usual, such as a board with its title above it.
+		return new XDimension2D(minMax.getMaxX() + 10, minMax.getMaxY() + 10);
 	}
 
 	public HColor getBackcolor() {

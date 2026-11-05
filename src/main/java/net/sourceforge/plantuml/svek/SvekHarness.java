@@ -104,6 +104,10 @@ public class SvekHarness implements UDrawable {
 	private double cachedNaturalSpine2X = Double.NaN;
 	private double cachedSpine1Top, cachedSpine1Bottom;
 	private double cachedSpine2Top, cachedSpine2Bottom;
+	// Stubs of each spine of a dual-spine harness, as {y, port x}: a stub
+	// runs from the spine to its port at that row.
+	private final List<double[]> cachedSpine1Stubs = new ArrayList<double[]>();
+	private final List<double[]> cachedSpine2Stubs = new ArrayList<double[]>();
 	private List<double[]> nonHarnessVerts;
 	private double cachedSrcX = Double.NaN;
 	private double cachedDestX = Double.NaN;
@@ -304,6 +308,31 @@ public class SvekHarness implements UDrawable {
 	// that they maintain PORT_WIDTH clearance from non-harness verticals,
 	// from single-flow harness spines (using their resolved spineXOffset),
 	// and from every other dual-spine slot.
+	// Number of crossings between spine i, if placed at x, and the other
+	// dual spines: spine i running through another spine's stubs, and
+	// another spine running through spine i's stubs.
+	private static int stubCrossings(int i, double x, double[] currentX,
+			double[] naturalX, double[] topY, double[] botY,
+			List<List<double[]>> stubs) {
+		int count = 0;
+		for (int j = 0; j < currentX.length; j++) {
+			if (j == i || Double.isNaN(naturalX[j]))
+				continue;
+			final double xj = currentX[j];
+			for (double[] stub : stubs.get(j))
+				if (stub[0] > topY[i] && stub[0] < botY[i] && strictlyBetween(x, xj, stub[1]))
+					count++;
+			for (double[] stub : stubs.get(i))
+				if (stub[0] > topY[j] && stub[0] < botY[j] && strictlyBetween(xj, x, stub[1]))
+					count++;
+		}
+		return count;
+	}
+
+	private static boolean strictlyBetween(double v, double a, double b) {
+		return v > Math.min(a, b) && v < Math.max(a, b);
+	}
+
 	private static void resolveDualSpineOverlaps(List<SvekHarness> harnesses,
 			List<double[]> nonHarnessVerts) {
 		final List<SvekHarness> duals = new ArrayList<SvekHarness>();
@@ -314,6 +343,11 @@ public class SvekHarness implements UDrawable {
 			return;
 
 		final int n = duals.size() * 2;
+		final List<List<double[]>> stubs = new ArrayList<List<double[]>>();
+		for (SvekHarness h : duals) {
+			stubs.add(h.cachedSpine1Stubs);
+			stubs.add(h.cachedSpine2Stubs);
+		}
 		final double[] currentX = new double[n];
 		final double[] naturalX = new double[n];
 		final double[] topY = new double[n];
@@ -394,29 +428,43 @@ public class SvekHarness implements UDrawable {
 						break;
 					}
 				final double oldX = currentX[i];
-				if (clear) {
+				if (clear && stubCrossings(i, naturalX[i], currentX, naturalX, topY, botY, stubs) == 0) {
 					currentX[i] = naturalX[i];
 				} else {
 					java.util.Collections.sort(conflictXs);
-					double bestX = naturalX[i];
-					double bestDist = Double.MAX_VALUE;
-					final double below = conflictXs.get(0) - PORT_WIDTH;
-					if (Math.abs(below - naturalX[i]) < bestDist) {
-						bestX = below;
-						bestDist = Math.abs(below - naturalX[i]);
-					}
-					final double above = conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH;
-					if (Math.abs(above - naturalX[i]) < bestDist) {
-						bestX = above;
-						bestDist = Math.abs(above - naturalX[i]);
-					}
+					// Clear positions: beyond either end of the conflicts, or
+					// in a wide-enough gap between two of them. Prefer the one
+					// that crosses the fewest stubs of the other dual-spine
+					// harnesses, then the nearest.
+					final List<Double> candidates = new ArrayList<Double>();
+					if (clear)
+						candidates.add(naturalX[i]);
+					if (conflictXs.isEmpty() == false)
+						candidates.add(conflictXs.get(0) - PORT_WIDTH);
+					if (conflictXs.isEmpty() == false)
+						candidates.add(conflictXs.get(conflictXs.size() - 1) + PORT_WIDTH);
 					for (int g = 0; g < conflictXs.size() - 1; g++) {
-						final double gapCenter = (conflictXs.get(g) + conflictXs.get(g + 1)) / 2;
 						final double gapWidth = conflictXs.get(g + 1) - conflictXs.get(g);
-						if (gapWidth >= PORT_WIDTH * 2
-								&& Math.abs(gapCenter - naturalX[i]) < bestDist) {
-							bestX = gapCenter;
-							bestDist = Math.abs(gapCenter - naturalX[i]);
+						if (gapWidth >= PORT_WIDTH * 2)
+							candidates.add((conflictXs.get(g) + conflictXs.get(g + 1)) / 2);
+					}
+					// Keep the spine between its harness's source and
+					// destination columns when any candidate allows it.
+					final SvekHarness owner = duals.get(i / 2);
+					final List<Double> inBand = new ArrayList<Double>();
+					for (double c : candidates)
+						if (c >= owner.minSpineX() - 0.5 && c <= owner.maxSpineX() + 0.5)
+							inBand.add(c);
+					double bestX = naturalX[i];
+					int bestCrossings = Integer.MAX_VALUE;
+					double bestDist = Double.MAX_VALUE;
+					for (double c : inBand.isEmpty() ? candidates : inBand) {
+						final int crossings = stubCrossings(i, c, currentX, naturalX, topY, botY, stubs);
+						final double dist = Math.abs(c - naturalX[i]);
+						if (crossings < bestCrossings || (crossings == bestCrossings && dist < bestDist)) {
+							bestX = c;
+							bestCrossings = crossings;
+							bestDist = dist;
 						}
 					}
 					currentX[i] = bestX;
@@ -514,6 +562,12 @@ public class SvekHarness implements UDrawable {
 			final double[] dualBase = dualSpineBaseX(srcX, dstX);
 			cachedNaturalSpine1X = dualBase[0];
 			cachedNaturalSpine2X = dualBase[1];
+			cachedSpine1Stubs.clear();
+			cachedSpine2Stubs.clear();
+			for (EdgeData e : edges) {
+				cachedSpine1Stubs.add(new double[]{e.start.getY(), e.start.getX()});
+				cachedSpine2Stubs.add(new double[]{e.end.getY(), e.end.getX()});
+			}
 			double s1Top = edges.get(0).start.getY();
 			double s1Bot = s1Top;
 			double s2Top = edges.get(0).end.getY();
@@ -536,10 +590,21 @@ public class SvekHarness implements UDrawable {
 			final double trunkMarginApprox = Math.max(cornerRadius(), 1);
 			final double effectiveTop = allTopApprox - trunkMarginApprox;
 			final double effectiveBottom = allBottomApprox + trunkMarginApprox;
-			cachedSpine1Top = effectiveTop;
-			cachedSpine1Bottom = effectiveBottom;
-			cachedSpine2Top = effectiveTop;
-			cachedSpine2Bottom = effectiveBottom;
+			final double gapY = harness.getShape() == Harness.Shape.AUTO
+					? trunkInGap(s1Top, s1Bot, s2Top, s2Bot)
+					: Double.NaN;
+			if (Double.isNaN(gapY)) {
+				cachedSpine1Top = effectiveTop;
+				cachedSpine1Bottom = effectiveBottom;
+				cachedSpine2Top = effectiveTop;
+				cachedSpine2Bottom = effectiveBottom;
+			} else {
+				// Trunk in the gap: each spine spans its own rows and the gap.
+				cachedSpine1Top = Math.min(s1Top, gapY);
+				cachedSpine1Bottom = Math.max(s1Bot, gapY);
+				cachedSpine2Top = Math.min(s2Top, gapY);
+				cachedSpine2Bottom = Math.max(s2Bot, gapY);
+			}
 			return new double[]{Double.NaN, 0, 0};
 		}
 		final double spineX = clampSpineForMinStub(alignedSingleSpineX(srcX, dstX), edges, srcX);
@@ -1275,6 +1340,18 @@ public class SvekHarness implements UDrawable {
 		return sourceYs.size() >= 2 || destYs.size() >= 2;
 	}
 
+	// Y of a trunk running between the source rows [s1Top, s1Bottom] and
+	// the destination rows [s2Top, s2Bottom] when one band lies wholly
+	// above the other, or NaN when they overlap.
+	private static double trunkInGap(double s1Top, double s1Bottom,
+			double s2Top, double s2Bottom) {
+		if (s2Bottom < s1Top)
+			return (s2Bottom + s1Top) / 2;
+		if (s1Bottom < s2Top)
+			return (s1Bottom + s2Top) / 2;
+		return Double.NaN;
+	}
+
 	// Two-spine topology: vertical spine just outside the source column,
 	// horizontal trunk through the middle, vertical spine just outside the
 	// destination column. Every source stub is at most ~MIN_STUB_LENGTH and
@@ -1354,10 +1431,22 @@ public class SvekHarness implements UDrawable {
 			trunkAtTop = false;
 		else
 			trunkAtTop = Math.abs(clearAbove - trunkAbove) <= Math.abs(clearBelow - trunkBelow);
-		final double trunkY = trunkAtTop ? clearAbove : clearBelow;
+		// When the destination rows sit wholly above or below the source
+		// rows, the trunk runs through the gap between them (a Z): each
+		// spine then spans only its own rows instead of climbing past the
+		// stubs of a neighbouring harness to reach a trunk wrapped round
+		// both.
+		final double gapY = shape == Harness.Shape.AUTO
+				? trunkInGap(spine1Top, spine1Bottom, spine2Top, spine2Bottom)
+				: Double.NaN;
+		final boolean inGap = Double.isNaN(gapY) == false
+				&& findClearCrossbarY(gapY, xMin, xMax, obstacles) == gapY;
+		final double trunkY = inGap ? gapY : trunkAtTop ? clearAbove : clearBelow;
 		// End points of the polyline: the spine's far side from the trunk.
-		final double spine1Far = trunkAtTop ? spine1Bottom : spine1Top;
-		final double spine2Far = trunkAtTop ? spine2Bottom : spine2Top;
+		final double spine1Far = inGap ? (gapY < spine1Top ? spine1Bottom : spine1Top)
+				: trunkAtTop ? spine1Bottom : spine1Top;
+		final double spine2Far = inGap ? (gapY < spine2Top ? spine2Bottom : spine2Top)
+				: trunkAtTop ? spine2Bottom : spine2Top;
 
 		final FontConfiguration fontConfig = FontConfiguration.create(skinParam, style);
 		final UGraphic ugFan = ugLine.apply(fanStroke(style));
