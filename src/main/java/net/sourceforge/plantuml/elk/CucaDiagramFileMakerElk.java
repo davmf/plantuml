@@ -389,18 +389,16 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				elkCluster.setProperty(CoreOptions.DIRECTION, getElkDirection());
 				// Header components need FIXED_ORDER so PORT_INDEX is
 				// honoured: paired pins share an index across WEST/EAST
-				// and end up aligned on the same row. The same constraint
-				// is required when this cluster contains ports inside one
-				// or more `group "Name" { ... }` blocks -- PORT_INDEX
-				// drives the per-group ordering on each face.
-				final boolean clusterHasGroups = hasGroupedPorts(g);
-				// Header components and clusters with grouped ports use
-				// FIXED_ORDER so PORT_INDEX drives the per-face port order.
+				// and end up aligned on the same row. Any other cluster
+				// with ports uses it too, so the ports keep the order they
+				// were declared in (grouped by `group "Name" { ... }`
+				// blocks) instead of being reordered by ELK.
+				final boolean clusterHasPorts = hasPorts(g);
 				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
-						(g.isHeader() || clusterHasGroups)
+						(g.isHeader() || clusterHasPorts)
 								? PortConstraints.FIXED_ORDER
 								: PortConstraints.FIXED_SIDE);
-				if (clusterHasGroups) {
+				if (clusterHasPorts) {
 					// Without SEPARATE_CHILDREN, the layered algorithm's
 					// hierarchical layout re-aligns ports with internal
 					// child positions, overriding our PORT_INDEX. Cutting
@@ -611,15 +609,12 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		return false;
 	}
 
-	// True if any of `group`'s ports was declared inside a `group "Name"
-	// { ... }` block. Drives the cluster's PORT_CONSTRAINTS choice
-	// (FIXED_ORDER required so per-port PORT_INDEX is honoured).
-	private static boolean hasGroupedPorts(Entity group) {
+	// True if `group` has any port. Drives the cluster's PORT_CONSTRAINTS
+	// choice (FIXED_ORDER required so per-port PORT_INDEX is honoured).
+	private static boolean hasPorts(Entity group) {
 		for (Entity leaf : group.leafs()) {
 			final EntityPosition pos = leaf.getEntityPosition();
-			if (pos == null || pos.isPort() == false)
-				continue;
-			if (leaf.hasPortGroup())
+			if (pos != null && pos.isPort())
 				return true;
 		}
 		return false;
@@ -859,7 +854,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				final int numPairs = (headerPortCount(parentEntity) + 1) / 2;
 				final int portIndex = west ? (numPairs - 1 - pairIdx) : pairIdx;
 				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
-			} else if (parentEntity != null && hasGroupedPorts(parentEntity)) {
+			} else if (parentEntity != null && hasPorts(parentEntity)) {
 				// `group "Name" { ... }` ordering. Set PORT_INDEX from
 				// (groupOrder, indexInGroup); grouped ports stay
 				// contiguous on their face, ungrouped ports follow in

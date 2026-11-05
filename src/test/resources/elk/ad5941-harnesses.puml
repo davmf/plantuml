@@ -1,0 +1,272 @@
+@startuml ad5941-f767zi-interconnection
+
+left to right direction
+
+!pragma layout elk
+!pragma edgeCornerRadius 5
+
+' ---- Palette ---------------------------------------------------------------
+' Soft pastels with darker borders for clean contrast on white.
+!$pcbaFill   = "#fafafa"
+!$pcbaBorder = "#5B7A99"
+!$mcuFill    = "#e7e7e7"
+!$mcuBorder  = "#7E5BA0"
+!$hdrFill    = "#FFF2CC"
+!$hdrBorder  = "#B89A2A"
+!$portFill   = "#DAE8FC"
+!$portBorder = "#3F6FB2"
+
+' Signal-group edge colors
+!$dual0Colour   = "#1F4E79"
+!$spiColour   = "#7E5BA0"
+!$gpioTrigColour   = "#C0504D"
+!$gpioTriggerColour  = "#2E7D32"
+
+' Harness palette - 16 distinct colors, tuned to the muted aesthetic above
+!$harness1Colour  = "#1F4E79"
+!$harness2Colour  = "#C0504D"
+!$harness3Colour  = "#2E7D32"
+!$harness4Colour  = "#E08214"
+!$harness5Colour  = "#7E5BA0"
+!$harness6Colour  = "#62BABA"
+!$harness7Colour  = "#B89A2A"
+!$harness8Colour  = "#C45B91"
+!$harness9Colour  = "#8C6D4B"
+!$harness10Colour = "#5B7A99"
+!$harness11Colour = "#3F8F6B"
+!$harness12Colour = "#A6533C"
+!$harness13Colour = "#4B6FA6"
+!$harness14Colour = "#9A6FB0"
+!$harness15Colour = "#C99A3C"
+!$harness16Colour = "#6B8E3A"
+
+skinparam component {
+  style rectangle
+  portLabels inside
+  portLabels<<pcba>> outside
+  BackgroundColor      $mcuFill
+  BorderColor<<pcba>>          $pcbaBorder
+  BackgroundColor<<header>>    $hdrFill
+  BorderColor<<header>>        $hdrBorder
+  BackgroundColor<<mcu>>       $mcuFill
+  BorderColor<<mcu>>           $mcuBorder
+}
+
+skinparam rectangle {
+  BackgroundColor   $pcbaFill
+  BorderColor<<pcba>>       $pcbaBorder
+  FontStyle<<pcba>>         bold
+  FontColor<<pcba>>         $pcbaBorder
+}
+
+skinparam port {
+  BackgroundColor $portFill
+  BorderColor     $portBorder
+}
+
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam nodesep 30
+
+!function $strcat($a, $b="", $c="", $d="", $e="")
+  !return %chr(34) + $a + $b + $c + $d + $e + %chr(34)
+!endfunction
+
+' Emit a 3-electrode connector group (CE/RE/SE) on the isolator board.
+'   $name   - connector display name (e.g. "J1")
+'   $alias  - port alias prefix; ports become <alias>_ce/_re/_se (e.g. "j1")
+'   $colour - group background colour (e.g. $harness1Colour)
+!procedure $connector($name, $alias, $colour)
+  group "$name" $colour {
+    portout %string($alias + "_ce") as "CE (1)" <<pcba>>
+    portout %string($alias + "_re") as "RE (2)" <<pcba>>
+    portout %string($alias + "_se") as "SE (3)" <<pcba>>
+  }
+!endprocedure
+
+' Render a TMUX1104 4:1 mux as a component box.
+'   $alias - component alias and port prefix; ports become <alias>_a0/_a1/_d
+'            and <alias>_s1.._s4 (e.g. "u3")
+'   $name  - component display name (e.g. "U3\nTMUX1104\nCE Mux")
+!procedure $tmux($alias, $name)
+  component $alias as "$name" {
+    group "IN" {
+      portin %string($alias + "_a0") as "A0 (1)"
+      portin %string($alias + "_a1") as "A1 (10)"
+      portin %string($alias + "_d") as "D (8)"
+    }
+    group "OUT" {
+      portout %string($alias + "_s1") as "(2) S1" $harness1Colour
+      portout %string($alias + "_s2") as "(9) S2" $harness2Colour
+      portout %string($alias + "_s3") as "(4) S3" $harness3Colour
+      portout %string($alias + "_s4") as "(7) S4" $harness4Colour
+    }
+  }
+!endprocedure
+
+title <size:18>AD5941-F767ZI Interconnection
+
+
+' Emit the SPI and GPIO ports for one channel, grouped by bus.
+'   $tag    - identifier prefix for each port alias (e.g. "pot1", "if1")
+'   $name   - display name of the owning component (unused here; kept for call symmetry)
+'   $portin - %true() to emit "portin" ports, %false() for "portout"
+'   $prefix - optional label prefix; when set, a trailing space is appended
+'             and prepended to each port's display label
+!procedure $ports($tag, $name, $portin=%true(), $prefix="")
+  !if $prefix != ""
+    !$prefix = $prefix + " "
+  !endif
+
+  !if $portin
+    !$port_type = "portin"
+  !else
+    !$port_type = "portout"
+  !endif
+
+  group "SPI" #Green {
+    $port_type %string($tag + "_sclk") as $strcat($prefix, "SCLK")
+    $port_type %string($tag + "_mosi") as $strcat($prefix, "MOSI")
+    $port_type %string($tag + "_miso") as $strcat($prefix, "MISO")
+    $port_type %string($tag + "_cs") as $strcat($prefix, "CS")
+  }
+  group "GPIO" #Blue {
+    $port_type %string($tag + "_gpio_trig") as $strcat($prefix, "GPIO TRIG")
+    $port_type %string($tag + "_mux_cs") as $strcat($prefix, "MUX CS")
+    $port_type %string($tag + "_gpio_up") as $strcat($prefix, "GPIO UP")
+  }
+!endprocedure
+
+' Render a potentiostat as a component box wrapping its channel ports.
+'   $tag    - component alias and port identifier prefix (e.g. "pot1")
+'   $name   - component display name (e.g. "Potentiostat 1")
+'   $portin - %true() for input-side ports, %false() for output-side
+!procedure $potentiostat($tag, $name, $portin=%true())
+  component $tag as "$name" {
+    $ports($tag, $name, $portin)
+  }
+!endprocedure
+
+' Emit the interface-board side of a channel's ports, using $name as the
+' label prefix so each port reads e.g. "POT1 SCLK".
+'   $tag    - identifier prefix for each port alias (e.g. "if1")
+'   $name   - channel name, reused as the port label prefix (e.g. "POT1")
+'   $portin - %true() for input-side ports, %false() for output-side
+!procedure $interface_ports($tag, $name, $portin=%true())
+  $ports($tag, $name, $portin, $name)
+!endprocedure
+
+' Wire one channel's SPI and GPIO buses between its potentiostat and the
+' interface board. Channels 1-4 are driven from the interface board (if -> pot)
+' while channels 5-8 are reversed; arrow directions flip accordingly.
+'   $n - channel number (1-8); selects the pot/if alias suffix and link direction
+!procedure $harnesses($n)
+  !if $n <= 4
+    !$a1 = "<--"
+    !$a2 = "-->"
+  !else
+    !$a1 = "-->"
+    !$a2 = "<--"
+  !endif
+
+  harness $strcat("POT", $n, " SPI") #Green {
+    %string("pot" + $n + "_sclk") $a1 %string("if" + $n + "_sclk")
+    %string("pot" + $n + "_mosi") $a1 %string("if" + $n + "_mosi")
+    %string("pot" + $n + "_miso") $a2 %string("if" + $n + "_miso")
+    %string("pot" + $n + "_cs") $a1 %string("if" + $n + "_cs")
+  }
+  harness $strcat("POT", $n, " GPIO") #Blue {
+    %string("pot" + $n + "_gpio_trig") $a1 %string("if" + $n + "_gpio_trig")
+    %string("pot" + $n + "_mux_cs") $a1 %string("if" + $n + "_mux_cs")
+    %string("pot" + $n + "_gpio_up") $a2 %string("if" + $n + "_gpio_up")
+  }
+!endprocedure
+
+  component "MCU Board" as mcu {
+    group "SPI" {
+      portout "CN7-10 (PA5)" as pa_5 #Blue
+      portout "CN7-12 (PA6)" as pa_6 #Green
+      portout "CN7-14 (PA7)" as pa_7 #Red
+    }
+    group "POT 1" {
+      portout "CN7-16 (PD14)" as pd_14 #Grey
+      portout "CN7-18 (PD15)" as pd_15 #Purple
+    }
+    group "POT 2" {
+      portout "CN7-20 (PF12)" as pf_12 #Orange
+      portout "CN10-4 (PE9)" as pe_9 #Yellow
+    }
+    group "POT 3" {
+      portout "CN10-2 (PF13)" as pf_13 #Green
+      portout "CN10-6 (PE11)" as pe_11 #Blue
+    }
+    group "POT 4" {
+      portout "CN10-8 (PF14)" as pf_14 #Purple
+      portout "CN10-12 (PF15)" as pf_15 #Grey
+    }
+    portout "CN10-22 (GND)" as cn10_22 #Brown
+  }
+
+  ' Interface board in the centre. Channels 1-4 expose input-side ports (default),
+  ' channels 5-8 output-side; the 8..5 ordering stacks them to mirror the
+  ' right-hand potentiostat column below.
+  component Interface as "Interface Board" {
+    group "SPI" {
+      portin "J16-4 (SCLK)" as j16_4 #Blue
+      portin "J16-1 (MOSI)" as j16_5 #Green
+      portin "J16-5 (MISO)" as j16_1 #Red
+    }
+    group "POT 1" {
+      portin "J15-1 (POT1 CS)" as j15_1 #Grey
+      portin "J16-7 (POT1 MUX CS)" as j16_7 #Purple
+    }
+    group "POT 2" {
+      portin "J15-2 (POT2 CS)" as j15_2 #Orange
+      portin "J15-17 (POT2 MUX CS)" as j15_17 #Yellow
+    }
+    group "POT 3" {
+      portin "J15-4 (POT3 CS)" as j15_4 #Green
+      portin "J16-6 (POT3 MUX CS)" as j16_6 #Blue
+    }
+    group "POT 4" {
+      portin "J15-5 (POT4 CS)" as j15_5 #Purple
+      portin "J16-2 (POT4 MUX CS)" as j16_2 #Grey
+    }
+    $interface_ports("if1", "POT1", %false())
+    $interface_ports("if2", "POT2", %false())
+    $interface_ports("if3", "POT3", %false())
+    $interface_ports("if4", "POT4", %false())
+
+    portin "J16-3 (GND)" as j16_3 #Brown
+  }
+  ' Potentiostats 5-8 sit on the right with input-side ports (default) facing
+  ' the interface board to their left. Listed 8..5 to align with the if8..if5
+  ' ordering above.
+  together {
+    $potentiostat("pot1", "Potentiostat 1")
+    $potentiostat("pot2", "Potentiostat 2")
+    $potentiostat("pot3", "Potentiostat 3")
+    $potentiostat("pot4", "Potentiostat 4")
+  }
+
+  pa_5 -[#Blue]-> j16_4
+  pa_6 -[#Green]-> j16_5
+  pa_7 <-[#Red]- j16_1
+  cn10_22 -[#Brown]- j16_3
+  pd_14 -[#Grey]-> j15_1
+  pd_15 -[#Purple]-> j16_7
+  pf_12 -[#Orange]-> j15_2
+  pe_9 -[#Yellow]-> j15_17
+  pf_13 -[#Green]-> j15_4
+  pe_11 -[#Blue]-> j16_6
+  pf_14 -[#Purple]-> j15_5
+  pf_15 -[#Grey]-> j16_2
+
+  ' Wire every channel's SPI and GPIO harnesses (direction flips at channel 5).
+  !$i = 1
+  !while $i <= 4
+    $harnesses($i)
+    !$i = $i + 1
+  !endwhile
+
+@enduml

@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -83,6 +85,60 @@ class ElkComponentPortTest {
 			"}", //
 			"@enduml");
 
+	private static final String UNGROUPED = String.join("\n", //
+			"@startuml", //
+			"left to right direction", //
+			"!pragma layout elk", //
+			"skinparam component {", //
+			"  style rectangle", //
+			"  portLabels inside", //
+			"}", //
+			"component MCU {", //
+			"  portout \"PA5\" as pa5", //
+			"  portout \"PA6\" as pa6", //
+			"  portout \"PA7\" as pa7", //
+			"  portout \"GND\" as gnd", //
+			"}", //
+			"component Interface {", //
+			"  portin \"SCLK\" as sclk", //
+			"  portin \"MOSI\" as mosi", //
+			"  portin \"MISO\" as miso", //
+			"  portin \"GND\" as ignd", //
+			"}", //
+			"pa5 --> sclk", //
+			"pa6 --> mosi", //
+			"pa7 <-- miso", //
+			"gnd -- ignd", //
+			"@enduml");
+
+	private static final String TITLED_BOARD = String.join("\n", //
+			"@startuml", //
+			"left to right direction", //
+			"!pragma layout elk", //
+			"skinparam component {", //
+			"  style rectangle", //
+			"  portLabels inside", //
+			"  portLabels<<pcba>> outside", //
+			"}", //
+			"title A board", //
+			"rectangle \"Isolator Board\" as iso <<pcba>> {", //
+			"  portout \"CE\" as ce <<pcba>>", //
+			"  portout \"RE\" as re <<pcba>>", //
+			"  component \"U3\\nTMUX1104\\nCE Mux\" as u3 {", //
+			"    portin \"A0\" as a0", //
+			"    portout \"S1\" as s1", //
+			"    portout \"S2\" as s2", //
+			"  }", //
+			"}", //
+			"s1 --> ce", //
+			"s2 --> re", //
+			"@enduml");
+
+	private static final Pattern TRUNK = Pattern.compile("<path d=\"([^\"]+)\" style=\"stroke:#[0-9A-F]+;stroke-width:4.5;\"");
+	private static final Pattern STUB = Pattern.compile(
+			"<line x1=\"([-\\d.]+)\" y1=\"([-\\d.]+)\" x2=\"([-\\d.]+)\" y2=\"([-\\d.]+)\" style=\"stroke:#[0-9A-F]+;stroke-width:1;\"");
+	private static final Pattern NUMBER = Pattern.compile("-?\\d+(?:\\.\\d+)?");
+
 	private static final Pattern CLUSTER = Pattern.compile(
 			"<rect x=\"([-\\d.]+)\" y=\"([-\\d.]+)\" width=\"([\\d.]+)\" height=\"([\\d.]+)\" fill=\"[^\"]*\" style=\"[^\"]*\" rx=\"2.5\"");
 	private static final Pattern EDGE = Pattern.compile("<path d=\"[^\"]+\" style=\"[^\"]*\" fill=\"none\"/>");
@@ -153,6 +209,86 @@ class ElkComponentPortTest {
 	void harnesses_are_drawn() throws IOException {
 		final String svg = render(HARNESS);
 		assertTrue(svg.contains(">Bus</text>"), "harness label");
+	}
+
+	@Test
+	void ungrouped_ports_keep_declaration_order() throws IOException {
+		final String svg = render(UNGROUPED);
+		assertInOrder(svg, "MCU.pa5", "MCU.pa6", "MCU.pa7", "MCU.gnd");
+		assertInOrder(svg, "Interface.sclk", "Interface.mosi", "Interface.miso", "Interface.ignd");
+	}
+
+	@Test
+	void titled_board_fits_in_the_drawing() throws IOException {
+		final String svg = render(TITLED_BOARD);
+		final int height = height(svg);
+		for (double[] c : rects(CLUSTER, svg))
+			assertTrue(c[1] + c[3] < height - 5, "cluster bottom " + (c[1] + c[3]) + " is at the edge of the "
+					+ height + "px drawing");
+	}
+
+	@Test
+	void harnesses_do_not_cross_each_other() throws IOException {
+		// Eight harnesses fanning out from one board to four stacked components,
+		// whose rows sit above or below the board ports they connect to.
+		final String svg = render(new String(Files.readAllBytes(Paths.get("src/test/resources/elk/ad5941-harnesses.puml")), UTF_8));
+		final List<double[]> stubs = new ArrayList<>();
+		final Matcher stub = STUB.matcher(svg);
+		while (stub.find())
+			stubs.add(new double[] { Double.parseDouble(stub.group(1)), Double.parseDouble(stub.group(2)),
+					Double.parseDouble(stub.group(3)), Double.parseDouble(stub.group(4)) });
+		assertTrue(stubs.size() >= 50, "harness stubs: " + stubs.size());
+		final Matcher trunk = TRUNK.matcher(svg);
+		int trunks = 0;
+		while (trunk.find()) {
+			trunks++;
+			final List<double[]> corners = corners(trunk.group(1));
+			for (int i = 0; i + 1 < corners.size(); i++)
+				for (double[] s : stubs)
+					assertTrue(crosses(corners.get(i), corners.get(i + 1), s) == false,
+							"harness trunk " + corners.get(i)[0] + "," + corners.get(i)[1] + " - "
+									+ corners.get(i + 1)[0] + "," + corners.get(i + 1)[1] + " crosses stub "
+									+ s[0] + "," + s[1] + " - " + s[2] + "," + s[3]);
+		}
+		assertEquals(8, trunks, "harness trunks");
+	}
+
+	/**
+	 * True when the axis-aligned trunk segment a-b and the stub (x1, y1, x2, y2)
+	 * cross inside both. A stub ending on the trunk, as a harness's own stubs do,
+	 * does not count.
+	 */
+	private static boolean crosses(double[] a, double[] b, double[] s) {
+		final boolean trunkVertical = Math.abs(a[0] - b[0]) < EPSILON;
+		final boolean stubHorizontal = Math.abs(s[1] - s[3]) < EPSILON;
+		if (trunkVertical && stubHorizontal)
+			return strictlyInside(a[0], s[0], s[2]) && strictlyInside(s[1], a[1], b[1]);
+		if (trunkVertical == false && stubHorizontal == false)
+			return strictlyInside(s[0], a[0], b[0]) && strictlyInside(a[1], s[1], s[3]);
+		return false;
+	}
+
+	private static boolean strictlyInside(double v, double end1, double end2) {
+		return v > Math.min(end1, end2) + EPSILON && v < Math.max(end1, end2) - EPSILON;
+	}
+
+	/** The end points of each segment of an SVG path made of "M" then "C"s. */
+	private static List<double[]> corners(String d) {
+		final List<Double> values = new ArrayList<>();
+		final Matcher m = NUMBER.matcher(d);
+		while (m.find())
+			values.add(Double.parseDouble(m.group()));
+		final List<double[]> result = new ArrayList<>();
+		result.add(new double[] { values.get(0), values.get(1) });
+		for (int i = 6; i + 1 < values.size(); i += 6)
+			result.add(new double[] { values.get(i), values.get(i + 1) });
+		return result;
+	}
+
+	private static void assertInOrder(String svg, String... qualifiedNames) {
+		for (int i = 0; i + 1 < qualifiedNames.length; i++)
+			assertTrue(port(svg, qualifiedNames[i])[1] < port(svg, qualifiedNames[i + 1])[1],
+					qualifiedNames[i] + " is not above " + qualifiedNames[i + 1]);
 	}
 
 	private static boolean isOnBoundary(double x, double y, double[] r) {
