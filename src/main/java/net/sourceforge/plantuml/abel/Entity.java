@@ -63,6 +63,7 @@ import net.sourceforge.plantuml.klimt.font.FontConfiguration;
 import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.UFont;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
+import net.sourceforge.plantuml.klimt.geom.Side;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.TextBlockEmpty;
 import net.sourceforge.plantuml.plasma.Quark;
@@ -103,6 +104,14 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 
 	private LeafType leafType;
 	private Stereotype stereotype;
+
+	// Port-group tag applied when a port is created inside a `group "..." {
+	// ... }` block. -1 means the port is not part of any group. The pair
+	// (portGroupOrder, portGroupIndex) sorts ports on the parent's face:
+	// declaration-order group ordinal first, then within-group index.
+	private int portGroupOrder = -1;
+	private int portGroupIndex = -1;
+	private String portGroupLabel = null;
 	private Stereostyles stereostyles = Stereostyles.NONE;
 	private String generic;
 
@@ -133,6 +142,7 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	private Neighborhood neighborhood;
 	private Colors colors = Colors.empty();
 	private final Map<String, Tip> tips = new LinkedHashMap<String, Tip>();
+	private Side connectorSide;
 
 	//
 	public void addNote(Display note, Position position, Colors colors) {
@@ -256,6 +266,38 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		this.stereotype = stereotype;
 	}
 
+	// True when this entity carries the <<header>> stereotype. Used by the
+	// ELK backend to render the component as a two-column pin header with
+	// jumper bars across opposite pins.
+	public boolean isHeader() {
+		if (stereotype == null)
+			return false;
+		final String label = stereotype.getLabel(Guillemet.DOUBLE_COMPARATOR);
+		return label != null && label.contains("<<header>>");
+	}
+
+	public void setPortGroup(String label, int groupOrder, int indexInGroup) {
+		this.portGroupLabel = label;
+		this.portGroupOrder = groupOrder;
+		this.portGroupIndex = indexInGroup;
+	}
+
+	public boolean hasPortGroup() {
+		return portGroupOrder >= 0;
+	}
+
+	public int getPortGroupOrder() {
+		return portGroupOrder;
+	}
+
+	public int getPortGroupIndex() {
+		return portGroupIndex;
+	}
+
+	public String getPortGroupLabel() {
+		return portGroupLabel;
+	}
+
 	public String toString() {
 		return quark.toString() + " " + display + "(" + leafType + ")[" + groupType + "] " + getUid();
 	}
@@ -335,6 +377,9 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 		if (leafType == LeafType.PORTOUT)
 			return EntityPosition.PORTOUT;
 
+		if (leafType == LeafType.PIN)
+			return EntityPosition.PORTIN;
+
 		if (leafType != LeafType.STATE)
 			return EntityPosition.NORMAL;
 
@@ -366,6 +411,14 @@ final public class Entity implements SpecificBackcolorable, Hideable, Removeable
 	public GroupType getGroupType() {
 		checkGroup();
 		return groupType;
+	}
+
+	public Side getConnectorSide() {
+		return connectorSide;
+	}
+
+	public void setConnectorSide(Side connectorSide) {
+		this.connectorSide = connectorSide;
 	}
 
 	public PackageStyle getPackageStyle() {

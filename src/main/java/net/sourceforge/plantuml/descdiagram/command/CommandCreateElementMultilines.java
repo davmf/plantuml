@@ -77,7 +77,7 @@ public class CommandCreateElementMultilines extends CommandMultilines2<AbstractE
 			"action", "actor", "agent", "artifact", "boundary", "card", "circle", "cloud",
 			"collections", "component", "control", "database", "entity", "file", "folder", "frame",
 			"hexagon", "interface", "label", "node", "package", "person", "port", "portin",
-			"portout", "process", "queue", "rectangle", "stack", "storage", "usecase");
+			"pin", "portout", "process", "queue", "rectangle", "stack", "storage", "usecase");
 
 	private final int type;
 

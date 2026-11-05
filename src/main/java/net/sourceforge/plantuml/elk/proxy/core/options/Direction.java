@@ -4,7 +4,7 @@ import net.sourceforge.plantuml.elk.proxy.ElkObjectProxy;
 import net.sourceforge.plantuml.elk.proxy.Reflect;
 
 public enum Direction implements ElkObjectProxy {
-	DOWN;
+	UNDEFINED, RIGHT, LEFT, DOWN, UP;
 
 	@Override
 	public Enum getTrueObject() {

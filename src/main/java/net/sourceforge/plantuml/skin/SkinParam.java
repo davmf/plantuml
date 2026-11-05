@@ -606,6 +606,7 @@ public class SkinParam implements ISkinParam {
 		result.add("Linetype");
 		result.add("PackageStyle");
 		result.add("ComponentStyle");
+		result.add("PortLabels");
 		result.add("StereotypePosition");
 		result.add("Nodesep");
 		result.add("Ranksep");
@@ -864,6 +865,25 @@ public class SkinParam implements ISkinParam {
 	@Override
 	public boolean stereotypePositionTop() {
 		return !valueIs("stereotypePosition", "bottom");
+	}
+
+	@Override
+	public boolean portLabelsInside() {
+		return portLabelsInside(null);
+	}
+
+	@Override
+	public boolean portLabelsInside(Stereotype stereotype) {
+		if (stereotype != null) {
+			for (String s : stereotype.getMultipleLabels()) {
+				final String v = getValue("componentportlabels<<" + s + ">>");
+				if ("inside".equalsIgnoreCase(v))
+					return true;
+				if ("outside".equalsIgnoreCase(v))
+					return false;
+			}
+		}
+		return valueIs("componentportlabels", "inside");
 	}
 
 	@Override

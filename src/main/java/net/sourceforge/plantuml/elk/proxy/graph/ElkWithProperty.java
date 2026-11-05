@@ -8,6 +8,7 @@ import net.sourceforge.plantuml.elk.proxy.ElkObjectProxy;
 import net.sourceforge.plantuml.elk.proxy.ElkProperty;
 import net.sourceforge.plantuml.elk.proxy.Reflect;
 import net.sourceforge.plantuml.elk.proxy.core.math.ElkPadding;
+import net.sourceforge.plantuml.elk.proxy.core.math.KVector;
 import net.sourceforge.plantuml.elk.proxy.json.ElkJsonGraph;
 
 public class ElkWithProperty {
@@ -34,15 +35,15 @@ public class ElkWithProperty {
 		if (obj instanceof ElkJsonGraph.Element) {
 			((ElkJsonGraph.Element) obj).setOption(key.getJsonId(), toJsonValue(value));
 		} else if (value instanceof EnumSet) {
-			// Note: the set is filled with the proxy enums themselves, not with the ELK
-			// ones, so ELK finds none of its own values in it (see toJsonValue)
+			// The set is filled with the ELK enums, not with the proxy ones
 			EnumSet result = null;
 			for (Object foo : (Collection) value) {
 				final ElkObjectProxy elk = (ElkObjectProxy) foo;
+				final Enum real = (Enum) elk.getTrueObject();
 				if (result == null) {
-					result = EnumSet.noneOf((Class) elk.getClass());
+					result = EnumSet.noneOf(real.getDeclaringClass());
 				}
-				result.add(elk);
+				result.add(real);
 			}
 			Reflect.call2(obj, "setProperty", key.getTrueObject(), result);
 		} else if (value instanceof ElkObjectProxy) {
@@ -66,6 +67,8 @@ public class ElkWithProperty {
 		}
 		if (value instanceof ElkPadding)
 			return ((ElkPadding) value).toJsonValue();
+		if (value instanceof KVector)
+			return ((KVector) value).toJsonValue();
 		if (value instanceof Enum)
 			return ((Enum<?>) value).name();
 		return value;

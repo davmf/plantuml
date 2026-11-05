@@ -118,6 +118,19 @@ public class Reflect {
 		}
 	}
 
+	public static Object newInstance(String className, double arg1, double arg2) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
+		try {
+			final Class<?> cl = Class.forName(className);
+			final Constructor<?> m = cl.getConstructor(Double.TYPE, Double.TYPE);
+			return m.newInstance(arg1, arg2);
+		} catch (Throwable t) {
+			Logme.error(t);
+			throw new IllegalArgumentException(t);
+		}
+	}
+
 	public static Object newInstance(String className, double arg1, double arg2, double arg3, double arg4) {
 		if (TeaVM.isTeaVM())
 			throw new UnsupportedOperationException(NO_REFLECTION);

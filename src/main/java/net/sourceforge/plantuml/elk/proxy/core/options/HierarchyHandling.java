@@ -4,7 +4,7 @@ import net.sourceforge.plantuml.elk.proxy.ElkObjectProxy;
 import net.sourceforge.plantuml.elk.proxy.Reflect;
 
 public enum HierarchyHandling implements ElkObjectProxy {
-	INCLUDE_CHILDREN;
+	INCLUDE_CHILDREN, SEPARATE_CHILDREN;
 
 	@Override
 	public Enum getTrueObject() {

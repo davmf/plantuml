@@ -30,4 +30,29 @@ public class CoreOptions {
 
 	public static final ElkProperty PADDING = new ElkProperty(CORE_OPTIONS, "PADDING", "org.eclipse.elk.padding");
 
+	public static final ElkProperty PORT_CONSTRAINTS = new ElkProperty(CORE_OPTIONS, "PORT_CONSTRAINTS",
+			"org.eclipse.elk.portConstraints");
+
+	public static final ElkProperty PORT_SIDE = new ElkProperty(CORE_OPTIONS, "PORT_SIDE", "org.eclipse.elk.port.side");
+
+	public static final ElkProperty PORT_LABELS_PLACEMENT = new ElkProperty(CORE_OPTIONS, "PORT_LABELS_PLACEMENT",
+			"org.eclipse.elk.portLabels.placement");
+
+	public static final ElkProperty NODE_SIZE_MINIMUM = new ElkProperty(CORE_OPTIONS, "NODE_SIZE_MINIMUM",
+			"org.eclipse.elk.nodeSize.minimum");
+
+	public static final ElkProperty SPACING_PORT_PORT = new ElkProperty(CORE_OPTIONS, "SPACING_PORT_PORT",
+			"org.eclipse.elk.spacing.portPort");
+
+	public static final ElkProperty SPACING_NODE_NODE = new ElkProperty(CORE_OPTIONS, "SPACING_NODE_NODE",
+			"org.eclipse.elk.spacing.nodeNode");
+
+	public static final ElkProperty PORT_BORDER_OFFSET = new ElkProperty(CORE_OPTIONS, "PORT_BORDER_OFFSET",
+			"org.eclipse.elk.port.borderOffset");
+
+	public static final ElkProperty PORT_ANCHOR = new ElkProperty(CORE_OPTIONS, "PORT_ANCHOR",
+			"org.eclipse.elk.port.anchor");
+
+	public static final ElkProperty PORT_INDEX = new ElkProperty(CORE_OPTIONS, "PORT_INDEX", "org.eclipse.elk.port.index");
+
 }
