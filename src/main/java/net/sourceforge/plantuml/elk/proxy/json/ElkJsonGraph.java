@@ -251,6 +251,7 @@ public final class ElkJsonGraph {
 	public static final class Port extends Shape {
 
 		private final Node parent;
+		private boolean located;
 		private double x;
 		private double y;
 		private double width;
@@ -278,6 +279,13 @@ public final class ElkJsonGraph {
 		public void setDimensions(double newWidth, double newHeight) {
 			this.width = newWidth;
 			this.height = newHeight;
+		}
+
+		/** Written only once set: ELK reads it for a port at a fixed position. */
+		public void setLocation(double newX, double newY) {
+			this.x = newX;
+			this.y = newY;
+			this.located = true;
 		}
 
 		public double getX() {
@@ -504,6 +512,10 @@ public final class ElkJsonGraph {
 
 	private static JsonObject writePort(Port port) {
 		final JsonObject result = writeElement(port);
+		if (port.located) {
+			result.add("x", port.x);
+			result.add("y", port.y);
+		}
 		result.add("width", port.width);
 		result.add("height", port.height);
 		return result;

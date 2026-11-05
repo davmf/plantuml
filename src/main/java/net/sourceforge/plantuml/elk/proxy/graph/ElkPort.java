@@ -50,6 +50,15 @@ public class ElkPort extends ElkWithProperty {
 		return (Double) Reflect.call(obj, "getHeight");
 	}
 
+	/** For a port at a fixed position (<code>PortConstraints.FIXED_POS</code>). */
+	public void setLocation(double x, double y) {
+		final ElkJsonGraph.Port json = json();
+		if (json != null)
+			json.setLocation(x, y);
+		else
+			Reflect.call2(obj, "setLocation", x, y);
+	}
+
 	public void setDimensions(double width, double height) {
 		final ElkJsonGraph.Port json = json();
 		if (json != null)
