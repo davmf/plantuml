@@ -49,6 +49,7 @@ import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.symbol.USymbolFolder;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkEdgeSection;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
@@ -101,12 +102,14 @@ class MyElkDrawing implements TextBlock {
 	private final Map<Entity, ElkPort> ports;
 	private final List<SvekHarness> harnesses;
 	private final List<Link> jumpers;
+	private final Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses;
 
 	private final ClusterManager clusterManager;
 
 	public MyElkDrawing(ClusterManager clusterManager, CucaDiagram diagram, MinMax minMax,
 			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes,
-			Map<Entity, ElkPort> ports, List<SvekHarness> harnesses, List<Link> jumpers) {
+			Map<Entity, ElkPort> ports, List<SvekHarness> harnesses, List<Link> jumpers,
+			Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses) {
 		this.clusterManager = clusterManager;
 		this.minMax = minMax;
 		this.diagram = diagram;
@@ -116,6 +119,7 @@ class MyElkDrawing implements TextBlock {
 		this.ports = ports;
 		this.harnesses = harnesses;
 		this.jumpers = jumpers;
+		this.collapses = collapses;
 	}
 
 	public void drawU(UGraphic ug) {
@@ -250,7 +254,7 @@ class MyElkDrawing implements TextBlock {
 		final TextBlock tailRole = quantifier1 != null ? role1 : null;
 		final TextBlock headRole = quantifier2 != null ? role2 : null;
 		final MyElkEdge elkPath = new MyElkEdge(diagram, SName.classDiagram, link, edge, label, tailLabel, headLabel,
-				tailRole, headRole, magicY2, elkClusters, UTranslate.point(translate), nodeImages);
+				tailRole, headRole, magicY2, elkClusters, UTranslate.point(translate), nodeImages, collapses);
 		elkPath.drawU(ug);
 	}
 
