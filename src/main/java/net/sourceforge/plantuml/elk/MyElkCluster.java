@@ -80,8 +80,10 @@ public class MyElkCluster {
 	}
 
 	public void drawSingleCluster(UGraphic ug) {
+		if (elkNode.getWidth() <= 0 || elkNode.getHeight() <= 0)
+			return;
+
 		final XPoint2D corner = CucaDiagramFileMakerElk.getPosition(elkNode);
-		final URectangle rect = URectangle.build(elkNode.getWidth(), elkNode.getHeight());
 
 		PackageStyle packageStyle = group.getPackageStyle();
 		final ISkinParam skinParam = diagram.getSkinParam();
@@ -127,6 +129,10 @@ public class MyElkCluster {
 
 	@DuplicateCode(reference = "Cluster")
 	public MagneticBorder getMagneticBorder(StringBounder stringBounder) {
+
+		// A composite state is a plain rounded box: no folder tab to reach down to
+		if (diagram.getDiagramType() == DiagramType.STATE && group.getUSymbol() == null)
+			return new MagneticBorderNone();
 
 		USymbol uSymbol = group.getUSymbol();
 		PackageStyle packageStyle = group.getPackageStyle();
