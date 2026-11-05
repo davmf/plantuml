@@ -247,6 +247,16 @@ public final class PendingResources {
 		return missing.isEmpty() == false;
 	}
 
+	/**
+	 * Whether a rendering attempt is running, so that a resource that is not
+	 * there yet will be loaded and the diagram rendered again. Outside an attempt
+	 * (the synchronous exports of the headless build), a missing resource stays
+	 * missing.
+	 */
+	public static boolean isAttempting() {
+		return attempting;
+	}
+
 	static String describeMissing() {
 		final StringBuilder sb = new StringBuilder();
 		for (Wanted wanted : missing.values()) {

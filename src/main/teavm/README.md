@@ -28,6 +28,7 @@ build/generated/teavm/js/
   themes.js, emoji.js...   <- generated/
   c4.min.js, ibm.min.js... <- stdlib/
   viz-global.js            <- vendor/viz-global.js (loaded from the root)
+  elk.bundled.js           <- vendor/elk.bundled.js (loaded from the root, on demand)
   vendor/fflate-*.min.js   <- vendor/     (everything else stays under vendor/)
 ```
 
@@ -62,7 +63,13 @@ libraries lives in `src/main/resources/stdlib/` (`.spm` files).
 **`vendor/`** — `viz-global.js` is the `viz-global.js` build of
 [Viz.js](https://github.com/mdaines/viz-js) (version in its header comment);
 `fflate-<version>.min.js` comes from [fflate](https://github.com/101arrowz/fflate),
-license alongside.
+license alongside. `elk.bundled.js` is `lib/elk.bundled.js` of
+[elkjs](https://github.com/kieler/elkjs) 0.12.1 (npm `elkjs`, EPL-2.0 OR
+GPL-3.0-or-later, `elkjs-LICENSE.md` alongside), the JavaScript build of the
+Eclipse Layout Kernel: `ElkEngineJs` loads it on demand for `!pragma layout elk`
+and relies on its in-page worker (see that class before upgrading). Like
+`viz-global.js`, it is deployed at the root. Keep its version in step with the
+ELK version of `gradle/libs.versions.toml`. It is not part of the MIT npm package.
 
 ## Experimental: Wasm GC build
 

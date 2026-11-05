@@ -471,8 +471,10 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 			// back to Smetana instead of failing, mirroring the dotIsAvailable()
 			// fallback of the JVM branch below (the pragma short-circuits, so the
 			// probe and its one-time console note only run on the default path).
+			// "!pragma layout elk" lays out with elkjs, see useElkInBrowser().
 			// ::revert when JAVA8
-			maker = (TeaVM.isC() || this.isUseSmetana() || net.sourceforge.plantuml.teavm.js.GraphVizEngineJs.vizMissingFallback()) ? new CucaDiagramFileMakerSmetana(this) : new CucaDiagramFileMakerTeaVM(this);
+			maker = useElkInBrowser() ? new CucaDiagramFileMakerElk(this)
+					: (TeaVM.isC() || this.isUseSmetana() || net.sourceforge.plantuml.teavm.js.GraphVizEngineJs.vizMissingFallback()) ? new CucaDiagramFileMakerSmetana(this) : new CucaDiagramFileMakerTeaVM(this);
 		// maker = new CucaDiagramFileMakerSmetana(this);
 		// ::done
 		else if (this.isUseElk())
@@ -493,6 +495,25 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 
 		return maker.getTextBlock(getDotStrings(), fileFormatOption);
 	}
+
+	// ::comment when JAVA8
+	/**
+	 * Whether the browser build lays this diagram out with elkjs, the JavaScript
+	 * build of ELK ("!pragma layout elk"). The first time, elk.bundled.js is loaded:
+	 * the attempt stops here and the diagram is rendered again once it is there.
+	 * When elkjs cannot be had, the default engine is used, with a console note.
+	 * Not in the C build, which has no JavaScript.
+	 */
+	private boolean useElkInBrowser() throws IOException {
+		if (TeaVM.isC() || this.isUseElk() == false)
+			return false;
+		final net.sourceforge.plantuml.teavm.js.ElkEngineJs.Status status = net.sourceforge.plantuml.teavm.js.ElkEngineJs
+				.status();
+		if (status == net.sourceforge.plantuml.teavm.js.ElkEngineJs.Status.LOADING)
+			throw new IOException("elkjs is loading");
+		return status == net.sourceforge.plantuml.teavm.js.ElkEngineJs.Status.READY;
+	}
+	// ::done
 
 	private boolean dotIsAvailable() {
 		final GraphvizRuntimeEnvironment gre = GraphvizRuntimeEnvironment.getInstance();

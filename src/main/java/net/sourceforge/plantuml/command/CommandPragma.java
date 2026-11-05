@@ -120,6 +120,11 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("smetana"))
 				system.setUseSmetana(true);
 
+			// Honored in every build too: the browser (TeaVM) build lays out with elkjs,
+			// see CucaDiagram.useElkInBrowser()
+			if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("elk"))
+				system.setUseElk(true);
+
 			if (!TeaVM.isTeaVM()) {
 				if (name.equalsIgnoreCase("graphviz_dot") && value.equalsIgnoreCase("jdot"))
 					return CommandExecutionResult.error(
@@ -128,9 +133,6 @@ public class CommandPragma extends SingleLineCommand2<TitledDiagram> {
 				if (name.equalsIgnoreCase("graphviz_dot"))
 					return CommandExecutionResult.error("This directive has been renamed to '!pragma layout " + value
 							+ "'. Please update your diagram.");
-
-				if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase("elk"))
-					system.setUseElk(true);
 
 				if (name.equalsIgnoreCase("layout") && value.equalsIgnoreCase(GraphvizRuntimeEnvironment.VIZJS))
 					system.getSkinParam().setUseVizJs(true);

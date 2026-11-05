@@ -40,13 +40,21 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import net.sourceforge.plantuml.log.Logme;
+import net.sourceforge.plantuml.teavm.TeaVM;
 
 /*
  * Various methods to do Java introspection
  */
 public class Reflect {
 
+	// Each method tests the marker itself: TeaVM only prunes a branch when the
+	// marker is in the method, and so leaves out all the reflection code (the
+	// browser builds lay out with elkjs, see ElkJsonGraph).
+	private static final String NO_REFLECTION = "ELK through reflection is not available in this build";
+
 	public static Class clazz(String className) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			return Class.forName(className);
 		} catch (Throwable t) {
@@ -56,6 +64,8 @@ public class Reflect {
 	}
 
 	public static Enum getEnum(String clazz, String name) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class cl = clazz(clazz);
 			for (Object en : cl.getEnumConstants()) {
@@ -71,6 +81,8 @@ public class Reflect {
 	}
 
 	public static Object opt(String className, String fieldname) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Field field = cl.getField(fieldname);
@@ -82,6 +94,8 @@ public class Reflect {
 	}
 
 	public static Object newInstance(String className) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			return cl.newInstance();
@@ -92,6 +106,8 @@ public class Reflect {
 	}
 
 	public static Object newInstance(String className, Object arg1) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Constructor<?> m = cl.getConstructor(arg1.getClass());
@@ -103,6 +119,8 @@ public class Reflect {
 	}
 
 	public static Object newInstance(String className, double arg1, double arg2, double arg3, double arg4) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Constructor<?> m = cl.getConstructor(Double.TYPE, Double.TYPE, Double.TYPE, Double.TYPE);
@@ -114,6 +132,8 @@ public class Reflect {
 	}
 
 	public static Object field(String className, String fieldName) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Field f = cl.getField(fieldName);
@@ -125,6 +145,8 @@ public class Reflect {
 	}
 
 	public static Object callStatic(String className, String method) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Method m = cl.getMethod(method);
@@ -136,6 +158,8 @@ public class Reflect {
 	}
 
 	public static Object callStatic(String className, String method, Object arg1) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Method m = cl.getMethod(method, arg1.getClass());
@@ -147,6 +171,8 @@ public class Reflect {
 	}
 
 	public static Object callStatic(String className, String method, Object arg1, Object arg2) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Method m = cl.getMethod(method, arg1.getClass(), arg2.getClass());
@@ -158,6 +184,8 @@ public class Reflect {
 	}
 
 	public static Object callStatic2(String className, String method, Object arg1) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Method m = getStaticMethod(cl, method, 1);
@@ -169,6 +197,8 @@ public class Reflect {
 	}
 
 	public static Object callStatic2(String className, String method, Object arg1, Object arg2) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Class<?> cl = Class.forName(className);
 			final Method m = getStaticMethod(cl, method, 2);
@@ -180,6 +210,8 @@ public class Reflect {
 	}
 
 	public static Method getStaticMethod(Class<?> cl, String method, int nbArgs) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		for (Method m : cl.getMethods()) {
 			if (m.getName().equals(method) && m.getParameters().length == nbArgs) {
 				return m;
@@ -189,6 +221,8 @@ public class Reflect {
 	}
 
 	public static Object call(Object instance, String method) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Method m = instance.getClass().getMethod(method);
 			return m.invoke(instance);
@@ -199,6 +233,8 @@ public class Reflect {
 	}
 
 	public static Object call(Object instance, String method, Object arg1) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Method m = instance.getClass().getMethod(method, arg1.getClass());
 			return m.invoke(instance, arg1);
@@ -209,6 +245,8 @@ public class Reflect {
 	}
 
 	public static Object call(Object instance, String method, Object arg1, Object arg2) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Method m = instance.getClass().getMethod(method, arg1.getClass(), arg2.getClass());
 			return m.invoke(instance, arg1, arg2);
@@ -219,6 +257,8 @@ public class Reflect {
 	}
 
 	public static Object call2(Object instance, String method, Object arg1, Object arg2) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		try {
 			final Method m = getMethod(instance, method, 2);
 			return m.invoke(instance, arg1, arg2);
@@ -229,6 +269,8 @@ public class Reflect {
 	}
 
 	public static Method getMethod(Object instance, String method, int nbArgs) {
+		if (TeaVM.isTeaVM())
+			throw new UnsupportedOperationException(NO_REFLECTION);
 		for (Method m : instance.getClass().getMethods()) {
 			if (m.getName().equals(method) && m.getParameters().length == nbArgs) {
 				return m;

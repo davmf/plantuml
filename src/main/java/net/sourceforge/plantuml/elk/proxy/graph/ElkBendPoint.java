@@ -3,6 +3,7 @@ package net.sourceforge.plantuml.elk.proxy.graph;
 import java.util.Objects;
 
 import net.sourceforge.plantuml.elk.proxy.Reflect;
+import net.sourceforge.plantuml.elk.proxy.json.ElkJsonGraph;
 
 public class ElkBendPoint {
 
@@ -23,10 +24,14 @@ public class ElkBendPoint {
 	}
 
 	public double getX() {
+		if (obj instanceof ElkJsonGraph.Point)
+			return ((ElkJsonGraph.Point) obj).getX();
 		return (Double) Reflect.call(obj, "getX");
 	}
 
 	public double getY() {
+		if (obj instanceof ElkJsonGraph.Point)
+			return ((ElkJsonGraph.Point) obj).getY();
 		return (Double) Reflect.call(obj, "getY");
 	}
 

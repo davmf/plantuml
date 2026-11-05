@@ -1,9 +1,14 @@
 package net.sourceforge.plantuml.elk.proxy.core.options;
 
+import net.sourceforge.plantuml.elk.proxy.ElkObjectProxy;
 import net.sourceforge.plantuml.elk.proxy.Reflect;
 
-public class Direction {
+public enum Direction implements ElkObjectProxy {
+	DOWN;
 
-	public static final Object DOWN = Reflect.field("org.eclipse.elk.core.options.Direction", "DOWN");
+	@Override
+	public Enum getTrueObject() {
+		return Reflect.getEnum("org.eclipse.elk.core.options.Direction", name());
+	}
 
 }
