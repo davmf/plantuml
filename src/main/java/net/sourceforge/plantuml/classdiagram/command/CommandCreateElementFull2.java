@@ -75,7 +75,7 @@ public class CommandCreateElementFull2 extends SingleLineCommand2<ClassDiagram> 
 	private static final Collection<String> FIRST_TOKENS_NORMAL = Arrays.asList("state", "person", "artifact",
 			"actor", "folder", "card", "file", "package", "rectangle", "hexagon", "label", "node", "frame", "cloud",
 			"action", "process", "database", "queue", "stack", "storage", "agent", "usecase", "component", "boundary",
-			"control", "entity", "interface", "circle", "collections", "port", "portin", "portout");
+			"control", "entity", "interface", "circle", "collections", "port", "portin", "portout", "pin");
 
 	// The "mix_" prefix is what the line opens with.
 	private static final Collection<String> FIRST_TOKENS_MIX = Arrays.asList("mix");

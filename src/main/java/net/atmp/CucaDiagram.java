@@ -39,8 +39,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,8 +59,10 @@ import net.sourceforge.plantuml.abel.EntityFactory;
 import net.sourceforge.plantuml.abel.EntityGender;
 import net.sourceforge.plantuml.abel.EntityPortion;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
+import net.sourceforge.plantuml.abel.PortGroup;
 import net.sourceforge.plantuml.abel.Together;
 import net.sourceforge.plantuml.api.ImageDataSimple;
 import net.sourceforge.plantuml.command.CommandExecutionResult;
@@ -130,6 +134,41 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 	private final AtomicInteger cpt2 = new AtomicInteger(0);
 
 	private List<Bag> stacks = new ArrayList<>();
+
+	private Harness currentHarness;
+	// Running count of port groups declared per parent entity so each new
+	// `group "Name" { ... }` block in the same component gets a unique
+	// declaration-order ordinal.
+	private final Map<Entity, Integer> portGroupCounts = new HashMap<>();
+
+	public Harness getCurrentHarness() {
+		return currentHarness;
+	}
+
+	// The PortGroup at the top of the scope stack, if any. Used by
+	// CommandCreateElementFull to tag a freshly-created port with its
+	// group's order and within-group index.
+	public PortGroup getCurrentPortGroup() {
+		for (int i = stacks.size() - 1; i >= 0; i--) {
+			final Bag b = stacks.get(i);
+			if (b instanceof PortGroup)
+				return (PortGroup) b;
+			if (b instanceof Entity)
+				return null; // a nested non-portgroup scope cuts off the lookup
+		}
+		return null;
+	}
+
+	public CommandExecutionResult gotoPortGroup(String label) {
+		final Entity parent = getCurrentGroup();
+		if (parent == null || parent.isRoot())
+			return CommandExecutionResult.error("`group` can only be used inside a component");
+		final int order = portGroupCounts.getOrDefault(parent, 0);
+		portGroupCounts.put(parent, order + 1);
+		final PortGroup pg = new PortGroup(label, order);
+		stacks.add(pg);
+		return CommandExecutionResult.ok();
+	}
 
 	private boolean visibilityModifierPresent;
 
@@ -341,6 +380,13 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		return CommandExecutionResult.ok();
 	}
 
+	final public CommandExecutionResult gotoHarness(String label) {
+		final Harness harness = new Harness(label, currentHarness);
+		this.currentHarness = harness;
+		this.stacks.add(harness);
+		return CommandExecutionResult.ok();
+	}
+
 	final public CommandExecutionResult gotoGroup(LineLocation location, Quark<Entity> quark, Display display,
 			GroupType type) {
 		return gotoGroup(location, quark, display, type, null);
@@ -366,7 +412,9 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 
 	public boolean endGroup() {
 		if (stacks.size() > 0) {
-			stacks.remove(stacks.size() - 1);
+			final Bag removed = stacks.remove(stacks.size() - 1);
+			if (removed instanceof Harness)
+				this.currentHarness = ((Harness) removed).getParent();
 			return true;
 		}
 		return false;
@@ -471,8 +519,10 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 			// back to Smetana instead of failing, mirroring the dotIsAvailable()
 			// fallback of the JVM branch below (the pragma short-circuits, so the
 			// probe and its one-time console note only run on the default path).
+			// "!pragma layout elk" lays out with elkjs, see useElkInBrowser().
 			// ::revert when JAVA8
-			maker = (TeaVM.isC() || this.isUseSmetana() || net.sourceforge.plantuml.teavm.js.GraphVizEngineJs.vizMissingFallback()) ? new CucaDiagramFileMakerSmetana(this) : new CucaDiagramFileMakerTeaVM(this);
+			maker = useElkInBrowser() ? new CucaDiagramFileMakerElk(this)
+					: (TeaVM.isC() || this.isUseSmetana() || net.sourceforge.plantuml.teavm.js.GraphVizEngineJs.vizMissingFallback()) ? new CucaDiagramFileMakerSmetana(this) : new CucaDiagramFileMakerTeaVM(this);
 		// maker = new CucaDiagramFileMakerSmetana(this);
 		// ::done
 		else if (this.isUseElk())
@@ -493,6 +543,25 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 
 		return maker.getTextBlock(getDotStrings(), fileFormatOption);
 	}
+
+	// ::comment when JAVA8
+	/**
+	 * Whether the browser build lays this diagram out with elkjs, the JavaScript
+	 * build of ELK ("!pragma layout elk"). The first time, elk.bundled.js is loaded:
+	 * the attempt stops here and the diagram is rendered again once it is there.
+	 * When elkjs cannot be had, the default engine is used, with a console note.
+	 * Not in the C build, which has no JavaScript.
+	 */
+	private boolean useElkInBrowser() throws IOException {
+		if (TeaVM.isC() || this.isUseElk() == false)
+			return false;
+		final net.sourceforge.plantuml.teavm.js.ElkEngineJs.Status status = net.sourceforge.plantuml.teavm.js.ElkEngineJs
+				.status();
+		if (status == net.sourceforge.plantuml.teavm.js.ElkEngineJs.Status.LOADING)
+			throw new IOException("elkjs is loading");
+		return status == net.sourceforge.plantuml.teavm.js.ElkEngineJs.Status.READY;
+	}
+	// ::done
 
 	private boolean dotIsAvailable() {
 		final GraphvizRuntimeEnvironment gre = GraphvizRuntimeEnvironment.getInstance();
@@ -939,6 +1008,13 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		if (link.isSingle() && containsSimilarLink(link))
 			return;
 
+		if (currentHarness != null) {
+			final Harness root = currentHarness.getRoot();
+			link.setHarness(root);
+			root.addLink(link);
+			if (currentHarness.isNested())
+				link.setSourceLabel(currentHarness.getLabel());
+		}
 		this.links.add(link);
 	}
 

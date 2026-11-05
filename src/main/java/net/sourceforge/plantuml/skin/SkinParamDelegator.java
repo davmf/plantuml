@@ -160,6 +160,16 @@ public class SkinParamDelegator implements ISkinParam {
 	}
 
 	@Override
+	public boolean portLabelsInside() {
+		return skinParam.portLabelsInside();
+	}
+
+	@Override
+	public boolean portLabelsInside(Stereotype stereotype) {
+		return skinParam.portLabelsInside(stereotype);
+	}
+
+	@Override
 	public boolean useSwimlanes(DiagramType type) {
 		return skinParam.useSwimlanes(type);
 	}

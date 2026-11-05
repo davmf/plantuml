@@ -98,6 +98,10 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 
 	private Url url;
 
+	private Harness harness;
+	private String sourceLabel;
+	private boolean jumper;
+
 	public LinkStrategy getLinkStrategy() {
 		// return LinkStrategy.LEGACY;
 		return LinkStrategy.SIMPLEST;
@@ -447,12 +451,72 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 				&& getEntity1().getParentContainer() == getEntity2().getParentContainer();
 	}
 
+	public boolean isIntraBoardPortConnection() {
+		if (harness != null)
+			return false;
+		if (getEntity1().isGroup() || getEntity2().isGroup())
+			return false;
+		if (getEntity1().getEntityPosition().isPort() == false)
+			return false;
+		if (getEntity2().getEntityPosition().isPort() == false)
+			return false;
+		final Entity parent1 = getEntity1().getParentContainer();
+		final Entity parent2 = getEntity2().getParentContainer();
+		if (parent1 == parent2)
+			return false;
+		if (parent1 == null || parent2 == null)
+			return false;
+		// Both ports in sibling components under the same board
+		if (parent1.getParentContainer() != null
+				&& parent1.getParentContainer() == parent2.getParentContainer())
+			return true;
+		// Board port (parent is board) to component port (grandparent is board)
+		if (parent2.getParentContainer() != null
+				&& parent1 == parent2.getParentContainer())
+			return true;
+		if (parent1.getParentContainer() != null
+				&& parent2 == parent1.getParentContainer())
+			return true;
+		return false;
+	}
+
 	public Url getUrl() {
 		return url;
 	}
 
 	public void setUrl(Url url) {
 		this.url = url;
+	}
+
+	public void setHarness(Harness harness) {
+		this.harness = harness;
+	}
+
+	public Harness getHarness() {
+		return harness;
+	}
+
+	public boolean isPartOfHarness() {
+		return harness != null;
+	}
+
+	// True when this link bridges two paired pins of a <<header>> component.
+	// Set by the layout pass; rendered as a filled jumper bar between the
+	// two pin glyphs rather than as a routed arrow.
+	public void setJumper(boolean jumper) {
+		this.jumper = jumper;
+	}
+
+	public boolean isJumper() {
+		return jumper;
+	}
+
+	public void setSourceLabel(String sourceLabel) {
+		this.sourceLabel = sourceLabel;
+	}
+
+	public String getSourceLabel() {
+		return sourceLabel;
 	}
 
 	public boolean isHidden() {

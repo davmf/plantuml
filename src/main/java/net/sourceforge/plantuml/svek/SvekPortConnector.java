@@ -1,0 +1,947 @@
+/* ========================================================================
+ * PlantUML : a free UML diagram generator
+ * ========================================================================
+ *
+ * (C) Copyright 2009-2024, Arnaud Roques
+ *
+ * Project Info:  https://plantuml.com
+ *
+ * If you like this project or if you find it useful, you can support us at:
+ *
+ * https://plantuml.com/patreon (only 1$ per month!)
+ * https://plantuml.com/paypal
+ *
+ * This file is part of PlantUML.
+ *
+ * PlantUML is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PlantUML distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ *
+ *
+ * Original Author:  David Fyfe
+ *
+ *
+ */
+package net.sourceforge.plantuml.svek;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.klimt.UStroke;
+import net.sourceforge.plantuml.klimt.UTranslate;
+import net.sourceforge.plantuml.klimt.color.HColor;
+import net.sourceforge.plantuml.klimt.color.HColors;
+import net.sourceforge.plantuml.klimt.drawing.UGraphic;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
+import net.sourceforge.plantuml.klimt.geom.XPoint2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
+import net.sourceforge.plantuml.klimt.shape.UDrawable;
+import net.sourceforge.plantuml.klimt.shape.UPolygon;
+import net.sourceforge.plantuml.skin.PragmaKey;
+import net.sourceforge.plantuml.style.ISkinParam;
+import net.sourceforge.plantuml.style.PName;
+import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
+import net.sourceforge.plantuml.svek.orthoroute.OrthoRouteEngine;
+import net.sourceforge.plantuml.utils.Log;
+
+public class SvekPortConnector implements UDrawable {
+
+	private static final double PORT_RADIUS = 6.0;
+	private static final double PORT_WIDTH = 2 * PORT_RADIUS;
+	private static final double MIN_STUB = 2 * PORT_WIDTH;
+	private static final double SCAN_STEP = 4.0;
+	private static final double SCAN_LIMIT = 2000.0;
+	private static final int ARROW_WING = 9;
+	private static final int ARROW_APERTURE = 4;
+	private static final int ARROW_CONTACT = 5;
+
+	private final SvekEdge edge;
+	private final ISkinParam skinParam;
+	private final Bibliotekon bibliotekon;
+	private List<XPoint2D> waypoints;
+
+	// Stub data computed in Phase 1
+	private double srcPortX;
+	private double srcPortY;
+	private double dstPortX;
+	private double dstPortY;
+	private double srcDir;
+	private double dstDir;
+	private double srcTipX;
+	private double dstTipX;
+
+	public SvekPortConnector(SvekEdge edge, ISkinParam skinParam,
+			Bibliotekon bibliotekon) {
+		this.edge = edge;
+		this.skinParam = skinParam;
+		this.bibliotekon = bibliotekon;
+	}
+
+	SvekEdge getEdge() {
+		return edge;
+	}
+
+	// ==================================================================
+	// Pre-pass: compute all paths before drawing
+	// ==================================================================
+
+	public static void resolveAllPaths(List<SvekPortConnector> connectors,
+			List<RectangleArea> extraObstacles, RectangleArea boardBounds) {
+
+		// Phase 1: compute stub directions and initial tip positions
+		for (SvekPortConnector pc : connectors)
+			pc.computeStubs();
+
+		// Phase 1b: separate stub tips that are too close at the same X
+		separateStubTips(connectors);
+
+		// Phase 2: route via orthogonal visibility graph + A*
+		routeViaVisGraph(connectors, extraObstacles, boardBounds);
+
+		// Phase 2 fallback: any connector without waypoints gets
+		// routed via the old scan-and-test method
+		for (SvekPortConnector pc : connectors) {
+			if (pc.waypoints == null || pc.waypoints.isEmpty())
+				pc.routeMiddle(extraObstacles, boardBounds);
+		}
+
+		// Phase 3: validate all segments
+		for (SvekPortConnector pc : connectors)
+			pc.validate(extraObstacles, boardBounds);
+	}
+
+	private static void routeViaVisGraph(
+			List<SvekPortConnector> connectors,
+			List<RectangleArea> extraObstacles,
+			RectangleArea boardBounds) {
+
+		final List<OrthoRouteEngine.ConnectorData> data =
+				new ArrayList<OrthoRouteEngine.ConnectorData>();
+		Bibliotekon bib = null;
+		for (SvekPortConnector pc : connectors) {
+			if (pc.srcPortX == 0 && pc.srcPortY == 0)
+				continue;
+			if (bib == null)
+				bib = pc.bibliotekon;
+			data.add(new OrthoRouteEngine.ConnectorData(
+					pc.edge.getLink().getEntity1(),
+					pc.edge.getLink().getEntity2(),
+					pc.srcPortX, pc.srcPortY,
+					pc.dstPortX, pc.dstPortY,
+					pc.srcDir, pc.dstDir,
+					pc.srcTipX, pc.dstTipX));
+		}
+
+		// Collect all obstacles from within the svek package
+		// (Cluster.getGroup() is package-private).
+		// Skip the board (the outer container we're routing inside).
+		// Components that own the ports stay obstacles: the stub tips
+		// are already outside them, so A* never has to enter one.
+		final List<RectangleArea> obstacles =
+				new ArrayList<RectangleArea>();
+		if (bib != null) {
+			Entity boardEntity = null;
+			for (OrthoRouteEngine.ConnectorData cd : data) {
+				if (boardEntity == null && cd.srcParent != null) {
+					if (EntityImagePort.isBoardPort(cd.entity1))
+						boardEntity = cd.srcParent;
+					else if (cd.srcParent.getParentContainer()
+							!= null)
+						boardEntity = cd.srcParent
+								.getParentContainer();
+				}
+			}
+			for (Cluster cl : bib.allCluster()) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final Entity group = cl.getGroup();
+				if (boardEntity != null && group == boardEntity)
+					continue;
+				obstacles.add(rect);
+			}
+		}
+		for (RectangleArea extra : extraObstacles)
+			if (extra != null)
+				obstacles.add(extra);
+
+		OrthoRouteEngine.routeConnectors(data, obstacles,
+				boardBounds);
+
+		// Copy results back
+		int idx = 0;
+		for (SvekPortConnector pc : connectors) {
+			if (pc.srcPortX == 0 && pc.srcPortY == 0)
+				continue;
+			final OrthoRouteEngine.ConnectorData cd = data.get(idx);
+			if (cd.resultWaypoints != null)
+				pc.waypoints = cd.resultWaypoints;
+			idx++;
+		}
+	}
+
+	// ==================================================================
+	// Phase 1: Stubs
+	// ==================================================================
+
+	private void computeStubs() {
+		final XPoint2D startPt = resolveEntityCenter(
+				edge.getLink().getEntity1());
+		final XPoint2D endPt = resolveEntityCenter(
+				edge.getLink().getEntity2());
+		if (startPt == null || endPt == null)
+			return;
+
+		srcPortX = startPt.getX();
+		srcPortY = startPt.getY();
+		dstPortX = endPt.getX();
+		dstPortY = endPt.getY();
+
+		// Direction: always away from parent component centre
+		srcDir = stubDirection(edge.getLink().getEntity1(), srcPortX);
+		dstDir = stubDirection(edge.getLink().getEntity2(), dstPortX);
+
+		// Initial tip = port edge + minimum stub length,
+		// but at least past the parent component boundary
+		final double srcEdge = srcPortX + srcDir * PORT_RADIUS;
+		final double dstEdge = dstPortX + dstDir * PORT_RADIUS;
+
+		srcTipX = srcEdge + srcDir * MIN_STUB;
+		dstTipX = dstEdge + dstDir * MIN_STUB;
+
+		final RectangleArea srcBounds = getParentClusterBounds(
+				edge.getLink().getEntity1());
+		final RectangleArea dstBounds = getParentClusterBounds(
+				edge.getLink().getEntity2());
+
+		if (srcBounds != null) {
+			if (EntityImagePort.isBoardPort(edge.getLink().getEntity1())) {
+				if (srcDir > 0)
+					srcTipX = Math.max(srcTipX,
+							srcBounds.getMinX() + PORT_WIDTH);
+				else
+					srcTipX = Math.min(srcTipX,
+							srcBounds.getMaxX() - PORT_WIDTH);
+			} else {
+				if (srcDir > 0)
+					srcTipX = Math.max(srcTipX,
+							srcBounds.getMaxX() + PORT_WIDTH);
+				else
+					srcTipX = Math.min(srcTipX,
+							srcBounds.getMinX() - PORT_WIDTH);
+			}
+		}
+		if (dstBounds != null) {
+			if (EntityImagePort.isBoardPort(edge.getLink().getEntity2())) {
+				if (dstDir > 0)
+					dstTipX = Math.max(dstTipX,
+							dstBounds.getMinX() + PORT_WIDTH);
+				else
+					dstTipX = Math.min(dstTipX,
+							dstBounds.getMaxX() - PORT_WIDTH);
+			} else {
+				if (dstDir > 0)
+					dstTipX = Math.max(dstTipX,
+							dstBounds.getMaxX() + PORT_WIDTH);
+				else
+					dstTipX = Math.min(dstTipX,
+							dstBounds.getMinX() - PORT_WIDTH);
+			}
+		}
+	}
+
+	/**
+	 * Determine stub direction by comparing port X to the centre of its
+	 * parent component. Port on the right half exits right, left half
+	 * exits left. Board ports are inverted: stubs point inward.
+	 */
+	private double stubDirection(Entity portEntity, double portX) {
+		final RectangleArea bounds = getParentClusterBounds(portEntity);
+		if (bounds == null)
+			return 1.0;
+		final double centreX = (bounds.getMinX() + bounds.getMaxX()) / 2;
+		if (EntityImagePort.isBoardPort(portEntity))
+			return (portX >= centreX) ? -1.0 : 1.0;
+		return (portX >= centreX) ? 1.0 : -1.0;
+	}
+
+	// ------------------------------------------------------------------
+	// Phase 1b: separate stub tips that land at similar X
+	// ------------------------------------------------------------------
+
+	private static final class TipRef implements Comparable<TipRef> {
+		final SvekPortConnector owner;
+		final boolean isSrc;
+		TipRef(SvekPortConnector owner, boolean isSrc) {
+			this.owner = owner;
+			this.isSrc = isSrc;
+		}
+		double tipX() {
+			return isSrc ? owner.srcTipX : owner.dstTipX;
+		}
+		double tipY() {
+			return isSrc ? owner.srcPortY : owner.dstPortY;
+		}
+		double dir() {
+			return isSrc ? owner.srcDir : owner.dstDir;
+		}
+		void setTipX(double x) {
+			if (isSrc)
+				owner.srcTipX = x;
+			else
+				owner.dstTipX = x;
+		}
+		public int compareTo(TipRef o) {
+			return Double.compare(tipX(), o.tipX());
+		}
+	}
+
+	private static void separateStubTips(List<SvekPortConnector> connectors) {
+		// Separate right-going and left-going tips independently
+		final List<TipRef> rightTips = new ArrayList<TipRef>();
+		final List<TipRef> leftTips = new ArrayList<TipRef>();
+		for (SvekPortConnector pc : connectors) {
+			if (pc.srcPortX == 0 && pc.srcPortY == 0)
+				continue;
+			final TipRef src = new TipRef(pc, true);
+			final TipRef dst = new TipRef(pc, false);
+			if (src.dir() > 0)
+				rightTips.add(src);
+			else
+				leftTips.add(src);
+			if (dst.dir() > 0)
+				rightTips.add(dst);
+			else
+				leftTips.add(dst);
+		}
+		separateTipGroup(rightTips);
+		separateTipGroup(leftTips);
+	}
+
+	private static void separateTipGroup(List<TipRef> tips) {
+		Collections.sort(tips);
+		int i = 0;
+		while (i < tips.size()) {
+			final List<TipRef> cluster = new ArrayList<TipRef>();
+			cluster.add(tips.get(i));
+			int j = i + 1;
+			while (j < tips.size()
+					&& tips.get(j).tipX() - cluster.get(0).tipX()
+							< PORT_WIDTH) {
+				cluster.add(tips.get(j));
+				j++;
+			}
+			if (cluster.size() > 1)
+				distributeStubCluster(cluster);
+			i = j;
+		}
+	}
+
+	private static void distributeStubCluster(List<TipRef> cluster) {
+		double sumX = 0;
+		for (TipRef t : cluster)
+			sumX += t.tipX();
+		final double centreX = sumX / cluster.size();
+		final int n = cluster.size();
+		final double totalSpan = (n - 1) * PORT_WIDTH;
+		final double startX = centreX - totalSpan / 2;
+
+		// Sort within cluster so stubs going in the same direction
+		// are ordered consistently
+		Collections.sort(cluster, new java.util.Comparator<TipRef>() {
+			public int compare(TipRef a, TipRef b) {
+				return Double.compare(a.tipY(), b.tipY());
+			}
+		});
+
+		for (int k = 0; k < n; k++) {
+			final double newX = startX + k * PORT_WIDTH;
+			final TipRef tip = cluster.get(k);
+			// Only extend outward — never shorten the stub
+			if (tip.dir() > 0)
+				tip.setTipX(Math.max(tip.tipX(), newX));
+			else
+				tip.setTipX(Math.min(tip.tipX(), newX));
+		}
+	}
+
+	// ==================================================================
+	// Single vertical attempt
+	// ==================================================================
+
+	/**
+	 * Try to connect src and dst with a single vertical segment
+	 * (3-segment path: srcStub → vertical → dstStub). Scans for a
+	 * clear X between the two tips where the vertical from srcPortY
+	 * to dstPortY and both horizontal stubs are all clear.
+	 * Returns true and populates waypoints if successful.
+	 */
+	private boolean trySingleVertical(double srcEdge, double dstEdge,
+			List<RectangleArea> obstacles, RectangleArea boardBounds) {
+		final double yMin = Math.min(srcPortY, dstPortY);
+		final double yMax = Math.max(srcPortY, dstPortY);
+		final double lo = Math.min(srcTipX, dstTipX);
+		final double hi = Math.max(srcTipX, dstTipX);
+		final double naturalX = (srcTipX + dstTipX) / 2;
+
+		// Enforce board boundary on scan range
+		double scanLo = lo;
+		double scanHi = hi;
+		if (boardBounds != null) {
+			scanLo = Math.max(scanLo,
+					boardBounds.getMinX() + PORT_WIDTH);
+			scanHi = Math.min(scanHi,
+					boardBounds.getMaxX() - PORT_WIDTH);
+		}
+
+		for (double offset = 0; offset < SCAN_LIMIT;
+				offset += SCAN_STEP) {
+			final double x1 = naturalX + offset;
+			if (x1 >= scanLo && x1 <= scanHi
+					&& isSingleVerticalClear(x1, yMin, yMax,
+							srcEdge, dstEdge, obstacles)) {
+				buildSingleVerticalPath(srcEdge, dstEdge, x1);
+				return true;
+			}
+			if (offset == 0)
+				continue;
+			final double x2 = naturalX - offset;
+			if (x2 >= scanLo && x2 <= scanHi
+					&& isSingleVerticalClear(x2, yMin, yMax,
+							srcEdge, dstEdge, obstacles)) {
+				buildSingleVerticalPath(srcEdge, dstEdge, x2);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isSingleVerticalClear(double x, double yMin,
+			double yMax, double srcEdge, double dstEdge,
+			List<RectangleArea> obstacles) {
+		// Vertical must be outside both parent component boundaries
+		final RectangleArea srcBounds = getParentClusterBounds(
+				edge.getLink().getEntity1());
+		final RectangleArea dstBounds = getParentClusterBounds(
+				edge.getLink().getEntity2());
+		if (srcBounds != null && x > srcBounds.getMinX() - PORT_WIDTH
+				&& x < srcBounds.getMaxX() + PORT_WIDTH
+				&& yMax > srcBounds.getMinY() && yMin < srcBounds.getMaxY())
+			return false;
+		if (dstBounds != null && x > dstBounds.getMinX() - PORT_WIDTH
+				&& x < dstBounds.getMaxX() + PORT_WIDTH
+				&& yMax > dstBounds.getMinY() && yMin < dstBounds.getMaxY())
+			return false;
+		if (verticalCollides(x, yMin, yMax, obstacles))
+			return false;
+		// Check stubs against general obstacles
+		if (horizontalCollides(srcPortY,
+				Math.min(srcEdge, x), Math.max(srcEdge, x),
+				obstacles))
+			return false;
+		if (horizontalCollides(dstPortY,
+				Math.min(dstEdge, x), Math.max(dstEdge, x),
+				obstacles))
+			return false;
+		// Stubs must not cross through their own parent body —
+		// the vertical must be on the port's side of its parent
+		if (srcBounds != null
+				&& stubCrossesParent(x, srcEdge, srcPortY, srcBounds))
+			return false;
+		if (dstBounds != null
+				&& stubCrossesParent(x, dstEdge, dstPortY, dstBounds))
+			return false;
+		return true;
+	}
+
+	private static boolean stubCrossesParent(double vertX,
+			double portEdge, double stubY, RectangleArea parent) {
+		if (stubY < parent.getMinY() || stubY > parent.getMaxY())
+			return false;
+		final double xMin = Math.min(vertX, portEdge);
+		final double xMax = Math.max(vertX, portEdge);
+		return (xMin < parent.getMinX() && xMax > parent.getMinX())
+				|| (xMin < parent.getMaxX() && xMax > parent.getMaxX());
+	}
+
+	private void buildSingleVerticalPath(double srcEdge,
+			double dstEdge, double vertX) {
+		waypoints.add(new XPoint2D(srcEdge, srcPortY));
+		waypoints.add(new XPoint2D(vertX, srcPortY));
+		waypoints.add(new XPoint2D(vertX, dstPortY));
+		waypoints.add(new XPoint2D(dstEdge, dstPortY));
+	}
+
+	// ==================================================================
+	// Phase 2: Route middle
+	// ==================================================================
+
+	private void routeMiddle(List<RectangleArea> extraObstacles,
+			RectangleArea boardBounds) {
+		if (srcPortX == 0 && srcPortY == 0)
+			return;
+
+		final double srcEdge = srcPortX + srcDir * PORT_RADIUS;
+		final double dstEdge = dstPortX + dstDir * PORT_RADIUS;
+
+		final List<RectangleArea> obstacles = collectObstacles(extraObstacles);
+
+		// Push stub tips past component obstacles only (not the extra
+		// obstacles: stubs may share space with other connections to the
+		// same component)
+		final List<RectangleArea> clusterObstacles =
+				collectObstacles(Collections.<RectangleArea>emptyList());
+		srcTipX = findClearStubX(srcTipX, srcEdge, srcPortY, srcDir,
+				clusterObstacles);
+		dstTipX = findClearStubX(dstTipX, dstEdge, dstPortY, dstDir,
+				clusterObstacles);
+
+		// Enforce board boundary on tips
+		if (boardBounds != null) {
+			final double innerLeft = boardBounds.getMinX() + PORT_WIDTH;
+			final double innerRight = boardBounds.getMaxX() - PORT_WIDTH;
+			srcTipX = Math.max(innerLeft, Math.min(innerRight, srcTipX));
+			dstTipX = Math.max(innerLeft, Math.min(innerRight, dstTipX));
+		}
+
+		// Route from srcTip to dstTip
+		waypoints = new ArrayList<XPoint2D>();
+
+		final RectangleArea srcParent = getParentClusterBounds(
+				edge.getLink().getEntity1());
+		final RectangleArea dstParent = getParentClusterBounds(
+				edge.getLink().getEntity2());
+		final boolean sameTipClear = Math.abs(srcTipX - dstTipX) < 1.0
+				&& (srcParent == null || stubCrossesParent(
+						srcTipX, srcEdge, srcPortY, srcParent) == false)
+				&& (dstParent == null || stubCrossesParent(
+						srcTipX, dstEdge, dstPortY, dstParent) == false);
+		if (sameTipClear) {
+			// Tips at same X — single vertical connects them
+			waypoints.add(new XPoint2D(srcEdge, srcPortY));
+			waypoints.add(new XPoint2D(srcTipX, srcPortY));
+			waypoints.add(new XPoint2D(srcTipX, dstPortY));
+			waypoints.add(new XPoint2D(dstEdge, dstPortY));
+		} else if (trySingleVertical(srcEdge, dstEdge, obstacles,
+				boardBounds)) {
+			// Found a single vertical that connects both stubs
+		} else {
+			// Need a horizontal crossover between the two verticals.
+			// Middle segments must avoid parent clusters too — only
+			// stubs are exempt from parent collision. Don't add the
+			// board cluster (already excluded from obstacles) since
+			// connectors route inside it.
+			final List<RectangleArea> middleObs =
+					new ArrayList<RectangleArea>(obstacles);
+			if (srcParent != null
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity1()) == false)
+				middleObs.add(srcParent);
+			if (dstParent != null
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity2()) == false)
+				middleObs.add(dstParent);
+
+			final double xMin = Math.min(srcTipX, dstTipX);
+			final double xMax = Math.max(srcTipX, dstTipX);
+			final double naturalCrossY = (srcPortY + dstPortY) / 2;
+			double crossY = findClearHorizontal(naturalCrossY, xMin,
+					xMax, middleObs);
+
+			// Enforce board boundary on crossover Y
+			if (boardBounds != null) {
+				final double innerTop = boardBounds.getMinY()
+						+ PORT_WIDTH;
+				final double innerBottom = boardBounds.getMaxY()
+						- PORT_WIDTH;
+				if (crossY < innerTop || crossY > innerBottom)
+					crossY = findClearHorizontalInBounds(
+							naturalCrossY, xMin, xMax, middleObs,
+							innerTop, innerBottom);
+			}
+
+			// Check verticals over their actual Y spans —
+			// try outward first (keeps stubs short), then inward
+			final double srcVMin = Math.min(srcPortY, crossY);
+			final double srcVMax = Math.max(srcPortY, crossY);
+			final double dstVMin = Math.min(dstPortY, crossY);
+			final double dstVMax = Math.max(dstPortY, crossY);
+			if (verticalCollides(srcTipX, srcVMin, srcVMax,
+					middleObs)) {
+				final double outward = findClearVertical(srcTipX,
+						srcVMin, srcVMax, srcDir, middleObs);
+				if (verticalCollides(outward, srcVMin, srcVMax,
+						middleObs) == false)
+					srcTipX = outward;
+				else
+					srcTipX = findClearVerticalBidirectional(srcTipX,
+							srcVMin, srcVMax, middleObs);
+			}
+			if (verticalCollides(dstTipX, dstVMin, dstVMax,
+					middleObs)) {
+				final double outward = findClearVertical(dstTipX,
+						dstVMin, dstVMax, dstDir, middleObs);
+				if (verticalCollides(outward, dstVMin, dstVMax,
+						middleObs) == false)
+					dstTipX = outward;
+				else
+					dstTipX = findClearVerticalBidirectional(dstTipX,
+							dstVMin, dstVMax, middleObs);
+			}
+
+			// Re-check crossover with final positions
+			final double xMin2 = Math.min(srcTipX, dstTipX);
+			final double xMax2 = Math.max(srcTipX, dstTipX);
+			crossY = findClearHorizontal(crossY, xMin2, xMax2,
+					middleObs);
+
+			waypoints.add(new XPoint2D(srcEdge, srcPortY));
+			waypoints.add(new XPoint2D(srcTipX, srcPortY));
+			waypoints.add(new XPoint2D(srcTipX, crossY));
+			waypoints.add(new XPoint2D(dstTipX, crossY));
+			waypoints.add(new XPoint2D(dstTipX, dstPortY));
+			waypoints.add(new XPoint2D(dstEdge, dstPortY));
+		}
+	}
+
+	// ==================================================================
+	// Phase 3: Validate
+	// ==================================================================
+
+	private void validate(List<RectangleArea> extraObstacles,
+			RectangleArea boardBounds) {
+		if (waypoints == null || waypoints.size() < 2)
+			return;
+
+		final List<RectangleArea> allObstacles =
+				collectObstacles(extraObstacles);
+		final List<RectangleArea> clusterOnly =
+				collectObstacles(Collections.<RectangleArea>emptyList());
+		final String ent1 = edge.getLink().getEntity1().getName();
+		final String ent2 = edge.getLink().getEntity2().getName();
+		final int last = waypoints.size() - 2;
+
+		for (int i = 0; i < waypoints.size() - 1; i++) {
+			final XPoint2D a = waypoints.get(i);
+			final XPoint2D b = waypoints.get(i + 1);
+			// Stubs (first and last segments) only check against clusters,
+			// not the extra obstacles
+			final List<RectangleArea> obs = (i == 0 || i == last)
+					? clusterOnly : allObstacles;
+			if (segmentCollides(a.getX(), a.getY(), b.getX(), b.getY(),
+					obs)) {
+				final StringBuilder sb = new StringBuilder();
+				sb.append("Port connector " + ent1 + "->" + ent2
+						+ " seg " + i + " obstacle collision ("
+						+ a.getX() + "," + a.getY() + ")->("
+						+ b.getX() + "," + b.getY() + ")");
+				for (RectangleArea r : obs)
+					if (segmentCollides(a.getX(), a.getY(),
+							b.getX(), b.getY(),
+							Collections.singletonList(r)))
+						sb.append("\n  hit: x=[" + r.getMinX()
+								+ ".." + r.getMaxX() + "] y=["
+								+ r.getMinY() + ".."
+								+ r.getMaxY() + "]");
+				final String msg = sb.toString();
+				Log.info(() -> msg);
+			}
+
+			final boolean srcBoardStub = i == 0
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity1());
+			final boolean dstBoardStub = i == last
+					&& EntityImagePort.isBoardPort(
+							edge.getLink().getEntity2());
+			if (boardBounds != null
+					&& srcBoardStub == false && dstBoardStub == false
+					&& segmentOutsideBoard(a.getX(), a.getY(),
+							b.getX(), b.getY(), boardBounds)) {
+				final int seg = i;
+				Log.info(() -> "Port connector " + ent1 + "->" + ent2
+						+ " seg " + seg + " outside board boundary");
+			}
+		}
+	}
+
+	private static boolean segmentOutsideBoard(double x1, double y1,
+			double x2, double y2, RectangleArea board) {
+		final double margin = PORT_WIDTH;
+		final double left = board.getMinX() + margin;
+		final double right = board.getMaxX() - margin;
+		final double top = board.getMinY() + margin;
+		final double bottom = board.getMaxY() - margin;
+		return Math.min(x1, x2) < left || Math.max(x1, x2) > right
+				|| Math.min(y1, y2) < top || Math.max(y1, y2) > bottom;
+	}
+
+	// ==================================================================
+	// Collision detection
+	// ==================================================================
+
+	static boolean verticalCollides(double x, double yMin, double yMax,
+			List<RectangleArea> obstacles) {
+		for (RectangleArea rect : obstacles) {
+			if (x > rect.getMinX() - PORT_WIDTH
+					&& x < rect.getMaxX() + PORT_WIDTH
+					&& yMax > rect.getMinY() - PORT_WIDTH
+					&& yMin < rect.getMaxY() + PORT_WIDTH)
+				return true;
+		}
+		return false;
+	}
+
+	static boolean horizontalCollides(double y, double xMin, double xMax,
+			List<RectangleArea> obstacles) {
+		for (RectangleArea rect : obstacles) {
+			if (y > rect.getMinY() - PORT_WIDTH
+					&& y < rect.getMaxY() + PORT_WIDTH
+					&& xMax > rect.getMinX() - PORT_WIDTH
+					&& xMin < rect.getMaxX() + PORT_WIDTH)
+				return true;
+		}
+		return false;
+	}
+
+	private static boolean segmentCollides(double x1, double y1,
+			double x2, double y2, List<RectangleArea> obstacles) {
+		if (Math.abs(x1 - x2) < 0.5)
+			return verticalCollides((x1 + x2) / 2,
+					Math.min(y1, y2), Math.max(y1, y2), obstacles);
+		if (Math.abs(y1 - y2) < 0.5)
+			return horizontalCollides((y1 + y2) / 2,
+					Math.min(x1, x2), Math.max(x1, x2), obstacles);
+		return false;
+	}
+
+	/**
+	 * Scan outward from proposedX (both directions) to find a clear
+	 * vertical position.
+	 */
+	static double findClearVerticalBidirectional(double proposedX,
+			double yMin, double yMax, List<RectangleArea> obstacles) {
+		for (double offset = 0; offset < SCAN_LIMIT; offset += SCAN_STEP) {
+			if (verticalCollides(proposedX + offset, yMin, yMax,
+					obstacles) == false)
+				return proposedX + offset;
+			if (offset > 0 && verticalCollides(proposedX - offset, yMin,
+					yMax, obstacles) == false)
+				return proposedX - offset;
+		}
+		return proposedX;
+	}
+
+	// ==================================================================
+	// Scan helpers
+	// ==================================================================
+
+	private static double findClearVertical(double vertX, double yMin,
+			double yMax, double dir, List<RectangleArea> obstacles) {
+		for (double candidate = vertX;
+				Math.abs(candidate - vertX) < SCAN_LIMIT;
+				candidate += dir * SCAN_STEP) {
+			if (verticalCollides(candidate, yMin, yMax,
+					obstacles) == false)
+				return candidate;
+		}
+		return vertX;
+	}
+
+	private static double findClearStubX(double vertX, double portEdge,
+			double stubY, double dir, List<RectangleArea> obstacles) {
+		for (double candidate = vertX;
+				Math.abs(candidate - portEdge) < SCAN_LIMIT;
+				candidate += dir * SCAN_STEP) {
+			final double xMin = Math.min(candidate, portEdge);
+			final double xMax = Math.max(candidate, portEdge);
+			if (horizontalCollides(stubY, xMin, xMax, obstacles) == false)
+				return candidate;
+		}
+		return vertX;
+	}
+
+	private static double findClearHorizontal(double proposedY,
+			double xMin, double xMax, List<RectangleArea> obstacles) {
+		for (double offset = 0; offset < SCAN_LIMIT; offset += SCAN_STEP) {
+			final double y1 = proposedY + offset;
+			if (horizontalCollides(y1, xMin, xMax, obstacles) == false)
+				return y1;
+			if (offset == 0)
+				continue;
+			final double y2 = proposedY - offset;
+			if (horizontalCollides(y2, xMin, xMax, obstacles) == false)
+				return y2;
+		}
+		return proposedY;
+	}
+
+	private static double findClearHorizontalInBounds(double proposedY,
+			double xMin, double xMax, List<RectangleArea> obstacles,
+			double boundsTop, double boundsBottom) {
+		for (double offset = 0; offset < SCAN_LIMIT; offset += SCAN_STEP) {
+			final double y1 = proposedY + offset;
+			if (y1 >= boundsTop && y1 <= boundsBottom
+					&& horizontalCollides(y1, xMin, xMax,
+							obstacles) == false)
+				return y1;
+			if (offset == 0)
+				continue;
+			final double y2 = proposedY - offset;
+			if (y2 >= boundsTop && y2 <= boundsBottom
+					&& horizontalCollides(y2, xMin, xMax,
+							obstacles) == false)
+				return y2;
+		}
+		return proposedY;
+	}
+
+	// ==================================================================
+	// Obstacle collection
+	// ==================================================================
+
+	private RectangleArea getParentClusterBounds(Entity entity) {
+		if (bibliotekon == null)
+			return null;
+		final Entity parent = entity.getParentContainer();
+		if (parent == null)
+			return null;
+		final Cluster cl = bibliotekon.getCluster(parent);
+		if (cl == null)
+			return null;
+		return cl.getRectangleArea();
+	}
+
+	private List<RectangleArea> collectObstacles(
+			List<RectangleArea> extraObstacles) {
+		final List<RectangleArea> obstacles = new ArrayList<RectangleArea>();
+		if (bibliotekon == null)
+			return obstacles;
+
+		final Entity entity1 = edge.getLink().getEntity1();
+		final Entity entity2 = edge.getLink().getEntity2();
+		final Entity parent1 = entity1.getParentContainer();
+		final Entity parent2 = entity2.getParentContainer();
+		Entity board;
+		if (EntityImagePort.isBoardPort(entity1))
+			board = parent1;
+		else if (EntityImagePort.isBoardPort(entity2))
+			board = parent2;
+		else
+			board = (parent1 != null)
+					? parent1.getParentContainer() : null;
+
+		for (Cluster cl : bibliotekon.allCluster()) {
+			final RectangleArea rect = cl.getRectangleArea();
+			if (rect == null)
+				continue;
+			if (cl.getGroup() == board)
+				continue;
+			if (cl.getGroup() == parent1)
+				continue;
+			if (cl.getGroup() == parent2)
+				continue;
+			obstacles.add(rect);
+		}
+
+		for (RectangleArea extra : extraObstacles) {
+			if (extra != null)
+				obstacles.add(extra);
+		}
+
+		return obstacles;
+	}
+
+	// ==================================================================
+	// Drawing
+	// ==================================================================
+
+	@Override
+	public void drawU(UGraphic ug) {
+		if (waypoints == null || waypoints.size() < 2)
+			return;
+
+		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(StyleQueries.ARROW);
+		final HColor color = style.value(PName.LineColor)
+				.asColor(skinParam.getIHtmlColorSet());
+		final UGraphic ugLine = ug.apply(color).apply(HColors.none().bg())
+				.apply(UStroke.simple());
+
+		final DotPath path = buildDotPath(waypoints);
+		final String radiusStr = skinParam.getPragma()
+				.getValue(PragmaKey.EDGE_CORNER_RADIUS);
+		if (radiusStr != null) {
+			try {
+				final double radius = Double.parseDouble(radiusStr);
+				if (radius > 0)
+					path.muteToRoundOrthogonalPaths(radius);
+			} catch (NumberFormatException e) {
+				// Ignore invalid radius values
+			}
+		}
+		ugLine.draw(path);
+
+		// Arrow at destination
+		final XPoint2D last = waypoints.get(waypoints.size() - 1);
+		final XPoint2D prev = waypoints.get(waypoints.size() - 2);
+		final double arrowDir = Math.signum(last.getX() - prev.getX());
+		if (Math.abs(arrowDir) > 0.5)
+			drawHArrow(ugLine, last.getX(), last.getY(), arrowDir);
+	}
+
+	private static DotPath buildDotPath(List<XPoint2D> pts) {
+		final List<XCubicCurve2D> beziers =
+				new ArrayList<XCubicCurve2D>();
+		for (int i = 0; i < pts.size() - 1; i++) {
+			final XPoint2D a = pts.get(i);
+			final XPoint2D b = pts.get(i + 1);
+			beziers.add(new XCubicCurve2D(
+					a.getX(), a.getY(),
+					a.getX(), a.getY(),
+					b.getX(), b.getY(),
+					b.getX(), b.getY()));
+		}
+		return DotPath.fromBeziers(beziers);
+	}
+
+	private void drawHArrow(UGraphic ug, double tipX, double tipY,
+			double dir) {
+		final HColor color = ug.getParam().getColor();
+		if (color != null)
+			ug = ug.apply(color.bg());
+		final UPolygon polygon = new UPolygon();
+		polygon.addPoint(0, 0);
+		polygon.addPoint(-dir * ARROW_WING, -ARROW_APERTURE);
+		polygon.addPoint(-dir * ARROW_CONTACT, 0);
+		polygon.addPoint(-dir * ARROW_WING, ARROW_APERTURE);
+		polygon.addPoint(0, 0);
+		ug.apply(new UTranslate(tipX, tipY)).draw(polygon);
+	}
+
+	private XPoint2D resolveEntityCenter(Entity entity) {
+		if (bibliotekon == null)
+			return null;
+		final SvekNode node = bibliotekon.getNode(entity);
+		if (node == null)
+			return null;
+		final double cx = node.getMinX() + node.getSize().getWidth() / 2;
+		final double cy = node.getMinY() + node.getSize().getHeight() / 2;
+		return new XPoint2D(cx, cy);
+	}
+
+}

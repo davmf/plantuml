@@ -180,7 +180,11 @@ tasks.register("npmPackage") {
 			// (loaded from the root), third-party code keeps its vendor/ folder,
 			// license included.
 			from(teavmSrcDir.dir("vendor")) {
-				exclude("viz-global.js")
+				// elkjs (EPL-2.0 OR GPL-3.0) is not shipped in the MIT package, like the
+				// ELK jars, which only the EPL variant depends on: there,
+				// "!pragma layout elk" falls back to the default engine unless the
+				// host provides elkjs itself (PLANTUML_ELK)
+				exclude("viz-global.js", "elk.bundled.js", "elkjs-LICENSE.md")
 				into("vendor")
 			}
 			into(pkgDir)

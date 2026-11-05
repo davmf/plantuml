@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 
 import net.sourceforge.plantuml.StringUtils;
 import net.sourceforge.plantuml.abel.Entity;
+import net.sourceforge.plantuml.abel.GroupType;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.annotation.Explain;
 import net.sourceforge.plantuml.classdiagram.AbstractEntityDiagram;
@@ -75,7 +76,7 @@ import net.sourceforge.plantuml.utils.LineLocation;
 
 public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiagram> {
 
-	public static final String ALL_TYPES = "person|artifact|actor/|actor|folder|card|file|package|rectangle|hexagon|label|node|frame|cloud|action|process|database|queue|stack|storage|agent|usecase/|usecase|component|boundary|control|entity|interface|circle|collections|port|portin|portout";
+	public static final String ALL_TYPES = "person|artifact|actor/|actor|folder|card|file|package|rectangle|hexagon|label|node|frame|cloud|action|process|database|queue|stack|storage|agent|usecase/|usecase|component|boundary|control|entity|interface|circle|collections|port|portin|portout|pin";
 
 	public CommandCreateElementFull() {
 		super(getRegexConcat());
@@ -289,6 +290,9 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 		} else if (symbol.equalsIgnoreCase("port")) {
 			type = LeafType.PORTIN;
 			usymbol = null;
+		} else if (symbol.equalsIgnoreCase("pin")) {
+			type = LeafType.PIN;
+			usymbol = null;
 		} else if (symbol.equalsIgnoreCase("usecase")) {
 			type = LeafType.USECASE;
 			usymbol = null;
@@ -323,12 +327,27 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 		if ((type == LeafType.PORTIN || type == LeafType.PORTOUT) && diagram.getCurrentGroup().isRoot())
 			return CommandExecutionResult.error("Port can only be used inside an element and not at root level");
 
+		if (type == LeafType.PIN) {
+			final Entity currentGroup = diagram.getCurrentGroup();
+			if (currentGroup.isRoot() || currentGroup.getGroupType() != GroupType.CONNECTOR)
+				return CommandExecutionResult.error("Pin can only be used inside a connector");
+		}
+
 		Entity entity = quark.getData();
 		if (entity == null)
 			entity = diagram.reallyCreateLeaf(location, quark, Display.getWithNewlines(diagram.getPragma(), display),
 					type, usymbol);
 
 		entity.setDisplay(Display.getWithNewlines(diagram.getPragma(), display));
+
+		// If we're inside a `group "Name" { ... }` block, tag the port
+		// with its group label, group ordinal, and within-group index so
+		// the ELK port-emission code can place it.
+		if (type == LeafType.PORTIN || type == LeafType.PORTOUT) {
+			final net.sourceforge.plantuml.abel.PortGroup pg = diagram.getCurrentPortGroup();
+			if (pg != null)
+				entity.setPortGroup(pg.getLabel(), pg.getGroupOrder(), pg.nextPortIndex());
+		}
 
 		if (stereotype != null)
 			entity.setStereotype(Stereotype.build(stereotype, diagram.getSkinParam().getCircledCharacterRadius(),
@@ -350,6 +369,22 @@ public class CommandCreateElementFull extends SingleLineCommand2<DescriptionDiag
 		final HColor lineColor = s == null ? null : diagram.getSkinParam().getIHtmlColorSet().getColor(s);
 		if (lineColor != null)
 			colors = colors.add(ColorType.LINE, lineColor);
+
+		// Inherit colour from an enclosing `group "Name" #Color { ... }`
+		// when the port itself has no explicit BACK colour. Mirror the
+		// BACK colour into TEXT so EntityImagePort tints the label too.
+		if (type == LeafType.PORTIN || type == LeafType.PORTOUT) {
+			final net.sourceforge.plantuml.abel.PortGroup pg = diagram.getCurrentPortGroup();
+			if (pg != null && pg.getColors() != null) {
+				final HColor groupColor = pg.getColors().getColor(ColorType.BACK);
+				if (groupColor != null) {
+					if (colors.getColor(ColorType.BACK) == null)
+						colors = colors.add(ColorType.BACK, groupColor);
+					if (colors.getColor(ColorType.TEXT) == null)
+						colors = colors.add(ColorType.TEXT, groupColor);
+				}
+			}
+		}
 
 		entity.setColors(colors);
 

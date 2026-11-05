@@ -35,21 +35,32 @@
  */
 package net.sourceforge.plantuml.svek;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import net.sourceforge.plantuml.abel.Harness;
+import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.annotation.PerformanceIssue;
 import net.sourceforge.plantuml.dot.DotData;
+import net.sourceforge.plantuml.dot.DotSplines;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.color.HColors;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
+import net.sourceforge.plantuml.klimt.geom.XCubicCurve2D;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
+import net.sourceforge.plantuml.klimt.shape.DotPath;
 import net.sourceforge.plantuml.klimt.shape.TextBlockUtils;
 import net.sourceforge.plantuml.klimt.shape.UHidden;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.stereo.Stereotype;
 import net.sourceforge.plantuml.style.PName;
 import net.sourceforge.plantuml.style.Style;
@@ -93,11 +104,83 @@ public final class SvekResult implements IEntityImage {
 
 		computeKal();
 
+		clusterManager.getBibliotekon().clearPlacedSegments();
+		clusterManager.getBibliotekon().clearBlockedShifts();
+		final Map<Harness, List<Link>> harnessMap = new LinkedHashMap<Harness, List<Link>>();
+		final Set<SvekEdge> harnessEdges = new HashSet<SvekEdge>();
 		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
 			final UGraphic ug2 = svekEdge.isHidden() ? ug.apply(UHidden.HIDDEN) : ug;
 			svekEdge.setSharedIds(ids);
 			svekEdge.drawU(ug2);
+
+			final Harness h = svekEdge.getLink().getHarness();
+			if (h != null) {
+				List<Link> list = harnessMap.get(h);
+				if (list == null) {
+					list = new ArrayList<Link>();
+					harnessMap.put(h, list);
+				}
+				list.add(svekEdge.getLink());
+				harnessEdges.add(svekEdge);
+			}
 		}
+
+		final List<SvekPortConnector> portConnectors = new ArrayList<SvekPortConnector>();
+		for (SvekEdge svekEdge : clusterManager.getBibliotekon().allLines()) {
+			if (svekEdge.isHidden() || svekEdge.getLink().isInvis())
+				continue;
+			if (svekEdge.getLink().isIntraBoardPortConnection())
+				portConnectors.add(new SvekPortConnector(svekEdge,
+						dotData.getSkinParam(), clusterManager.getBibliotekon()));
+		}
+
+		final List<SvekHarness> svekHarnesses = new ArrayList<SvekHarness>();
+		for (Map.Entry<Harness, List<Link>> entry : harnessMap.entrySet())
+			svekHarnesses.add(new SvekHarness(entry.getKey(), entry.getValue(),
+					dotData.getSkinParam(), clusterManager.getBibliotekon()));
+		SvekHarness.resolveOverlaps(svekHarnesses,
+				collectNonHarnessVerticalSegments(harnessEdges));
+		for (SvekHarness svekHarness : svekHarnesses)
+			svekHarness.drawU(ug);
+
+		// Collect harness spines as obstacles for port connector routing
+		final List<RectangleArea> harnessSpines = new ArrayList<RectangleArea>();
+		for (SvekHarness svekHarness : svekHarnesses)
+			harnessSpines.addAll(svekHarness.getRenderedSpines());
+
+		// Find board cluster bounds for boundary enforcement
+		RectangleArea boardBounds = null;
+		if (portConnectors.isEmpty() == false) {
+			final SvekEdge firstEdge = portConnectors.get(0).getEdge();
+			final net.sourceforge.plantuml.abel.Entity entity1 =
+					firstEdge.getLink().getEntity1();
+			final net.sourceforge.plantuml.abel.Entity portParent =
+					entity1.getParentContainer();
+			if (portParent != null) {
+				final net.sourceforge.plantuml.abel.Entity board;
+				if (EntityImagePort.isBoardPort(entity1))
+					board = portParent;
+				else
+					board = portParent.getParentContainer();
+				if (board != null) {
+					final Cluster boardCluster =
+							clusterManager.getBibliotekon().getCluster(board);
+					if (boardCluster != null)
+						boardBounds = boardCluster.getRectangleArea();
+				}
+			}
+		}
+
+		// Pre-compute all connector paths, then draw
+		SvekPortConnector.resolveAllPaths(portConnectors, harnessSpines,
+				boardBounds);
+		for (SvekPortConnector pc : portConnectors)
+			pc.drawU(ug);
+
+		// Harness labels are drawn last, on top of every harness line and
+		// every connector.
+		for (SvekHarness svekHarness : svekHarnesses)
+			svekHarness.drawDeferredLabels(ug);
 	}
 
 	private void computeKal() {
@@ -120,7 +203,33 @@ public final class SvekResult implements IEntityImage {
 		return style.value(PName.BackGroundColor).asColor(dotData.getSkinParam().getIHtmlColorSet());
 	}
 
+	// Scan every rendered non-harness, non-hidden SvekEdge for its
+	// near-vertical bezier segments. Returns a list of {x, yMin, yMax}
+	// tuples that SvekHarness.resolveOverlaps uses to keep harness spines
+	// from colliding with ordinary connectors.
+	private List<double[]> collectNonHarnessVerticalSegments(Set<SvekEdge> harnessEdges) {
+		final List<double[]> verts = new ArrayList<double[]>();
+		for (SvekEdge edge : clusterManager.getBibliotekon().allLines()) {
+			if (harnessEdges.contains(edge))
+				continue;
+			if (edge.isHidden())
+				continue;
+			final DotPath path = edge.getRenderedPath();
+			if (path == null)
+				continue;
+			for (XCubicCurve2D seg : path.getBeziers()) {
+				final double sx1 = seg.getX1(), sy1 = seg.getY1();
+				final double sx2 = seg.getX2(), sy2 = seg.getY2();
+				if (Math.abs(sx1 - sx2) < 0.5 && Math.abs(sy1 - sy2) > 1)
+					verts.add(new double[]{sx1,
+							Math.min(sy1, sy2), Math.max(sy1, sy2)});
+			}
+		}
+		return verts;
+	}
+
 	private MinMax minMax;
+	private int clusterSpacingPasses;
 
 	@PerformanceIssue
 	@Fast
@@ -129,8 +238,71 @@ public final class SvekResult implements IEntityImage {
 		if (minMax == null) {
 			minMax = TextBlockUtils.getMinMax(this, stringBounder, false);
 			clusterManager.moveDelta(6 - minMax.getMinX(), 6 - minMax.getMinY());
+			if (clusterSpacingPasses < 3 && adjustClusterSpacingIfNeeded()) {
+				clusterSpacingPasses++;
+				minMax = null;
+				return calculateDimension(stringBounder);
+			}
 		}
 		return minMax.getDimension().delta(15, 15);
+	}
+
+	/**
+	 * After the first layout pass, check for blocked segment shifts that need
+	 * more cluster spacing. Applies the largest needed shift per cluster.
+	 * Returns true if adjustments were made.
+	 */
+	private boolean adjustClusterSpacingIfNeeded() {
+		if (dotData.getSkinParam().getDotSplines() != DotSplines.ORTHO)
+			return false;
+		final Bibliotekon bib = clusterManager.getBibliotekon();
+		final List<double[]> blocked = bib.getBlockedShifts();
+		if (blocked.isEmpty())
+			return false;
+		// Aggregate: for each cluster, find the max absolute shift needed per axis
+		final List<Cluster> clusters = bib.allCluster();
+		final double[] maxDx = new double[clusters.size()];
+		final double[] maxDy = new double[clusters.size()];
+		for (double[] bs : blocked) {
+			final int idx = (int) bs[0];
+			if (idx < 0 || idx >= clusters.size())
+				continue;
+			if (Math.abs(bs[1]) > Math.abs(maxDx[idx]))
+				maxDx[idx] = bs[1];
+			if (Math.abs(bs[2]) > Math.abs(maxDy[idx]))
+				maxDy[idx] = bs[2];
+		}
+		boolean adjusted = false;
+		for (int i = 0; i < clusters.size(); i++) {
+			final double dx = maxDx[i];
+			final double dy = maxDy[i];
+			if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1)
+				continue;
+			final Cluster target = clusters.get(i);
+			final RectangleArea targetRect = target.getRectangleArea();
+			if (targetRect == null)
+				continue;
+			// Push the target cluster and all clusters further in the shift direction
+			final double targetCenter = dx > 0
+					? (targetRect.getMinX() + targetRect.getMaxX()) / 2.0
+					: dy > 0 ? (targetRect.getMinY() + targetRect.getMaxY()) / 2.0 : 0;
+			for (Cluster cl : clusters) {
+				final RectangleArea rect = cl.getRectangleArea();
+				if (rect == null)
+					continue;
+				final double clCenter = dx != 0
+						? (rect.getMinX() + rect.getMaxX()) / 2.0
+						: (rect.getMinY() + rect.getMaxY()) / 2.0;
+				if (clCenter >= targetCenter - 1) {
+					cl.moveDelta(dx, dy);
+					for (SvekNode node : cl.getNodes())
+						node.moveDelta(dx, dy);
+				}
+			}
+			adjusted = true;
+		}
+		bib.clearBlockedShifts();
+		return adjusted;
 	}
 
 	public ShapeType getShapeType() {

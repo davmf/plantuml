@@ -36,7 +36,6 @@
 package net.sourceforge.plantuml.elk;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -118,14 +117,18 @@ public class MyElkEdge implements UDrawable {
 
 	private final UTranslate translate;
 
+	private final Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses;
+
 	public MyElkEdge(CucaDiagram diagram, SName styleName, Link link, ElkEdge edge, TextBlock centerLabel,
 			TextBlock tailLabel, TextBlock headLabel, TextBlock tailRole, TextBlock headRole,
 			double magicY2, Map<Entity, MyElkCluster> elkClusters,
-			UTranslate translate, Map<Entity, IEntityImage> nodeImages) {
+			UTranslate translate, Map<Entity, IEntityImage> nodeImages,
+			Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses) {
 		this.link = link;
 		this.edge = edge;
 		this.translate = translate;
 		this.nodeImages = nodeImages;
+		this.collapses = collapses;
 
 		this.diagram = diagram;
 		this.centerLabel = centerLabel;
@@ -149,6 +152,12 @@ public class MyElkEdge implements UDrawable {
 	public void drawU(UGraphic ug) {
 
 		if (link.isHidden())
+			return;
+
+		if (link.isPartOfHarness())
+			return;
+
+		if (link.isJumper())
 			return;
 
 		ug = ug.apply(translate);
@@ -209,8 +218,11 @@ public class MyElkEdge implements UDrawable {
 		List<XPoint2D> last = null;
 		final double radius = getCornerRadius();
 		for (ElkEdgeSection section : sections) {
-			final List<XPoint2D> points = getPolyline(ug.getStringBounder(), section, magneticBorder1,
+			final List<XPoint2D> polyline = getPolyline(ug.getStringBounder(), section, magneticBorder1,
 					magneticBorder2);
+			// A monotone staircase planned to be drawn as one corner
+			final ElkStaircaseSimplifier.Collapse collapse = collapses.get(section);
+			final List<XPoint2D> points = collapse == null ? polyline : collapse.apply(polyline);
 			ug.apply(HColors.none().bg()).draw(toPath(points, radius));
 			if (first == null)
 				first = points;

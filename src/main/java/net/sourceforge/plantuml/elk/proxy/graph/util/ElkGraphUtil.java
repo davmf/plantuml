@@ -6,26 +6,46 @@ import net.sourceforge.plantuml.elk.proxy.graph.ElkLabel;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkWithProperty;
+import net.sourceforge.plantuml.elk.proxy.json.ElkJsonGraph;
 
+/**
+ * The graph is made of real ELK objects (through reflection) or, when an ELK
+ * JSON layouter is registered, of {@link ElkJsonGraph} objects. Only
+ * {@link #createGraph()} chooses; everything else is created next to what it
+ * is attached to.
+ */
 public class ElkGraphUtil {
+
+	private static final String ELK_GRAPH_UTIL = "org.eclipse.elk.graph.util.ElkGraphUtil";
+
 	public static ElkLabel createLabel(ElkEdge edge) {
-		return new ElkLabel(Reflect.callStatic2("org.eclipse.elk.graph.util.ElkGraphUtil", "createLabel", edge.obj));
+		if (edge.obj instanceof ElkJsonGraph.Edge)
+			return new ElkLabel(((ElkJsonGraph.Edge) edge.obj).createLabel());
+		return new ElkLabel(Reflect.callStatic2(ELK_GRAPH_UTIL, "createLabel", edge.obj));
 	}
 
 	public static ElkLabel createLabel(ElkNode node) {
-		return new ElkLabel(Reflect.callStatic2("org.eclipse.elk.graph.util.ElkGraphUtil", "createLabel", node.obj));
+		if (node.obj instanceof ElkJsonGraph.Node)
+			return new ElkLabel(((ElkJsonGraph.Node) node.obj).createLabel());
+		return new ElkLabel(Reflect.callStatic2(ELK_GRAPH_UTIL, "createLabel", node.obj));
 	}
 
 	public static ElkLabel createLabel(ElkPort port) {
-		return new ElkLabel(Reflect.callStatic2("org.eclipse.elk.graph.util.ElkGraphUtil", "createLabel", port.obj));
+		if (port.obj instanceof ElkJsonGraph.Port)
+			return new ElkLabel(((ElkJsonGraph.Port) port.obj).createLabel());
+		return new ElkLabel(Reflect.callStatic2(ELK_GRAPH_UTIL, "createLabel", port.obj));
 	}
 
 	public static ElkNode createNode(ElkNode root) {
-		return new ElkNode(Reflect.callStatic2("org.eclipse.elk.graph.util.ElkGraphUtil", "createNode", root.obj));
+		if (root.obj instanceof ElkJsonGraph.Node)
+			return new ElkNode(((ElkJsonGraph.Node) root.obj).createNode());
+		return new ElkNode(Reflect.callStatic2(ELK_GRAPH_UTIL, "createNode", root.obj));
 	}
 
 	public static ElkPort createPort(ElkNode parent) {
-		return new ElkPort(Reflect.callStatic2("org.eclipse.elk.graph.util.ElkGraphUtil", "createPort", parent.obj));
+		if (parent.obj instanceof ElkJsonGraph.Node)
+			return new ElkPort(((ElkJsonGraph.Node) parent.obj).createPort());
+		return new ElkPort(Reflect.callStatic2(ELK_GRAPH_UTIL, "createPort", parent.obj));
 	}
 
 	public static ElkEdge createSimpleEdge(ElkNode node1, ElkNode node2) {
@@ -45,12 +65,16 @@ public class ElkGraphUtil {
 	}
 
 	private static ElkEdge createSimpleEdgeProxy(ElkWithProperty end1, ElkWithProperty end2) {
-		return new ElkEdge(Reflect.callStatic2("org.eclipse.elk.graph.util.ElkGraphUtil", "createSimpleEdge",
-				end1.obj, end2.obj));
+		if (end1.obj instanceof ElkJsonGraph.Shape)
+			return new ElkEdge(
+					ElkJsonGraph.createSimpleEdge((ElkJsonGraph.Shape) end1.obj, (ElkJsonGraph.Shape) end2.obj));
+		return new ElkEdge(Reflect.callStatic2(ELK_GRAPH_UTIL, "createSimpleEdge", end1.obj, end2.obj));
 	}
 
 	public static ElkNode createGraph() {
-		return new ElkNode(Reflect.callStatic("org.eclipse.elk.graph.util.ElkGraphUtil", "createGraph"));
+		if (ElkJsonGraph.getLayouter() != null)
+			return new ElkNode(ElkJsonGraph.createGraph());
+		return new ElkNode(Reflect.callStatic(ELK_GRAPH_UTIL, "createGraph"));
 	}
 
 }

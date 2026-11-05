@@ -935,11 +935,12 @@ tasks.register("teavm") {
 			from(teavmSrcDir.dir("stdlib"))     // <lib>.min.js from plantuml-stdlib
 			from(teavmSrcDir.dir("vendor")) {   // third-party code
 				// viz-global.js is historically loaded from the root
-				// (<script src="viz-global.js">); the rest stays under vendor/.
-				include("viz-global.js")
+				// (<script src="viz-global.js">), and elk.bundled.js (elkjs, loaded
+				// on demand by ElkEngineJs) sits next to it; the rest stays under vendor/.
+				include("viz-global.js", "elk.bundled.js")
 			}
 			from(teavmSrcDir.dir("vendor")) {
-				exclude("viz-global.js")
+				exclude("viz-global.js", "elk.bundled.js")
 				into("vendor")
 			}
 			into(outputDir)

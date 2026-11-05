@@ -39,6 +39,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,9 +52,11 @@ import net.sourceforge.plantuml.abel.Entity;
 import net.sourceforge.plantuml.abel.EntityUtils;
 import net.sourceforge.plantuml.abel.EntityPosition;
 import net.sourceforge.plantuml.abel.GroupType;
+import net.sourceforge.plantuml.abel.Harness;
 import net.sourceforge.plantuml.abel.LeafType;
 import net.sourceforge.plantuml.abel.Link;
 import net.sourceforge.plantuml.abel.LinkArrow;
+import net.sourceforge.plantuml.abel.Together;
 import net.sourceforge.plantuml.annotation.DuplicateCode;
 import net.sourceforge.plantuml.core.DiagramType;
 
@@ -89,16 +93,24 @@ import net.sourceforge.plantuml.elk.proxy.core.options.Direction;
 import net.sourceforge.plantuml.elk.proxy.core.options.EdgeLabelPlacement;
 import net.sourceforge.plantuml.elk.proxy.core.options.HierarchyHandling;
 import net.sourceforge.plantuml.elk.proxy.core.options.NodeLabelPlacement;
+import net.sourceforge.plantuml.elk.proxy.core.math.KVector;
 import net.sourceforge.plantuml.elk.proxy.core.options.PortConstraints;
+import net.sourceforge.plantuml.elk.proxy.core.options.PortLabelPlacement;
 import net.sourceforge.plantuml.elk.proxy.core.options.PortSide;
+import net.sourceforge.plantuml.elk.proxy.core.options.SizeConstraint;
 import net.sourceforge.plantuml.elk.proxy.layered.options.LayeredOptions;
 import net.sourceforge.plantuml.elk.proxy.core.util.NullElkProgressMonitor;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkBendPoint;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkEdgeSection;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkLabel;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.elk.proxy.graph.util.ElkGraphUtil;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.elk.proxy.layered.options.LayerConstraint;
+import net.sourceforge.plantuml.elk.proxy.layered.options.LayeredOptions;
+import net.sourceforge.plantuml.elk.proxy.layered.options.NodePlacementStrategy;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
 import net.sourceforge.plantuml.klimt.creole.Display;
@@ -107,6 +119,8 @@ import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.Rankdir;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
@@ -122,13 +136,16 @@ import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.RoleLabels;
+import net.sourceforge.plantuml.svek.Cluster;
 import net.sourceforge.plantuml.svek.ClusterHeader;
 import net.sourceforge.plantuml.svek.CucaDiagramFileMaker;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
 import net.sourceforge.plantuml.svek.IEntityImage;
+import net.sourceforge.plantuml.svek.SvekHarness;
 import net.sourceforge.plantuml.svek.SvekNode;
 import net.sourceforge.plantuml.sdot.TextBlockToEntityImage;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.svek.image.EntityImagePort;
 import net.sourceforge.plantuml.svek.image.EntityImageState;
 import net.sourceforge.plantuml.utils.Position;
 
@@ -146,7 +163,18 @@ https://rtsys.informatik.uni-kiel.de/~biblio/downloads/theses/thw-bt.pdf
 @DuplicateCode(reference = "SvekEdge, CucaDiagramFileMakerElk, CucaDiagramFileMakerSmetana")
 public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
+	// PORT_INDEX stride between port groups on the same component face.
+	// Picked large enough to never collide with within-group indices
+	// (so a group can hold up to 100 ports), and large enough that the
+	// gap between groups translates to noticeable ELK spacing.
+	private static final int PORT_GROUP_STRIDE = 100;
+	// Safe upper bound used to invert PORT_INDEX for grouped WEST ports.
+	// Must exceed the largest (groupOrder * STRIDE + indexInGroup) value
+	// in any realistic component (10 000 supports 100 groups × 100 ports).
+	private static final int PORT_GROUP_INDEX_CEILING = 10_000;
+
 	private final Map<Entity, ElkNode> nodes = new LinkedHashMap<Entity, ElkNode>();
+	private final Map<Entity, ElkPort> ports = new LinkedHashMap<Entity, ElkPort>();
 	private final Map<Entity, ElkNode> clusters = new LinkedHashMap<Entity, ElkNode>();
 	private final Map<Link, ElkEdge> edges = new LinkedHashMap<Link, ElkEdge>();
 	// Entry and exit points of a composite state: ports on its border
@@ -345,6 +373,17 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 	}
 
+	// Port coordinates are reported by ELK relative to the parent ElkNode.
+	public static XPoint2D getPosition(ElkPort port) {
+		final ElkNode parent = port.getParent();
+		final double x = port.getX();
+		final double y = port.getY();
+		if (parent == null)
+			return new XPoint2D(x, y);
+		final XPoint2D parentPosition = getPosition(parent);
+		return new XPoint2D(parentPosition.getX() + x, parentPosition.getY() + y);
+	}
+
 	private Collection<Entity> getUnpackagedEntities() {
 		final List<Entity> result = new ArrayList<>();
 		for (Entity ent : diagram.leafs())
@@ -356,6 +395,14 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			}
 
 		return result;
+	}
+
+	// Translate PlantUML's `left to right direction` directive into the
+	// ELK Direction property. ELK uses this to choose layered layout flow.
+	private Object getElkDirection() {
+		if (diagram.getSkinParam().getRankdir() == Rankdir.LEFT_TO_RIGHT)
+			return Direction.RIGHT;
+		return Direction.DOWN;
 	}
 
 	private ElkNode getElkNode(final Entity entity) {
@@ -383,32 +430,385 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 				// We create the "cluster" in ELK for this group
 				final ElkNode elkCluster = ElkGraphUtil.createNode(cluster);
-				elkCluster.setProperty(CoreOptions.DIRECTION, Direction.DOWN);
-				if (isStateDiagram())
-					setStateSpacing(elkCluster);
-
+				elkCluster.setProperty(CoreOptions.DIRECTION, getElkDirection());
 				final ClusterHeader clusterHeader = new ClusterHeader(g, diagram, stringBounder);
+				// A composite state is a frame with its name in a header, as dot
+				// draws it (MyElkDrawing.drawStateCluster); any other cluster has
+				// its title above the rectangle (MyElkCluster)
+				final boolean stateFrame = isStateFrame(g);
+				final double topPadding = Math.max(25, clusterHeader.getTitleAndAttributeHeight()) + 15;
+				if (stateFrame) {
+					setStateSpacing(elkCluster);
+					elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(topPadding, 15, 15, 15));
+					ElkGraphUtil.createLabel(elkCluster).setText("C");
+				} else {
+					// Header components need FIXED_ORDER so PORT_INDEX is
+					// honoured: paired pins share an index across WEST/EAST
+					// and end up aligned on the same row. Any other cluster
+					// with ports uses it too, so the ports keep the order they
+					// were declared in (grouped by `group "Name" { ... }`
+					// blocks) instead of being reordered by ELK.
+					final boolean clusterHasPorts = hasPorts(g);
+					// ELK cannot route an edge out of a cluster that is laid out
+					// on its own, so a cluster with such an edge stays in its
+					// parent's layout whatever else wants it separate.
+					final boolean canLayOutSeparately = hasEdgeLeaving(g) == false;
+					elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
+							(g.isHeader() || clusterHasPorts)
+									? PortConstraints.FIXED_ORDER
+									: PortConstraints.FIXED_SIDE);
+					if (clusterHasPorts && canLayOutSeparately) {
+						// Without SEPARATE_CHILDREN, the layered algorithm's
+						// hierarchical layout re-aligns ports with internal
+						// child positions, overriding our PORT_INDEX. Cutting
+						// hierarchical layout at this cluster lets PORT_INDEX
+						// determine the order.
+						elkCluster.setProperty(CoreOptions.HIERARCHY_HANDLING,
+								HierarchyHandling.SEPARATE_CHILDREN);
+					}
+					elkCluster.setProperty(CoreOptions.NODE_SIZE_CONSTRAINTS,
+							EnumSet.of(SizeConstraint.NODE_LABELS, SizeConstraint.PORTS,
+									SizeConstraint.PORT_LABELS, SizeConstraint.MINIMUM_SIZE));
+					final int titleAndAttributeHeight = clusterHeader.getTitleAndAttributeHeight();
+					final int titleAndAttributeWidth = clusterHeader.getTitleAndAttributeWidth();
 
-				final int titleAndAttributeHeight = clusterHeader.getTitleAndAttributeHeight();
+					// Draw every cluster's title *above* the rectangle
+					// rather than inside it. The cluster body only needs
+					// to be wide enough for left/right port labels. ELK
+					// is told to place the label outside-top so it
+					// reserves vertical space above the cluster.
+					elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(15, 15, 15, 15));
+					if (hasInsideLabelPort(g))
+						elkCluster.setProperty(CoreOptions.SPACING_PORT_PORT, 10.0);
 
-				final double topPadding = Math.max(25, titleAndAttributeHeight) + 15;
-				elkCluster.setProperty(CoreOptions.PADDING, new ElkPadding(topPadding, 15, 15, 15));
+					// Spacing properties are per-parent in ELK — setting them
+					// on the root only affects top-level children. Propagate
+					// ranksep/nodesep onto clusters that host a real
+					// sub-layout (i.e. contain at least one sub-cluster) so
+					// the spacing applies inside nested rectangles like the
+					// board. Skip port-only clusters: ports sit on cluster
+					// edges, not as separate ELK layers, and applying
+					// between-layers spacing there would balloon the cluster.
+					if (hasSubClusters(g) && canLayOutSeparately) {
+						applySpacingTo(elkCluster);
+						// Spacing must be combined with SEPARATE_CHILDREN so
+						// ranksep applies only to this cluster's direct child
+						// layout. Without it, INCLUDE_CHILDREN from the root
+						// flattens the hierarchy and the spacing balloons by
+						// the count of nested ports.
+						elkCluster.setProperty(CoreOptions.HIERARCHY_HANDLING,
+								HierarchyHandling.SEPARATE_CHILDREN);
+					}
 
-				// Not sure this is usefull to put a label on a "cluster"
-				final ElkLabel label = ElkGraphUtil.createLabel(elkCluster);
-				label.setText("C");
-				// We need it anyway to recurse up to the real "root"
+					final ElkLabel label = ElkGraphUtil.createLabel(elkCluster);
+					label.setText("C");
+					label.setDimensions(titleAndAttributeWidth, titleAndAttributeHeight);
+					label.setProperty(CoreOptions.NODE_LABELS_PLACEMENT,
+							EnumSet.of(NodeLabelPlacement.OUTSIDE, NodeLabelPlacement.V_TOP,
+									NodeLabelPlacement.H_CENTER));
+				}
 
 				this.clusters.put(g, elkCluster);
-				// The svek cluster draws the frame (and positions the entry/exit points)
+				// The svek cluster draws a state frame (and positions its entry/exit
+				// points); EntityImagePort resolves its parent through it. Its
+				// rectangleArea is back-filled from ELK after layout.
 				clusterManager.openCluster(g, clusterHeader);
 				this.printSingleGroup(stringBounder, g);
 				clusterManager.closeCluster();
-				if (hasOnlyBorderPoints(g))
-					sizeAroundBorderPoints(g, elkCluster, clusterHeader, topPadding);
+				if (stateFrame) {
+					if (hasOnlyBorderPoints(g))
+						sizeAroundBorderPoints(g, elkCluster, clusterHeader, topPadding);
+				} else {
+					// Pre-size the cluster to fit its port labels on each
+					// side. ELK's PORT_LABELS size constraint alone does
+					// not widen a cluster with no body children.
+					sizeClusterForPortLabels(g, elkCluster, clusterHeader, stringBounder);
+				}
 			}
 		}
 
+	}
+
+	// Walk the group tree and, for every parent that contains two-or-more
+	// siblings sharing a Together, pin each member to the same edge of the
+	// layered graph (FIRST or LAST) so they share a column. Direction is
+	// inferred from port flow: a member exposing only portout pins is a
+	// source (FIRST); only portin pins is a sink (LAST). Mixed members get
+	// no constraint -- ELK's natural layout already handles them.
+	private void applyTogetherPositionHints(ElkNode root) {
+		applyTogetherPositionHintsAt(root, this.root);
+	}
+
+	private void applyTogetherPositionHintsAt(ElkNode parentNode, Entity parentGroup) {
+		final IdentityHashMap<Together, List<Entity>> bySet =
+				new IdentityHashMap<Together, List<Entity>>();
+		for (Entity g : diagram.getChildrenGroups(parentGroup)) {
+			if (g.isRemoved())
+				continue;
+			final Together t = g.getTogether();
+			if (t == null)
+				continue;
+			List<Entity> bucket = bySet.get(t);
+			if (bucket == null) {
+				bucket = new ArrayList<Entity>();
+				bySet.put(t, bucket);
+			}
+			bucket.add(g);
+		}
+		boolean applied = false;
+		for (List<Entity> members : bySet.values()) {
+			if (members.size() < 2)
+				continue;
+			final LayerConstraint constraint = inferLayerConstraint(members);
+			if (constraint == null)
+				continue;
+			for (Entity member : members) {
+				final ElkNode elkMember = clusters.get(member);
+				if (elkMember == null)
+					continue;
+				elkMember.setProperty(LayeredOptions.LAYERING_LAYER_CONSTRAINT,
+						constraint);
+			}
+			applied = true;
+		}
+		if (applied) {
+			// BKNodePlacer (the default) crashes on certain LayerConstraint
+			// combinations -- linear segments is the next-fastest placer
+			// and is robust against this.
+			parentNode.setProperty(LayeredOptions.NODE_PLACEMENT_STRATEGY,
+					NodePlacementStrategy.LINEAR_SEGMENTS);
+		}
+		for (Entity g : diagram.getChildrenGroups(parentGroup)) {
+			if (g.isRemoved())
+				continue;
+			final ElkNode childNode = clusters.get(g);
+			if (childNode != null)
+				applyTogetherPositionHintsAt(childNode, g);
+		}
+	}
+
+	// Returns FIRST if every member is a pure source (only portout pins),
+	// LAST if every member is a pure sink (only portin pins), else null.
+	private LayerConstraint inferLayerConstraint(List<Entity> members) {
+		int allOut = 0;
+		int allIn = 0;
+		for (Entity member : members) {
+			final int role = portFlowRole(member);
+			if (role > 0)
+				allOut++;
+			else if (role < 0)
+				allIn++;
+		}
+		if (allOut == members.size())
+			return LayerConstraint.FIRST;
+		if (allIn == members.size())
+			return LayerConstraint.LAST;
+		return null;
+	}
+
+	// +1: member only exposes portout pins, -1: only portin pins, 0: mixed
+	// or no ports.
+	private int portFlowRole(Entity member) {
+		int ins = 0;
+		int outs = 0;
+		for (Entity leaf : member.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			if (pos.isInput())
+				ins++;
+			else if (pos.isOutput())
+				outs++;
+		}
+		if (outs > 0 && ins == 0)
+			return 1;
+		if (ins > 0 && outs == 0)
+			return -1;
+		return 0;
+	}
+
+	// True when `g` contains at least one child group (a sub-cluster).
+	// Used to decide whether to apply ranksep/nodesep spacing on this
+	// cluster: clusters with only ports (no sub-clusters) don't host a
+	// horizontal/vertical layer layout and shouldn't carry between-
+	// layers spacing.
+	// True when a link joins something inside g to something outside it.
+	// Ports on g's own border sit on both sides: ELK routes them from the
+	// parent's layout and from g's, so they never make a link leave g.
+	private boolean hasEdgeLeaving(Entity g) {
+		for (Link link : diagram.getLinks()) {
+			final int side1 = sideOf(link.getEntity1(), g);
+			final int side2 = sideOf(link.getEntity2(), g);
+			if (side1 * side2 < 0)
+				return true;
+		}
+		return false;
+	}
+
+	// 1 inside g, -1 outside it, 0 a port on g's own border.
+	private static int sideOf(Entity ent, Entity g) {
+		if (ent == null)
+			return 0;
+		final EntityPosition pos = ent.getEntityPosition();
+		if (pos != null && pos.isPort() && ent.getParentContainer() == g)
+			return 0;
+		for (Entity parent = ent.getParentContainer(); parent != null; parent = parent.getParentContainer())
+			if (parent == g)
+				return 1;
+		return -1;
+	}
+
+	private boolean hasSubClusters(Entity g) {
+		for (Entity child : diagram.getChildrenGroups(g)) {
+			if (child.isRemoved() == false)
+				return true;
+		}
+		return false;
+	}
+
+	// Apply skinparam ranksep/nodesep to one ElkNode parent. ELK reads
+	// spacing properties per-parent, so the same set must land on every
+	// cluster that hosts a layout (root and each subcluster) — not just
+	// the root, which only affects top-level children. For LR/RL flow
+	// the layered "between layers" value is the horizontal gap between
+	// columns (=ranksep); for TB/BT it's vertical between rows. The
+	// property names are identical regardless of direction.
+	private void applySpacingTo(ElkNode node) {
+		final double ranksep = diagram.getSkinParam().getRanksep();
+		final double nodesep = diagram.getSkinParam().getNodesep();
+		if (ranksep > 0) {
+			node.setProperty(LayeredOptions.SPACING_NODE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+			node.setProperty(LayeredOptions.SPACING_EDGE_NODE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+			node.setProperty(LayeredOptions.SPACING_EDGE_EDGE_BETWEEN_LAYERS, Double.valueOf(ranksep));
+		}
+		if (nodesep > 0)
+			node.setProperty(CoreOptions.SPACING_NODE_NODE, Double.valueOf(nodesep));
+	}
+
+	private boolean hasInsideLabelPort(Entity group) {
+		for (Entity leaf : group.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			if (EntityImagePort.hasInsideLabel(leaf))
+				return true;
+		}
+		return false;
+	}
+
+	// True if `group` has any port. Drives the cluster's PORT_CONSTRAINTS
+	// choice (FIXED_ORDER required so per-port PORT_INDEX is honoured).
+	private static boolean hasPorts(Entity group) {
+		for (Entity leaf : group.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos != null && pos.isPort())
+				return true;
+		}
+		return false;
+	}
+
+	// PORT_INDEX value for a port in a cluster that contains at least one
+	// `group "..." { ... }` block. Grouped ports get
+	//   groupOrder * PORT_GROUP_STRIDE + indexInGroup
+	// Ungrouped ports trail all groups in declaration order:
+	//   (maxGroupOrder + 1) * PORT_GROUP_STRIDE + ungroupedDeclOrder
+	// This is critical: under FIXED_ORDER ELK gives unset PORT_INDEX a
+	// default of 0, which collides with the first grouped port and causes
+	// arbitrary placement of ungrouped ports.
+	private static int effectiveGroupedPortIndex(Entity cluster, Entity port) {
+		if (port.hasPortGroup())
+			return port.getPortGroupOrder() * PORT_GROUP_STRIDE + port.getPortGroupIndex();
+		int maxGroupOrder = -1;
+		int ungroupedSeen = 0;
+		int myUngroupedIdx = 0;
+		for (Entity child : cluster.leafs()) {
+			final EntityPosition cpos = child.getEntityPosition();
+			if (cpos == null || cpos.isPort() == false)
+				continue;
+			if (child.hasPortGroup()) {
+				if (child.getPortGroupOrder() > maxGroupOrder)
+					maxGroupOrder = child.getPortGroupOrder();
+			} else {
+				if (child == port)
+					myUngroupedIdx = ungroupedSeen;
+				ungroupedSeen++;
+			}
+		}
+		return (maxGroupOrder + 1) * PORT_GROUP_STRIDE + myUngroupedIdx;
+	}
+
+	// Widen and height-constrain a cluster so that:
+	//  - west-side and east-side inside-port labels don't collide with
+	//    each other or with the cluster title (width).
+	//  - the cluster is tall enough to host its inside-label ports
+	//    with ~30px row spacing but not stretched beyond that (height).
+	// ELK's NODE_SIZE_CONSTRAINTS.PORT_LABELS does not reliably size
+	// a cluster whose only children are ports, and the default
+	// JUSTIFIED port alignment then spreads ports across the full
+	// cluster height which can make clusters very tall.
+	private void sizeClusterForPortLabels(Entity group, ElkNode elkCluster,
+			ClusterHeader clusterHeader, StringBounder stringBounder) {
+		double widestWest = 0;
+		double widestEast = 0;
+		int countWest = 0;
+		int countEast = 0;
+		final boolean headerCluster = group.isHeader();
+		for (Entity leaf : group.leafs()) {
+			final EntityPosition pos = leaf.getEntityPosition();
+			if (pos == null || pos.isPort() == false)
+				continue;
+			final IEntityImage img = printEntityInternal(leaf);
+			if (img instanceof EntityImagePort == false)
+				continue;
+			final EntityImagePort portImg = (EntityImagePort) img;
+			final boolean insideLabel = EntityImagePort.hasInsideLabel(leaf);
+			if (insideLabel == false)
+				continue;
+			final double w = portImg.getInsideLabelWidth(stringBounder);
+			// For a header, the actual side is determined by declaration
+			// order parity (matching CucaDiagramFileMakerElk.prinEntity),
+			// not by portin/portout. Otherwise every header pin (all
+			// declared portin) would count as WEST and double the cluster
+			// height.
+			final boolean west;
+			if (headerCluster) {
+				final int idx = headerPortIndex(leaf);
+				west = (idx % 2 == 0);
+			} else if (pos.isInput()) {
+				west = true;
+			} else if (pos.isOutput()) {
+				west = false;
+			} else {
+				continue;
+			}
+			if (west) {
+				if (w > widestWest)
+					widestWest = w;
+				countWest++;
+			} else {
+				if (w > widestEast)
+					widestEast = w;
+				countEast++;
+			}
+		}
+		if (widestWest == 0 && widestEast == 0)
+			return;
+		final double portSize = 2 * EntityPosition.RADIUS;
+		final double labelGap = 5;
+		// The cluster body only needs to fit the two port-label
+		// columns plus a small interior gap. The cluster title is
+		// rendered above the rectangle (outside the cluster body)
+		// so it no longer constrains horizontal width. Headers reserve
+		// less interior since the body holds nothing but the jumper bar
+		// and pair labels need to sit close together.
+		final double interior = headerCluster ? 10 : 30;
+		final double minWidth = widestWest + labelGap + portSize + interior
+				+ portSize + labelGap + widestEast;
+		// Height: top padding + per-port row * max ports per side.
+		final double rowHeight = 30;
+		final int maxRows = Math.max(countWest, countEast);
+		final double minHeight = 15 + maxRows * rowHeight + 15;
+		elkCluster.setProperty(CoreOptions.NODE_SIZE_MINIMUM, new KVector(minWidth, minHeight));
 	}
 
 	private void printSingleGroup(StringBounder stringBounder, Entity g) {
@@ -430,10 +830,76 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	}
 
 	private void manageAllEdges(StringBounder stringBounder) {
-		// Convert all "link" to ELK edge
-		for (final Link link : getLocalLinks())
+		// Convert all "link" to ELK edge. Skip jumpers — we render them
+		// ourselves as filled bars across the paired pins of a header,
+		// so ELK never needs to route them.
+		for (final Link link : getLocalLinks()) {
+			if (link.isJumper())
+				continue;
 			this.manageSingleEdge(stringBounder, link);
+		}
+	}
 
+	// Walks every link and flags those that bridge two paired pins of the
+	// same <<header>> component (consecutive declaration-order pins where
+	// the lower index is even). Called before manageAllEdges so jumpered
+	// links are filtered out of the ELK graph. Skips invisible/hidden
+	// layout-only links injected by Magma's single-strategy pass; those
+	// connect standalone leaves for ordering and are not user edges.
+	private void detectJumpers() {
+		for (Link link : diagram.getLinks()) {
+			if (link.isInvis() || link.isHidden())
+				continue;
+			final Entity e1 = link.getEntity1();
+			final Entity e2 = link.getEntity2();
+			if (e1 == null || e2 == null)
+				continue;
+			final Entity parent = e1.getParentContainer();
+			if (parent == null || parent != e2.getParentContainer())
+				continue;
+			if (parent.isHeader() == false)
+				continue;
+			final int i1 = headerPortIndex(e1);
+			final int i2 = headerPortIndex(e2);
+			if (i1 < 0 || i2 < 0)
+				continue;
+			final int lo = Math.min(i1, i2);
+			final int hi = Math.max(i1, i2);
+			if (hi == lo + 1 && lo % 2 == 0)
+				link.setJumper(true);
+		}
+	}
+
+	// Index of `ent` within its parent header's declaration-order port list,
+	// or -1 if `ent` is not a port of a header. Used to determine pairing
+	// (consecutive even-odd indices) and which side (WEST/EAST) each pin
+	// sits on.
+	static int headerPortIndex(Entity ent) {
+		final Entity parent = ent.getParentContainer();
+		if (parent == null || parent.isHeader() == false)
+			return -1;
+		int idx = 0;
+		for (Entity child : parent.leafs()) {
+			final EntityPosition cp = child.getEntityPosition();
+			if (cp == null || cp.isPort() == false)
+				continue;
+			if (child == ent)
+				return idx;
+			idx++;
+		}
+		return -1;
+	}
+
+	// Count of declared ports inside a header component. Used to size the
+	// cluster so each pin pair has a row.
+	static int headerPortCount(Entity header) {
+		int count = 0;
+		for (Entity child : header.leafs()) {
+			final EntityPosition cp = child.getEntityPosition();
+			if (cp != null && cp.isPort())
+				count++;
+		}
+		return count;
 	}
 
 	@DuplicateCode(reference = "CucaDiagramFileMakerSmetana::printEntity")
@@ -453,6 +919,91 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			return;
 		}
 		clusterManager.addNode(node);
+
+		// Ports are emitted as ElkPort attached to the parent ElkNode
+		// so ELK places them on the cluster boundary. Side is derived
+		// from entityPosition.isInput (WEST) / isOutput (EAST), matching
+		// EntityImagePort.getPortSide for inside-label rendering.
+		final EntityPosition pos = ent.getEntityPosition();
+		if (pos != null && pos.isPort() && image instanceof EntityImagePort) {
+			final EntityImagePort portImage = (EntityImagePort) image;
+			final ElkPort port = ElkGraphUtil.createPort(parent);
+			final double portSize = 2 * EntityPosition.RADIUS;
+			port.setDimensions(portSize, portSize);
+			// For pins of a <<header>> component the side and pair-index
+			// are fully determined by declaration order: even-indexed
+			// pins sit on the WEST face, odd-indexed pins on the EAST
+			// face, and PORT_INDEX = pairIdx so the matching WEST/EAST
+			// pair share a row under FIXED_ORDER.
+			final Entity parentEntity = ent.getParentContainer();
+			final boolean headerPin = parentEntity != null && parentEntity.isHeader();
+			final int headerIdx = headerPin ? headerPortIndex(ent) : -1;
+			final boolean west = headerPin ? (headerIdx % 2 == 0) : pos.isInput();
+			port.setProperty(CoreOptions.PORT_SIDE,
+					west ? PortSide.WEST : PortSide.EAST);
+			if (headerPin && headerIdx >= 0) {
+				// ELK with FIXED_ORDER distributes WEST ports bottom-to-top
+				// and EAST ports top-to-bottom, so to align a pair on the
+				// same row we invert the index for the WEST side.
+				final int pairIdx = headerIdx / 2;
+				final int numPairs = (headerPortCount(parentEntity) + 1) / 2;
+				final int portIndex = west ? (numPairs - 1 - pairIdx) : pairIdx;
+				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
+			} else if (parentEntity != null && hasPorts(parentEntity)) {
+				// `group "Name" { ... }` ordering. Set PORT_INDEX from
+				// (groupOrder, indexInGroup); grouped ports stay
+				// contiguous on their face, ungrouped ports follow in
+				// declaration order. WEST face is inverted because ELK
+				// orders WEST bottom-to-top (high index = top) but EAST
+				// top-to-bottom (low index = top).
+				final int effIdx = effectiveGroupedPortIndex(parentEntity, ent);
+				final int portIndex = west
+						? (PORT_GROUP_INDEX_CEILING - effIdx)
+						: effIdx;
+				port.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(portIndex));
+			}
+			// Centre the port glyph on the cluster boundary (half
+			// inside, half outside) rather than ELK's default of
+			// placing it fully outside the cluster.
+			port.setProperty(CoreOptions.PORT_BORDER_OFFSET, -portSize / 2);
+			// Attach the edge to the face of the port glyph that
+			// points away from the side the label sits on, so the
+			// arrow line and the label don't visually overlap on
+			// the same face of the glyph.
+			//   inside-label (e.g. MCU): label sits inward, edge
+			//     exits outward (WEST anchor=0, EAST anchor=portSize)
+			//   outside-label (e.g. board): label sits outward,
+			//     edge exits inward (WEST anchor=portSize, EAST
+			//     anchor=0)
+			final boolean insideLabelEarly = EntityImagePort.hasInsideLabel(ent);
+			final double anchorX;
+			if (insideLabelEarly)
+				anchorX = west ? 0 : portSize;
+			else
+				anchorX = west ? portSize : 0;
+			port.setProperty(CoreOptions.PORT_ANCHOR, new KVector(anchorX, portSize / 2));
+			// portLabels inside is the PlantUML default; the <<board>>
+			// stereotype rule (portLabels<<board>> outside) flips this
+			// for board ports. Use EntityImagePort.hasInsideLabel so
+			// ELK matches what the port image will draw.
+			final boolean insideLabel = EntityImagePort.hasInsideLabel(ent);
+			port.setProperty(CoreOptions.PORT_LABELS_PLACEMENT,
+					EnumSet.of(insideLabel ? PortLabelPlacement.INSIDE : PortLabelPlacement.OUTSIDE,
+							PortLabelPlacement.NEXT_TO_PORT_IF_POSSIBLE));
+			// Reserve label space so ELK widens the cluster to fit.
+			// EntityImagePort.calculateDimensionSlow returns just the
+			// glyph dim, so query the desc text width directly.
+			final double labelW = insideLabel
+					? portImage.getInsideLabelWidth(stringBounder)
+					: portImage.getMaxWidthFromLabelForEntryExit(stringBounder);
+			if (labelW > 0) {
+				final ElkLabel portLabel = ElkGraphUtil.createLabel(port);
+				portLabel.setText("X");
+				portLabel.setDimensions(labelW, portSize);
+			}
+			ports.put(ent, port);
+			return;
+		}
 
 		// Here, we try to tell ELK to use this dimension as node dimension
 		final ElkNode elkNode = ElkGraphUtil.createNode(parent);
@@ -499,6 +1050,11 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 	private boolean isStateDiagram() {
 		return diagram.getDiagramType() == DiagramType.STATE;
+	}
+
+	// Same test as MyElkDrawing.isStateFrame: a composite state, not a package
+	private boolean isStateFrame(Entity group) {
+		return isStateDiagram() && group.getUSymbol() == null;
 	}
 
 	// An entry or exit point of a composite state sits on the border of the state
@@ -618,13 +1174,11 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	}
 
 	private void manageSingleEdge(StringBounder stringBounder, final Link link) {
-		final ElkNode node1 = getElkNode(link.getEntity1());
-		final ElkNode node2 = getElkNode(link.getEntity2());
 		// A link whose end was removed (e.g. "remove $tag") has no node to join
-		if (link.isRemoved() || node1 == null || node2 == null)
+		if (link.isRemoved() || isLaidOut(link.getEntity1()) == false || isLaidOut(link.getEntity2()) == false)
 			return;
 
-		final ElkEdge edge = createEdge(link.getEntity1(), node1, link.getEntity2(), node2);
+		final ElkEdge edge = createEdge(link.getEntity1(), link.getEntity2());
 
 		final TextBlock labelLink = getLabel(stringBounder, link);
 		if (labelLink != null) {
@@ -668,19 +1222,29 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		edges.put(link, edge);
 	}
 
-	private ElkEdge createEdge(Entity ent1, ElkNode node1, Entity ent2, ElkNode node2) {
+	// An entity is in the ELK graph as a node, or as a port of a component
+	private boolean isLaidOut(Entity ent) {
+		return getElkNode(ent) != null || ports.containsKey(ent);
+	}
+
+	private ElkEdge createEdge(Entity ent1, Entity ent2) {
 		final ElkPort port1 = getPort(ent1, false);
 		final ElkPort port2 = getPort(ent2, true);
 		if (port1 != null && port2 != null)
 			return ElkGraphUtil.createSimpleEdge(port1, port2);
 		if (port1 != null)
-			return ElkGraphUtil.createSimpleEdge(port1, node2);
+			return ElkGraphUtil.createSimpleEdge(port1, getElkNode(ent2));
 		if (port2 != null)
-			return ElkGraphUtil.createSimpleEdge(node1, port2);
-		return ElkGraphUtil.createSimpleEdge(node1, node2);
+			return ElkGraphUtil.createSimpleEdge(getElkNode(ent1), port2);
+		return ElkGraphUtil.createSimpleEdge(getElkNode(ent1), getElkNode(ent2));
 	}
 
+	// The port an edge meets an entity on: a port of a component (the entity
+	// itself), an entry/exit point, or a cardinal point of a pseudo-state
 	private ElkPort getPort(Entity ent, boolean incoming) {
+		final ElkPort port = ports.get(ent);
+		if (port != null)
+			return port;
 		final ElkPort border = borderPorts.get(ent);
 		if (border != null)
 			return border;
@@ -725,22 +1289,184 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 
 	private TextBlock layout(StringBounder stringBounder) {
 		final ElkNode root = ElkGraphUtil.createGraph();
-		root.setProperty(CoreOptions.DIRECTION, Direction.DOWN);
+		root.setProperty(CoreOptions.DIRECTION, getElkDirection());
 		root.setProperty(CoreOptions.HIERARCHY_HANDLING, HierarchyHandling.INCLUDE_CHILDREN);
+		root.setProperty(CoreOptions.PORT_CONSTRAINTS, PortConstraints.FIXED_SIDE);
 		if (isStateDiagram())
 			setStateSpacing(root);
+		// After the state spacing: an explicit ranksep or nodesep wins
+		applySpacingTo(root);
 
 		this.printAllSubgroups(stringBounder, root, this.root);
 		this.printEntities(stringBounder, root, getUnpackagedEntities());
 
+		// `together { ... }` blocks: pin members of a uniformly-source or
+		// uniformly-sink Together to the first or last layer, so each
+		// Together lines up in a single column.
+		this.applyTogetherPositionHints(root);
+
+		this.detectJumpers();
 		this.manageAllEdges(stringBounder);
 
 		new RecursiveGraphLayoutEngine().layout(root, new NullElkProgressMonitor());
 
-		final MinMax minMax = TextBlockUtils.getMinMax(
-				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes, borderPorts), stringBounder, false);
+		// Back-fill the Svek Cluster.rectangleArea from ELK-computed
+		// bounds so EntityImagePort.getPortSide and friends work.
+		for (Map.Entry<Entity, ElkNode> entry : clusters.entrySet()) {
+			final Cluster cl = getBibliotekon().getCluster(entry.getKey());
+			if (cl == null)
+				continue;
+			final ElkNode elkCluster = entry.getValue();
+			final XPoint2D corner = getPosition(elkCluster);
+			cl.setRectangleArea(new RectangleArea(corner.getX(), corner.getY(),
+					corner.getX() + elkCluster.getWidth(),
+					corner.getY() + elkCluster.getHeight()));
+		}
 
-		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, borderPorts);
+		// Back-fill port SvekNode positions so that SvekHarness — which
+		// reads `bibliotekon.getNode(entity)` for endpoint coords during
+		// resolveOverlaps — sees the final ELK-routed positions. The
+		// same back-fill happens again inside MyElkDrawing.drawAllNodes
+		// (idempotent thanks to resetMove() each time).
+		for (Map.Entry<Entity, ElkPort> entry : ports.entrySet()) {
+			final SvekNode svekNode = getBibliotekon().getNode(entry.getKey());
+			if (svekNode == null)
+				continue;
+			final XPoint2D corner = getPosition(entry.getValue());
+			svekNode.resetMove();
+			svekNode.moveDelta(corner.getX(), corner.getY());
+		}
+
+		final Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses = planStaircaseCollapses();
+		final List<SvekHarness> harnesses = buildHarnesses(collapses);
+		final List<Link> jumpers = buildJumpers();
+
+		final MinMax minMax = TextBlockUtils.getMinMax(new MyElkDrawing(clusterManager, diagram, null, clusters,
+				edges, nodes, ports, borderPorts, harnesses, jumpers, collapses), stringBounder, false);
+
+		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports, borderPorts,
+				harnesses, jumpers, collapses);
+	}
+
+	// Collect every link previously flagged by detectJumpers so MyElkDrawing
+	// can render them as filled bars across the paired pins. detectJumpers
+	// runs before manageAllEdges, so by this point isJumper() is settled.
+	private List<Link> buildJumpers() {
+		final List<Link> result = new ArrayList<Link>();
+		for (Link link : diagram.getLinks())
+			if (link.isJumper())
+				result.add(link);
+		return result;
+	}
+
+	// Mirror the Svek harness-construction path (SvekResult.drawU): group
+	// every harness-member Link by its Harness instance and wrap each group
+	// in a SvekHarness. The SvekHarness reads port positions from the
+	// Bibliotekon (which MyElkDrawing.drawAllNodes populates from
+	// ELK-computed coordinates), so no ELK-specific port-position provider
+	// is needed. resolveOverlaps is fed non-harness vertical segments
+	// harvested from ELK-routed edge sections (the ELK analogue of Svek's
+	// rendered DotPath beziers).
+	private List<SvekHarness> buildHarnesses(Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses) {
+		final Map<Harness, List<Link>> harnessMap = new LinkedHashMap<Harness, List<Link>>();
+		for (Link link : diagram.getLinks()) {
+			final Harness h = link.getHarness();
+			if (h == null)
+				continue;
+			List<Link> list = harnessMap.get(h);
+			if (list == null) {
+				list = new ArrayList<Link>();
+				harnessMap.put(h, list);
+			}
+			list.add(link);
+		}
+		final List<SvekHarness> result = new ArrayList<SvekHarness>();
+		for (Map.Entry<Harness, List<Link>> entry : harnessMap.entrySet())
+			result.add(new SvekHarness(entry.getKey(), entry.getValue(),
+					diagram.getSkinParam(), getBibliotekon()));
+		SvekHarness.resolveOverlaps(result, collectNonHarnessVerticalSegments(collapses));
+		return result;
+	}
+
+	// Walk every non-harness, non-hidden ElkEdge's routed sections and
+	// emit {x, yMin, yMax} for every near-vertical segment found in absolute
+	// (post-translate) coordinates. SvekHarness.resolveOverlaps uses these
+	// to push harness spines clear of ordinary connectors.
+	private List<double[]> collectNonHarnessVerticalSegments(
+			Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses) {
+		final List<double[]> verts = new ArrayList<double[]>();
+		for (Map.Entry<Link, ElkEdge> entry : edges.entrySet()) {
+			final Link link = entry.getKey();
+			if (link.isInvis() || link.isHidden() || link.isPartOfHarness())
+				continue;
+			final ElkEdge edge = entry.getValue();
+			final XPoint2D translate = getPosition(edge.getContainingNode());
+			for (ElkEdgeSection section : edge.getSections()) {
+				List<XPoint2D> pts = absolutePoints(section, translate);
+				final ElkStaircaseSimplifier.Collapse collapse = collapses.get(section);
+				if (collapse != null)
+					pts = collapse.translated(-translate.getX(), -translate.getY()).apply(pts);
+				collectVerticalSegments(pts, verts);
+			}
+		}
+		return verts;
+	}
+
+	// ELK routes simple "across and up" edges through one column per gap they
+	// pass, and MyElkEdge draws them as a single corner where that is safe.
+	// Plan those collapses for every drawn edge together, in each section's
+	// own frame, so that no collapse makes two edges cross.
+	private Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> planStaircaseCollapses() {
+		// State transitions keep the straight stem at each end (STEM), which a
+		// single corner would take away
+		if (isStateDiagram())
+			return new HashMap<ElkEdgeSection, ElkStaircaseSimplifier.Collapse>();
+		final List<ElkEdgeSection> sections = new ArrayList<ElkEdgeSection>();
+		final List<XPoint2D> translates = new ArrayList<XPoint2D>();
+		final List<List<XPoint2D>> polylines = new ArrayList<List<XPoint2D>>();
+		for (Map.Entry<Link, ElkEdge> entry : edges.entrySet()) {
+			final Link link = entry.getKey();
+			if (link.isInvis() || link.isHidden() || link.isPartOfHarness() || link.isJumper())
+				continue;
+			final ElkEdge edge = entry.getValue();
+			final XPoint2D translate = getPosition(edge.getContainingNode());
+			for (ElkEdgeSection section : edge.getSections()) {
+				sections.add(section);
+				translates.add(translate);
+				polylines.add(absolutePoints(section, translate));
+			}
+		}
+		final List<ElkStaircaseSimplifier.Collapse> plan = ElkStaircaseSimplifier.plan(polylines);
+		final Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> result = new HashMap<ElkEdgeSection, ElkStaircaseSimplifier.Collapse>();
+		for (int i = 0; i < plan.size(); i++)
+			if (plan.get(i) != null)
+				result.put(sections.get(i), plan.get(i).translated(translates.get(i).getX(), translates.get(i).getY()));
+		return result;
+	}
+
+	private static List<XPoint2D> absolutePoints(ElkEdgeSection section, XPoint2D translate) {
+		final List<XPoint2D> pts = new ArrayList<XPoint2D>();
+		pts.add(new XPoint2D(section.getStartX() + translate.getX(),
+				section.getStartY() + translate.getY()));
+		for (ElkBendPoint pt : section.getBendPoints())
+			pts.add(new XPoint2D(pt.getX() + translate.getX(),
+					pt.getY() + translate.getY()));
+		pts.add(new XPoint2D(section.getEndX() + translate.getX(),
+				section.getEndY() + translate.getY()));
+		return pts;
+	}
+
+	private static void collectVerticalSegments(List<XPoint2D> pts, List<double[]> verts) {
+		for (int i = 0; i < pts.size() - 1; i++) {
+			final XPoint2D a = pts.get(i);
+			final XPoint2D b = pts.get(i + 1);
+			final double dx = b.getX() - a.getX();
+			final double dy = b.getY() - a.getY();
+			if (Math.abs(dx) < 0.5 && Math.abs(dy) > 1)
+				verts.add(new double[]{a.getX(),
+						Math.min(a.getY(), b.getY()),
+						Math.max(a.getY(), b.getY())});
+		}
 	}
 
 }

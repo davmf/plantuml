@@ -122,7 +122,8 @@ public final class GeneralImageBuilder {
 			return new EntityImageActivity(leaf, bibliotekon);
 
 		if (/* (leaf.getLeafType() == LeafType.PORT) || */leaf.getLeafType() == LeafType.PORTIN
-				|| leaf.getLeafType() == LeafType.PORTOUT) {
+				|| leaf.getLeafType() == LeafType.PORTOUT
+				|| leaf.getLeafType() == LeafType.PIN) {
 			final Cluster parent = bibliotekon.getCluster(leaf.getParentContainer());
 			return new EntityImagePort(leaf, parent, bibliotekon);
 		}

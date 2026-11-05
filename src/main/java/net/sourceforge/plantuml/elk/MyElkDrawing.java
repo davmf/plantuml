@@ -57,6 +57,7 @@ import net.sourceforge.plantuml.elk.proxy.graph.ElkEdgeSection;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
 import net.sourceforge.plantuml.klimt.creole.CreoleMode;
@@ -89,6 +90,7 @@ import net.sourceforge.plantuml.svek.ClusterManager;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
 import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.IEntityImageUtils;
+import net.sourceforge.plantuml.svek.SvekHarness;
 import net.sourceforge.plantuml.svek.SvekNode;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
 import net.sourceforge.plantuml.svek.image.EntityImageStateBorder;
@@ -107,13 +109,18 @@ class MyElkDrawing implements TextBlock {
 	private final Map<Entity, ElkNode> clusters;
 	private final Map<Link, ElkEdge> edges;
 	private final Map<Entity, ElkNode> nodes;
+	private final Map<Entity, ElkPort> ports;
+	private final List<SvekHarness> harnesses;
+	private final List<Link> jumpers;
+	private final Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses;
 	private final Map<Entity, ElkPort> borderPorts;
 
 	private final ClusterManager clusterManager;
 
 	public MyElkDrawing(ClusterManager clusterManager, CucaDiagram diagram, MinMax minMax,
 			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes,
-			Map<Entity, ElkPort> borderPorts) {
+			Map<Entity, ElkPort> ports, Map<Entity, ElkPort> borderPorts, List<SvekHarness> harnesses,
+			List<Link> jumpers, Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses) {
 		this.borderPorts = borderPorts;
 		this.clusterManager = clusterManager;
 		this.minMax = minMax;
@@ -121,6 +128,10 @@ class MyElkDrawing implements TextBlock {
 		this.clusters = clusters;
 		this.edges = edges;
 		this.nodes = nodes;
+		this.ports = ports;
+		this.harnesses = harnesses;
+		this.jumpers = jumpers;
+		this.collapses = collapses;
 	}
 
 	public void drawU(UGraphic ug) {
@@ -129,8 +140,33 @@ class MyElkDrawing implements TextBlock {
 		if (minMax != null)
 			ug = ug.apply(new UTranslate(MARGIN - minMax.getMinX(), MARGIN - minMax.getMinY()));
 		final Map<Entity, MyElkCluster> clusters = drawAllClusters(ug);
+		// Jumpers draw BEFORE node glyphs/labels so the pin number text
+		// renders on top of the light grey bar. Port glyphs and labels
+		// then paint over the bar at the pins and pin-name positions.
+		MyElkJumper.drawAll(ug, jumpers, ports, UTranslate.none());
 		final Map<Entity, IEntityImage> nodes = drawAllNodes(ug);
 		drawAllEdges(ug, clusters, nodes);
+		drawAllHarnesses(ug);
+		// Replay every harness's deferred labels last, so trunk and stub
+		// labels paint on top of every harness line AND every connector.
+		drawAllHarnessLabels(ug);
+	}
+
+	// Draw each SvekHarness over the top of the ordinary edge layer.
+	// Harness-member edges themselves are skipped in MyElkEdge.drawU
+	// (mirroring SvekEdge.drawU's isPartOfHarness short-circuit).
+	private void drawAllHarnesses(UGraphic ug) {
+		if (harnesses == null)
+			return;
+		for (SvekHarness harness : harnesses)
+			harness.drawU(ug);
+	}
+
+	private void drawAllHarnessLabels(UGraphic ug) {
+		if (harnesses == null)
+			return;
+		for (SvekHarness harness : harnesses)
+			harness.drawDeferredLabels(ug);
 	}
 
 	private Map<Entity, MyElkCluster> drawAllClusters(UGraphic ug) {
@@ -337,6 +373,20 @@ class MyElkDrawing implements TextBlock {
 
 			elkNodes.put(entity, image);
 		}
+		// Ports were placed by ELK on the parent ElkNode's boundary.
+		// Translate the corresponding EntityImagePort to that position.
+		for (Entry<Entity, ElkPort> ent : ports.entrySet()) {
+			final Entity entity = ent.getKey();
+			final XPoint2D corner = CucaDiagramFileMakerElk.getPosition(ent.getValue());
+			final SvekNode svekNode = clusterManager.getBibliotekon().getNode(entity);
+			svekNode.resetMove();
+			svekNode.moveDelta(corner.x, corner.y);
+
+			final IEntityImage image = IEntityImageUtils.translate(printEntityInternal(entity),
+					UTranslate.point(corner));
+			image.drawU(ug);
+			elkNodes.put(entity, image);
+		}
 		return elkNodes;
 
 	}
@@ -394,7 +444,7 @@ class MyElkDrawing implements TextBlock {
 		final TextBlock tailRole = quantifier1 != null ? role1 : null;
 		final TextBlock headRole = quantifier2 != null ? role2 : null;
 		final MyElkEdge elkPath = new MyElkEdge(diagram, SName.classDiagram, link, edge, label, tailLabel, headLabel,
-				tailRole, headRole, magicY2, elkClusters, UTranslate.point(translate), nodeImages);
+				tailRole, headRole, magicY2, elkClusters, UTranslate.point(translate), nodeImages, collapses);
 		elkPath.drawU(ug);
 	}
 
