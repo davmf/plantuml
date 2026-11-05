@@ -35,7 +35,10 @@
  */
 package net.sourceforge.plantuml.elk;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -47,8 +50,12 @@ import net.sourceforge.plantuml.annotation.DuplicateCode;
 import net.sourceforge.plantuml.annotation.Fast;
 import net.sourceforge.plantuml.core.DiagramType;
 import net.sourceforge.plantuml.decoration.symbol.USymbolFolder;
+import net.sourceforge.plantuml.abel.EntityPosition;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkBendPoint;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkEdgeSection;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.klimt.LineBreakStrategy;
 import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.color.HColor;
@@ -60,6 +67,7 @@ import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.MinMax;
+import net.sourceforge.plantuml.klimt.geom.RectangleArea;
 import net.sourceforge.plantuml.klimt.geom.VerticalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.geom.XPoint2D;
@@ -76,16 +84,20 @@ import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.RoleLabels;
 import net.sourceforge.plantuml.svek.Bibliotekon;
+import net.sourceforge.plantuml.svek.Cluster;
 import net.sourceforge.plantuml.svek.ClusterManager;
 import net.sourceforge.plantuml.svek.GeneralImageBuilder;
 import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.IEntityImageUtils;
 import net.sourceforge.plantuml.svek.SvekNode;
 import net.sourceforge.plantuml.svek.image.EntityImageNoteLink;
+import net.sourceforge.plantuml.svek.image.EntityImageStateBorder;
 import net.sourceforge.plantuml.utils.Position;
 
 // The Drawing class does the real drawing
 class MyElkDrawing implements TextBlock {
+
+	private static final double MARGIN = 10;
 
 	// min and max of all coord
 	private final MinMax minMax;
@@ -95,11 +107,14 @@ class MyElkDrawing implements TextBlock {
 	private final Map<Entity, ElkNode> clusters;
 	private final Map<Link, ElkEdge> edges;
 	private final Map<Entity, ElkNode> nodes;
+	private final Map<Entity, ElkPort> borderPorts;
 
 	private final ClusterManager clusterManager;
 
 	public MyElkDrawing(ClusterManager clusterManager, CucaDiagram diagram, MinMax minMax,
-			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes) {
+			Map<Entity, ElkNode> clusters, Map<Link, ElkEdge> edges, Map<Entity, ElkNode> nodes,
+			Map<Entity, ElkPort> borderPorts) {
+		this.borderPorts = borderPorts;
 		this.clusterManager = clusterManager;
 		this.minMax = minMax;
 		this.diagram = diagram;
@@ -109,6 +124,10 @@ class MyElkDrawing implements TextBlock {
 	}
 
 	public void drawU(UGraphic ug) {
+		// Some drawing may stick out of the ELK graph (the label of an entry point
+		// above its state): shift everything so it starts at the margin
+		if (minMax != null)
+			ug = ug.apply(new UTranslate(MARGIN - minMax.getMinX(), MARGIN - minMax.getMinY()));
 		final Map<Entity, MyElkCluster> clusters = drawAllClusters(ug);
 		final Map<Entity, IEntityImage> nodes = drawAllNodes(ug);
 		drawAllEdges(ug, clusters, nodes);
@@ -119,25 +138,199 @@ class MyElkDrawing implements TextBlock {
 		for (Entry<Entity, ElkNode> ent : clusters.entrySet()) {
 			final Entity entity = ent.getKey();
 			final MyElkCluster elkCluster = new MyElkCluster(diagram, entity, ent.getValue());
-			elkCluster.drawSingleCluster(ug);
+			final Cluster svekCluster = getBibliotekon().getCluster(entity);
+			// Entry/exit points read the frame of their svek cluster
+			if (svekCluster != null)
+				placeCluster(svekCluster, ent.getValue());
+			if (isStateFrame(entity) && svekCluster != null)
+				drawStateCluster(ug, svekCluster, ent.getValue());
+			else
+				elkCluster.drawSingleCluster(ug);
 			elkClusters.put(entity, elkCluster);
 		}
 		return elkClusters;
 
 	}
 
+	// A composite state is drawn like the dot pipeline draws it: a rounded box
+	// with its name in a header
+	private boolean isStateFrame(Entity group) {
+		return diagram.getDiagramType() == DiagramType.STATE && group.getUSymbol() == null;
+	}
+
+	private void placeCluster(Cluster cluster, ElkNode elkNode) {
+		final XPoint2D min = CucaDiagramFileMakerElk.getPosition(elkNode);
+		final XPoint2D max = min.move(elkNode.getWidth(), elkNode.getHeight());
+		cluster.setPosition(min, max);
+		cluster.setTitlePosition(min.move(0, IEntityImage.MARGIN));
+	}
+
+	private void drawStateCluster(UGraphic ug, Cluster cluster, ElkNode elkNode) {
+		if (elkNode.getWidth() <= 0 || elkNode.getHeight() <= 0)
+			return;
+		cluster.drawU(ug);
+	}
+
+	// The label of an entry/exit point is drawn outside its frame, centred under
+	// (or over) the point. An edge leaving the point outwards runs through it, and
+	// two points close together get their labels on top of each other: each label
+	// goes centred, left or right of its point, whichever crosses fewest edges and
+	// overlaps no other point or label. With an edge going out, beside the point
+	// and away from where the edge turns is tried first.
+	private void placeBorderLabels(StringBounder stringBounder) {
+		final List<List<XPoint2D>> polylines = new ArrayList<>();
+		for (ElkEdge edge : edges.values())
+			polylines.add(getAbsolutePoints(edge));
+
+		final List<RectangleArea> taken = new ArrayList<>();
+		final double diameter = 2 * EntityPosition.RADIUS;
+		for (Entity point : borderPorts.keySet()) {
+			final XPoint2D corner = getCorner(point, nodes.get(point));
+			taken.add(new RectangleArea(corner.getX(), corner.getY(), corner.getX() + diameter,
+					corner.getY() + diameter));
+		}
+
+		for (Entity point : borderPorts.keySet()) {
+			final SvekNode svekNode = getBibliotekon().getNode(point);
+			if (svekNode == null || svekNode.getImage() instanceof EntityImageStateBorder == false)
+				continue;
+			final EntityImageStateBorder image = (EntityImageStateBorder) svekNode.getImage();
+			final XPoint2D corner = getCorner(point, nodes.get(point));
+			final ElkNode frame = borderPorts.get(point).getParent();
+			final XPoint2D frameCorner = CucaDiagramFileMakerElk.getPosition(frame);
+			final boolean up = corner.getY() + EntityPosition.RADIUS < frameCorner.getY() + frame.getHeight() / 2;
+			final double width = image.getMaxWidthFromLabelForEntryExit(stringBounder);
+			final double height = image.getLabelHeightForEntryExit(stringBounder);
+
+			final int preferred = getPreferredLabelSide(point, corner, frameCorner, frame);
+			final int[] sides = preferred == 0 ? new int[] { 0, 1, -1 } : new int[] { preferred, -preferred, 0 };
+			int best = sides[0];
+			RectangleArea bestBox = null;
+			int bestScore = Integer.MAX_VALUE;
+			for (int side : sides) {
+				final RectangleArea box = labelBox(corner, side, up, width, height);
+				int score = 0;
+				for (List<XPoint2D> polyline : polylines)
+					score += crossings(box, polyline);
+				for (RectangleArea other : taken)
+					if (overlaps(box, other))
+						score += 10;
+				if (score < bestScore) {
+					bestScore = score;
+					best = side;
+					bestBox = box;
+				}
+			}
+			image.setLabelSide(best);
+			taken.add(bestBox);
+		}
+	}
+
+	// -1 or +1 when an edge leaves the point outwards: away from its first turn,
+	// or from the middle of the frame if it goes straight on; else 0
+	private int getPreferredLabelSide(Entity point, XPoint2D corner, XPoint2D frameCorner, ElkNode frame) {
+		final XPoint2D center = corner.move(EntityPosition.RADIUS, EntityPosition.RADIUS);
+		final Entity group = point.getParentContainer();
+		for (Entry<Link, ElkEdge> ent : edges.entrySet()) {
+			final Link link = ent.getKey();
+			final boolean start = link.getEntity1() == point;
+			if (start == false && link.getEntity2() != point)
+				continue;
+			if (isInside(start ? link.getEntity2() : link.getEntity1(), group))
+				continue;
+
+			final List<XPoint2D> points = getAbsolutePoints(ent.getValue());
+			if (start == false)
+				Collections.reverse(points);
+			double away = 0;
+			for (XPoint2D p : points)
+				if (Math.abs(p.getX() - center.getX()) > 1) {
+					away = center.getX() - p.getX();
+					break;
+				}
+			if (away == 0)
+				away = center.getX() - (frameCorner.getX() + frame.getWidth() / 2);
+			return away < 0 ? -1 : 1;
+		}
+		return 0;
+	}
+
+	// Where EntityImageStateBorder draws the label for a side
+	private static RectangleArea labelBox(XPoint2D corner, int side, boolean up, double width, double height) {
+		final double radius = EntityPosition.RADIUS;
+		final double x;
+		if (side < 0)
+			x = corner.getX() + radius - EntityImageStateBorder.LABEL_GAP - width;
+		else if (side > 0)
+			x = corner.getX() + radius + EntityImageStateBorder.LABEL_GAP;
+		else
+			x = corner.getX() + radius - width / 2;
+		final double y = up ? corner.getY() - 2 * radius - height : corner.getY() + 2 * radius;
+		return new RectangleArea(x, y, x + width, y + height);
+	}
+
+	private static boolean overlaps(RectangleArea a, RectangleArea b) {
+		return a.getMinX() < b.getMaxX() && b.getMinX() < a.getMaxX() && a.getMinY() < b.getMaxY()
+				&& b.getMinY() < a.getMaxY();
+	}
+
+	// Segments of an orthogonal polyline that run through a box
+	private static int crossings(RectangleArea box, List<XPoint2D> polyline) {
+		int result = 0;
+		for (int i = 0; i + 1 < polyline.size(); i++) {
+			final XPoint2D a = polyline.get(i);
+			final XPoint2D b = polyline.get(i + 1);
+			final RectangleArea segment = new RectangleArea(Math.min(a.getX(), b.getX()) - 0.5,
+					Math.min(a.getY(), b.getY()) - 0.5, Math.max(a.getX(), b.getX()) + 0.5,
+					Math.max(a.getY(), b.getY()) + 0.5);
+			if (overlaps(box, segment))
+				result++;
+		}
+		return result;
+	}
+
+	private static boolean isInside(Entity entity, Entity group) {
+		for (Entity p = entity; p != null && p.isRoot() == false; p = p.getParentContainer())
+			if (p == group)
+				return true;
+		return false;
+	}
+
+	private static List<XPoint2D> getAbsolutePoints(ElkEdge edge) {
+		final List<XPoint2D> result = new ArrayList<>();
+		final XPoint2D origin = CucaDiagramFileMakerElk.getPosition(edge.getContainingNode());
+		for (ElkEdgeSection section : edge.getSections()) {
+			result.add(origin.move(section.getStartX(), section.getStartY()));
+			for (ElkBendPoint pt : section.getBendPoints())
+				result.add(origin.move(pt.getX(), pt.getY()));
+			result.add(origin.move(section.getEndX(), section.getEndY()));
+		}
+		return result;
+	}
+
+	// Where ELK put an entity: its node, or the port of an entry/exit point
+	private XPoint2D getCorner(Entity entity, ElkNode elkNode) {
+		final ElkPort port = borderPorts.get(entity);
+		if (port == null)
+			return CucaDiagramFileMakerElk.getPosition(elkNode);
+		final XPoint2D parent = CucaDiagramFileMakerElk.getPosition(port.getParent());
+		return parent.move(port.getX(), port.getY());
+	}
+
 	private Map<Entity, IEntityImage> drawAllNodes(UGraphic ug) {
 		final Map<Entity, IEntityImage> elkNodes = new HashMap<>();
+		placeBorderLabels(ug.getStringBounder());
 		for (Entry<Entity, ElkNode> ent : nodes.entrySet()) {
 			final Entity entity = ent.getKey();
 			// Retrieve coord from ELK
-			final XPoint2D corner = CucaDiagramFileMakerElk.getPosition(ent.getValue());
+			final XPoint2D corner = getCorner(entity, ent.getValue());
 			final SvekNode svekNode = clusterManager.getBibliotekon().getNode(entity);
 			svekNode.resetMove();
 			svekNode.moveDelta(corner.x, corner.y);
 
-			final IEntityImage image = IEntityImageUtils.translate(printEntityInternal(entity),
-					UTranslate.point(corner));
+			final IEntityImage laidOut = svekNode.getImage();
+
+			final IEntityImage image = IEntityImageUtils.translate(laidOut, UTranslate.point(corner));
 
 			// Print the node image at right coord
 			image.drawU(ug);
@@ -342,7 +535,7 @@ class MyElkDrawing implements TextBlock {
 		if (minMax == null)
 			throw new UnsupportedOperationException();
 
-		return minMax.getDimension().delta(20, 20);
+		return minMax.getDimension().delta(2 * MARGIN, 2 * MARGIN);
 	}
 
 	public HColor getBackcolor() {
