@@ -255,6 +255,32 @@ class ElkComponentPortTest {
 	}
 
 	@Test
+	void edges_leaving_a_nested_package_are_laid_out() throws IOException {
+		// ELK cannot route an edge out of a cluster laid out on its own, so a
+		// package holding another package must stay in the parent's layout
+		// when one of its classes is linked to the outside.
+		final String svg = render(String.join("\n", //
+				"@startuml", //
+				"!pragma layout elk", //
+				"package model {", //
+				"  class User", //
+				"  class Order", //
+				"  package detail {", //
+				"    class Line", //
+				"  }", //
+				"}", //
+				"class Main", //
+				"Main --> Order : uses", //
+				"Order *-- Line", //
+				"Line ..> User", //
+				"User --> Order", //
+				"@enduml"));
+		assertTrue(svg.contains("has crashed") == false, "ELK refused the graph");
+		for (String name : new String[] { "Main", "User", "Order", "Line" })
+			assertTrue(svg.contains(">" + name + "<"), "class " + name);
+	}
+
+	@Test
 	void wires_between_two_boards_do_not_cross_each_other() throws IOException {
 		// The MCU Board's wires climb or drop to the Interface Board's ports in
 		// the same order, so ELK routes them without a crossing. Drawing each as

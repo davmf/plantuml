@@ -395,11 +395,15 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// were declared in (grouped by `group "Name" { ... }`
 				// blocks) instead of being reordered by ELK.
 				final boolean clusterHasPorts = hasPorts(g);
+				// ELK cannot route an edge out of a cluster that is laid out
+				// on its own, so a cluster with such an edge stays in its
+				// parent's layout whatever else wants it separate.
+				final boolean canLayOutSeparately = hasEdgeLeaving(g) == false;
 				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
 						(g.isHeader() || clusterHasPorts)
 								? PortConstraints.FIXED_ORDER
 								: PortConstraints.FIXED_SIDE);
-				if (clusterHasPorts) {
+				if (clusterHasPorts && canLayOutSeparately) {
 					// Without SEPARATE_CHILDREN, the layered algorithm's
 					// hierarchical layout re-aligns ports with internal
 					// child positions, overriding our PORT_INDEX. Cutting
@@ -433,7 +437,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// board. Skip port-only clusters: ports sit on cluster
 				// edges, not as separate ELK layers, and applying
 				// between-layers spacing there would balloon the cluster.
-				if (hasSubClusters(g)) {
+				if (hasSubClusters(g) && canLayOutSeparately) {
 					applySpacingTo(elkCluster);
 					// Spacing must be combined with SEPARATE_CHILDREN so
 					// ranksep applies only to this cluster's direct child
@@ -572,6 +576,32 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	// cluster: clusters with only ports (no sub-clusters) don't host a
 	// horizontal/vertical layer layout and shouldn't carry between-
 	// layers spacing.
+	// True when a link joins something inside g to something outside it.
+	// Ports on g's own border sit on both sides: ELK routes them from the
+	// parent's layout and from g's, so they never make a link leave g.
+	private boolean hasEdgeLeaving(Entity g) {
+		for (Link link : diagram.getLinks()) {
+			final int side1 = sideOf(link.getEntity1(), g);
+			final int side2 = sideOf(link.getEntity2(), g);
+			if (side1 * side2 < 0)
+				return true;
+		}
+		return false;
+	}
+
+	// 1 inside g, -1 outside it, 0 a port on g's own border.
+	private static int sideOf(Entity ent, Entity g) {
+		if (ent == null)
+			return 0;
+		final EntityPosition pos = ent.getEntityPosition();
+		if (pos != null && pos.isPort() && ent.getParentContainer() == g)
+			return 0;
+		for (Entity parent = ent.getParentContainer(); parent != null; parent = parent.getParentContainer())
+			if (parent == g)
+				return 1;
+		return -1;
+	}
+
 	private boolean hasSubClusters(Entity g) {
 		for (Entity child : diagram.getChildrenGroups(g)) {
 			if (child.isRemoved() == false)
