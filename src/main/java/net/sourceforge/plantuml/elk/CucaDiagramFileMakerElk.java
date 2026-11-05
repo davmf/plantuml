@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -394,11 +395,15 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// were declared in (grouped by `group "Name" { ... }`
 				// blocks) instead of being reordered by ELK.
 				final boolean clusterHasPorts = hasPorts(g);
+				// ELK cannot route an edge out of a cluster that is laid out
+				// on its own, so a cluster with such an edge stays in its
+				// parent's layout whatever else wants it separate.
+				final boolean canLayOutSeparately = hasEdgeLeaving(g) == false;
 				elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
 						(g.isHeader() || clusterHasPorts)
 								? PortConstraints.FIXED_ORDER
 								: PortConstraints.FIXED_SIDE);
-				if (clusterHasPorts) {
+				if (clusterHasPorts && canLayOutSeparately) {
 					// Without SEPARATE_CHILDREN, the layered algorithm's
 					// hierarchical layout re-aligns ports with internal
 					// child positions, overriding our PORT_INDEX. Cutting
@@ -432,7 +437,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				// board. Skip port-only clusters: ports sit on cluster
 				// edges, not as separate ELK layers, and applying
 				// between-layers spacing there would balloon the cluster.
-				if (hasSubClusters(g)) {
+				if (hasSubClusters(g) && canLayOutSeparately) {
 					applySpacingTo(elkCluster);
 					// Spacing must be combined with SEPARATE_CHILDREN so
 					// ranksep applies only to this cluster's direct child
@@ -571,6 +576,32 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	// cluster: clusters with only ports (no sub-clusters) don't host a
 	// horizontal/vertical layer layout and shouldn't carry between-
 	// layers spacing.
+	// True when a link joins something inside g to something outside it.
+	// Ports on g's own border sit on both sides: ELK routes them from the
+	// parent's layout and from g's, so they never make a link leave g.
+	private boolean hasEdgeLeaving(Entity g) {
+		for (Link link : diagram.getLinks()) {
+			final int side1 = sideOf(link.getEntity1(), g);
+			final int side2 = sideOf(link.getEntity2(), g);
+			if (side1 * side2 < 0)
+				return true;
+		}
+		return false;
+	}
+
+	// 1 inside g, -1 outside it, 0 a port on g's own border.
+	private static int sideOf(Entity ent, Entity g) {
+		if (ent == null)
+			return 0;
+		final EntityPosition pos = ent.getEntityPosition();
+		if (pos != null && pos.isPort() && ent.getParentContainer() == g)
+			return 0;
+		for (Entity parent = ent.getParentContainer(); parent != null; parent = parent.getParentContainer())
+			if (parent == g)
+				return 1;
+		return -1;
+	}
+
 	private boolean hasSubClusters(Entity g) {
 		for (Entity child : diagram.getChildrenGroups(g)) {
 			if (child.isRemoved() == false)
@@ -1055,14 +1086,15 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			svekNode.moveDelta(corner.getX(), corner.getY());
 		}
 
-		final List<SvekHarness> harnesses = buildHarnesses();
+		final Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses = planStaircaseCollapses();
+		final List<SvekHarness> harnesses = buildHarnesses(collapses);
 		final List<Link> jumpers = buildJumpers();
 
-		final MinMax minMax = TextBlockUtils.getMinMax(
-				new MyElkDrawing(clusterManager, diagram, null, clusters, edges, nodes, ports, harnesses, jumpers),
-				stringBounder, false);
+		final MinMax minMax = TextBlockUtils.getMinMax(new MyElkDrawing(clusterManager, diagram, null, clusters,
+				edges, nodes, ports, harnesses, jumpers, collapses), stringBounder, false);
 
-		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports, harnesses, jumpers);
+		return new MyElkDrawing(clusterManager, diagram, minMax, clusters, edges, nodes, ports, harnesses, jumpers,
+				collapses);
 	}
 
 	// Collect every link previously flagged by detectJumpers so MyElkDrawing
@@ -1084,7 +1116,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	// is needed. resolveOverlaps is fed non-harness vertical segments
 	// harvested from ELK-routed edge sections (the ELK analogue of Svek's
 	// rendered DotPath beziers).
-	private List<SvekHarness> buildHarnesses() {
+	private List<SvekHarness> buildHarnesses(Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses) {
 		final Map<Harness, List<Link>> harnessMap = new LinkedHashMap<Harness, List<Link>>();
 		for (Link link : diagram.getLinks()) {
 			final Harness h = link.getHarness();
@@ -1101,7 +1133,7 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 		for (Map.Entry<Harness, List<Link>> entry : harnessMap.entrySet())
 			result.add(new SvekHarness(entry.getKey(), entry.getValue(),
 					diagram.getSkinParam(), getBibliotekon()));
-		SvekHarness.resolveOverlaps(result, collectNonHarnessVerticalSegments());
+		SvekHarness.resolveOverlaps(result, collectNonHarnessVerticalSegments(collapses));
 		return result;
 	}
 
@@ -1109,7 +1141,8 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 	// emit {x, yMin, yMax} for every near-vertical segment found in absolute
 	// (post-translate) coordinates. SvekHarness.resolveOverlaps uses these
 	// to push harness spines clear of ordinary connectors.
-	private List<double[]> collectNonHarnessVerticalSegments() {
+	private List<double[]> collectNonHarnessVerticalSegments(
+			Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> collapses) {
 		final List<double[]> verts = new ArrayList<double[]>();
 		for (Map.Entry<Link, ElkEdge> entry : edges.entrySet()) {
 			final Link link = entry.getKey();
@@ -1117,14 +1150,46 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 				continue;
 			final ElkEdge edge = entry.getValue();
 			final XPoint2D translate = getPosition(edge.getContainingNode());
-			for (ElkEdgeSection section : edge.getSections())
-				collectVerticalSegments(section, translate, verts);
+			for (ElkEdgeSection section : edge.getSections()) {
+				List<XPoint2D> pts = absolutePoints(section, translate);
+				final ElkStaircaseSimplifier.Collapse collapse = collapses.get(section);
+				if (collapse != null)
+					pts = collapse.translated(-translate.getX(), -translate.getY()).apply(pts);
+				collectVerticalSegments(pts, verts);
+			}
 		}
 		return verts;
 	}
 
-	private static void collectVerticalSegments(ElkEdgeSection section,
-			XPoint2D translate, List<double[]> verts) {
+	// ELK routes simple "across and up" edges through one column per gap they
+	// pass, and MyElkEdge draws them as a single corner where that is safe.
+	// Plan those collapses for every drawn edge together, in each section's
+	// own frame, so that no collapse makes two edges cross.
+	private Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> planStaircaseCollapses() {
+		final List<ElkEdgeSection> sections = new ArrayList<ElkEdgeSection>();
+		final List<XPoint2D> translates = new ArrayList<XPoint2D>();
+		final List<List<XPoint2D>> polylines = new ArrayList<List<XPoint2D>>();
+		for (Map.Entry<Link, ElkEdge> entry : edges.entrySet()) {
+			final Link link = entry.getKey();
+			if (link.isInvis() || link.isHidden() || link.isPartOfHarness() || link.isJumper())
+				continue;
+			final ElkEdge edge = entry.getValue();
+			final XPoint2D translate = getPosition(edge.getContainingNode());
+			for (ElkEdgeSection section : edge.getSections()) {
+				sections.add(section);
+				translates.add(translate);
+				polylines.add(absolutePoints(section, translate));
+			}
+		}
+		final List<ElkStaircaseSimplifier.Collapse> plan = ElkStaircaseSimplifier.plan(polylines);
+		final Map<ElkEdgeSection, ElkStaircaseSimplifier.Collapse> result = new HashMap<ElkEdgeSection, ElkStaircaseSimplifier.Collapse>();
+		for (int i = 0; i < plan.size(); i++)
+			if (plan.get(i) != null)
+				result.put(sections.get(i), plan.get(i).translated(translates.get(i).getX(), translates.get(i).getY()));
+		return result;
+	}
+
+	private static List<XPoint2D> absolutePoints(ElkEdgeSection section, XPoint2D translate) {
 		final List<XPoint2D> pts = new ArrayList<XPoint2D>();
 		pts.add(new XPoint2D(section.getStartX() + translate.getX(),
 				section.getStartY() + translate.getY()));
@@ -1133,6 +1198,10 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 					pt.getY() + translate.getY()));
 		pts.add(new XPoint2D(section.getEndX() + translate.getX(),
 				section.getEndY() + translate.getY()));
+		return pts;
+	}
+
+	private static void collectVerticalSegments(List<XPoint2D> pts, List<double[]> verts) {
 		for (int i = 0; i < pts.size() - 1; i++) {
 			final XPoint2D a = pts.get(i);
 			final XPoint2D b = pts.get(i + 1);

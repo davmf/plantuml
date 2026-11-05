@@ -142,6 +142,7 @@ class ElkComponentPortTest {
 	private static final Pattern CLUSTER = Pattern.compile(
 			"<rect x=\"([-\\d.]+)\" y=\"([-\\d.]+)\" width=\"([\\d.]+)\" height=\"([\\d.]+)\" fill=\"[^\"]*\" style=\"[^\"]*\" rx=\"2.5\"");
 	private static final Pattern EDGE = Pattern.compile("<path d=\"[^\"]+\" style=\"[^\"]*\" fill=\"none\"/>");
+	private static final Pattern WIRE = Pattern.compile("<path d=\"([^\"]+)\" style=\"stroke:#[0-9A-F]+;stroke-width:1;\" fill=\"none\"/>");
 	private static final Pattern JUMPER = Pattern.compile("<rect [^>]*fill=\"#A0A0A0\"");
 	private static final Pattern HEIGHT = Pattern.compile("height=\"(\\d+)px\"");
 
@@ -251,6 +252,66 @@ class ElkComponentPortTest {
 									+ s[0] + "," + s[1] + " - " + s[2] + "," + s[3]);
 		}
 		assertEquals(8, trunks, "harness trunks");
+	}
+
+	@Test
+	void edges_leaving_a_nested_package_are_laid_out() throws IOException {
+		// ELK cannot route an edge out of a cluster laid out on its own, so a
+		// package holding another package must stay in the parent's layout
+		// when one of its classes is linked to the outside.
+		final String svg = render(String.join("\n", //
+				"@startuml", //
+				"!pragma layout elk", //
+				"package model {", //
+				"  class User", //
+				"  class Order", //
+				"  package detail {", //
+				"    class Line", //
+				"  }", //
+				"}", //
+				"class Main", //
+				"Main --> Order : uses", //
+				"Order *-- Line", //
+				"Line ..> User", //
+				"User --> Order", //
+				"@enduml"));
+		assertTrue(svg.contains("has crashed") == false, "ELK refused the graph");
+		for (String name : new String[] { "Main", "User", "Order", "Line" })
+			assertTrue(svg.contains(">" + name + "<"), "class " + name);
+	}
+
+	@Test
+	void wires_between_two_boards_do_not_cross_each_other() throws IOException {
+		// The MCU Board's wires climb or drop to the Interface Board's ports in
+		// the same order, so ELK routes them without a crossing. Drawing each as
+		// a single corner must keep that.
+		final String svg = render(new String(Files.readAllBytes(Paths.get("src/test/resources/elk/ad5941-harnesses.puml")), UTF_8));
+		final List<List<double[]>> wires = new ArrayList<>();
+		final Matcher wire = WIRE.matcher(svg);
+		while (wire.find())
+			wires.add(corners(wire.group(1)));
+		assertTrue(wires.size() >= 12, "wires: " + wires.size());
+		for (int i = 0; i < wires.size(); i++)
+			for (int j = i + 1; j < wires.size(); j++)
+				for (double[] a : straightSegments(wires.get(i)))
+					for (double[] b : straightSegments(wires.get(j)))
+						assertTrue(crosses(new double[] { a[0], a[1] }, new double[] { a[2], a[3] }, b) == false,
+								"wire segment " + a[0] + "," + a[1] + " - " + a[2] + "," + a[3] + " crosses "
+										+ b[0] + "," + b[1] + " - " + b[2] + "," + b[3]);
+	}
+
+	/** The horizontal and vertical segments (x1, y1, x2, y2) between a path's corners. */
+	private static List<double[]> straightSegments(List<double[]> corners) {
+		final List<double[]> result = new ArrayList<>();
+		for (int i = 0; i + 1 < corners.size(); i++) {
+			final double[] a = corners.get(i);
+			final double[] b = corners.get(i + 1);
+			final boolean vertical = Math.abs(a[0] - b[0]) < EPSILON;
+			final boolean horizontal = Math.abs(a[1] - b[1]) < EPSILON;
+			if (vertical != horizontal)
+				result.add(new double[] { a[0], a[1], b[0], b[1] });
+		}
+		return result;
 	}
 
 	/**
