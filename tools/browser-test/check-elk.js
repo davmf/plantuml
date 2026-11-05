@@ -88,6 +88,9 @@ const FAMILIES = [
     'class Main', 'Main --> Order : uses', 'Order *-- Line', 'Line ..> User', 'User --> Order']],
   ['composite state', ['[*] --> Working', 'state Working {', '  [*] --> Fetching', '  Fetching --> Parsing : done', '}', 'Working --> [*] : shutdown']],
   ['edge to a package', ['package P {', '  class A', '  class B', '}', 'class C', 'C --> P', 'A --> B']],
+  // Ports: ElkPort in the JSON graph, edges from and to ports
+  ['component ports', ['component Board {', '  port tx', '  port rx', '}', 'component Sensor {', '  port in', '}',
+    'tx --> in', 'Sensor --> rx']],
 ];
 const diagram = (body, pragma) => ['@startuml', ...(pragma ? ['!pragma layout elk'] : []), ...body, '@enduml'];
 

@@ -31,6 +31,8 @@ public class ElkGraphUtil {
 	}
 
 	public static ElkLabel createLabel(ElkPort port) {
+		if (port.obj instanceof ElkJsonGraph.Port)
+			return new ElkLabel(((ElkJsonGraph.Port) port.obj).createLabel());
 		return new ElkLabel(Reflect.callStatic2(ELK_GRAPH_UTIL, "createLabel", port.obj));
 	}
 
@@ -41,6 +43,8 @@ public class ElkGraphUtil {
 	}
 
 	public static ElkPort createPort(ElkNode parent) {
+		if (parent.obj instanceof ElkJsonGraph.Node)
+			return new ElkPort(((ElkJsonGraph.Node) parent.obj).createPort());
 		return new ElkPort(Reflect.callStatic2(ELK_GRAPH_UTIL, "createPort", parent.obj));
 	}
 
@@ -61,9 +65,9 @@ public class ElkGraphUtil {
 	}
 
 	private static ElkEdge createSimpleEdgeProxy(ElkWithProperty end1, ElkWithProperty end2) {
-		if (end1.obj instanceof ElkJsonGraph.Node)
+		if (end1.obj instanceof ElkJsonGraph.Shape)
 			return new ElkEdge(
-					ElkJsonGraph.createSimpleEdge((ElkJsonGraph.Node) end1.obj, (ElkJsonGraph.Node) end2.obj));
+					ElkJsonGraph.createSimpleEdge((ElkJsonGraph.Shape) end1.obj, (ElkJsonGraph.Shape) end2.obj));
 		return new ElkEdge(Reflect.callStatic2(ELK_GRAPH_UTIL, "createSimpleEdge", end1.obj, end2.obj));
 	}
 

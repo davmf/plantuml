@@ -92,7 +92,7 @@ public final class ElkJsonGraph {
 	// The graph
 	// =========================================================================
 
-	/** What nodes, edges and labels have in common: an id, options and labels. */
+	/** What nodes, ports, edges and labels have in common: an id, options and labels. */
 	public static abstract class Element {
 
 		private final String id;
@@ -136,10 +136,29 @@ public final class ElkJsonGraph {
 
 	}
 
-	public static final class Node extends Element {
+	/**
+	 * What an edge can be connected to: a node or a port
+	 * (<code>ElkConnectableShape</code>).
+	 */
+	public static abstract class Shape extends Element {
+
+		private Shape(String id) {
+			super(id);
+		}
+
+		/**
+		 * The node this shape stands for when an edge is put in its container: the
+		 * node itself, or the node of a port (<code>connectableShapeToNode</code>).
+		 */
+		abstract Node getNode();
+
+	}
+
+	public static final class Node extends Shape {
 
 		private final Node parent;
 		private final List<Node> children = new ArrayList<Node>();
+		private final List<Port> ports = new ArrayList<Port>();
 		private final List<Edge> edges = new ArrayList<Edge>();
 		private int counter;
 		private double x;
@@ -157,6 +176,11 @@ public final class ElkJsonGraph {
 		}
 
 		@Override
+		Node getNode() {
+			return this;
+		}
+
+		@Override
 		Node getRoot() {
 			Node result = this;
 			while (result.parent != null)
@@ -170,8 +194,18 @@ public final class ElkJsonGraph {
 			return node;
 		}
 
+		public Port createPort() {
+			final Port port = new Port(getRoot().nextId("p"), this);
+			ports.add(port);
+			return port;
+		}
+
 		public Node getParent() {
 			return parent;
+		}
+
+		public List<Port> getPorts() {
+			return Collections.unmodifiableList(ports);
 		}
 
 		public List<Node> getChildren() {
@@ -213,14 +247,65 @@ public final class ElkJsonGraph {
 
 	}
 
+	/** A port: its coordinates are relative to its node. */
+	public static final class Port extends Shape {
+
+		private final Node parent;
+		private double x;
+		private double y;
+		private double width;
+		private double height;
+
+		private Port(String id, Node parent) {
+			super(id);
+			this.parent = parent;
+		}
+
+		@Override
+		Node getNode() {
+			return parent;
+		}
+
+		@Override
+		Node getRoot() {
+			return parent.getRoot();
+		}
+
+		public Node getParent() {
+			return parent;
+		}
+
+		public void setDimensions(double newWidth, double newHeight) {
+			this.width = newWidth;
+			this.height = newHeight;
+		}
+
+		public double getX() {
+			return x;
+		}
+
+		public double getY() {
+			return y;
+		}
+
+		public double getWidth() {
+			return width;
+		}
+
+		public double getHeight() {
+			return height;
+		}
+
+	}
+
 	public static final class Edge extends Element {
 
-		private final Node source;
-		private final Node target;
+		private final Shape source;
+		private final Shape target;
 		private final Node container;
 		private final List<Section> sections = new ArrayList<Section>();
 
-		private Edge(String id, Node source, Node target, Node container) {
+		private Edge(String id, Shape source, Shape target, Node container) {
 			super(id);
 			this.source = source;
 			this.target = target;
@@ -232,11 +317,11 @@ public final class ElkJsonGraph {
 			return container.getRoot();
 		}
 
-		public Node getSource() {
+		public Shape getSource() {
 			return source;
 		}
 
-		public Node getTarget() {
+		public Shape getTarget() {
 			return target;
 		}
 
@@ -339,11 +424,12 @@ public final class ElkJsonGraph {
 	}
 
 	/**
-	 * Creates an edge between two nodes of the same graph, in the node ELK Java
-	 * would put it (<code>ElkGraphUtil.createSimpleEdge</code>).
+	 * Creates an edge between two nodes or ports of the same graph, in the node ELK
+	 * Java would put it (<code>ElkGraphUtil.createSimpleEdge</code>): a port
+	 * counts as its node.
 	 */
-	public static Edge createSimpleEdge(Node source, Node target) {
-		final Node container = findContainer(source, target);
+	public static Edge createSimpleEdge(Shape source, Shape target) {
+		final Node container = findContainer(source.getNode(), target.getNode());
 		if (container == null)
 			throw new IllegalArgumentException("The nodes are not in the same graph");
 		final Edge edge = new Edge(container.getRoot().nextId("e"), source, target, container);
@@ -395,6 +481,12 @@ public final class ElkJsonGraph {
 		// ELK Java nodes are 0 x 0 until they are given a size
 		result.add("width", node.width);
 		result.add("height", node.height);
+		if (node.ports.isEmpty() == false) {
+			final JsonArray ports = new JsonArray();
+			for (Port port : node.ports)
+				ports.add(writePort(port));
+			result.add("ports", ports);
+		}
 		if (node.children.isEmpty() == false) {
 			final JsonArray children = new JsonArray();
 			for (Node child : node.children)
@@ -407,6 +499,13 @@ public final class ElkJsonGraph {
 				edges.add(writeEdge(edge));
 			result.add("edges", edges);
 		}
+		return result;
+	}
+
+	private static JsonObject writePort(Port port) {
+		final JsonObject result = writeElement(port);
+		result.add("width", port.width);
+		result.add("height", port.height);
 		return result;
 	}
 
@@ -464,6 +563,10 @@ public final class ElkJsonGraph {
 	private static void index(Node node, Map<String, Element> byId) {
 		byId.put(node.getId(), node);
 		indexLabels(node, byId);
+		for (Port port : node.ports) {
+			byId.put(port.getId(), port);
+			indexLabels(port, byId);
+		}
 		for (Node child : node.children)
 			index(child, byId);
 		for (Edge edge : node.edges) {
@@ -492,10 +595,21 @@ public final class ElkJsonGraph {
 		node.width = json.getDouble("width", node.width);
 		node.height = json.getDouble("height", node.height);
 		readLabels(json, byId);
+		for (JsonObject port : objects(json, "ports"))
+			readPort(port, byId);
 		for (JsonObject child : objects(json, "children"))
 			readNode(child, byId);
 		for (JsonObject edge : objects(json, "edges"))
 			readEdge(edge, byId);
+	}
+
+	private static void readPort(JsonObject json, Map<String, Element> byId) {
+		final Port port = (Port) find(json, byId);
+		port.x = json.getDouble("x", 0);
+		port.y = json.getDouble("y", 0);
+		port.width = json.getDouble("width", port.width);
+		port.height = json.getDouble("height", port.height);
+		readLabels(json, byId);
 	}
 
 	private static void readEdge(JsonObject json, Map<String, Element> byId) {

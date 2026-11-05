@@ -13,16 +13,20 @@ import org.junit.jupiter.api.Test;
 
 import net.sourceforge.plantuml.elk.proxy.core.RecursiveGraphLayoutEngine;
 import net.sourceforge.plantuml.elk.proxy.core.math.ElkPadding;
+import net.sourceforge.plantuml.elk.proxy.core.math.KVector;
 import net.sourceforge.plantuml.elk.proxy.core.options.CoreOptions;
 import net.sourceforge.plantuml.elk.proxy.core.options.Direction;
 import net.sourceforge.plantuml.elk.proxy.core.options.EdgeLabelPlacement;
 import net.sourceforge.plantuml.elk.proxy.core.options.HierarchyHandling;
 import net.sourceforge.plantuml.elk.proxy.core.options.NodeLabelPlacement;
+import net.sourceforge.plantuml.elk.proxy.core.options.PortConstraints;
+import net.sourceforge.plantuml.elk.proxy.core.options.PortSide;
 import net.sourceforge.plantuml.elk.proxy.core.util.NullElkProgressMonitor;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdge;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkEdgeSection;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkLabel;
 import net.sourceforge.plantuml.elk.proxy.graph.ElkNode;
+import net.sourceforge.plantuml.elk.proxy.graph.ElkPort;
 import net.sourceforge.plantuml.elk.proxy.graph.util.ElkGraphUtil;
 import net.sourceforge.plantuml.json.Json;
 import net.sourceforge.plantuml.json.JsonObject;
@@ -70,6 +74,36 @@ class ElkJsonGraphTest {
 			+ "\"sources\":[\"n0\"],\"targets\":[\"n3\"],\"sections\":[{\"id\":\"e5_s0\","
 			+ "\"startPoint\":{\"x\":67,\"y\":52},\"endPoint\":{\"x\":67,\"y\":131}}],\"container\":\"root\"}],"
 			+ "\"x\":0,\"y\":0}";
+
+	/**
+	 * A board with a child chip and an EAST port (index, border offset, anchor,
+	 * label), and a sensor with a WEST port: an edge from port to port, and one
+	 * from the chip to the port of its board. What {@link #buildPortGraph()}
+	 * writes.
+	 */
+	private static final String PORT_GRAPH = "{\"id\":\"root\",\"layoutOptions\":{\"org.eclipse.elk.direction\":\"RIGHT\",\"org.eclipse.elk.h"
+			+ "ierarchyHandling\":\"INCLUDE_CHILDREN\"},\"width\":0,\"height\":0,\"children\":[{\"id\":\"n0\","
+			+ "\"layoutOptions\":{\"org.eclipse.elk.portConstraints\":\"FIXED_ORDER\"},\"width\":0,\"height\":"
+			+ "0,\"ports\":[{\"id\":\"p1\",\"layoutOptions\":{\"org.eclipse.elk.port.side\":\"EAST\",\"org.ecl"
+			+ "ipse.elk.port.index\":0,\"org.eclipse.elk.port.borderOffset\":-5,\"org.eclipse.elk.port.anchor\""
+			+ ":\"(5.0,5.0)\"},\"labels\":[{\"id\":\"l2\",\"text\":\"TX\",\"width\":16,\"height\":12}],\"width"
+			+ "\":10,\"height\":10}],\"children\":[{\"id\":\"n3\",\"width\":50,\"height\":30}],\"edges\":[{\"i"
+			+ "d\":\"e7\",\"sources\":[\"n3\"],\"targets\":[\"p1\"]}]},{\"id\":\"n4\",\"width\":60,\"height\":"
+			+ "40,\"ports\":[{\"id\":\"p5\",\"layoutOptions\":{\"org.eclipse.elk.port.side\":\"WEST\"},\"width"
+			+ "\":10,\"height\":10}]}],\"edges\":[{\"id\":\"e6\",\"sources\":[\"p1\"],\"targets\":[\"p5\"]}]}";
+
+	/** The answer of elkjs 0.12.1 to {@link #PORT_GRAPH}, layout options left out. */
+	private static final String PORT_LAYOUT = "{\"id\":\"root\",\"width\":215,\"height\":81,\"children\":[{\"id\":\"n0\",\"width\":79,\"height"
+			+ "\":57,\"ports\":[{\"id\":\"p1\",\"labels\":[{\"id\":\"l2\",\"text\":\"TX\",\"width\":16,\"heigh"
+			+ "t\":12,\"x\":11,\"y\":11}],\"width\":10,\"height\":10,\"x\":74,\"y\":22}],\"children\":[{\"id\""
+			+ ":\"n3\",\"width\":50,\"height\":30,\"$H\":283,\"x\":12,\"y\":12}],\"edges\":[{\"id\":\"e7\",\"s"
+			+ "ources\":[\"n3\"],\"targets\":[\"p1\"],\"sections\":[{\"id\":\"e7_s0\",\"startPoint\":{\"x\":62"
+			+ ",\"y\":27},\"endPoint\":{\"x\":79,\"y\":27},\"incomingShape\":\"n3\",\"outgoingShape\":\"p1\"}]"
+			+ ",\"container\":\"n0\"}],\"$H\":277,\"x\":12,\"y\":12},{\"id\":\"n4\",\"width\":60,\"height\":40"
+			+ ",\"ports\":[{\"id\":\"p5\",\"width\":10,\"height\":10,\"x\":-10,\"y\":15}],\"$H\":285,\"x\":143"
+			+ ",\"y\":19}],\"edges\":[{\"id\":\"e6\",\"sources\":[\"p1\"],\"targets\":[\"p5\"],\"sections\":[{"
+			+ "\"id\":\"e6_s0\",\"startPoint\":{\"x\":91,\"y\":39},\"endPoint\":{\"x\":133,\"y\":39},\"incomin"
+			+ "gShape\":\"p1\",\"outgoingShape\":\"p5\"}],\"container\":\"root\"}],\"$H\":13,\"x\":0,\"y\":0}";
 
 	private String received;
 
@@ -128,6 +162,45 @@ class ElkJsonGraphTest {
 		clusterToC = ElkGraphUtil.createSimpleEdge(cluster, c);
 	}
 
+	private ElkNode board;
+	private ElkNode chip;
+	private ElkNode sensor;
+	private ElkPort tx;
+	private ElkPort rx;
+	private ElkLabel txLabel;
+	private ElkEdge txToRx;
+	private ElkEdge chipToTx;
+
+	/** Built through the proxies, as CucaDiagramFileMakerElk does for component ports. */
+	private void buildPortGraph() {
+		root = ElkGraphUtil.createGraph();
+		root.setProperty(CoreOptions.DIRECTION, Direction.RIGHT);
+		root.setProperty(CoreOptions.HIERARCHY_HANDLING, HierarchyHandling.INCLUDE_CHILDREN);
+
+		board = ElkGraphUtil.createNode(root);
+		board.setProperty(CoreOptions.PORT_CONSTRAINTS, PortConstraints.FIXED_ORDER);
+		tx = ElkGraphUtil.createPort(board);
+		tx.setDimensions(10, 10);
+		tx.setProperty(CoreOptions.PORT_SIDE, PortSide.EAST);
+		tx.setProperty(CoreOptions.PORT_INDEX, Integer.valueOf(0));
+		tx.setProperty(CoreOptions.PORT_BORDER_OFFSET, -5.0);
+		tx.setProperty(CoreOptions.PORT_ANCHOR, new KVector(5, 5));
+		txLabel = ElkGraphUtil.createLabel(tx);
+		txLabel.setText("TX");
+		txLabel.setDimensions(16, 12);
+		chip = ElkGraphUtil.createNode(board);
+		chip.setDimensions(50, 30);
+
+		sensor = ElkGraphUtil.createNode(root);
+		sensor.setDimensions(60, 40);
+		rx = ElkGraphUtil.createPort(sensor);
+		rx.setDimensions(10, 10);
+		rx.setProperty(CoreOptions.PORT_SIDE, PortSide.WEST);
+
+		txToRx = ElkGraphUtil.createSimpleEdge(tx, rx);
+		chipToTx = ElkGraphUtil.createSimpleEdge(chip, tx);
+	}
+
 	@Test
 	void writesTheElkJsonFormat() {
 		buildGraph();
@@ -145,6 +218,67 @@ class ElkJsonGraphTest {
 				.asObject().get("layoutOptions").asObject();
 		// EnumSet order: the declaration order of the proxy enum
 		assertEquals("[INSIDE, V_CENTER, H_CENTER]", options.getString("org.eclipse.elk.nodeLabels.placement", null));
+	}
+
+	@Test
+	void writesVectorsAsElkParsesThem() {
+		final ElkNode graph = ElkGraphUtil.createGraph();
+		ElkGraphUtil.createNode(graph).setProperty(CoreOptions.NODE_SIZE_MINIMUM, new KVector(120, 60.5));
+		final JsonObject json = Json.parse(ElkJsonGraph.toJson((ElkJsonGraph.Node) graph.obj)).asObject();
+		final JsonObject options = json.get("children").asArray().get(0).asObject().get("layoutOptions").asObject();
+		// KVector.toString(), which KVector.parse() reads back
+		assertEquals("(120.0,60.5)", options.getString("org.eclipse.elk.nodeSize.minimum", null));
+	}
+
+	@Test
+	void writesPorts() {
+		buildPortGraph();
+		assertEquals(Json.parse(PORT_GRAPH), Json.parse(ElkJsonGraph.toJson((ElkJsonGraph.Node) root.obj)));
+	}
+
+	@Test
+	void putsAPortEdgeWhereItsNodesWouldPutIt() {
+		buildPortGraph();
+		// A port counts as its node: port to port between siblings, in their parent;
+		// from a child to a port of its parent, in that parent
+		assertSame(root.obj, txToRx.getContainingNode().obj);
+		assertSame(board.obj, chipToTx.getContainingNode().obj);
+		// From a port to its own node: a self loop of that node, in its parent
+		assertSame(root.obj, ElkGraphUtil.createSimpleEdge(tx, board).getContainingNode().obj);
+	}
+
+	@Test
+	void readsThePortLayoutBack() {
+		buildPortGraph();
+		ElkJsonGraph.setLayouter(new ElkJsonLayouter() {
+			@Override
+			public String layout(String graphJson) {
+				received = graphJson;
+				return PORT_LAYOUT;
+			}
+		});
+		new RecursiveGraphLayoutEngine().layout(root, new NullElkProgressMonitor());
+		assertEquals(Json.parse(PORT_GRAPH), Json.parse(received));
+
+		// Ports: relative to their node, which may be outside it
+		assertSame(board.obj, tx.getParent().obj);
+		assertEquals(74, tx.getX());
+		assertEquals(22, tx.getY());
+		assertEquals(10, tx.getWidth());
+		assertEquals(10, tx.getHeight());
+		assertEquals(-10, rx.getX());
+		assertEquals(15, rx.getY());
+		assertEquals(79, board.getWidth());
+
+		// Port labels: relative to their port
+		assertEquals("TX", txLabel.getText());
+		assertEquals(11, txLabel.getX());
+		assertEquals(11, txLabel.getY());
+
+		// Port edges: relative to their containing node
+		assertEquals(91, txToRx.getSections().get(0).getStartX());
+		assertEquals(133, txToRx.getSections().get(0).getEndX());
+		assertEquals(79, chipToTx.getSections().get(0).getEndX());
 	}
 
 	@Test
