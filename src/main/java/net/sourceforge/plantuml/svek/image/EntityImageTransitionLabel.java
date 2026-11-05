@@ -40,13 +40,15 @@ import net.sourceforge.plantuml.klimt.UTranslate;
 import net.sourceforge.plantuml.klimt.creole.Display;
 import net.sourceforge.plantuml.klimt.drawing.UGraphic;
 import net.sourceforge.plantuml.klimt.font.FontConfiguration;
-import net.sourceforge.plantuml.klimt.font.FontParam;
 import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.HorizontalAlignment;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.klimt.shape.URectangle;
 import net.sourceforge.plantuml.stereo.Stereotype;
+import net.sourceforge.plantuml.style.Style;
+import net.sourceforge.plantuml.style.StyleQueries;
+import net.sourceforge.plantuml.style.StyleQuery;
 import net.sourceforge.plantuml.svek.AbstractEntityImage;
 import net.sourceforge.plantuml.svek.ShapeType;
 
@@ -60,8 +62,13 @@ public class EntityImageTransitionLabel extends AbstractEntityImage {
 
 		final Stereotype stereotype = entity.getStereotype();
 
-		// Use same font configuration as arrow labels
-		final FontConfiguration fontConfiguration = FontConfiguration.create(getSkinParam(), FontParam.ARROW, stereotype);
+		// Same font as the label of an arrow: from the arrow style, so that dark
+		// mode and <style> apply (FontParam.ARROW only knows the skinparams)
+		StyleQuery query = StyleQueries.ARROW.add(getSkinParam().getDiagramType().getStyleName());
+		if (stereotype != null)
+			query = query.withStereotype(stereotype);
+		final Style style = entity.getCurrentStyleBuilder().getMergedStyle(query);
+		final FontConfiguration fontConfiguration = style.getFontConfiguration(getSkinParam().getIHtmlColorSet());
 
 		// Create text block from entity display
 		final Display display = getEntity().getDisplay();
