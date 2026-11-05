@@ -123,9 +123,12 @@ chmod +x ./gradlew
 ./gradlew clean teavm -Pfast
 cp ./build/generated/teavm/js/plantuml.js $YOUR_PROJECT/plantuml.js
 cp ./build/generated/teavm/js/viz-global.js $YOUR_PROJECT/viz-global.js
+cp ./build/generated/teavm/js/elk.bundled.js $YOUR_PROJECT/elk.bundled.js   # optional, for !pragma layout elk
 ```
 
 The `-Pfast` flag skips the slow parts of a regular build (tests, Javadoc, JaCoCo) so you only get the TeaVM output. The `viz-global.js` file provides [Viz.js](https://github.com/mdaines/viz-js) (Graphviz) support for diagrams that rely on Dot layout.
+
+The optional `elk.bundled.js` file is [elkjs](https://github.com/kieler/elkjs), the JavaScript build of the Eclipse Layout Kernel: it lays out diagrams that use `!pragma layout elk`. It is only downloaded the first time such a diagram is rendered; without it, those diagrams fall back to the default layout. elkjs is licensed EPL-2.0 OR GPL-3.0-or-later, so it is left out of the MIT npm package.
 
 The `teavm` task also copies the PlantUML stdlib bundles and a ready-to-use `index.html` demo into `./build/generated/teavm/js/`.
 
