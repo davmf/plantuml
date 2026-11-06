@@ -1120,7 +1120,8 @@ public class Cluster implements Moveable {
 	public static HColor getBackColor(HColor backColor, Stereotype stereotype, SName styleName, USymbol symbol,
 			StyleBuilder styleBuilder, HColorSet colorSet, GroupType groupType) {
 
-		final Style style = styleBuilder.getMergedStyle(getDefaultStyleDefinition(styleName, symbol, groupType));
+		final Style style = styleBuilder
+				.getMergedStyle(getDefaultStyleDefinition(styleName, symbol, groupType).withStereotype(stereotype));
 		if (backColor == null)
 			backColor = style.value(PName.BackGroundColor).asColor(colorSet);
 
