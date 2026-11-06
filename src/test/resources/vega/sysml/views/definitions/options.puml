@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' Taxonomy only, library packages drawn, docs as notes, left to right, no style
+!include_sysml vehicle.sysml view=definitions attributes=false usages=false libraries=true doc=note direction=left style=false
+@enduml

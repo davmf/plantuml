@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' root= a definition: it, its nested definitions and its neighbours
+!include_sysml vehicle.sysml view=definitions root=Vehicle
+@enduml

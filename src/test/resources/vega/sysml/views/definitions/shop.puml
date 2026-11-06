@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' The example of docs/SYSML_VIEW_DEFINITIONS.md
+!include_sysml shop.sysml view=definitions style=false
+@enduml

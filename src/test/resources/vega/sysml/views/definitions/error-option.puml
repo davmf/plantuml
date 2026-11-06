@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: option doc=yes: expected one of [none, tooltip, note]
+---
+@startuml
+!include_sysml vehicle.sysml view=definitions doc=yes
+@enduml

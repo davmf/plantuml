@@ -1,0 +1,87 @@
+@startuml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<part def>> #EAF1FB
+  BackgroundColor<<item def>> #EAF5EA
+  BackgroundColor<<port def>> #FFF5D6
+  BackgroundColor<<attribute def>> #F2F2F2
+  BackgroundColor<<enum def>> #F2F2F2
+  BackgroundColor<<interface def>> #FBEFE2
+  BackgroundColor<<action def>> #F3EAFB
+  BackgroundColor<<calc def>> #F3EAFB
+  BackgroundColor<<requirement def>> #FBEAE9
+}
+package "VehicleModel" as VehicleModel <<package>> {
+  package "Interfaces" as Interfaces <<package>> {
+    class "FuelPort" as FuelPort <<port def>> {
+      {field} in item fuel : Fuel
+      {field} flowRate : Real
+    }
+    class "Cap" as Cap <<part def>>
+    class "Fuel" as Fuel <<item def>> {
+      {field} octane : Integer = 95
+    }
+    class "FuelLine" as FuelLine <<interface def>> {
+      {field} length : LengthValue
+    }
+  }
+  enum "Colour" as Colour <<enum def>> {
+    {field} red
+    {field} green
+    {field} blue
+    {field} metallic (premium)
+  }
+  class "Range" as Range <<calc def>> {
+    {field} in fuelVolume : VolumeValue
+    {field} in consumption : Real
+    {field} return distance : LengthValue = fuelVolume/max(consumption, 1)
+  }
+  class "Dimensions" as Dimensions <<attribute def>> {
+    {field} length : LengthValue
+    {field} width : LengthValue [0..1]
+  }
+  abstract class "Vehicle" as Vehicle <<part def>> {
+    {field} mass : MassValue
+    {field} paint : Colour = Colour::red
+    {field} size : Dimensions
+    {field} part radio : Radio [0..1]
+  }
+  class "Car" as Car <<part def>> {
+    {field} doors : Integer [1] = 4
+  }
+  class "Trailer" as Trailer <<part def>> {
+    {field} axles : Integer
+  }
+  class "Truck :> Hauler" as Truck <<part def>> {
+    {field} :>> mass = 7500
+  }
+  class "Engine" as Engine <<part def>> {
+    {field} cylinders : Integer
+  }
+  class "Start" as Start <<action def>> {
+    {field} in item key : Key
+    {field} out ok : Boolean
+  }
+  class "Wheel" as Wheel <<part def>>
+  class "Person" as Person <<part def>>
+  class "Cap" as Cap_2 <<part def>>
+  class "Key" as Key <<item def>>
+  class "MassLimit" as MassLimit <<requirement def>> {
+    {field} limit : MassValue
+  }
+}
+FuelPort *-- Cap : cap
+FuelLine ..> FuelPort : source, target
+Vehicle *-- Engine : engine
+Vehicle *-- "4..*" Wheel : wheels
+Vehicle *-- FuelPort : fuelIn <<port>>
+Vehicle --> "0..1" Person : driver
+Vehicle *-- "0..1" Cap_2 : spareCap
+Vehicle <|-- Car
+Car *-- "0..1" Trailer : trailer
+Car +-- Trailer
+Vehicle <|-- Truck
+Engine +-- Start
+MassLimit --> Vehicle : vehicle
+@enduml

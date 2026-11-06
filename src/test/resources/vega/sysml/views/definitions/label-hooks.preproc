@@ -1,0 +1,24 @@
+@startuml
+hide empty members
+package "VehicleModel" as VehicleModel <<package>> {
+  abstract class "Vehicle" as Vehicle <<part def>> {
+    {field} mass: MassValue
+    {field} paint: Colour
+    {field} size: Dimensions
+    {field} wheels: Wheel
+    {field} fuelIn: FuelPort
+    {field} driver: Person
+    {field} spareCap: Cap
+    {field} radio: Radio
+  }
+  class "Engine" as Engine <<part def>> {
+    {field} cylinders: Integer
+  }
+  class "Start" as Start <<action def>> {
+    {field} key: Key
+    {field} ok: Boolean
+  }
+}
+Vehicle *-- Engine : engine
+Engine +-- Start
+@enduml

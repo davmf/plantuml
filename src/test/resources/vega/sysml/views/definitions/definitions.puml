@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml vehicle.sysml view=definitions
+@enduml
