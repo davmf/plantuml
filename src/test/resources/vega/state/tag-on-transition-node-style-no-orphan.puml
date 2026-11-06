@@ -1,0 +1,20 @@
+---
+output: svg
+---
+@startuml x
+' Regression test: with "stateDiagramEdgeLabelStyle node", a tagged
+' transition's label is drawn as its own intermediate node (see
+' CommandLinkStateCommon.createTransitionWithIntermediateNode). That node now
+' carries the transition's own tag too, so removing the transition by its
+' tag drops the label along with it instead of leaving it floating with a
+' dangling arrow to nowhere (the same failure mode fixed for endpoint tags in
+' node-style-transition-label-orphaned-by-remove.puml).
+skinparam stateDiagramEdgeLabelStyle node
+
+state Idle
+state Charging
+
+Idle --> Charging $keep : start / begin()
+
+remove $keep
+@enduml

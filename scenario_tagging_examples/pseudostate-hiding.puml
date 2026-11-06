@@ -1,0 +1,53 @@
+' ============================================================================
+' pseudostate-hiding.puml — a pseudostate ([*] initial/final, and the same
+' goes for <<choice>>, <<fork>>, <<join>>, <<entryPoint>>/<<exitPoint>>,
+' history) is not itself an entity you can tag when written with its
+' shorthand syntax ([*], or a bare stereotype with no name). Hiding/removing
+' the state at the other end of its (typically only) connector hides that
+' link, via the normal state-hides-its-own-links cascade — but the
+' pseudostate glyph itself was never tagged, so it stays fully visible,
+' now with nothing attached to it.
+'
+' This bites pseudostates much harder than ordinary states: an ordinary
+' state usually has several neighbours, so losing one is often unremarkable,
+' but an initial or final pseudostate typically has exactly one connector,
+' so losing it always leaves a dangling, unconnected glyph.
+'
+' The fix: give the pseudostate an explicit name and stereotype instead of
+' the shorthand, and tag it identically to whatever it connects to. See
+' broken vs fixed below — rendered as pseudostate-hiding-broken.svg/.png and
+' pseudostate-hiding-fixed.svg/.png.
+' ============================================================================
+
+@startuml pseudostate-hiding-broken
+
+hide empty description
+
+state A $tag $scenario_state
+state B
+
+' Shorthand [*]: cannot be tagged, so it can't be hidden along with A.
+[*] --> A
+A --> B
+
+hide $scenario_state
+
+@enduml
+
+@startuml pseudostate-hiding-fixed
+
+hide empty description
+
+state A $tag $scenario_state
+state B
+
+' Explicit, named, tagged initial pseudostate: hides along with A, because
+' it now carries the same tag rather than relying on cascade from the link.
+' Tags immediately before the stereotype, no space, as always.
+state SI $tag $scenario_state<<start>>
+SI --> A
+A --> B
+
+hide $scenario_state
+
+@enduml

@@ -1,0 +1,17 @@
+' ============================================================================
+' S8 — emergency stop, from a live session and from a service visit. Full
+' dual-tag scoping, ghost layout this time: ServiceMode is shared with S1
+' (it carries both $s01_lockout_decommissioning and $s08_emergency_stop), so
+' this is also a live check that a state tagged into two scenarios behaves
+' correctly when only one of those scenarios is selected.
+' ============================================================================
+
+@startuml view_charge_post_s08_emergency_stop
+
+!include charge-post-model.iuml
+
+hide $scenario_link
+hide $scenario_state
+show $s08_emergency_stop
+
+@enduml

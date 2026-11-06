@@ -1,0 +1,23 @@
+---
+output: svg
+---
+@startuml
+' Regression test: with "stateDiagramEdgeLabelStyle node", a transition's
+' label is drawn as its own intermediate node (see
+' CommandLinkStateCommon.createTransitionWithIntermediateNode). That node
+' carries none of its transition's tags, so a 'remove' that only matches one
+' of the two real endpoints used to leave the label floating with a dangling
+' arrow to nowhere instead of disappearing along with its endpoint (fixed in
+' CucaDiagram.isOrphanedTransitionLabel).
+skinparam stateDiagramEdgeLabelStyle node
+
+state Idle $keep
+state Charging $keep
+state Faulted
+
+Idle -> Charging : start / begin()
+Charging -> Faulted : fault(5 s)
+
+remove $keep
+restore $nonexistent
+@enduml

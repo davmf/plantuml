@@ -1,0 +1,14 @@
+' ============================================================================
+' S3 (entry only) — the "cachedToken" entry point, the alternative route into
+' Authorising. Same reasoning as view_charge_post_s02_nominal_entry.puml:
+' transitions-only scoping, nothing exclusive to hide on either end.
+' ============================================================================
+
+@startuml view_charge_post_s03_cached_entry
+
+!include charge-post-model.iuml
+
+hide $scenario_link
+show $s03_cached_token_brownout
+
+@enduml

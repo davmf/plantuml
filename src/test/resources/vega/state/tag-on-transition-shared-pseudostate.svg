@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="STATE" height="164px" preserveAspectRatio="none" style="width:312px;height:164px;background:#FFFFFF;" version="1.1" viewBox="0 0 312 164" width="312px" zoomAndPan="magnify">
+  <defs/>
+  <g font-family="sans-serif" lengthAdjust="spacing">
+    <g class="entity" data-qualified-name="PickProfile" id="ent0001">
+      <polygon fill="#F1F1F1" points="140.5,25,152.5,37,140.5,49,128.5,37,140.5,25" style="stroke:#181818;stroke-width:0.5;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    </g>
+    <g class="entity" data-qualified-name="ChargeSessionA" data-source-line="7" id="ent0002">
+      <rect fill="#F1F1F1" height="50" rx="12.5" ry="12.5" style="stroke:#181818;stroke-width:0.5;" width="125.175" x="171" y="12"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="171" x2="296.175" y1="36" y2="36"/>
+      <text fill="#000" font-size="14" textLength="105.175" x="181" y="27.889">ChargeSessionA</text>
+    </g>
+    <g class="entity" data-qualified-name="ChargeSessionB" data-source-line="8" id="ent0003">
+      <rect fill="#F1F1F1" height="50" rx="12.5" ry="12.5" style="stroke:#181818;stroke-width:0.5;" width="125.175" x="6" y="98"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="6" x2="131.175" y1="122" y2="122"/>
+      <text fill="#000" font-size="14" textLength="105.175" x="16" y="113.889">ChargeSessionB</text>
+    </g>
+    <g class="entity" data-qualified-name="ChargeSessionC" data-source-line="9" id="ent0004">
+      <rect fill="#F1F1F1" height="50" rx="12.5" ry="12.5" style="stroke:#181818;stroke-width:0.5;" width="125.962" x="149.5" y="98"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="149.5" x2="275.463" y1="122" y2="122"/>
+      <text fill="#000" font-size="14" textLength="105.962" x="159.5" y="113.889">ChargeSessionC</text>
+    </g>
+    <g class="link" data-entity-1="ent0001" data-entity-2="ent0003" data-link-type="dependency" id="lnk6">
+      <polygon fill="#181818" points="89.25,97.792,98.144,93.562,92.504,93.995,92.07,88.355,89.25,97.792" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M130.79,49.329 C120.196,61.688 106.177,78.044 92.504,93.995" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    </g>
+    <g class="link" data-entity-1="ent0001" data-entity-2="ent0004" data-link-type="dependency" id="lnk7">
+      <polygon fill="#181818" points="191.75,97.792,188.93,88.355,188.496,93.995,182.856,93.562,191.75,97.792" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M150.21,49.329 C160.804,61.688 174.823,78.044 188.496,93.995" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    </g>
+  </g>
+</svg>

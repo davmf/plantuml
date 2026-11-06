@@ -1,0 +1,17 @@
+' ============================================================================
+' S1 ∪ S8 — both scenarios rendered together, compact layout. ServiceMode
+' should appear exactly once even though it's tagged into both scenarios,
+' and both of its own scenario-tagged transitions (technicianLocksOut and
+' emergencyStopPressed) should be attached to that single copy.
+' ============================================================================
+
+@startuml view_charge_post_union_s01_s08
+
+!include charge-post-model.iuml
+
+remove $scenario_link
+remove $scenario_state
+restore $s01_lockout_decommissioning
+restore $s08_emergency_stop
+
+@enduml

@@ -43,6 +43,7 @@ import net.sourceforge.plantuml.regex.FirstTokens;
 import net.sourceforge.plantuml.regex.RegexConcat;
 import net.sourceforge.plantuml.regex.RegexLeaf;
 import net.sourceforge.plantuml.regex.RegexOptional;
+import net.sourceforge.plantuml.stereo.Stereotag;
 import net.sourceforge.plantuml.utils.Direction;
 
 public class CommandLinkStateReverse extends CommandLinkStateCommon {
@@ -74,6 +75,8 @@ public class CommandLinkStateReverse extends CommandLinkStateCommon {
 				getStatePattern("ENT1"), //
 				RegexLeaf.spaceZeroOrMore(), //
 				getLinkStereotypePattern(), //
+				new RegexLeaf(4, "TAGS", Stereotag.pattern() + "?"), //
+				RegexLeaf.spaceZeroOrMore(), //
 				new RegexOptional( //
 						new RegexConcat( //
 								new RegexLeaf(":"), //
