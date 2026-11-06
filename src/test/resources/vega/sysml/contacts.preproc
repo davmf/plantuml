@@ -1,0 +1,26 @@
+@startuml
+component "A1\nBoard\n<size:10>PCBA-1</size>" as A1 <<PCBAUnit>> {
+  group "J1" {
+    portout "1 5V" as A1_J1_c1 <<power>>
+    portout "2 GND" as A1_J1_c2 <<ground>>
+  }
+  group "J2" {
+    port "1 5V" as A1_J2_c1 <<power>> <<unmated>>
+    port "2 GND" as A1_J2_c2 <<ground>> <<unmated>>
+  }
+  group "J3" {
+    port "1 5V" as A1_J3_c1 <<power>> <<NoMate>>
+    port "2 GND" as A1_J3_c2 <<ground>> <<NoMate>>
+  }
+}
+component "H1\nLamp" as H1 <<UserInterfaceDevice>> {
+  group "X1" {
+    portin "1 5V" as H1_X1_c1 <<power>>
+    portin "2 GND" as H1_X1_c2 <<nc>>
+  }
+}
+harness "A1.J1–H1.X1" {
+  A1_J1_c1 -- H1_X1_c1
+  A1_J1_c2 -- H1_X1_c2
+}
+@enduml

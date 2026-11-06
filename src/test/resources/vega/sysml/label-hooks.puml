@@ -1,0 +1,14 @@
+---
+output: preproc
+---
+@startuml
+' Labels are formatted by functions the diagram may define before the import
+!function $sysml_unit_label($designator, $type, $partNumber, $category, $details)
+!return "<b>" + $designator + "</b> " + $category
+!endfunction
+!function $sysml_connector_label($designator, $series, $gender, $kind, $partNumber)
+!return $designator + " (" + $series + ")"
+!endfunction
+!$file = "tiny.sysml"
+!include_sysml $file system=other style=false
+@enduml

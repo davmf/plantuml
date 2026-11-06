@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml weather.sysml cables=edge style=false
+@enduml

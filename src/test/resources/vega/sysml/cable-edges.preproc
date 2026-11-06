@@ -1,0 +1,65 @@
+@startuml
+component "G2\nSolarPanel" as G2 <<PowerSource>> {
+  portout "X1" as G2_X1 <<male>> <<wire_to_wire>>
+  portout "X2" as G2_X2 <<female>> <<wire_to_wire>>
+}
+component "E1\nLteAntenna" as E1 <<Device>> {
+  portin "X1" as E1_X1 <<male>>
+}
+component "B1\nAnemometer" as B1 <<Sensor>> {
+  portin "X1" as B1_X1 <<male>>
+}
+component "B2\nTempHumiditySensor" as B2 <<Sensor>> {
+  portin "X1" as B2_X1 <<male>>
+}
+component "B3\nPyranometer" as B3 <<Sensor>> {
+  portin "X1" as B3_X1 <<male>>
+}
+component "W1\nSolarCable" as W1 <<Cable>> {
+  portin "P1" as W1_P1 <<female>>
+  portin "P2" as W1_P2 <<male>>
+  portout "P3" as W1_P3 <<female>> <<terminal>>
+}
+component "W4\nSensorBusHarness" as W4 <<Cable>> {
+  portin "P1" as W4_P1 <<male>>
+  portout "P2" as W4_P2 <<female>>
+  portout "P3" as W4_P3 <<female>>
+  portout "P4" as W4_P4 <<female>>
+}
+rectangle "A5" as A5 <<Assembly>> {
+  component "A1\nDataLogger\n<size:10>PCBA-WX-LOG</size>" as A1 <<PCBAUnit>> {
+    portin "J1" as A1_J1 <<male>>
+    portout "J2" as A1_J2 <<male>>
+    portout "J3" as A1_J3 <<female>> <<board_to_board>>
+    port "J4" as A1_J4 <<genderless>> <<NoMate>>
+  }
+  component "A2\nSolarCharger\n<size:10>PCBA-WX-CHG</size>" as A2 <<PCBAUnit>> {
+    portin "J1" as A2_J1 <<male>> <<terminal>>
+    portin "J2" as A2_J2 <<male>> <<terminal>>
+    portout "J3" as A2_J3 <<male>>
+  }
+  component "A3\nLteModem\n<size:10>Quectel EC25 Mini PCIe</size>" as A3 <<Module>> {
+    portin "J1" as A3_J1 <<male>> <<board_to_board>>
+    portout "J2" as A3_J2 <<male>>
+  }
+  component "G1\nLiFePO4Battery" as G1 <<PowerSource>> {
+    portout "X1" as G1_X1 <<hermaphroditic>> <<wire_to_wire>>
+  }
+  component "W3\nBusBulkheadPigtail" as W3 <<Cable>> {
+    portin "P1" as W3_P1 <<female>>
+    portout "P2" as W3_P2 <<female>> <<panel_mount>>
+  }
+}
+G2_X1 -- W1_P1 <<Mate>>
+G2_X2 -- W1_P2 <<Mate>>
+W1_P3 -- A2_J1 <<Mate>>
+W3_P2 -- W4_P1 <<Mate>>
+W4_P2 -- B1_X1 <<Mate>>
+W4_P3 -- B2_X1 <<Mate>>
+W4_P4 -- B3_X1 <<Mate>>
+A1_J3 -- A3_J1 <<Mate>> <<direct>>
+A1_J2 -- W3_P1 <<Mate>>
+G1_X1 -- A2_J2 <<Cable>> : W2
+A3_J2 -- E1_X1 <<Cable>> : W5
+A2_J3 -- A1_J1 <<Cable>> : W6
+@enduml

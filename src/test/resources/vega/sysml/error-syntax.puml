@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: broken.sysml:2: missing '}' to close X
+---
+@startuml
+!include_sysml broken.sysml
+@enduml

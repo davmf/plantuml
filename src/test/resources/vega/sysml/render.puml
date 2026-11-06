@@ -1,0 +1,7 @@
+---
+output: svg
+expected-description: (4 entities)
+---
+@startuml
+!include_sysml tiny.sysml
+@enduml

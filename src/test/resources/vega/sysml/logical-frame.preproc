@@ -1,0 +1,14 @@
+@startuml
+rectangle "main\n<size:10>SYS-TINY</size>" as main <<InterconnectSystem>> {
+  component "A1\nBoard\n<size:10>PCBA-1</size>" as A1 <<PCBAUnit>> {
+    portout "J1" as A1_J1 <<male>>
+    port "J2" as A1_J2 <<male>> <<unmated>>
+    port "J3" as A1_J3 <<NoMate>>
+  }
+  component "H1\nLamp" as H1 <<UserInterfaceDevice>> {
+    portin "X1" as H1_X1 <<female>>
+  }
+}
+A1_J1 -- H1_X1 <<Mate>> <<direct>>
+A1 ..> H1 <<UnitLink>> <<power>> : power
+@enduml

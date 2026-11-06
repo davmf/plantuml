@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: unknown option 'colour' (expected one of [system, view, detail, cables, frame, style])
+---
+@startuml
+!include_sysml tiny.sysml colour=red
+@enduml

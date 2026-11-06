@@ -1,0 +1,81 @@
+@startuml
+left to right direction
+!pragma layout elk
+skinparam component {
+  style rectangle
+  portLabels inside
+}
+<style>
+component {
+  .PCBAUnit { BackGroundColor #EAF1FB; LineColor #3F6FB2 }
+  .Module { BackGroundColor #F0EAF7; LineColor #7E5BA0 }
+  .Sensor { BackGroundColor #EAF5EA; LineColor #2E7D32 }
+  .Actuator { BackGroundColor #FBEAE9; LineColor #C0504D }
+  .Motor { BackGroundColor #FBEAE9; LineColor #C0504D }
+  .Solenoid { BackGroundColor #FBEAE9; LineColor #C0504D }
+  .PowerSource { BackGroundColor #FFF5D6; LineColor #B89A2A }
+  .UserInterfaceDevice { BackGroundColor #E6F4F4; LineColor #2F8F8F }
+  .Device { BackGroundColor #F2F2F2; LineColor #666666 }
+  .Unit { BackGroundColor #F2F2F2; LineColor #666666 }
+  .Cable { BackGroundColor #FFFFFF; LineColor #8C6D4B; RoundCorner 20 }
+}
+rectangle {
+  .Assembly { BackGroundColor #FFFFFF; LineColor #7F7F7F; LineStyle 6-3 }
+  .InterconnectSystem { BackGroundColor #FFFFFF; LineColor #404040 }
+}
+port {
+  .unmated { BackGroundColor #FFB3B3; LineColor #C00000 }
+  .NoMate { BackGroundColor #E0E0E0; LineColor #9E9E9E }
+  .power { BackGroundColor #F8CBAD }
+  .ground { BackGroundColor #7F7F7F }
+  .shield { BackGroundColor #C5E0B4 }
+  .nc { BackGroundColor #FFFFFF; LineColor #BFBFBF }
+}
+arrow {
+  .direct { LineThickness 2.5 }
+  .Cable { LineColor #8C6D4B; LineThickness 2; FontColor #8C6D4B }
+  .InterfaceLink { LineColor #7E5BA0; LineStyle 6-4; FontColor #7E5BA0 }
+  .UnitLink { LineColor #7E5BA0; LineStyle 2-4; FontColor #7E5BA0 }
+}
+</style>
+component "G1\nBatteryPack" as G1 <<PowerSource>> {
+  portout "X1" as G1_X1 <<female>> <<wire_to_wire>>
+}
+component "A1\nControllerBoard" as A1 <<PCBAUnit>> {
+  portin "J1" as A1_J1 <<male>> <<wire_to_board>>
+  portout "J2" as A1_J2 <<male>> <<wire_to_board>>
+  portout "J3" as A1_J3 <<male>> <<wire_to_board>>
+}
+component "H1\nPowerLamp" as H1 <<UserInterfaceDevice>> {
+  portin "X1" as H1_X1 <<male>>
+}
+component "B1\nTempSensor" as B1 <<Sensor>> {
+  portin "J1" as B1_J1 <<male>>
+}
+rectangle "A2" as A2 <<Assembly>> {
+  component "M1\nPumpMotor" as M1 <<Motor>> {
+    portin "X1" as M1_X1 <<male>> <<wire_to_wire>>
+  }
+  component "W2\nMotorCable" as W2 <<Cable>> {
+    portin "P1" as W2_P1 <<female>>
+    portout "P2" as W2_P2 <<female>>
+  }
+}
+component "W1\nPowerHarness" as W1 <<Cable>> {
+  portin "P1" as W1_P1 <<male>>
+  portout "P2" as W1_P2 <<female>>
+  portout "P3" as W1_P3 <<female>>
+}
+component "W3\nSensorCable" as W3 <<Cable>> {
+  portin "P1" as W3_P1 <<female>>
+  portout "P2" as W3_P2 <<female>>
+}
+G1_X1 -- W1_P1 <<Mate>>
+W1_P2 -- A1_J1 <<Mate>>
+W1_P3 -- H1_X1 <<Mate>>
+A1_J2 -- W2_P1 <<Mate>>
+A1_J3 -- W3_P1 <<Mate>>
+W3_P2 -- B1_J1 <<Mate>>
+W2_P2 -- M1_X1 <<Mate>>
+title pumpSystem SYS-PUMP-01 rev A
+@enduml

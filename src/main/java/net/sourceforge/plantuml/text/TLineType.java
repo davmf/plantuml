@@ -44,7 +44,7 @@ public enum TLineType {
 
 	PLAIN, AFFECTATION_DEFINE, AFFECTATION, ASSERT, IF, IFDEF, UNDEF, IFNDEF, ELSE, ELSEIF, ENDIF, WHILE, ENDWHILE,
 	FOREACH, ENDFOREACH, DECLARE_RETURN_FUNCTION, DECLARE_PROCEDURE, END_FUNCTION, RETURN, LEGACY_DEFINE,
-	LEGACY_DEFINELONG, THEME, INCLUDE, /*INCLUDE_SPRITES,*/ INCLUDE_DEF, IMPORT, STARTSUB, ENDSUB, INCLUDESUB, LOG,
+	LEGACY_DEFINELONG, THEME, INCLUDE, INCLUDE_SYSML, /*INCLUDE_SPRITES,*/ INCLUDE_DEF, IMPORT, STARTSUB, ENDSUB, INCLUDESUB, LOG,
 	DUMP_MEMORY, COMMENT_SIMPLE, COMMENT_LONG_START, OPTION;
 
 	private static final RegexLeaf IDENTIFIER_WITH_UNICODE_SURROGATES_SUPPORT = new RegexLeaf(
@@ -129,6 +129,8 @@ public enum TLineType {
 			new RegexLeaf("!include"), RegexLeaf.spaceZeroOrMore(),
 			new RegexOptional(new RegexOr(new RegexLeaf("url"), new RegexLeaf("_many"), new RegexLeaf("_once"))),
 			new RegexLeaf("\\b"));
+
+	private static final IRegex PATTERN_INCLUDE_SYSML = simpleKeyword("!include_sysml");
 
 	// private static final IRegex PATTERN_INCLUDE_SPRITES = simpleKeyword("!include_sprites");
 
@@ -225,6 +227,9 @@ public enum TLineType {
 
 		if (PATTERN_THEME.match(sl))
 			return THEME;
+
+		if (PATTERN_INCLUDE_SYSML.match(sl))
+			return INCLUDE_SYSML;
 
 		if (PATTERN_INCLUDE.match(sl))
 			return INCLUDE;
