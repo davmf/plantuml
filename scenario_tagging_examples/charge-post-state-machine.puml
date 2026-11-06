@@ -1,0 +1,366 @@
+'==============================================================================
+' Real-world scenario: the controller of a public DC fast-charge post for
+' electric vehicles. The state machine describes one object - one charge post -
+' over its whole lifetime, from mains being applied to decommissioning.
+'
+' Every notation from the Sparx Systems UML 2 "State Machine Diagram" tutorial
+' appears at least once; the legend at the foot of the diagram says where.
+'
+' Render with:  java -jar plantuml.jar -tsvg charge-post-state-machine.puml
+'==============================================================================
+@startuml charge-post
+
+title Public DC Fast-Charge Post — Controller State Machine
+
+!includesub charge-post-state-machine.puml!COMMON
+
+<style>
+state {
+  ' A terminate pseudo-state is drawn as a bare cross, so the state box around
+  ' the glyph is styled away and the glyph itself is used as the label.
+  .terminate {
+    LineColor transparent
+    BackgroundColor transparent
+    FontSize 34
+    FontColor #B00020
+    shadowing 0
+  }
+  .submachine {
+    BackgroundColor #EEF3FF
+  }
+}
+</style>
+
+'============================================================ top-level lifetime
+' Terminate pseudo-state and a named final state.
+state "✕" as HardStop <<terminate>>
+state "Decommissioned" as Decommissioned <<end>>
+
+' A state with entry, exit, do and on-event actions.
+state PoweringUp
+PoweringUp : entry / runSelfTest()
+PoweringUp : do / blinkAmber(1 Hz)
+PoweringUp : mainsSag / holdSelfTest()
+PoweringUp : exit / logSelfTest(result)
+
+' Initial pseudo-state, and a transition with trigger [guard] / effect.
+[*] --> PoweringUp : mains applied
+' Self-transition: a failed self test is retried without leaving the state,
+' which is worth drawing because the transition carries an effect.
+PoweringUp -[nonode]-> PoweringUp : selfTestFailed [attempt < 3]\n/ attempt++ ; rearmRelays()
+PoweringUp --> OutOfService : selfTestFailed [attempt >= 3]\n/ postFault(F01)
+PoweringUp --> InService : selfTestPassed / announceAvailable()
+
+'============================================================== in-service scope
+state InService {
+
+  [*] --> [H]
+
+  ' Shallow history: returning from ServiceMode resumes the sub-state that was
+  ' interrupted, but anything nested inside that sub-state starts afresh.
+  ' The outgoing transition is the default taken when there is no history yet.
+  [H] --> WaitingForDriver
+
+  state WaitingForDriver
+  WaitingForDriver : entry / showWelcome()
+  WaitingForDriver : do / pollRfidReader()
+  WaitingForDriver : screenIdle(30 s) / dimDisplay()
+  WaitingForDriver : exit / clearDisplay()
+
+  ' Another self-transition: an unreadable card is re-read in place.
+  WaitingForDriver -[nonode]-> WaitingForDriver : cardPresented [!isReadable] / beep(2)
+
+  '--- Compound state, second notation: the ⊕ marks a sub-machine whose details
+  '--- are drawn in a separate diagram. Only its entry and exit points show.
+  state "Authorising" as Authorising <<submachine>> {
+    state "full" as authFull <<entryPoint>>
+    state "cachedToken" as authCached <<entryPoint>>
+    state "authorised" as authOk <<exitPoint>>
+    state "refused" as authNo <<exitPoint>>
+    ' hidden edges only, to keep the four pins from crowding each other
+    authFull -[hidden]right-> authCached
+    authOk -[hidden]right-> authNo
+  }
+
+  ' Into the sub-machine's normal way in ...
+  authFull <-- WaitingForDriver : connectorInserted [connectorLocks()]\n/ lockConnector()
+  ' ... and into a named entry point that skips reader initialisation.
+  authCached <-- WaitingForDriver : cardPresented [tokenCached && isReadable]\n/ reuseToken()
+
+  '--- Choice pseudo-state: a dynamic branch, evaluated on values that were
+  '--- only measured during the state that has just been left.
+  state PickProfile <<choice>>
+  authOk --> PickProfile
+  PickProfile --> ChargeSession : [request.kW > 150 && pack.degC < 35]\n/ setLimit(500 A)
+  PickProfile --> ChargeSession : [request.kW > 150 && pack.degC >= 35]\n/ setLimit(125 A) ; warnDerated()
+  PickProfile --> ChargeSession : [else]\n/ setLimit(request.kW)
+
+  '--- Junction pseudo-state: two routes chained into one static branch.
+  state RetryOrBlock <<junction>>
+  authNo --> RetryOrBlock
+  SessionAbandoned --> RetryOrBlock
+  RetryOrBlock --> WaitingForDriver : [strikes < 2] /\lunlockConnector();\lshowRetry()
+  RetryOrBlock --> CardBlocked : [strikes >= 2] / captureAudit()
+
+  state SessionAbandoned
+  state CardBlocked
+  CardBlocked : entry / holdCard(60 s)
+  CardBlocked --> WaitingForDriver : holdExpired / unlockConnector()
+
+  '--- Compound state, first notation: the sub-machine is drawn in place.
+  '--- Power delivery and cable cooling run concurrently while energy is
+  '--- being delivered, each as its own composite state entered from a fork
+  '--- and synchronised on a join before the session ends - the same
+  '--- fork/join idiom as Finalising Session below, needed here because
+  '--- PlantUML cannot render a fork whose targets sit in separate
+  '--- `--`-separated regions.
+
+  state "Charge Session" as ChargeSession {
+
+    state DeliveringEnergyFork <<fork>>
+    state ChargeSessionJoin <<join>>
+
+    [*] --> [H*]
+    [H*] --> DeliveringEnergyFork
+
+    '=== power delivery ===
+    state "Power Delivery" as PowerDelivery {
+      [*] --> RampingUp
+
+      state RampingUp
+      RampingUp : entry / closeContactors()
+      RampingUp : do / rampCurrent(20 A/s)
+      RampingUp --> ConstantCurrent : currentStable [insulationOk]
+
+      '--- Nested compound state: constant-current delivery is itself a small
+      '--- machine, because the current that can be held is traded against pack
+      '--- temperature. This nesting is what gives the deep history above
+      '--- something to do: a shallow history would resume Constant Current at
+      '--- FullRate, whereas [H*] resumes it in the derated sub-state the
+      '--- session was actually in when the grid browned out.
+      state "Constant Current" as ConstantCurrent {
+        [*] --> FullRate
+
+        state FullRate
+        FullRate : do / holdCurrent(limit)
+        FullRate --> Derated : pack.degC > 45 / warnDerated()
+
+        state Derated
+        Derated : do / holdCurrent(limit * 0.6)
+        Derated : exit / clearDerateBanner()
+        FullRate <-- Derated : pack.degC < 38
+        Derated --> Throttled : pack.degC > 52 / postFault(F31)
+
+        state Throttled
+        Throttled : entry / requestPackCooling()
+        Throttled : do / holdCurrent(30 A)
+        Derated <-- Throttled : pack.degC < 48
+      }
+
+      ' Transition off the frame of the nested compound state: it fires from any
+      ' of the three sub-states, and their exit actions run on the way out.
+      ConstantCurrent --> ConstantVoltage : soc >= 80 % / logKnee()
+      ConstantVoltage : do / holdVoltage(pack.vMax)
+      ConstantVoltage --> ToppingOff : current < 8 A
+      ToppingOff --> [*] : soc >= target || driverStop
+    }
+
+    '=== cable and stack cooling ===
+    state "Cable Cooling" as CableCooling {
+      [*] --> CoolantIdle
+
+      state CoolantIdle
+
+      '--- Second nested compound state, so both composites carry a nested
+      '--- configuration for the deep history to restore.
+      state "Coolant Running" as CoolantRunning {
+        [*] --> PumpModerate
+
+        state PumpModerate
+        PumpModerate : entry / pump(50 %)
+        PumpModerate : do / logCableTemp(1 Hz)
+        PumpModerate --> PumpBoost : cable.degC > 65\n/ pump(100 %) ; fansMax()
+
+        state PumpBoost
+        PumpBoost : do / logCableTemp(4 Hz)
+        PumpModerate <-- PumpBoost : cable.degC < 60 / pump(50 %) ; fansAuto()
+      }
+
+      CoolantIdle --> CoolantRunning : cable.degC > 45
+      CoolantIdle <-- CoolantRunning : cable.degC < 40 / pump(0 %)
+      CoolantIdle --> [*] : deliveryComplete
+      CoolantRunning --> [*] : deliveryComplete / purgeLoop()
+    }
+
+    DeliveringEnergyFork --> PowerDelivery
+    DeliveringEnergyFork --> CableCooling
+
+    ' No trigger: each fires on completion of its own composite, and the
+    ' join does not fire until both have completed.
+    PowerDelivery --> ChargeSessionJoin
+    CableCooling --> ChargeSessionJoin
+    ChargeSessionJoin --> [*]
+  }
+
+  state Suspended
+  Suspended : entry / openContactors() ; showHoldMessage()
+  Suspended : do / monitorGrid()
+  Suspended <-- ChargeSession : gridBrownout / openContactors()
+
+  ' Deep history: after the brownout the session resumes the exact nested
+  ' configuration it was interrupted in - both regions, at the sub-state each
+  ' one had reached, and inside Constant Current or Coolant Running at the
+  ' derate or pump level it had reached too - rather than restarting the
+  ' session. A shallow [H] here would restore Constant Current but drop back
+  ' to FullRate, which is the difference the nesting makes visible.
+  Suspended --> ChargeSession : gridRestored [insulationOk]\n/ closeContactors()
+  Suspended --> SessionAbandoned : holdTimeout(15 min) / endSessionEarly()
+
+  '--- Fork and join: once delivery is complete, releasing the connector and
+  '--- settling the payment run as two concurrent threads that are then
+  '--- synchronised before the post offers itself to the next driver.
+  state "Finalising Session" as Finalising {
+    state ReleaseFork <<fork>>
+    state ReleaseJoin <<join>>
+    [*] --> ReleaseFork
+    ReleaseFork --> UnlockingConnector
+    UnlockingConnector : entry / unlockConnector()
+    UnlockingConnector --> ReleaseJoin : cableStowed
+    ReleaseFork --> SettlingPayment
+    SettlingPayment : entry / captureFunds(kWh * tariff)
+    SettlingPayment --> UploadingRecord : captureOk
+    UploadingRecord --> ReleaseJoin : cdrAcknowledged
+    ReleaseJoin --> [*]
+  }
+
+  ' No trigger: this fires on completion of the Charge Session state.
+  ChargeSession --> Finalising
+  Finalising --> WaitingForDriver : / printReceipt()
+}
+
+'=========================================================== service and faults
+state ServiceMode
+ServiceMode : entry / inhibitPower()
+ServiceMode : do / streamDiagnostics()
+InService --> ServiceMode : serviceDoorOpened\n/ logAccess(technician)
+InService <-- ServiceMode : serviceDoorClosed / rearmRelays()
+OutOfService <-- ServiceMode : technicianLocksOut / postFault(F99)
+
+state OutOfService
+OutOfService : entry / showOutOfService()
+OutOfService : do / reportFaultToCpo(every 5 min)
+OutOfService --> ServiceMode : technicianAuthenticated
+OutOfService --> Decommissioned : decommissionCommand / wipeCredentials()
+
+' Terminate pseudo-state: the controller's lifeline ends here. No exit actions
+' run and nothing happens again until the post is physically power-cycled.
+InService --> HardStop : emergencyStopPressed\n/ openContactors() ; ventCoolant()
+ServiceMode --> HardStop : emergencyStopPressed / openContactors()
+
+note right of HardStop
+  Terminate pseudo-state: the
+  lifeline of the state machine
+  ends; no exit actions run.
+end note
+
+note bottom of Decommissioned
+  Named final state.
+end note
+
+legend bottom
+  |= Tutorial element |= Where it appears in this diagram |
+  | State | PoweringUp, WaitingForDriver, Suspended, ... |
+  | Initial and final states | [*] --> PoweringUp ; Decommissioned |
+  | Transition (trigger [guard] / effect) | selfTestFailed [attempt < 3] / attempt++ |
+  | State actions (entry / exit / do / on event) | PoweringUp, WaitingForDriver, Suspended |
+  | Self-transition | PoweringUp, WaitingForDriver |
+  | Compound state, drawn in place | Charge Session, Finalising Session |
+  | Compound state, nested three deep | Constant Current, Coolant Running (in Power Delivery / Cable Cooling, in Charge Session) |
+  | Compound state, separate diagram | Authorising ⊕ |
+  | Entry point | full, cachedToken (on Authorising ⊕) |
+  | Exit point | authorised, refused (on Authorising ⊕) |
+  | Choice pseudo-state (dynamic branch) | PickProfile |
+  | Junction pseudo-state (static branch) | RetryOrBlock |
+  | Terminate pseudo-state | the cross reached on emergency stop |
+  | History state, shallow | InService [H] — return from ServiceMode |
+  | History state, deep | Charge Session [H*] — resume after a brownout,\ndown into Constant Current / Coolant Running |
+  | Fork and join | DeliveringEnergyFork, ChargeSessionJoin in Charge Session; ReleaseFork, ReleaseJoin in Finalising Session |
+endlegend
+
+@enduml
+
+'==============================================================================
+' The AuthoriseDriver sub-machine referenced by the Authorising ⊕ state above.
+'==============================================================================
+@startuml authorise-driver
+
+title AuthoriseDriver — sub-machine of the Authorising state
+
+!includesub charge-post-state-machine.puml!COMMON
+
+state "AuthoriseDriver" as AuthoriseDriver {
+
+  ' Entry and exit points sit on the frame of the sub-machine, and match the
+  ' pins shown on the Authorising ⊕ state in the parent diagram.
+  state "full" as epFull <<entryPoint>>
+  state "cachedToken" as epCached <<entryPoint>>
+  state "authorised" as xpOk <<exitPoint>>
+  state "refused" as xpNo <<exitPoint>>
+
+  ' The normal way in: initialise the reader first.
+  [*] --> InitialisingReader
+  epFull --> InitialisingReader
+
+  state InitialisingReader
+  InitialisingReader : entry / powerReader()
+  InitialisingReader : do / handshakeReader()
+  InitialisingReader : exit / clearReaderBuffer()
+  InitialisingReader --> AwaitingCredential : readerReady
+  InitialisingReader --> xpNo : readerFault(3 tries) / postFault(F12)
+
+  ' Named entry point: when a token is already cached the initialisation is
+  ' unnecessary, so the sub-machine is entered at ValidatingToken instead.
+  epCached --> ValidatingToken
+
+  state AwaitingCredential
+  AwaitingCredential : do / awaitTapOrApp()
+  AwaitingCredential -[nonode]-> AwaitingCredential : credentialSeen [!wellFormed] / beep(2)
+  AwaitingCredential --> ValidatingToken : credentialCaptured / hash(credential)
+  AwaitingCredential --> xpNo : idleTimeout(60 s) / showTimeout()
+
+  state ValidatingToken
+  ValidatingToken : entry / queryBackOffice()
+  ValidatingToken : do / spinner()
+  ValidatingToken --> xpOk : tokenAccepted / issueSessionId()
+  ValidatingToken --> OfflineWhitelist : backOfficeUnreachable(5 s)
+
+  state OfflineWhitelist
+  OfflineWhitelist --> xpOk : [tokenOnWhitelist] / flagDeferredBilling()
+  OfflineWhitelist --> xpNo : [else] / showTryLater()
+}
+
+note right of AuthoriseDriver
+  Two named exit points, so the state
+  the parent machine enters next depends
+  on the route taken out of here:
+  authorised → the choice pseudo-state,
+  refused → the junction pseudo-state.
+end note
+
+@enduml
+
+@startuml common-elements
+
+!startsub COMMON
+
+!pragma edgeCornerRadius 5
+
+hide empty description
+
+skinparam stateDiagramEdgeLabelStyle node
+skinparam linetype ortho
+skinparam rankSep 20
+
+!endsub
+
+@enduml

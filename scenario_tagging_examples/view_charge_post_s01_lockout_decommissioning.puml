@@ -1,0 +1,15 @@
+' ============================================================================
+' S1 — self-test failure, lockout, decommissioning. Full dual-tag scoping
+' (states + transitions), compact layout: the parts of the machine this
+' scenario never visits are dropped before layout runs.
+' ============================================================================
+
+@startuml view_charge_post_s01_lockout_decommissioning
+
+!include charge-post-model.iuml
+
+remove $scenario_link
+remove $scenario_state
+restore $s01_lockout_decommissioning
+
+@enduml

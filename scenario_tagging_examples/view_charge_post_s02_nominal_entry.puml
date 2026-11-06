@@ -1,0 +1,18 @@
+' ============================================================================
+' S2 (entry only) — the "full" entry point into Authorising. Transitions-only
+' scoping: neither WaitingForDriver, authFull nor any other endpoint carries
+' a $scenario_state tag, because all of them are shared with every other
+' in-service scenario. Unlike view_transitions_only.puml in the synthetic
+' example, this one is *not* missing anything by only touching
+' $scenario_link — there is nothing scenario-exclusive on this route to
+' auto-hide in the first place.
+' ============================================================================
+
+@startuml view_charge_post_s02_nominal_entry
+
+!include charge-post-model.iuml
+
+hide $scenario_link
+show $s02_nominal_session
+
+@enduml
