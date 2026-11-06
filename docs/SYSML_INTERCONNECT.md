@@ -130,3 +130,31 @@ for that.
 
 `net.sourceforge.plantuml.sysml.interconnect` maps the result onto the
 profile (`InterconnectModel`) and writes the diagram (`InterconnectPlantUml`).
+
+## Trying it in the browser
+
+The browser build ships `sysml.html`, a playground with three panes: SysML
+files on the left (tabs; **Open…** or drop `.sysml` files on the pane), the
+PlantUML they import into in the middle, and the diagram on the right. The
+options of the directive are in the toolbar. The middle pane can show:
+
+* **generated source**: what `!include_sysml` expands to (as `-preproc`
+  shows it), from the files of the left pane. Turn **auto** off to edit it
+  without the next import overwriting it.
+* **`!include_sysml` directive**: a diagram of your own around an
+  `!include_sysml` line, which the toolbar keeps up to date. The page serves
+  the left pane's files to the engine by name through `PLANTUML_FILE_LOADER`,
+  so this runs the real directive, label functions and styling included.
+
+The session (files, options, middle pane) is kept in `localStorage`; the
+reset button brings back the sample model.
+
+```
+./teavm.sh      # then open http://localhost:8080/sysml.html
+```
+
+The generated source comes from `sysmlToPlantUml(names, texts, options,
+onSuccess, onError)`, exported by `plantuml.js` next to `render`. It runs the
+same import as the directive (`SysmlImport.importSysml`) and calls
+one of the callbacks before it returns; `options` are the directive's
+`key=value` words.

@@ -1,5 +1,10 @@
 package net.sourceforge.plantuml.teavm.js.browser;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.JSFunctor;
@@ -25,6 +30,8 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.math.FormulaDiagram;
+import net.sourceforge.plantuml.sysml.SysmlException;
+import net.sourceforge.plantuml.sysml.SysmlImport;
 import net.sourceforge.plantuml.teavm.js.PSystemBuilderJs;
 import net.sourceforge.plantuml.teavm.js.StringBounderTeaVM;
 import net.sourceforge.plantuml.teavm.js.SvgGraphicsJs;
@@ -316,6 +323,53 @@ public class PlantUMLBrowser {
 	public static void renderToString(String[] lines, StringCallback onSuccess, StringCallback onError,
 			JSObject options) {
 		RenderQueue.submit(new CallbackJob(lines, onSuccess, onError, isDark(options), resolveMaxSvgSize(options)));
+	}
+
+	/**
+	 * Imports SysML v2 models written with one of the supported profiles
+	 * (InterconnectProfile, StateMachineProfile...) and delivers the
+	 * PlantUML source that <code>!include_sysml</code> would run, without
+	 * <code>@startuml</code>/<code>@enduml</code>. It is what
+	 * <code>-preproc</code> shows for the directive, before the preprocessor
+	 * runs it, so a page can show, edit and render the result.
+	 *
+	 * <p>
+	 * Unlike the rendering functions, this one is synchronous: exactly one of the
+	 * callbacks is called, once, before it returns. No resource is ever needed.
+	 *
+	 * @param names     the file names, for messages and the leading comment
+	 * @param texts     the content of each file, in the same order
+	 * @param options   the directive's options as <code>key=value</code> words
+	 *                  (<code>view=logical</code>, <code>detail=contact</code>...);
+	 *                  may be <code>null</code>
+	 * @param onSuccess callback invoked with the generated source, lines joined
+	 *                  with <code>\n</code>
+	 * @param onError   callback invoked with the error message
+	 */
+	@JSExport
+	public static void sysmlToPlantUml(String[] names, String[] texts, String[] options, StringCallback onSuccess,
+			StringCallback onError) {
+		final String result;
+		try {
+			final Map<String, String> values = new LinkedHashMap<>();
+			if (options != null)
+				for (String word : options) {
+					final int eq = word.indexOf('=');
+					if (eq <= 0)
+						throw new SysmlException("option '" + word + "': expected key=value");
+					values.put(word.substring(0, eq).trim(), word.substring(eq + 1).trim());
+				}
+			final List<String> lines = SysmlImport.importSysml(Arrays.asList(names), Arrays.asList(texts),
+					values, name -> false);
+			result = String.join("\n", lines);
+		} catch (SysmlException e) {
+			deliver(onError, e.getMessage());
+			return;
+		} catch (Throwable t) {
+			deliver(onError, describe(t));
+			return;
+		}
+		deliver(onSuccess, result);
 	}
 
 	// =========================================================================
