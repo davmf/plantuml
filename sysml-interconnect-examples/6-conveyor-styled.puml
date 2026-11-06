@@ -1,0 +1,39 @@
+@startuml
+left to right direction
+!pragma layout elk
+!pragma edgeCornerRadius 5
+skinparam defaultFontName "Helvetica"
+
+' Label formatting: define before the import
+!function $sysml_connector_label($designator, $series, $gender, $kind, $partNumber)
+!if $series == ""
+!return $designator
+!endif
+!return $designator + "\n<size:8>" + $series + "</size>"
+!endfunction
+!function $sysml_cable_label($designator, $type, $partNumber, $details)
+!return $designator + " (" + $details + ")"
+!endfunction
+
+!include_sysml /home/david/sysmlv2/sysmlv2-profiles/InterconnectProfile/test/test-interconnect-2.sysml cables=edge
+
+' Styling: override after the import
+<style>
+component {
+  .PCBAUnit { BackGroundColor #fafafa; LineColor #5B7A99; FontColor #5B7A99 }
+}
+port {
+  .NoMate { BackGroundColor #FFE699 }
+}
+arrow {
+  .Cable { LineColor #2E7D32; FontColor #2E7D32 }
+  .direct { LineColor #C0504D }
+}
+</style>
+
+' Generated aliases can be referenced
+note bottom of A4 : CAN terminated on-board (J3)
+A1 -[hidden]- G1
+
+title $sysml_system — $sysml_partNumber rev $sysml_revision
+@enduml

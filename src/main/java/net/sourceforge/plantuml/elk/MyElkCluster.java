@@ -94,8 +94,9 @@ public class MyElkCluster {
 
 		final DiagramType diagramType = diagram.getDiagramType();
 
-		final Style style = skinParam.getCurrentStyleBuilder().getMergedStyle(
-				Cluster.getDefaultStyleDefinition(diagramType.getStyleName(), group.getUSymbol(), group.getGroupType()));
+		final Style style = skinParam.getCurrentStyleBuilder()
+				.getMergedStyle(Cluster.getDefaultStyleDefinition(diagramType.getStyleName(), group.getUSymbol(),
+						group.getGroupType()).withStereotype(group.getStereotype()));
 		final double shadowing = style.getShadowing();
 		final UStroke stroke = Cluster.getStrokeInternal(group, style);
 

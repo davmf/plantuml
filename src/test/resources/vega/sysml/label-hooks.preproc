@@ -1,0 +1,7 @@
+@startuml
+component "<b>B1</b> PCBAUnit" as B1 <<PCBAUnit>> {
+  port "J1 (JST-PH 2P)" as B1_J1 <<male>> <<unmated>>
+  port "J2 (JST-PH 2P)" as B1_J2 <<male>> <<unmated>>
+  port "J3 (JST-PH 2P)" as B1_J3 <<unmated>>
+}
+@enduml

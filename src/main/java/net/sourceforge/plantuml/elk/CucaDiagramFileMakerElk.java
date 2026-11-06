@@ -451,8 +451,12 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 					final boolean clusterHasPorts = hasPorts(g);
 					// ELK cannot route an edge out of a cluster that is laid out
 					// on its own, so a cluster with such an edge stays in its
-					// parent's layout whatever else wants it separate.
-					final boolean canLayOutSeparately = hasEdgeLeaving(g) == false;
+					// parent's layout whatever else wants it separate. Nor can a
+					// cluster laid out on its own route the edges that cross the
+					// border of a cluster nested in it (an outer frame around an
+					// assembly wired from outside).
+					final boolean canLayOutSeparately = hasEdgeLeaving(g) == false
+							&& hasEdgeCrossingInside(g) == false;
 					elkCluster.setProperty(CoreOptions.PORT_CONSTRAINTS,
 							(g.isHeader() || clusterHasPorts)
 									? PortConstraints.FIXED_ORDER
@@ -642,6 +646,14 @@ public class CucaDiagramFileMakerElk extends CucaDiagramFileMaker {
 			if (side1 * side2 < 0)
 				return true;
 		}
+		return false;
+	}
+
+	// True when an edge leaves a cluster nested (at any depth) in g.
+	private boolean hasEdgeCrossingInside(Entity g) {
+		for (Entity child : diagram.getChildrenGroups(g))
+			if (child.isRemoved() == false && (hasEdgeLeaving(child) || hasEdgeCrossingInside(child)))
+				return true;
 		return false;
 	}
 

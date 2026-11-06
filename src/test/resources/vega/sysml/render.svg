@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="DESCRIPTION" height="264px" preserveAspectRatio="none" style="width:180px;height:264px;background:#FFFFFF;" version="1.1" viewBox="0 0 180 264" width="180px" zoomAndPan="magnify">
+  <defs/>
+  <g font-family="sans-serif" lengthAdjust="spacing">
+    <!--cluster A1-->
+    <g class="cluster" data-qualified-name="A1" data-source-line="1" id="ent0001">
+      <rect fill="#EAF1FB" height="119" rx="2.5" ry="2.5" style="stroke:#3F6FB2;stroke-width:1;" width="116" x="18" y="4"/>
+      <text fill="#000" font-size="14" font-style="italic" textLength="78.75" x="36.625" y="16.889">«PCBAUnit»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="17.15" x="67.425" y="30.889">A1</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="37.363" x="57.319" y="44.889">Board</text>
+      <text fill="#000" font-size="10" font-weight="700" textLength="36.188" x="57.906" y="55.778">PCBA-1</text>
+    </g>
+    <!--cluster H1-->
+    <g class="cluster" data-qualified-name="H1" data-source-line="1" id="ent0005">
+      <rect fill="#E6F4F4" height="109" rx="2.5" ry="2.5" style="stroke:#2F8F8F;stroke-width:1;" width="158" x="14" y="131"/>
+      <text fill="#000" font-size="14" font-style="italic" textLength="142.363" x="21.819" y="143.889">«UserInterfaceDevice»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="17.938" x="84.031" y="157.889">H1</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="35" x="75.5" y="171.889">Lamp</text>
+    </g>
+    <g class="entity" data-qualified-name="A1.A1_J1" data-source-line="1" id="ent0002">
+      <text fill="#000" font-size="14" textLength="14.787" x="82.213" y="92.889">J1</text>
+      <rect fill="#F1F1F1" height="12" style="stroke:#181818;stroke-width:1.5;" width="12" x="102" y="83"/>
+    </g>
+    <g class="entity" data-qualified-name="A1.A1_J2" data-source-line="1" id="ent0003">
+      <text fill="#000" font-size="14" textLength="14.787" x="85" y="92.889">J2</text>
+      <rect fill="#FFB3B3" height="12" style="stroke:#C00000;stroke-width:1.5;" width="12" x="68" y="83"/>
+    </g>
+    <g class="entity" data-qualified-name="A1.A1_J3" data-source-line="1" id="ent0004">
+      <text fill="#000" font-size="14" textLength="14.787" x="51" y="92.889">J3</text>
+      <rect fill="#E0E0E0" height="12" style="stroke:#9E9E9E;stroke-width:1.5;" width="12" x="34" y="83"/>
+    </g>
+    <g class="entity" data-qualified-name="H1.H1_X1" data-source-line="1" id="ent0006">
+      <text fill="#000" font-size="14" textLength="17.15" x="119" y="209.889">X1</text>
+      <rect fill="#F1F1F1" height="12" style="stroke:#181818;stroke-width:1.5;" width="12" x="102" y="200"/>
+    </g>
+    <g class="link" data-entity-1="ent0002" data-entity-2="ent0006" data-link-type="association" id="lnk7">
+      <path d="M110,107.027 C110,128.952 110,177.802 110,199.838" fill="none" style="stroke:#181818;stroke-width:2.5;"/>
+    </g>
+  </g>
+</svg>

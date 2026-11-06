@@ -1,0 +1,6 @@
+@startuml
+left to right direction
+!pragma layout elk
+!include_sysml /home/david/sysmlv2/sysmlv2-profiles/InterconnectProfile/test/test-interconnect-2.sysml
+title $sysml_system — $sysml_partNumber rev $sysml_revision
+@enduml

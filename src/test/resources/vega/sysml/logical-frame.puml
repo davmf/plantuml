@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml tiny.sysml view=both frame=true style=false
+@enduml

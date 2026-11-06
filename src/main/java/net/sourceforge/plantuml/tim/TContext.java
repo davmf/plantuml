@@ -81,6 +81,12 @@ import net.sourceforge.plantuml.preproc2.ReadFilterMergeLines;
 import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SURL;
 import net.sourceforge.plantuml.skin.Pragma;
+import net.sourceforge.plantuml.sysml.SysmlException;
+import net.sourceforge.plantuml.sysml.SysmlModel;
+import net.sourceforge.plantuml.sysml.SysmlParser;
+import net.sourceforge.plantuml.sysml.interconnect.IcOptions;
+import net.sourceforge.plantuml.sysml.interconnect.InterconnectModel;
+import net.sourceforge.plantuml.sysml.interconnect.InterconnectPlantUml;
 import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.teavm.js.browser.BrowserLog;
 import net.sourceforge.plantuml.text.StringLocated;
@@ -274,6 +280,9 @@ public class TContext {
 			return null;
 		} else if (type == TLineType.INCLUDE) {
 			this.executeInclude(memory, s);
+			return null;
+		} else if (type == TLineType.INCLUDE_SYSML) {
+			this.executeIncludeSysml(memory, s);
 			return null;
 //		} else if (type == TLineType.INCLUDE_SPRITES) {
 //			this.executeIncludeSprites(memory, s);
@@ -702,6 +711,61 @@ public class TContext {
 //		}
 //		throw new EaterException("cannot include sprites from " + what, s);
 //	}
+
+	/**
+	 * Reads SysML v2 files written with InterconnectProfile and runs the
+	 * component diagram generated from them, as if it had been included here.
+	 */
+	private void executeIncludeSysml(TMemory memory, StringLocated s) throws EaterException {
+		final EaterIncludeSysml include = new EaterIncludeSysml(s.getTrimmed());
+		include.analyze(this, memory);
+		final List<String> files = include.getFiles();
+		if (files.isEmpty())
+			throw new EaterException("!include_sysml needs at least one .sysml file", s);
+
+		final List<String> generated;
+		try {
+			final SysmlModel model = InterconnectModel.newSysmlModel();
+			for (String file : files)
+				model.add(SysmlParser.parse(file, readWholeFile(file, s)));
+			final IcOptions options = IcOptions.parse(include.getOptions());
+			final InterconnectModel interconnect = InterconnectModel.build(model, options.getSystem());
+			generated = InterconnectPlantUml.generate(interconnect, options, String.join(" ", files),
+					this::doesFunctionExist);
+		} catch (SysmlException e) {
+			throw new EaterException("!include_sysml: " + e.getMessage(), s);
+		}
+		final List<StringLocated> body = new ArrayList<>();
+		for (String line : generated)
+			body.add(new StringLocated(line, s.getLocation()));
+		executeLines(memory, body, null, false);
+	}
+
+	private String readWholeFile(String file, StringLocated s) throws EaterException {
+		try {
+			final InputFile f = this.pathSystem.getInputFile(file);
+			if (f == null)
+				throw new EaterException("!include_sysml: cannot open " + file, s);
+			if (f instanceof SFile)
+				filesUsedCurrent.add(((SFile) f).getCanonicalFile().conv());
+			final Reader reader = f.getReader(charset);
+			if (reader == null)
+				throw new EaterException("!include_sysml: cannot read " + file, s);
+			try {
+				final StringBuilder sb = new StringBuilder();
+				final char[] buffer = new char[8192];
+				int n;
+				while ((n = reader.read(buffer)) != -1)
+					sb.append(buffer, 0, n);
+				return sb.toString();
+			} finally {
+				reader.close();
+			}
+		} catch (IOException e) {
+			Logme.error(e);
+			throw new EaterException("!include_sysml: cannot read " + file + " (" + e.getMessage() + ")", s);
+		}
+	}
 
 	private void executeInclude(TMemory memory, StringLocated s) throws EaterException {
 		final EaterInclude include = new EaterInclude(s.getTrimmed());
