@@ -81,43 +81,106 @@ public final class SysmlImport {
 	 */
 	public static List<String> importSysml(List<String> names, List<String> texts, Map<String, String> options,
 			Predicate<String> isFunctionDefined) throws SysmlException {
+		final SysmlOptions parsedOptions = new SysmlOptions(options);
+		final Description description = describe(parse(names, texts), parsedOptions);
+		final Root selected = description.getSelected();
+		if (selected == null) {
+			if (parsedOptions.getRoot() != null)
+				throw new SysmlException("no diagram root named '" + parsedOptions.getRoot() + "'"
+						+ (description.roots.isEmpty() ? "" : " (found: " + description.foundList() + ")"));
+			final List<String> expected = new ArrayList<>();
+			for (SysmlProfile profile : selectProfiles(parsedOptions.getProfile()))
+				expected.add("'" + profile.getRootDescription() + "'");
+			throw new SysmlException("no diagram root found (expected " + String.join(", ", expected) + ")");
+		}
+		parsedOptions.check(selected.profile.getName(), selected.profile.getOptionKeys());
+		return selected.profile.generate(selected.model, selected.node, parsedOptions, String.join(" ", names),
+				isFunctionDefined);
+	}
+
+	/**
+	 * What the files hold, for a user interface: every root of every profile
+	 * (in the order {@link #importSysml} tries them) and the one it would
+	 * draw with these options. Only <code>root=</code> and
+	 * <code>profile=</code> matter here; the other options are not checked.
+	 */
+	public static Description describe(List<String> names, List<String> texts, Map<String, String> options)
+			throws SysmlException {
+		return describe(parse(names, texts), new SysmlOptions(options));
+	}
+
+	private static List<SysmlNode> parse(List<String> names, List<String> texts) throws SysmlException {
 		if (names.size() != texts.size())
 			throw new IllegalArgumentException("names and texts differ in size");
 		final List<SysmlNode> parsed = new ArrayList<>();
 		for (int i = 0; i < names.size(); i++)
 			parsed.add(SysmlParser.parse(names.get(i), texts.get(i)));
+		return parsed;
+	}
 
-		final SysmlOptions parsedOptions = new SysmlOptions(options);
-		final String rootName = parsedOptions.getRoot();
-		final List<SysmlProfile> profiles = selectProfiles(parsedOptions.getProfile());
-
-		final List<String> found = new ArrayList<>();
-		for (SysmlProfile profile : profiles) {
+	private static Description describe(List<SysmlNode> parsed, SysmlOptions options) throws SysmlException {
+		final String rootName = options.getRoot();
+		final Description result = new Description();
+		for (SysmlProfile profile : selectProfiles(options.getProfile())) {
 			final SysmlModel model = new SysmlModel(profile.getStopNames());
 			for (SysmlNode root : parsed)
 				model.add(root);
-			final List<SysmlNode> roots = profile.findRoots(model);
-			SysmlNode selected = null;
-			for (SysmlNode root : roots) {
-				if (rootName == null || rootName.equals(root.getName()) || rootName.equals(root.getQualifiedName())) {
-					selected = root;
-					break;
-				}
-				found.add(root.getName() + " (" + profile.getName() + ")");
+			for (SysmlNode node : profile.findRoots(model)) {
+				final Root root = new Root(profile, model, node);
+				result.roots.add(root);
+				if (result.selected == null && (rootName == null || rootName.equals(node.getName())
+						|| rootName.equals(node.getQualifiedName())))
+					result.selected = root;
 			}
-			if (selected == null)
-				continue;
-			parsedOptions.check(profile.getName(), profile.getOptionKeys());
-			return profile.generate(model, selected, parsedOptions, String.join(" ", names), isFunctionDefined);
+		}
+		return result;
+	}
+
+	/** See {@link SysmlImport#describe}. */
+	public static final class Description {
+		private final List<Root> roots = new ArrayList<>();
+		private Root selected;
+
+		public List<Root> getRoots() {
+			return Collections.unmodifiableList(roots);
 		}
 
-		if (rootName != null)
-			throw new SysmlException("no diagram root named '" + rootName + "'"
-					+ (found.isEmpty() ? "" : " (found: " + String.join(", ", found) + ")"));
-		final List<String> expected = new ArrayList<>();
-		for (SysmlProfile profile : profiles)
-			expected.add("'" + profile.getRootDescription() + "'");
-		throw new SysmlException("no diagram root found (expected " + String.join(", ", expected) + ")");
+		/** The root that would be drawn, or <code>null</code>. */
+		public Root getSelected() {
+			return selected;
+		}
+
+		private String foundList() {
+			final List<String> found = new ArrayList<>();
+			for (Root r : roots)
+				found.add(r.getName() + " (" + r.getProfile().getName() + ")");
+			return String.join(", ", found);
+		}
+	}
+
+	/** A diagram root found in the files. */
+	public static final class Root {
+		private final SysmlProfile profile;
+		private final SysmlModel model;
+		private final SysmlNode node;
+
+		private Root(SysmlProfile profile, SysmlModel model, SysmlNode node) {
+			this.profile = profile;
+			this.model = model;
+			this.node = node;
+		}
+
+		public SysmlProfile getProfile() {
+			return profile;
+		}
+
+		public String getName() {
+			return node.getName();
+		}
+
+		public String getQualifiedName() {
+			return node.getQualifiedName();
+		}
 	}
 
 	private static List<SysmlProfile> selectProfiles(String name) throws SysmlException {

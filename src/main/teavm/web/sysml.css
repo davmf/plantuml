@@ -40,6 +40,28 @@
 	border-color: var(--accent);
 }
 
+/* The options of the active profile, rebuilt when the profile changes */
+.options .profile-options {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 1rem;
+}
+
+.options .profile-options:empty {
+	display: none;
+}
+
+.options .profile-options label {
+	padding-left: 0.6rem;
+	border-left: 2px solid color-mix(in srgb, var(--accent) 40%, var(--surface));
+}
+
+.options .profile-options label ~ label {
+	padding-left: 0;
+	border-left: none;
+}
+
 .options .sep {
 	flex-grow: 1;
 }

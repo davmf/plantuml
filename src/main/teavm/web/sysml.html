@@ -16,28 +16,13 @@
 	</header>
 
 	<form id="options" class="options" autocomplete="off" onsubmit="return false">
-		<label title="Which `part x : InterconnectSystem` to draw (empty: the first found)">
-			system <input id="opt-system" type="text" placeholder="first found" size="12">
+		<label title="Which diagram root to draw (root=). The list holds every root of the files, with the profile that draws it; first found is what the directive picks without root=.">
+			root <select id="opt-root"></select>
 		</label>
-		<label>view
-			<select id="opt-view">
-				<option>physical</option>
-				<option>logical</option>
-				<option>both</option>
-			</select>
+		<label title="Only look for roots of this profile (profile=). Auto: the profile follows the root.">
+			profile <select id="opt-profile"><option value="">auto</option></select>
 		</label>
-		<label>detail
-			<select id="opt-detail">
-				<option>connector</option>
-				<option>contact</option>
-			</select>
-		</label>
-		<label>cables
-			<select id="opt-cables">
-				<option>node</option>
-				<option>edge</option>
-			</select>
-		</label>
+		<span id="profile-options" class="profile-options" title="Options of the profile that draws the root"></span>
 		<label><input id="opt-frame" type="checkbox"> frame</label>
 		<label><input id="opt-style" type="checkbox" checked> style</label>
 		<span class="sep"></span>

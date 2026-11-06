@@ -135,8 +135,14 @@ profile (`InterconnectModel`) and writes the diagram (`InterconnectPlantUml`).
 
 The browser build ships `sysml.html`, a playground with three panes: SysML
 files on the left (tabs; **Open…** or drop `.sysml` files on the pane), the
-PlantUML they import into in the middle, and the diagram on the right. The
-options of the directive are in the toolbar. The middle pane can show:
+PlantUML they import into in the middle, and the diagram on the right. It
+works for every profile of [SYSML_PROFILES.md](SYSML_PROFILES.md). The
+toolbar follows the files: **root** lists every diagram root they hold, with
+the profile that draws it (*first found* is the directive's own choice),
+**profile** restricts the search to one profile, and only the options of the
+profile that draws the root are shown. Each profile keeps its own option
+values, and an option left at its default is not written. The middle pane can
+show:
 
 * **generated source**: what `!include_sysml` expands to (as `-preproc`
   shows it), from the files of the left pane. Turn **auto** off to edit it
@@ -146,8 +152,9 @@ options of the directive are in the toolbar. The middle pane can show:
   the left pane's files to the engine by name through `PLANTUML_FILE_LOADER`,
   so this runs the real directive, label functions and styling included.
 
-The session (files, options, middle pane) is kept in `localStorage`; the
-reset button brings back the sample model.
+The session (files, options, middle pane) is kept in `localStorage`; a
+session saved before the toolbar followed the profile keeps its
+InterconnectProfile options. The reset button brings back the sample model.
 
 ```
 ./teavm.sh      # then open http://localhost:8080/sysml.html
@@ -157,4 +164,8 @@ The generated source comes from `sysmlToPlantUml(names, texts, options,
 onSuccess, onError)`, exported by `plantuml.js` next to `render`. It runs the
 same import as the directive (`SysmlImport.importSysml`) and calls
 one of the callbacks before it returns; `options` are the directive's
-`key=value` words.
+`key=value` words. The toolbar comes from `sysmlDescribe(names, texts,
+options, onSuccess, onError)`, which delivers JSON: every root found
+(`name`, `qualifiedName`, `profile`), the index of the one the import would
+draw with these `root=`/`profile=` options (`selected`, -1 for none), and
+every profile with its options and their allowed values, the default first.

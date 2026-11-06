@@ -65,7 +65,7 @@ public final class SeqProfile extends SysmlRootProfile {
 	public SeqProfile() {
 		super("sequence", INTERACTION, LIFELINE, MESSAGE, GATE_MESSAGE, GATE, FRAGMENT, OPERAND, EXECUTION,
 				INVARIANT, TIME, DURATION, PARTICIPANT_CLASS, "InteractionElement");
-		option("autonumber", "true", "false");
+		option("autonumber", "false", "true");
 	}
 
 	public List<String> generate(SysmlModel model, SysmlNode root, SysmlOptions options, String source,

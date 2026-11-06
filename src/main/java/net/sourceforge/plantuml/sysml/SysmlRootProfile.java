@@ -63,7 +63,7 @@ public abstract class SysmlRootProfile implements SysmlProfile {
 		this.stopNames = Collections.unmodifiableList(names);
 	}
 
-	/** Declares an option; no values means any value. */
+	/** Declares an option, its default value first; no values means any value. */
 	protected final void option(String key, String... values) {
 		optionKeys.put(key, values.length == 0 ? null : Arrays.asList(values));
 	}

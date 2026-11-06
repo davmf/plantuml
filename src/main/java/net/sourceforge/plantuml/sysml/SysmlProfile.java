@@ -58,7 +58,10 @@ public interface SysmlProfile {
 	 */
 	Collection<String> getStopNames();
 
-	/** The options the profile adds to {@link SysmlOptions#COMMON}, with their allowed values. */
+	/**
+	 * The options the profile adds to {@link SysmlOptions#COMMON}, with their
+	 * allowed values, the default first (<code>null</code>: any value).
+	 */
 	Map<String, List<String>> getOptionKeys();
 
 	/** The roots found in the model, in file order (best guess first). */

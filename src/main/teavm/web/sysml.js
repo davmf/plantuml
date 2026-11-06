@@ -8,7 +8,11 @@
 //   - "directive": the middle pane is a diagram of your own with an
 //     !include_sysml line; PLANTUML_FILE_LOADER serves it the files of the left
 //     pane by name, so the real directive runs in the browser engine.
-import { render, sysmlToPlantUml } from "./plantuml.js";
+//
+// The toolbar follows the files: sysmlDescribe() lists the roots they hold and
+// the options of every profile, and only the options of the profile that
+// draws the selected root are shown.
+import { render, sysmlDescribe, sysmlToPlantUml } from "./plantuml.js";
 import { createZoomController } from "./zoom.js";
 
 const STORAGE_KEY = "plantuml-sysml-playground";
@@ -21,15 +25,21 @@ const importStatus = document.getElementById("import-status");
 const modeSelect = document.getElementById("mode");
 const autoBox = document.getElementById("auto");
 
-const optionInputs = {
-	system: document.getElementById("opt-system"),
-	view: document.getElementById("opt-view"),
-	detail: document.getElementById("opt-detail"),
-	cables: document.getElementById("opt-cables"),
-	frame: document.getElementById("opt-frame"),
-	style: document.getElementById("opt-style")
-};
-const OPTION_DEFAULTS = {system: "", view: "physical", detail: "connector", cables: "node", frame: false, style: true};
+const rootSelect = document.getElementById("opt-root");
+const profileSelect = document.getElementById("opt-profile");
+const profileOptionsEl = document.getElementById("profile-options");
+const frameBox = document.getElementById("opt-frame");
+const styleBox = document.getElementById("opt-style");
+
+// root and profile are "" for the directive's own choice; values holds the
+// options of each profile as chosen, {profile: {key: value}}, kept when the
+// profile changes so that coming back restores them.
+function defaultOptions() {
+	return {root: "", profile: "", frame: false, style: true, values: {}};
+}
+
+let options = defaultOptions();
+let described = null;    // the last good sysmlDescribe() result
 
 let files = [];          // [{name, text}]
 let active = 0;
@@ -74,14 +84,14 @@ function restore() {
 	if (saved == null || Array.isArray(saved.files) === false || saved.files.length === 0) {
 		files = [sampleFile()];
 		active = 0;
-		setOptions(OPTION_DEFAULTS);
+		options = defaultOptions();
 		modeSelect.value = "generated";
 		autoBox.checked = true;
 		return false;
 	}
 	files = saved.files.map(f => ({name: String(f.name), text: String(f.text)}));
 	active = Math.min(Math.max(0, saved.active | 0), files.length - 1);
-	setOptions(Object.assign({}, OPTION_DEFAULTS, saved.options || {}));
+	options = restoreOptions(saved.options);
 	modeSelect.value = saved.mode === "directive" ? "directive" : "generated";
 	autoBox.checked = saved.auto !== false;
 	editor.value = typeof saved.puml === "string" ? saved.puml : "";
@@ -93,7 +103,7 @@ function scheduleSave() {
 	saveTimer = setTimeout(() => {
 		try {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify({
-				files, active, options: getOptions(), mode: modeSelect.value, auto: autoBox.checked, puml: editor.value
+				files, active, options, mode: modeSelect.value, auto: autoBox.checked, puml: editor.value
 			}));
 		} catch (err) {
 			console.warn("Could not save the SysML session:", err);
@@ -105,38 +115,182 @@ function scheduleSave() {
 // Options
 // ---------------------------------------------------------------------------
 
-function getOptions() {
-	return {
-		system: optionInputs.system.value.trim(),
-		view: optionInputs.view.value,
-		detail: optionInputs.detail.value,
-		cables: optionInputs.cables.value,
-		frame: optionInputs.frame.checked,
-		style: optionInputs.style.checked
-	};
-}
-
-function setOptions(options) {
-	optionInputs.system.value = options.system;
-	optionInputs.view.value = options.view;
-	optionInputs.detail.value = options.detail;
-	optionInputs.cables.value = options.cables;
-	optionInputs.frame.checked = options.frame === true;
-	optionInputs.style.checked = options.style !== false;
-}
-
-// The options as the directive's key=value words, defaults left out.
-function optionWords() {
-	const options = getOptions();
-	const words = [];
-	for (const key of Object.keys(OPTION_DEFAULTS)) {
-		const value = options[key];
-		if (value === OPTION_DEFAULTS[key] || value === "") {
-			continue;
+// A session saved before the toolbar followed the profile had InterconnectProfile
+// options only: {system, view, detail, cables, frame, style}.
+function restoreOptions(saved) {
+	const result = defaultOptions();
+	if (saved == null || typeof saved !== "object") {
+		return result;
+	}
+	result.root = String(saved.root || saved.system || "");
+	result.profile = String(saved.profile || "");
+	result.frame = saved.frame === true;
+	result.style = saved.style !== false;
+	if (saved.values != null && typeof saved.values === "object") {
+		result.values = saved.values;
+	} else {
+		const interconnect = {};
+		for (const key of ["view", "detail", "cables"]) {
+			if (typeof saved[key] === "string") {
+				interconnect[key] = saved[key];
+			}
 		}
-		words.push(key + "=" + (/\s/.test(String(value)) ? '"' + value + '"' : value));
+		result.values = {interconnect};
+	}
+	return result;
+}
+
+function profileInfo(name) {
+	return described == null ? null : described.profiles.find(p => p.name === name) || null;
+}
+
+// The profile that draws the root: the one asked for, else the selected root's.
+function activeProfile() {
+	if (options.profile !== "") {
+		return options.profile;
+	}
+	if (described != null && described.selected >= 0) {
+		return described.roots[described.selected].profile;
+	}
+	return null;
+}
+
+function quoteWord(key, value) {
+	return key + "=" + (/\s/.test(String(value)) ? '"' + value + '"' : value);
+}
+
+// root= and profile=, the only options sysmlDescribe() reads.
+function selectionWords() {
+	const words = [];
+	if (options.root !== "") {
+		words.push(quoteWord("root", options.root));
+	}
+	if (options.profile !== "") {
+		words.push(quoteWord("profile", options.profile));
 	}
 	return words;
+}
+
+// The options as the directive's key=value words, defaults left out: a
+// profile's first allowed value is its default.
+function optionWords() {
+	const words = selectionWords();
+	if (options.frame) {
+		words.push("frame=true");
+	}
+	if (options.style === false) {
+		words.push("style=false");
+	}
+	const profile = profileInfo(activeProfile());
+	if (profile != null) {
+		const values = options.values[profile.name] || {};
+		for (const [key, allowed] of Object.entries(profile.options)) {
+			const value = values[key];
+			if (value == null || value === ""
+				|| (allowed != null && (allowed.includes(value) === false || value === allowed[0]))) {
+				continue;
+			}
+			words.push(quoteWord(key, value));
+		}
+	}
+	return words;
+}
+
+// Asks the engine what the files hold. On a parse error the toolbar keeps the
+// last good description; the import reports the error.
+function describeFiles() {
+	sysmlDescribe(files.map(f => f.name), files.map(f => f.text), selectionWords(),
+		json => (described = JSON.parse(json)),
+		() => {});
+}
+
+// The value root= takes for a root: its name, or its qualified name when
+// another root has the same name.
+function rootValue(root) {
+	const same = described.roots.filter(r => r.name === root.name).length;
+	return same > 1 ? root.qualifiedName : root.name;
+}
+
+function addOption(select, value, label) {
+	const el = document.createElement("option");
+	el.value = value;
+	el.textContent = label;
+	select.appendChild(el);
+	return el;
+}
+
+function renderToolbar() {
+	frameBox.checked = options.frame;
+	styleBox.checked = options.style;
+
+	rootSelect.replaceChildren();
+	const roots = described == null ? [] : described.roots;
+	const selected = described != null && described.selected >= 0 ? roots[described.selected] : null;
+	addOption(rootSelect, "", options.root === "" && selected != null ? "first found: " + selected.name : "first found");
+	for (const root of roots) {
+		addOption(rootSelect, rootValue(root), root.name + " — " + root.profile);
+	}
+	// Saved as a qualified name and listed by its simple name, or the reverse
+	const match = roots.find(r => r.name === options.root || r.qualifiedName === options.root);
+	if (options.root === "") {
+		rootSelect.value = "";
+	} else if (match != null) {
+		rootSelect.value = rootValue(match);
+	} else {
+		addOption(rootSelect, options.root, options.root + " (not found)");
+		rootSelect.value = options.root;
+	}
+
+	profileSelect.replaceChildren();
+	const detected = options.profile === "" ? activeProfile() : null;
+	addOption(profileSelect, "", detected != null ? "auto: " + detected : "auto");
+	for (const profile of described == null ? [] : described.profiles) {
+		addOption(profileSelect, profile.name, profile.name).title = profile.root;
+	}
+	if (options.profile !== "" && profileInfo(options.profile) == null) {
+		addOption(profileSelect, options.profile, options.profile + " (unknown)");
+	}
+	profileSelect.value = options.profile;
+
+	renderProfileOptions();
+}
+
+// One control per option of the active profile; nothing when no root is found.
+function renderProfileOptions() {
+	profileOptionsEl.replaceChildren();
+	const profile = profileInfo(activeProfile());
+	if (profile == null) {
+		return;
+	}
+	const values = options.values[profile.name] || {};
+	for (const [key, allowed] of Object.entries(profile.options)) {
+		const label = document.createElement("label");
+		label.title = profile.name + " option: " + key + "=" + (allowed == null ? "..." : allowed.join(" | "))
+			+ (allowed == null ? "" : " (default " + allowed[0] + ")");
+		label.append(key + " ");
+		let input;
+		if (allowed == null) {
+			input = document.createElement("input");
+			input.type = "text";
+			input.size = 10;
+			input.value = values[key] || "";
+			input.addEventListener("input", () => setProfileValue(profile.name, key, input.value.trim()));
+		} else {
+			input = document.createElement("select");
+			for (const value of allowed) {
+				addOption(input, value, value);
+			}
+			input.value = allowed.includes(values[key]) ? values[key] : allowed[0];
+			input.addEventListener("change", () => setProfileValue(profile.name, key, input.value));
+		}
+		label.appendChild(input);
+		profileOptionsEl.appendChild(label);
+	}
+}
+
+function setProfileValue(profile, key, value) {
+	options.values[profile] = Object.assign({}, options.values[profile], {[key]: value});
+	scheduleImport();
 }
 
 function quoteFile(name) {
@@ -158,6 +312,8 @@ function setImportStatus(message, isError) {
 
 function importNow() {
 	clearTimeout(importTimer);
+	describeFiles();
+	renderToolbar();
 	if (modeSelect.value === "directive") {
 		importDirective();
 	} else {
@@ -393,9 +549,29 @@ function fileTabs() {
 // ---------------------------------------------------------------------------
 
 function controls() {
-	for (const input of Object.values(optionInputs)) {
-		input.addEventListener(input.type === "text" ? "input" : "change", scheduleImport);
-	}
+	rootSelect.addEventListener("change", () => {
+		options.root = rootSelect.value;
+		// The root decides the profile, and so which options are shown
+		importNow();
+	});
+	profileSelect.addEventListener("change", () => {
+		options.profile = profileSelect.value;
+		// A root of another profile would not be found any more
+		const root = described == null ? null
+			: described.roots.find(r => r.name === options.root || r.qualifiedName === options.root);
+		if (options.profile !== "" && root != null && root.profile !== options.profile) {
+			options.root = "";
+		}
+		importNow();
+	});
+	frameBox.addEventListener("change", () => {
+		options.frame = frameBox.checked;
+		scheduleImport();
+	});
+	styleBox.addEventListener("change", () => {
+		options.style = styleBox.checked;
+		scheduleImport();
+	});
 	autoBox.addEventListener("change", () => {
 		scheduleSave();
 		if (autoBox.checked) {
