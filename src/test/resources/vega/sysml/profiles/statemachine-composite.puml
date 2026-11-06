@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml statemachine-composite.sysml
+@enduml

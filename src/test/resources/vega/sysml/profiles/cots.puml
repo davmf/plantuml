@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml cots.sysml profile=cots root=BadLabJack
+@enduml
