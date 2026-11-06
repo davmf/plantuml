@@ -1,0 +1,39 @@
+@startuml
+skinparam component {
+  style rectangle
+  portLabels inside
+}
+<style>
+component {
+  .IC { BackGroundColor #EAF1FB; LineColor #3F6FB2 }
+  .Connector { BackGroundColor #FFF5D6; LineColor #B89A2A }
+  .PowerComponent { BackGroundColor #FBEAE9; LineColor #C0504D }
+  .DiscretePassive { BackGroundColor #F2F2F2; LineColor #666666 }
+  .PassiveNetwork { BackGroundColor #F2F2F2; LineColor #666666 }
+  .Electromechanical { BackGroundColor #EAF5EA; LineColor #2E7D32 }
+}
+rectangle {
+  .Subcircuit { BackGroundColor #FFFFFF; LineColor #7F7F7F; LineStyle 6-3 }
+  .PCBA { BackGroundColor #FFFFFF; LineColor #404040 }
+}
+port {
+  .unconnected { BackGroundColor #FFB3B3; LineColor #C00000 }
+  .nc { BackGroundColor #FFFFFF; LineColor #BFBFBF }
+  .PowerPort { BackGroundColor #F8CBAD }
+  .ground { BackGroundColor #7F7F7F }
+}
+arrow {
+  .PowerRail { LineColor #C0504D; LineThickness 2 }
+  .BusHarness { LineColor #7E5BA0; LineThickness 3 }
+}
+</style>
+component "U1\n<size:10>TinyIC</size>" as U1 <<IC>> {
+  portout "pinA" as U1_pinA <<SinglePinPort>> <<data>>
+  portin "pinB" as U1_pinB <<SinglePinPort>> <<data>> <<nc>>
+}
+component "U2\n<size:10>TinyIC</size>" as U2 <<IC>> {
+  portout "pinA" as U2_pinA <<SinglePinPort>> <<data>> <<unconnected>>
+  portin "pinB" as U2_pinB <<SinglePinPort>> <<data>>
+}
+U1_pinA -- U2_pinB <<Net>> : N1
+@enduml

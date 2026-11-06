@@ -1,0 +1,72 @@
+@startuml
+skinparam component {
+  style rectangle
+}
+hide stereotype
+<style>
+rectangle {
+  .Layer { BackGroundColor #FAFAFA; LineColor #7F7F7F; FontStyle bold }
+  .hardware { BackGroundColor #F2F2F2 }
+  .driver { BackGroundColor #EAF1FB }
+  .controller { BackGroundColor #EAF5EA }
+  .application { BackGroundColor #FFF5D6 }
+  .service { BackGroundColor #F0EAF7 }
+}
+component { .LayerComponent { BackGroundColor #FFFFFF; LineColor #404040 } }
+arrow {
+  .SignalFlow { LineColor #404040 }
+  .Dependency { LineColor #7F7F7F; LineStyle 6-4 }
+}
+</style>
+rectangle "applicationLayer" as applicationLayer <<Layer>> <<application>> {
+  component "app1" as app1 <<LayerComponent>>
+  component "app2" as app2 <<LayerComponent>>
+}
+rectangle "serviceLayer" as serviceLayer <<Layer>> <<service>> {
+  component "svc1" as svc1 <<LayerComponent>>
+  component "svc2" as svc2 <<LayerComponent>>
+}
+rectangle "controllerLayer" as controllerLayer <<Layer>> <<controller>> {
+  component "inputController" as inputController <<LayerComponent>>
+  component "outputController" as outputController <<LayerComponent>>
+  component "ioController" as ioController <<LayerComponent>>
+}
+rectangle "driverLayer" as driverLayer <<Layer>> <<driver>> {
+  component "inputDriver" as inputDriver <<LayerComponent>>
+  component "outputDriver" as outputDriver <<LayerComponent>>
+  component "ioDriver" as ioDriver <<LayerComponent>>
+}
+rectangle "hardwareLayer" as hardwareLayer <<Layer>> <<hardware>> {
+  component "inputDevice" as inputDevice <<LayerComponent>>
+  component "outputDevice" as outputDevice <<LayerComponent>>
+  component "ioDevice" as ioDevice <<LayerComponent>>
+}
+applicationLayer -[hidden]down- serviceLayer
+serviceLayer -[hidden]down- controllerLayer
+controllerLayer -[hidden]down- driverLayer
+driverLayer -[hidden]down- hardwareLayer
+inputDevice --> inputDriver <<SignalFlow>>
+inputDriver --> inputController <<SignalFlow>>
+inputController --> app1 <<SignalFlow>>
+inputController --> app2 <<SignalFlow>>
+app1 --> outputController <<SignalFlow>>
+app2 --> outputController <<SignalFlow>>
+outputController --> outputDriver <<SignalFlow>>
+outputDriver --> outputDevice <<SignalFlow>>
+ioDevice <--> ioDriver <<SignalFlow>> <<bidir>>
+ioDriver <--> ioController <<SignalFlow>> <<bidir>>
+inputDriver ..> inputDevice <<Dependency>>
+inputController ..> inputDriver <<Dependency>>
+app1 ..> inputController <<Dependency>>
+app2 ..> inputController <<Dependency>>
+app1 ..> outputController <<Dependency>>
+app2 ..> outputController <<Dependency>>
+outputDriver ..> outputController <<Dependency>>
+outputDevice ..> outputDriver <<Dependency>>
+app1 ..> svc1 <<Dependency>>
+app2 ..> svc2 <<Dependency>>
+inputController ..> svc1 <<Dependency>>
+app1 ..> ioController <<Dependency>>
+ioController ..> ioDriver <<Dependency>>
+ioDriver ..> ioDevice <<Dependency>>
+@enduml

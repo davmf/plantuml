@@ -1,0 +1,36 @@
+@startuml
+skinparam component {
+  style rectangle
+  portLabels inside
+}
+<style>
+component {
+  .SystemPCBA { BackGroundColor #EAF1FB; LineColor #3F6FB2 }
+  .COTSDevice { BackGroundColor #F2F2F2; LineColor #666666 }
+  .external { LineColor #C00000; LineStyle 6-3 }
+}
+rectangle {
+  .System { BackGroundColor #FFFFFF; LineColor #404040 }
+  .InternalBlock { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 4-3 }
+}
+port {
+  .unconnected { BackGroundColor #FFB3B3; LineColor #C00000 }
+  .InterBoardPowerPort { BackGroundColor #F8CBAD }
+  .ground { BackGroundColor #7F7F7F }
+}
+arrow {
+  .Interconnect { LineColor #8C6D4B; LineThickness 2; FontColor #8C6D4B }
+  .power { LineColor #C0504D }
+  .ground { LineColor #404040 }
+  .shield { LineColor #2E7D32 }
+}
+</style>
+component "BadLabJack\n<size:10>LabJack T7-LIKE-BAD</size>" as BadLabJack <<COTSDevice>> {
+  group "ST1.AIN0" {
+    portout "AIN0" as BadLabJack_AIN0 <<InterBoardSignalPort>> <<data>> <<analog_in>>
+  }
+  group "ST1.VS" {
+    portout "VS" as BadLabJack_VS <<InterBoardPowerPort>> <<rail>>
+  }
+}
+@enduml

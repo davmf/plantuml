@@ -1,0 +1,41 @@
+@startuml
+skinparam component {
+  style rectangle
+  portLabels inside
+}
+<style>
+component {
+  .SystemPCBA { BackGroundColor #EAF1FB; LineColor #3F6FB2 }
+  .COTSDevice { BackGroundColor #F2F2F2; LineColor #666666 }
+  .external { LineColor #C00000; LineStyle 6-3 }
+}
+rectangle {
+  .System { BackGroundColor #FFFFFF; LineColor #404040 }
+  .InternalBlock { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 4-3 }
+}
+port {
+  .unconnected { BackGroundColor #FFB3B3; LineColor #C00000 }
+  .InterBoardPowerPort { BackGroundColor #F8CBAD }
+  .ground { BackGroundColor #7F7F7F }
+}
+arrow {
+  .Interconnect { LineColor #8C6D4B; LineThickness 2; FontColor #8C6D4B }
+  .power { LineColor #C0504D }
+  .ground { LineColor #404040 }
+  .shield { LineColor #2E7D32 }
+}
+</style>
+component "A1\nHostNode\n<size:10>HOST-001 rev A</size>" as A1 <<SystemPCBA>> {
+  portout "J1.1" as A1_sig <<InterBoardSignalPort>> <<data>>
+  portout "J1.2" as A1_pwr <<InterBoardPowerPort>> <<rail>> <<unconnected>>
+}
+component "A2\nPeripheralNode\n<size:10>PERIPH-001 rev A</size>" as A2 <<SystemPCBA>> {
+  portin "J1.1" as A2_sig <<InterBoardSignalPort>> <<data>> <<unconnected>>
+  portin "J1.2" as A2_pwr <<InterBoardPowerPort>> <<rail>> <<unconnected>>
+}
+component "A3\nPeripheralNode\n<size:10>PERIPH-001 rev A</size>" as A3 <<SystemPCBA>> <<external>> {
+  portin "J1.1" as A3_sig <<InterBoardSignalPort>> <<data>>
+  portin "J1.2" as A3_pwr <<InterBoardPowerPort>> <<rail>> <<unconnected>>
+}
+A1_sig -- A3_sig <<ConductorPath>> <<signal>> : DATA
+@enduml

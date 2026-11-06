@@ -1,0 +1,35 @@
+@startuml
+hide empty description
+state outerInit <<start>>
+state "NewCompositeState1" as newCompositeState1 {
+  state init <<start>>
+  state fin <<end>>
+  state "NewState1" as newState1
+  state "NewState2" as newState2
+  init --> newState1 <<unclassified>>
+  newState1 --> newState2 <<unclassified>> : event_1
+  newState2 --> fin <<unclassified>> : event_1
+}
+state "NewCompositeState2" as newCompositeState2 {
+  state init_2 <<start>>
+  state fin_2 <<end>>
+  state "NewState3" as newState3
+  state "NewState4" as newState4
+  init_2 --> newState3 <<unclassified>>
+  newState3 --> newState4 <<unclassified>> : event_1
+  newState4 --> fin_2 <<unclassified>> : event_1
+  ||
+  state init_3 <<start>>
+  state fin_3 <<end>>
+  state "NewState5" as newState5
+  state "NewState6" as newState6
+  init_3 --> newState5 <<unclassified>>
+  newState5 --> newState6 <<unclassified>> : event_3
+  newState6 --> fin_3 <<unclassified>> : event_3
+}
+outerInit --> newCompositeState1 <<unclassified>>
+newCompositeState1 --> newCompositeState2 <<unclassified>>
+newCompositeState1 --> newCompositeState2 <<unclassified>> : event_2
+newCompositeState2 --> newCompositeState1 <<unclassified>>
+newCompositeState2 --> newCompositeState1 <<unclassified>> : event_2
+@enduml

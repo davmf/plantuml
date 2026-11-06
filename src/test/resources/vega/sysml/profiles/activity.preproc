@@ -1,0 +1,41 @@
+@startuml
+skinparam component {
+  style rectangle
+}
+hide stereotype
+<style>
+component { .Action { RoundCorner 20; BackGroundColor #FFFFFF; LineColor #404040 } }
+rectangle {
+  .ObjectNode { BackGroundColor #F7F7F7; LineColor #404040 }
+  .Partition { BackGroundColor transparent; LineColor #7F7F7F; FontStyle bold }
+  .ExpansionRegion { BackGroundColor transparent; LineColor #404040; LineStyle 6-3; RoundCorner 20 }
+  .InterruptibleRegion { BackGroundColor transparent; LineColor #C62828; LineStyle 6-3; RoundCorner 20 }
+  .Activity { BackGroundColor transparent; RoundCorner 30 }
+}
+arrow {
+  .objectFlow { LineStyle 6-3 }
+  .interruptFlow { LineColor #C62828; FontColor #C62828 }
+}
+</style>
+rectangle "PickAllLineItems\n<size:10>parallelMode</size>" as pickAll <<ExpansionRegion>> {
+  portin "ItemsIn : LineItem" as pickAll_inputColl
+  portout "ItemsOut : LineItem" as pickAll_outputColl
+  rectangle "EachItem : LineItem" as eachItem <<ObjectNode>>
+  rectangle "PickedItem : LineItem" as pickedItem <<ObjectNode>>
+  component "pickItem()" as pickItem <<Action>>
+}
+rectangle "ShippingRegion" as shippingRegion <<InterruptibleRegion>> {
+  component "packShipment()" as packShipment <<Action>>
+  component "shipOrder()" as shipOrder <<Action>>
+}
+component "receiveOrder()" as receiveOrder <<Action>>
+component "cancelOrder()" as cancelOrder <<Action>>
+component "refundCustomer()" as refundCustomer <<Action>>
+rectangle "LineItems : LineItem" as lineItems <<ObjectNode>>
+rectangle "PickedItems : LineItem" as pickedItems <<ObjectNode>>
+receiveOrder --> pickAll_inputColl <<objectFlow>>
+pickAll_outputColl --> packShipment <<objectFlow>>
+packShipment --> shipOrder <<controlFlow>>
+shippingRegion --> cancelOrder <<interruptFlow>> : ↯
+cancelOrder --> refundCustomer <<controlFlow>>
+@enduml

@@ -1,7 +1,7 @@
 ---
 output: svg
 expected-status: 400
-expected-error-message: !include_sysml: unknown option 'colour' (expected one of [system, view, detail, cables, frame, style])
+expected-error-message: !include_sysml: unknown option 'colour' for interconnect (expected one of [root, system, profile, style, frame, view, detail, cables])
 ---
 @startuml
 !include_sysml tiny.sysml colour=red

@@ -1,0 +1,43 @@
+@startuml
+skinparam component {
+  style rectangle
+  portLabels inside
+}
+<style>
+component {
+  .SystemPCBA { BackGroundColor #EAF1FB; LineColor #3F6FB2 }
+  .COTSDevice { BackGroundColor #F2F2F2; LineColor #666666 }
+  .external { LineColor #C00000; LineStyle 6-3 }
+}
+rectangle {
+  .System { BackGroundColor #FFFFFF; LineColor #404040 }
+  .InternalBlock { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 4-3 }
+}
+port {
+  .unconnected { BackGroundColor #FFB3B3; LineColor #C00000 }
+  .InterBoardPowerPort { BackGroundColor #F8CBAD }
+  .ground { BackGroundColor #7F7F7F }
+}
+arrow {
+  .Interconnect { LineColor #8C6D4B; LineThickness 2; FontColor #8C6D4B }
+  .power { LineColor #C0504D }
+  .ground { LineColor #404040 }
+  .shield { LineColor #2E7D32 }
+}
+</style>
+rectangle "SYS-GOOD rev A" as GoodSystem <<System>> {
+  component "U1\nGoodLabJack\n<size:10>LabJack T7-LIKE-GOOD</size>" as U1 <<COTSDevice>> {
+    group "ST1.AIN0" {
+      portin "AIN0" as U1_AIN0 <<InterBoardSignalPort>> <<analog>> <<analog_in>>
+    }
+    group "ST1.VS" {
+      portout "VS" as U1_VS <<InterBoardPowerPort>> <<rail>>
+    }
+  }
+  component "A2\nPeripheralNode\n<size:10>PERIPH-001 rev A</size>" as A2 <<SystemPCBA>> {
+    portin "J1.1" as A2_sig <<InterBoardSignalPort>> <<analog>>
+    portin "J1.2" as A2_pwr <<InterBoardPowerPort>> <<rail>>
+  }
+}
+U1 -- A2 <<Interconnect>> <<multi_conductor>> : HARNESS1\n<size:10>CBL-001</size>
+@enduml

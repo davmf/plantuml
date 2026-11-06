@@ -19,6 +19,11 @@ title $sysml_system — $sysml_partNumber rev $sysml_revision
 Run `java -jar plantuml.jar -preproc diagram.puml` to see the generated
 PlantUML.
 
+The directive also reads the other profiles (state machines, sequences,
+activities, software architecture, PCBAs, inter-PCBA systems, COTS devices):
+see [SYSML_PROFILES.md](SYSML_PROFILES.md) for how the root and the profile
+are chosen.
+
 ## Syntax
 
 ```
@@ -34,12 +39,13 @@ PlantUML.
 
 | Option    | Values                              | Default     | Meaning |
 |-----------|-------------------------------------|-------------|---------|
-| `system`  | part name                           | first found | Which `part x : InterconnectSystem` to draw |
+| `system`  | part name                           | first found | Which `part x : InterconnectSystem` to draw (same as `root=`) |
 | `view`    | `physical`, `logical`, `both`       | `physical`  | Cables and Mates; InterfaceLinks and UnitLinks (no Cables); or both overlaid |
 | `detail`  | `connector`, `contact`              | `connector` | One port per connector; or one port group per connector, one port per contact, each Mate drawn as a `harness` pairing contacts by `contactId` (physical view only) |
 | `cables`  | `node`, `edge`                      | `node`      | A two-ended Cable mated to two Units can be drawn as one labelled edge; multi-ended harnesses stay components |
 | `frame`   | `true`, `false`                     | `false`     | Draw the system itself as an outer rectangle |
 | `style`   | `true`, `false`                     | `true`      | Emit the default skinparams and `<style>` |
+| `profile` | `interconnect`...                   | detected    | See [SYSML_PROFILES.md](SYSML_PROFILES.md) |
 
 ## What is generated
 
