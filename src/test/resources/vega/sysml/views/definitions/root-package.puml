@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' root= a package, flattened, with the docs as tooltips
+!include_sysml vehicle.sysml view=definitions root=VehicleModel::Interfaces packages=false doc=tooltip
+@enduml

@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import net.sourceforge.plantuml.sysml.activity.ActProfile;
+import net.sourceforge.plantuml.sysml.definitions.DefProfile;
 import net.sourceforge.plantuml.sysml.interconnect.IcProfile;
 import net.sourceforge.plantuml.sysml.interpcba.CotsProfile;
 import net.sourceforge.plantuml.sysml.interpcba.IpProfile;
@@ -78,7 +79,7 @@ public final class SysmlImport {
 	 */
 	public static final List<SysmlProfile> VIEWS = Collections.unmodifiableList(Arrays.<SysmlProfile>asList(
 	// views are registered here, one per line
-	));
+			new DefProfile()));
 
 	private SysmlImport() {
 	}
@@ -166,7 +167,8 @@ public final class SysmlImport {
 		private String foundList() {
 			final List<String> found = new ArrayList<>();
 			for (Root r : roots)
-				found.add(r.getName() + " (" + r.getProfile().getName() + ")");
+				if (r.getName() != null)
+					found.add(r.getName() + " (" + r.getProfile().getName() + ")");
 			return String.join(", ", found);
 		}
 	}

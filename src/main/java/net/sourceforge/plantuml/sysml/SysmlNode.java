@@ -61,6 +61,8 @@ public final class SysmlNode {
 	private final String source;
 	private final int line;
 	private final List<SysmlNode> children = new ArrayList<>();
+	private final List<String> modifiers = new ArrayList<>();
+	private String multiplicity;
 	private String doc;
 	private SysmlNode parent;
 
@@ -138,6 +140,34 @@ public final class SysmlNode {
 	/** The ends of <code>connect a to b</code>, as written (feature chains). */
 	public List<String> getConnectEnds() {
 		return Collections.unmodifiableList(connectEnds);
+	}
+
+	/**
+	 * The multiplicity as written between the brackets (<code>0..*</code>,
+	 * <code>4</code>), or <code>null</code>.
+	 */
+	public String getMultiplicity() {
+		return multiplicity;
+	}
+
+	/**
+	 * The modifiers written before the keyword: <code>abstract</code>,
+	 * <code>ref</code>, <code>in</code>, <code>out</code>, <code>end</code>...
+	 */
+	public List<String> getModifiers() {
+		return Collections.unmodifiableList(modifiers);
+	}
+
+	public boolean hasModifier(String modifier) {
+		return modifiers.contains(modifier);
+	}
+
+	void setMultiplicity(String multiplicity) {
+		this.multiplicity = multiplicity;
+	}
+
+	void addModifier(String modifier) {
+		modifiers.add(modifier);
 	}
 
 	public List<SysmlNode> getChildren() {

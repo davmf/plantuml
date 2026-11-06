@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: no diagram root named 'Boat' (found: Shop (definitions), Size (definitions), Item (definitions), Cup (definitions), Grip (definitions))
+---
+@startuml
+!include_sysml shop.sysml view=definitions root=Boat
+@enduml
