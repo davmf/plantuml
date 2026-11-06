@@ -355,6 +355,81 @@ function controls() {
 		URL.revokeObjectURL(url);
 	});
 
+	// Print the diagram alone, so the browser's print dialog can also save it
+	// as PDF ("Save as PDF" / "Microsoft Print to PDF" destination). A hidden
+	// iframe holds just the SVG: no popup to block, and none of the editor or
+	// toolbar ends up on the page. The page is sized to the diagram itself
+	// (CSS @page size, no margin), so the PDF is one page exactly as big as
+	// the drawing rather than a sheet of paper with the diagram on it.
+	const print = document.getElementById("print");
+	print.addEventListener("click", () => {
+		const svg = document.getElementById("out").querySelector("svg");
+		if (svg == null) {
+			showControlResult(print, "error", 3000);
+			showToast("Nothing to print", true);
+			return;
+		}
+		const box = svg.viewBox && svg.viewBox.baseVal;
+		const width = (box && box.width) || svg.getBoundingClientRect().width;
+		const height = (box && box.height) || svg.getBoundingClientRect().height;
+		const background = getComputedStyle(document.body).backgroundColor || "white";
+
+		// PlantUML sets a pixel size inline and preserveAspectRatio="none":
+		// drop both so the page CSS can stretch the SVG box over the page while
+		// the drawing keeps its proportions (px-to-pt rounding can make the
+		// page a hair off the diagram's ratio).
+		function getPrintableSvg() {
+			const doc = new DOMParser().parseFromString(getContent(), "image/svg+xml");
+			const root = doc.documentElement;
+			if (root.getAttribute("viewBox") == null && width > 0 && height > 0) {
+				root.setAttribute("viewBox", "0 0 " + width + " " + height);
+			}
+			root.removeAttribute("width");
+			root.removeAttribute("height");
+			root.style.removeProperty("width");
+			root.style.removeProperty("height");
+			root.setAttribute("preserveAspectRatio", "xMidYMid meet");
+			return new XMLSerializer().serializeToString(root);
+		}
+
+		const frame = document.createElement("iframe");
+		frame.setAttribute("aria-hidden", "true");
+		frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+		frame.srcdoc = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>diagram</title><style>"
+			+ "@page{size:" + width + "px " + height + "px;margin:0}"
+			+ "html,body{margin:0;padding:0;overflow:hidden;background:" + background + ";"
+			+ "-webkit-print-color-adjust:exact;print-color-adjust:exact}"
+			// 100vw x 100vh is the page box: filling it exactly never spills
+			// onto a blank second page the way a fixed px size can.
+			+ "svg{display:block;width:100vw!important;height:100vh!important}"
+			+ "</style></head><body>" + getPrintableSvg() + "</body></html>";
+
+		let removed = false;
+		function cleanup() {
+			if (removed == false) {
+				removed = true;
+				frame.remove();
+			}
+		}
+		frame.addEventListener("load", () => {
+			const win = frame.contentWindow;
+			win.addEventListener("afterprint", () => setTimeout(cleanup, 0));
+			try {
+				win.focus();
+				win.print();
+			} catch (err) {
+				console.error("Print failed:", err);
+				showControlResult(print, "error", 3000);
+				showToast("Print failed", true);
+				cleanup();
+				return;
+			}
+			// Some browsers never fire afterprint on an iframe; don't leak it.
+			setTimeout(cleanup, 60000);
+		}, { once: true });
+		document.body.appendChild(frame);
+	});
+
 	function getContent() {
 		const out = document.getElementById("out");
 		const svg = out.querySelector("svg");
@@ -425,7 +500,8 @@ function contextMenu() {
 			{ label: "Copy as bitmap",       buttonId: "copy-bitmap" },
 			{ label: "Copy as SVG",          buttonId: "copy"        },
 			{ label: "Open live PNG preview", buttonId: "open-png"    },
-			{ label: "Open live SVG preview", buttonId: "open-svg"    }
+			{ label: "Open live SVG preview", buttonId: "open-svg"    },
+			{ label: "Print / Save as PDF",   buttonId: "print"       }
 		];
 		for (const entry of ENTRIES) {
 			const li = document.createElement("li");
