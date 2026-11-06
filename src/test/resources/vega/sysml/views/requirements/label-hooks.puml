@@ -1,0 +1,13 @@
+---
+output: preproc
+---
+@startuml
+' Label functions defined before the directive replace the defaults
+!function $sysml_element_label($id, $name, $kind)
+!return "[" + $id + "] " + $name
+!endfunction
+!function $sysml_relation_label($kind)
+!return $kind
+!endfunction
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SW-001 text=false
+@enduml

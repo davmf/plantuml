@@ -47,6 +47,7 @@ import net.sourceforge.plantuml.sysml.interconnect.IcProfile;
 import net.sourceforge.plantuml.sysml.interpcba.CotsProfile;
 import net.sourceforge.plantuml.sysml.interpcba.IpProfile;
 import net.sourceforge.plantuml.sysml.pcba.PcbaProfile;
+import net.sourceforge.plantuml.sysml.requirements.ReqView;
 import net.sourceforge.plantuml.sysml.sequence.SeqProfile;
 import net.sourceforge.plantuml.sysml.statemachine.SmProfile;
 import net.sourceforge.plantuml.sysml.swarch.SwProfile;
@@ -78,7 +79,7 @@ public final class SysmlImport {
 	 */
 	public static final List<SysmlProfile> VIEWS = Collections.unmodifiableList(Arrays.<SysmlProfile>asList(
 	// views are registered here, one per line
-	));
+			new ReqView()));
 
 	private SysmlImport() {
 	}

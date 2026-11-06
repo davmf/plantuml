@@ -27,6 +27,8 @@ title $sysml_name
 Run `java -jar plantuml.jar -preproc diagram.puml` to see the generated
 PlantUML.
 
+`view=requirements` draws plain SysML v2 requirements and their traces instead of a profile: see [SYSML_VIEW_REQUIREMENTS.md](SYSML_VIEW_REQUIREMENTS.md).
+
 ## Choosing the root
 
 Without options, the profiles are tried in the order of the table and the

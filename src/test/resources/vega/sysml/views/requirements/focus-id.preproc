@@ -1,0 +1,56 @@
+@startuml
+!pragma layout elk
+hide circle
+hide empty members
+hide stereotype
+skinparam classAttributeIconSize 0
+<style>
+classDiagram {
+  class { BackGroundColor #FFFFFF; LineColor #404040; MaximumWidth 280 }
+  package { LineColor #9E9E9E; FontColor #616161 }
+  .requirement { BackGroundColor #EAF1FB }
+  .requirementDef { BackGroundColor #DCE7F7 }
+  .concern { BackGroundColor #F0EAF7 }
+  .verification { BackGroundColor #EAF5EA }
+  .verificationDef { BackGroundColor #DDEFDD }
+  .unresolved { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 5; FontColor #757575 }
+  .focus { BackGroundColor #FFF3B0; LineColor #D9822B; LineThickness 3 }
+  arrow {
+    .satisfy { LineColor #2E7D32; FontColor #2E7D32 }
+    .verify { LineColor #1565C0; FontColor #1565C0 }
+    .derive { LineColor #6A1B9A; FontColor #6A1B9A }
+    .refine { LineColor #6A1B9A; FontColor #6A1B9A }
+    .allocate { LineColor #EF6C00; FontColor #EF6C00 }
+    .definedBy { LineColor #757575; FontColor #757575 }
+    .specializes { LineColor #757575; FontColor #757575 }
+    .subsets { LineColor #757575; FontColor #757575 }
+    .subject { LineColor #757575; FontColor #757575 }
+    .references { LineColor #757575; FontColor #757575 }
+  }
+}
+</style>
+class "«requirement»\n<b>SYS-001</b>\nFlight time" as SYS_001 <<requirement>> <<focus>> {
+  {field} The drone shall hover for at least 25 minutes with the survey camera fitted, at 20 degrees Celsius and sea level, with a fully charged battery and no wind,…
+}
+class "«requirement»\n<b>SYS-001.1</b>\nBattery capacity" as SYS_001_1 <<requirement>> {
+  {field} The battery shall store at least 90 Wh.
+}
+class "«requirement»\n<b>SYS-001.2</b>\nTake-off mass" as SYS_001_2 <<requirement>> {
+  {field} The take-off mass shall not exceed 2.5 kg.
+}
+class "«requirement»\n<b>SW-001</b>\nBatteryMonitor" as SW_001 <<requirement>> {
+  {field} The flight software shall estimate the battery charge every second.
+}
+class "«part def»\nSurveyDrone" as SurveyDrone <<partDef>>
+class "«part»\n<b>CONF-1</b>\nprototype" as CONF_1 <<part>>
+class "«verification def»\n<b>TC-001</b>\nHover endurance test" as TC_001 <<verificationDef>>
+SYS_001 +-- SYS_001_1 <<containment>>
+SYS_001 +-- SYS_001_2 <<containment>>
+SurveyDrone <.. SYS_001 <<subject>> : «subject»
+SYS_001 <.. SW_001 <<derive>> : «derive»
+SurveyDrone <|.. CONF_1 <<definedBy>> : «defined by»
+SYS_001 <.. CONF_1 <<satisfy>> : «satisfy»
+CONF_1 <.. TC_001 <<subject>> : «subject»
+SYS_001 <.. TC_001 <<verify>> : «verify»
+title SYS-001 Flight time
+@enduml

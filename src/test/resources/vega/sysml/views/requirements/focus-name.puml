@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' focus= by simple name
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=BatteryMonitor
+@enduml

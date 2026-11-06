@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' root= draws the requirements of one package; depth=1 adds what traces them
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements root=Software depth=1
+@enduml
