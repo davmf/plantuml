@@ -91,6 +91,7 @@ import net.sourceforge.plantuml.style.SName;
 import net.sourceforge.plantuml.style.Style;
 import net.sourceforge.plantuml.style.StyleQueries;
 import net.sourceforge.plantuml.style.StyleQuery;
+import net.sourceforge.plantuml.utils.Log;
 import net.sourceforge.plantuml.svek.RoleLabels;
 import net.sourceforge.plantuml.svek.IEntityImage;
 import net.sourceforge.plantuml.svek.extremity.ExtremityFactory;
@@ -209,8 +210,8 @@ public class MyElkEdge implements UDrawable {
 
 		final List<ElkEdgeSection> sections = edge.getSections();
 		if (sections.size() == 0) {
-			System.err.println("Strange: no section?");
-			System.err.println("Maybe a 'Long hierarchical edge' " + edge.isHierarchical());
+			// ELK leaves some hierarchy-crossing edges unrouted: skip them rather than fail
+			Log.info(() -> "ELK: no section for edge " + link);
 			return;
 		}
 

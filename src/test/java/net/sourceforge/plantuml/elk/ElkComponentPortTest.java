@@ -281,6 +281,36 @@ class ElkComponentPortTest {
 	}
 
 	@Test
+	void edges_crossing_an_assembly_inside_a_frame_are_routed() throws IOException {
+		// The frame has no edge leaving it, but the assembly inside it does: the
+		// frame must not be laid out on its own, or ELK leaves those edges out.
+		final String svg = render(String.join("\n", //
+				"@startuml", //
+				"left to right direction", //
+				"!pragma layout elk", //
+				"rectangle frame {", //
+				"  component A {", //
+				"    portout a1", //
+				"    portout a2", //
+				"  }", //
+				"  rectangle assembly {", //
+				"    component B {", //
+				"      portin b1", //
+				"      portout b2", //
+				"    }", //
+				"  }", //
+				"  component C {", //
+				"    portin c1", //
+				"  }", //
+				"}", //
+				"a1 -- b1", //
+				"b2 -- c1", //
+				"a2 -- c1", //
+				"@enduml"));
+		assertEquals(3, count(EDGE, svg), "edges drawn");
+	}
+
+	@Test
 	void wires_between_two_boards_do_not_cross_each_other() throws IOException {
 		// The MCU Board's wires climb or drop to the Interface Board's ports in
 		// the same order, so ELK routes them without a crossing. Drawing each as
