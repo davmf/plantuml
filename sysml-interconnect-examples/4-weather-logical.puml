@@ -1,0 +1,6 @@
+@startuml
+left to right direction
+!pragma layout elk
+!include_sysml /home/david/sysmlv2/sysmlv2-profiles/InterconnectProfile/test/test-interconnect-3.sysml view=logical
+title $sysml_system (view=logical)
+@enduml
