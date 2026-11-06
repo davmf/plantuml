@@ -60,12 +60,25 @@ import net.sourceforge.plantuml.sysml.swarch.SwProfile;
  * Without <code>profile=</code>, the profiles are tried in the order of
  * {@link #PROFILES}: system-level profiles come before the ones whose roots
  * they use as parts (an InterconnectSystem file set often holds PCBAs too).
+ * <p>
+ * <code>view=</code> selects one of {@link #VIEWS} instead: generators that
+ * draw plain SysML v2 (requirements, definitions...) rather than one profile.
+ * Every file set has roots for them, so they are never tried unless asked for.
  */
 public final class SysmlImport {
 
 	public static final List<SysmlProfile> PROFILES = Collections.unmodifiableList(Arrays.<SysmlProfile>asList(
 			new IcProfile(), new IpProfile(), new SmProfile(), new SeqProfile(), new ActProfile(), new SwProfile(),
 			new PcbaProfile(), new CotsProfile()));
+
+	/**
+	 * The views, selected by name with <code>view=</code>. A view implements
+	 * {@link SysmlProfile}; its {@link SysmlProfile#getName()} is the value of
+	 * <code>view=</code>.
+	 */
+	public static final List<SysmlProfile> VIEWS = Collections.unmodifiableList(Arrays.<SysmlProfile>asList(
+	// views are registered here, one per line
+	));
 
 	private SysmlImport() {
 	}
@@ -89,7 +102,7 @@ public final class SysmlImport {
 				throw new SysmlException("no diagram root named '" + parsedOptions.getRoot() + "'"
 						+ (description.roots.isEmpty() ? "" : " (found: " + description.foundList() + ")"));
 			final List<String> expected = new ArrayList<>();
-			for (SysmlProfile profile : selectProfiles(parsedOptions.getProfile()))
+			for (SysmlProfile profile : selectProfiles(parsedOptions))
 				expected.add("'" + profile.getRootDescription() + "'");
 			throw new SysmlException("no diagram root found (expected " + String.join(", ", expected) + ")");
 		}
@@ -121,7 +134,7 @@ public final class SysmlImport {
 	private static Description describe(List<SysmlNode> parsed, SysmlOptions options) throws SysmlException {
 		final String rootName = options.getRoot();
 		final Description result = new Description();
-		for (SysmlProfile profile : selectProfiles(options.getProfile())) {
+		for (SysmlProfile profile : selectProfiles(options)) {
 			final SysmlModel model = new SysmlModel(profile.getStopNames());
 			for (SysmlNode root : parsed)
 				model.add(root);
@@ -183,7 +196,20 @@ public final class SysmlImport {
 		}
 	}
 
-	private static List<SysmlProfile> selectProfiles(String name) throws SysmlException {
+	private static List<SysmlProfile> selectProfiles(SysmlOptions options) throws SysmlException {
+		final String view = options.getView();
+		if (view != null) {
+			if (options.getProfile() != null)
+				throw new SysmlException("options profile= and view= cannot be used together");
+			final List<String> names = new ArrayList<>();
+			for (SysmlProfile candidate : VIEWS) {
+				if (candidate.getName().equals(view))
+					return Collections.singletonList(candidate);
+				names.add(candidate.getName());
+			}
+			throw new SysmlException("unknown view '" + view + "' (expected one of " + names + ")");
+		}
+		final String name = options.getProfile();
 		if (name == null)
 			return PROFILES;
 		final List<String> names = new ArrayList<>();
