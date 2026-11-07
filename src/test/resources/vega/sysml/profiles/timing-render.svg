@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="TIMING" height="626px" preserveAspectRatio="none" style="width:652px;height:626px;background:#FFFFFF;" version="1.1" viewBox="0 0 652 626" width="652px" zoomAndPan="magnify">
+  <defs/>
+  <g font-family="sans-serif" lengthAdjust="spacing">
+    <g class="title" data-source-line="4">
+      <text fill="#000" font-size="14" font-weight="700" textLength="95.725" x="277.287" y="30.889">Board power-up</text>
+    </g>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="20" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="631.3" x2="631.3" y1="55" y2="594"/>
+    <rect fill="#FFF4D6" height="539" style="stroke:none;" width="160" x="176.3" y="55"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="76.3" x2="76.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="126.3" x2="126.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="176.3" x2="176.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="226.3" x2="226.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="276.3" x2="276.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="326.3" x2="326.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="376.3" x2="376.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="426.3" x2="426.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="476.3" x2="476.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="526.3" x2="526.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="576.3" x2="576.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;stroke-dasharray:3,5;" x1="626.3" x2="626.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="631.3" y1="55" y2="55"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="51.8" x="25" y="65.889">+3V3 (V)</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="77.8" y1="70" y2="70"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="77.8" x2="87.8" y1="70" y2="55"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="19.425" x="54.875" y="182.889">0.0</text>
+    <text fill="#333" font-size="14" font-weight="700" textLength="19.425" x="54.875" y="98.889">3.6</text>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="76.3" x2="76.3" y1="179" y2="179"/>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="76.3" x2="86.3" y1="179" y2="179"/>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="86.3" x2="136.3" y1="179" y2="102"/>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="136.3" x2="626.3" y1="102" y2="102"/>
+    <line style="stroke:#B00020;stroke-width:1.5;" x1="136.3" x2="151.3" y1="87" y2="87"/>
+    <polygon fill="#B00020" points="129.3,91,129.3,83,137.3,87" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <polygon fill="#B00020" points="158.3,91,158.3,83,150.3,87" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#B00020" font-size="12" textLength="76.8" x="105.4" y="79.333">t_seq {≥ 100 µs}</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="631.3" y1="187" y2="187"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="52.937" x="25" y="197.889">PG_3V3</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="78.938" y1="202" y2="202"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="78.938" x2="88.938" y1="202" y2="187"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="76.3" x2="76.3" y1="224" y2="224"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="76.3" x2="146.3" y1="224" y2="224"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="146.3" x2="146.3" y1="210" y2="224"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="146.3" x2="626.3" y1="210" y2="210"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="631.3" y1="232" y2="232"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="51.8" x="25" y="242.889">+1V8 (V)</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="77.8" y1="247" y2="247"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="77.8" x2="87.8" y1="247" y2="232"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="19.425" x="54.875" y="359.889">0.0</text>
+    <text fill="#333" font-size="14" font-weight="700" textLength="19.425" x="54.875" y="275.889">2.0</text>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="76.3" x2="76.3" y1="356" y2="356"/>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="76.3" x2="151.3" y1="356" y2="356"/>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="151.3" x2="176.3" y1="356" y2="280.4"/>
+    <line style="stroke:#1565C0;stroke-width:0.5;" x1="176.3" x2="626.3" y1="280.4" y2="280.4"/>
+    <line style="stroke:#B00020;stroke-width:1.5;" x1="155.3" x2="172.3" y1="264" y2="264"/>
+    <polygon fill="#B00020" points="160.3,268,160.3,260,152.3,264" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <polygon fill="#B00020" points="167.3,268,167.3,260,175.3,264" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#B00020" font-size="12" textLength="92.175" x="117.712" y="256.333">t_ss {300 µs – 1 ms}</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="631.3" y1="364" y2="364"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="54.6" x="25" y="374.889">nRESET</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="80.6" y1="379" y2="379"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="80.6" x2="90.6" y1="379" y2="364"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="76.3" x2="76.3" y1="418" y2="418"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="76.3" x2="336.3" y1="418" y2="418"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="336.3" x2="336.3" y1="404" y2="418"/>
+    <line style="stroke:#1565C0;stroke-width:2;" x1="336.3" x2="626.3" y1="404" y2="404"/>
+    <line style="stroke:#B00020;stroke-width:1.5;" x1="141.8" x2="330.8" y1="396" y2="396"/>
+    <polygon fill="#B00020" points="146.8,400,146.8,392,138.8,396" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <polygon fill="#B00020" points="325.8,400,325.8,392,333.8,396" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#B00020" font-size="12" textLength="83.175" x="194.712" y="388.333">t_rst {2 ms – 5 ms}</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="631.3" y1="426" y2="426"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="31.938" x="25" y="436.889">MCU</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="57.938" y1="441" y2="441"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="57.938" x2="67.938" y1="441" y2="426"/>
+    <text fill="#333" font-size="12" textLength="44.775" x="25" y="535.333">Running</text>
+    <text fill="#333" font-size="12" textLength="36.75" x="25" y="515.333">App init</text>
+    <text fill="#333" font-size="12" textLength="51.3" x="25" y="495.333">ROM boot</text>
+    <text fill="#333" font-size="12" textLength="31.35" x="25" y="475.333">Reset</text>
+    <text fill="#333" font-size="12" textLength="15.9" x="25" y="455.333">Off</text>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="76.3" x2="176.3" y1="451" y2="451"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="176.3" x2="336.3" y1="471" y2="471"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="336.3" x2="356.3" y1="491" y2="491"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="356.3" x2="426.3" y1="511" y2="511"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="426.3" x2="626.3" y1="531" y2="531"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="176.3" x2="176.3" y1="451" y2="471"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="336.3" x2="336.3" y1="471" y2="491"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="356.3" x2="356.3" y1="491" y2="511"/>
+    <line style="stroke:#2E7D32;stroke-width:2;" x1="426.3" x2="426.3" y1="511" y2="531"/>
+    <line style="stroke:#B00020;stroke-width:1.5;" x1="341.8" x2="420.8" y1="486" y2="486"/>
+    <polygon fill="#B00020" points="346.8,490,346.8,482,338.8,486" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <polygon fill="#B00020" points="415.8,490,415.8,482,423.8,486" style="stroke:#B00020;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#B00020" font-size="12" textLength="70.5" x="346.05" y="478.333">t_boot {≤ 2 ms}</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="631.3" y1="549" y2="549"/>
+    <text fill="#333" font-size="14" font-weight="700" textLength="49.088" x="25" y="559.889">SysTick</text>
+    <line style="stroke:#333;stroke-width:0.5;" x1="20" x2="75.088" y1="564" y2="564"/>
+    <line style="stroke:#333;stroke-width:0.5;" x1="75.088" x2="85.088" y1="564" y2="549"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="76.3" x2="426.3" y1="586" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="426.3" x2="426.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="426.3" x2="451.3" y1="572" y2="572"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="451.3" x2="451.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="451.3" x2="476.3" y1="586" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="476.3" x2="476.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="476.3" x2="501.3" y1="572" y2="572"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="501.3" x2="501.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="501.3" x2="526.3" y1="586" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="526.3" x2="526.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="526.3" x2="551.3" y1="572" y2="572"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="551.3" x2="551.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="551.3" x2="576.3" y1="586" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="576.3" x2="576.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="576.3" x2="601.3" y1="572" y2="572"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="601.3" x2="601.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="601.3" x2="626.3" y1="586" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="626.3" x2="626.3" y1="572" y2="586"/>
+    <line style="stroke:#006400;stroke-width:1.5;" x1="626.3" x2="626.3" y1="572" y2="572"/>
+    <line style="stroke:#333;stroke-width:2;" x1="76.3" x2="76.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="126.3" x2="126.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="176.3" x2="176.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="226.3" x2="226.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="276.3" x2="276.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="326.3" x2="326.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="376.3" x2="376.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="426.3" x2="426.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="476.3" x2="476.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="526.3" x2="526.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="576.3" x2="576.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="626.3" x2="626.3" y1="594" y2="599"/>
+    <line style="stroke:#333;stroke-width:2;" x1="76.3" x2="626.3" y1="594" y2="594"/>
+    <text fill="#333" font-size="11" x="73.241" y="608.556">0</text>
+    <text fill="#333" font-size="11" x="123.241" y="608.556">1</text>
+    <text fill="#333" font-size="11" x="173.241" y="608.556">2</text>
+    <text fill="#333" font-size="11" x="323.241" y="608.556">5</text>
+    <text fill="#333" font-size="11" x="423.241" y="608.556">7</text>
+    <text fill="#333" font-size="11" textLength="12.238" x="570.181" y="608.556">10</text>
+    <text fill="#333" font-size="11" textLength="14.644" x="611.656" y="608.556">ms</text>
+    <line style="stroke:#00008B;stroke-width:1.5;" x1="146.3" x2="151.3" y1="210" y2="356"/>
+    <polygon fill="#00008B" points="148.308,348.581,153.777,348.393,151.3,356" style="stroke:#00008B;stroke-width:1.5;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#00008B" font-family="serif" font-size="14" textLength="19.512" x="151.043" y="345.376">EN</text>
+    <line style="stroke:#00008B;stroke-width:1.5;" x1="336.3" x2="336.3" y1="404" y2="471"/>
+    <polygon fill="#00008B" points="333.564,463.482,339.036,463.482,336.3,471" style="stroke:#00008B;stroke-width:1.5;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#00008B" font-family="serif" font-size="14" textLength="82.513" x="336.3" y="460.371">resetRelease</text>
+    <line style="stroke:#333;stroke-width:2;stroke-dasharray:4,4;" x1="176.3" x2="176.3" y1="55" y2="594"/>
+    <line style="stroke:#333;stroke-width:2;stroke-dasharray:4,4;" x1="336.3" x2="336.3" y1="55" y2="594"/>
+    <text fill="#000" font-size="12" textLength="49.35" x="179.3" y="66.333">reset held</text>
+  </g>
+</svg>

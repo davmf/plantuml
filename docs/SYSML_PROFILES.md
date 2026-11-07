@@ -8,6 +8,7 @@ describes:
 
 | Profile                     | Root                                    | `profile=`     | Diagram |
 |-----------------------------|-----------------------------------------|----------------|---------|
+| TimingProfile               | `part x : TimingDiagram`                | `timing`       | timing ([details](SYSML_PROFILE_TIMING.md)) |
 | InterconnectProfile         | `part x : InterconnectSystem`           | `interconnect` | component ([details](SYSML_INTERCONNECT.md)) |
 | InterPCBAProfile            | `part x : System`                       | `interpcba`    | component: boards, COTS devices, cables |
 | StateMachineProfile         | `part x : StateMachine`                 | `statemachine` | state |
@@ -36,8 +37,10 @@ Views draw plain SysML, with or without a profile: `view=definitions` draws the 
 Without options, the profiles are tried in the order of the table and the
 first root found is drawn. System-level profiles come first, because their
 file sets often hold the parts they use: an InterconnectSystem listed with
-the PCBA its unit is bound to draws the system, not the board. Two cases
-need no option either:
+the PCBA its unit is bound to draws the system, not the board. TimingProfile
+is tried before all of them: no other root contains a TimingDiagram, while a
+timing diagram's file set holds the board and the state machines its
+lifelines reference. Two cases need no option either:
 
 * state machines: a machine that a `SubmachineState` refers to comes after
   the machines that use it, so listing a machine with its sub-machines, in
@@ -227,8 +230,8 @@ conductor labels only show with `detail=cable`.
 
 `net.sourceforge.plantuml.sysml.SysmlImport` parses the files and picks the
 profile; each profile implements `SysmlProfile` in its own package
-(`statemachine`, `sequence`, `activity`, `swarch`, `pcba`, `interpcba`,
-`interconnect`). Shared pieces: `SysmlNodes` (values set in a usage body, or
+(`timing`, `statemachine`, `sequence`, `activity`, `swarch`, `pcba`,
+`interpcba`, `interconnect`). Shared pieces: `SysmlNodes` (values set in a usage body, or
 its type's), `SysmlScope` (resolves feature chains such as
 `top.idle.outgoing` to elements), `SysmlWriter` (header, label functions,
 warnings) and `SysmlOptions`.

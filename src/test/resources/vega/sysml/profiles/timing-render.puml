@@ -1,0 +1,10 @@
+---
+output: svg
+expected-description: (Timing Diagram)
+---
+@startuml
+' The machine and board files come first: TimingProfile is tried before
+' StateMachineProfile and PCBAProfile, so the timing diagram is still drawn
+!include_sysml timing-machine.sysml timing-board.sysml timing.sysml
+title $sysml_name
+@enduml

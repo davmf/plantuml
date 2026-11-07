@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: option unit=min: expected one of [model, ns, us, ms, s]
+---
+@startuml
+!include_sysml timing-spi.sysml unit=min
+@enduml
