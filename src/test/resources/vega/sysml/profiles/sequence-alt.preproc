@@ -1,0 +1,11 @@
+@startuml
+autonumber
+actor "u : User" as user
+participant "sys : System" as system
+user -> system : login(u, p)
+alt credentialsValid
+system --> user : sessionToken
+else !credentialsValid
+system --> user : AuthenticationError
+end
+@enduml

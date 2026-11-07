@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml statemachine-submachine.sysml
+@enduml

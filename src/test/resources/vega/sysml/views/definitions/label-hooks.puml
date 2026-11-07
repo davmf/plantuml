@@ -1,0 +1,10 @@
+---
+output: preproc
+---
+@startuml
+' A label function defined before the directive replaces the default
+!function $sysml_feature_label($keyword, $direction, $name, $type, $multiplicity, $value)
+!return $name + ": " + $type
+!endfunction
+!include_sysml vehicle.sysml view=definitions root=Engine style=false
+@enduml

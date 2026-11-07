@@ -147,6 +147,22 @@ public final class SysmlModel {
 		return result;
 	}
 
+	/** Top-level definitions outside library packages, searched through packages, in file order. */
+	public List<SysmlNode> getTopLevelDefinitions() {
+		final List<SysmlNode> result = new ArrayList<>();
+		for (SysmlNode root : roots)
+			collectDefinitions(root, result);
+		return result;
+	}
+
+	private void collectDefinitions(SysmlNode node, List<SysmlNode> result) {
+		for (SysmlNode child : node.getChildren())
+			if (child.isKeyword("package") && child.isLibrary() == false)
+				collectDefinitions(child, result);
+			else if (child.isDefinition() && child.getName() != null)
+				result.add(child);
+	}
+
 	private void collectUsages(SysmlNode node, List<SysmlNode> result) {
 		for (SysmlNode child : node.getChildren())
 			if (child.isKeyword("package"))

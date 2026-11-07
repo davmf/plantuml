@@ -1,0 +1,165 @@
+@startuml
+!pragma layout elk
+hide empty description
+<style>
+state {
+  .terminate { LineColor transparent; BackgroundColor transparent; FontSize 34; FontColor #B00020; shadowing 0 }
+  .submachine { BackgroundColor #EEF3FF }
+  .StateMachine { BackgroundColor transparent }
+}
+arrow {
+  .primary { LineColor #2E7D32; LineThickness 4 }
+  .secondary { LineColor #1565C0; LineThickness 2 }
+  .exception { LineColor #C62828; LineThickness 1 }
+}
+</style>
+state lifetimeStart <<start>>
+state "✕" as hardStop <<terminate>>
+state "Decommissioned" as decommissioned
+state "PoweringUp" as poweringUp
+poweringUp : entry / runSelfTest()
+poweringUp : do / blinkAmber(1 Hz)
+poweringUp : exit / logSelfTest(result)
+state "ServiceMode" as serviceMode
+serviceMode : entry / inhibitPower()
+serviceMode : do / streamDiagnostics()
+state "OutOfService" as outOfService
+outOfService : entry / showOutOfService()
+outOfService : do / reportFaultToCpo(every 5 min)
+state "InService" as inService {
+  state inServiceStart <<start>>
+  state serviceHistory <<history>>
+  state "WaitingForDriver" as waitingForDriver
+  waitingForDriver : entry / showWelcome()
+  waitingForDriver : do / pollRfidReader()
+  waitingForDriver : exit / clearDisplay()
+  state "Authorising : AuthoriseDriver" as authorising <<submachine>> {
+    state "full" as authFull <<entryPoint>>
+    state "cachedToken" as authCached <<entryPoint>>
+    state "authorised" as authOk <<exitPoint>>
+    state "refused" as authNo <<exitPoint>>
+  }
+  state pickProfile <<choice>>
+  state retryOrBlock <<choice>>
+  state "CardBlocked" as cardBlocked
+  cardBlocked : entry / holdCard(60 s)
+  state "Suspended" as suspended
+  suspended : entry / openContactors(); showHoldMessage()
+  suspended : do / monitorGrid()
+  state "Charge Session" as chargeSession {
+    state deliveringEnergyFork <<fork>>
+    state chargeSessionJoin <<join>>
+    state chargeSessionStart <<start>>
+    state chargeSessionHistory <<history*>>
+    state chargeSessionEnd <<end>>
+    state "Power Delivery" as powerDelivery {
+      state powerDeliveryStart <<start>>
+      state powerDeliveryEnd <<end>>
+      state "RampingUp" as rampingUp
+      rampingUp : entry / closeContactors()
+      rampingUp : do / rampCurrent(20 A/s)
+      state "ConstantVoltage" as constantVoltage
+      constantVoltage : do / holdVoltage(pack.vMax)
+      state "ToppingOff" as toppingOff
+      state "Constant Current" as constantCurrent {
+        state constantCurrentStart <<start>>
+        state "FullRate" as fullRate
+        fullRate : do / holdCurrent(limit)
+        state "Derated" as derated
+        derated : do / holdCurrent(limit * 0.6)
+        derated : exit / clearDerateBanner()
+        state "Throttled" as throttled
+        throttled : entry / requestPackCooling()
+        throttled : do / holdCurrent(30 A)
+        constantCurrentStart --> fullRate <<primary>>
+        fullRate --> derated <<secondary>> : [pack.degC > 45] / warnDerated()
+        derated --> fullRate <<secondary>> : [pack.degC < 38]
+        derated --> throttled <<secondary>> : [pack.degC > 52] / postFault(F31)
+        throttled --> derated <<secondary>> : [pack.degC < 48]
+      }
+      powerDeliveryStart --> rampingUp <<primary>>
+      rampingUp --> constantCurrent <<primary>> : currentStable [insulationOk]
+      constantCurrent --> constantVoltage <<primary>> : [soc >= 80 %] / logKnee()
+      constantVoltage --> toppingOff <<primary>> : [current < 8 A]
+      toppingOff --> powerDeliveryEnd <<primary>> : [soc >= target || driverStop]
+    }
+    state "Cable Cooling" as cableCooling {
+      state cableCoolingStart <<start>>
+      state cableCoolingEnd <<end>>
+      state "CoolantIdle" as coolantIdle
+      state "Coolant Running" as coolantRunning {
+        state coolantRunningStart <<start>>
+        state "PumpModerate" as pumpModerate
+        pumpModerate : entry / pump(50 %)
+        pumpModerate : do / logCableTemp(1 Hz)
+        state "PumpBoost" as pumpBoost
+        pumpBoost : do / logCableTemp(4 Hz)
+        coolantRunningStart --> pumpModerate <<secondary>>
+        pumpModerate --> pumpBoost <<secondary>> : [cable.degC > 65] / pump(100 %); fansMax()
+        pumpBoost --> pumpModerate <<secondary>> : [cable.degC < 60] / pump(50 %); fansAuto()
+      }
+      cableCoolingStart --> coolantIdle <<primary>>
+      coolantIdle --> coolantRunning <<secondary>> : [cable.degC > 45]
+      coolantRunning --> coolantIdle <<secondary>> : [cable.degC < 40] / pump(0 %)
+      coolantIdle --> cableCoolingEnd <<primary>> : deliveryComplete
+      coolantRunning --> cableCoolingEnd <<secondary>> : deliveryComplete / purgeLoop()
+    }
+    chargeSessionStart --> chargeSessionHistory <<primary>>
+    chargeSessionHistory --> deliveringEnergyFork <<primary>>
+    deliveringEnergyFork --> powerDelivery <<primary>>
+    deliveringEnergyFork --> cableCooling <<primary>>
+    powerDelivery --> chargeSessionJoin <<primary>>
+    cableCooling --> chargeSessionJoin <<primary>>
+    chargeSessionJoin --> chargeSessionEnd <<primary>>
+  }
+  state "Finalising Session" as finalising {
+    state releaseFork <<fork>>
+    state releaseJoin <<join>>
+    state finalisingStart <<start>>
+    state finalisingEnd <<end>>
+    state "UnlockingConnector" as unlockingConnector
+    unlockingConnector : entry / unlockConnector()
+    state "SettlingPayment" as settlingPayment
+    settlingPayment : entry / captureFunds(kWh * tariff)
+    state "UploadingRecord" as uploadingRecord
+    finalisingStart --> releaseFork <<primary>>
+    releaseFork --> unlockingConnector <<primary>>
+    unlockingConnector --> releaseJoin <<primary>> : cableStowed
+    releaseFork --> settlingPayment <<primary>>
+    settlingPayment --> uploadingRecord <<primary>> : captureOk
+    uploadingRecord --> releaseJoin <<primary>> : cdrAcknowledged
+    releaseJoin --> finalisingEnd <<primary>>
+  }
+  inServiceStart --> serviceHistory <<primary>>
+  serviceHistory --> waitingForDriver <<primary>>
+  waitingForDriver : cardPresented [!isReadable] / beep(2)
+  waitingForDriver : screenIdle(30 s) / dimDisplay()
+  waitingForDriver --> authFull <<primary>> : connectorInserted [connectorLocks()] / lockConnector()
+  waitingForDriver --> authCached <<secondary>> : cardPresented [tokenCached && isReadable] / reuseToken()
+  authOk --> pickProfile <<primary>>
+  pickProfile --> chargeSession <<primary>> : [request.kW > 150 && pack.degC < 35] / setLimit(500 A)
+  pickProfile --> chargeSession <<secondary>> : [request.kW > 150 && pack.degC >= 35] / setLimit(125 A); warnDerated()
+  pickProfile --> chargeSession <<secondary>> : [else] / setLimit(request.kW)
+  authNo --> retryOrBlock <<exception>>
+  retryOrBlock --> waitingForDriver <<exception>> : [strikes < 2] / unlockConnector(); showRetry()
+  retryOrBlock --> cardBlocked <<exception>> : [strikes >= 2] / captureAudit()
+  cardBlocked --> waitingForDriver <<exception>> : holdExpired / unlockConnector()
+  chargeSession --> suspended <<secondary>> : gridBrownout / openContactors()
+  suspended --> chargeSession <<secondary>> : gridRestored [insulationOk] / closeContactors()
+  suspended --> retryOrBlock <<exception>> : holdTimeout(15 min) / endSessionEarly()
+  chargeSession --> finalising <<primary>>
+  finalising --> waitingForDriver <<primary>> : / printReceipt()
+}
+lifetimeStart --> poweringUp <<primary>> : mains applied
+poweringUp --> poweringUp <<primary>> : selfTestFailed [attempt < 3] / attempt++; rearmRelays()
+poweringUp --> outOfService <<exception>> : selfTestFailed [attempt >= 3] / postFault(F01)
+poweringUp --> inService <<primary>> : selfTestPassed / announceAvailable()
+poweringUp : mainsSag / holdSelfTest()
+inService --> serviceMode <<primary>> : serviceDoorOpened / logAccess(technician)
+serviceMode --> inService <<primary>> : serviceDoorClosed / rearmRelays()
+serviceMode --> outOfService <<exception>> : technicianLocksOut / postFault(F99)
+outOfService --> serviceMode <<exception>> : technicianAuthenticated
+outOfService --> decommissioned <<exception>> : decommissionCommand / wipeCredentials()
+inService --> hardStop <<exception>> : emergencyStopPressed / openContactors(); ventCoolant()
+serviceMode --> hardStop <<exception>> : emergencyStopPressed / openContactors()
+@enduml

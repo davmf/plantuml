@@ -1,0 +1,17 @@
+---
+output: preproc
+---
+@startuml
+' unit= overrides the model's timeUnit, states=all lists every state of the
+' machine, and label functions defined first replace the defaults
+!function $sysml_constraint_label($name, $bound)
+!return $bound
+!endfunction
+!function $sysml_lifeline_label($name, $kind, $ref, $unit)
+!if $ref == ""
+!return $name
+!endif
+!return $name + " [" + $ref + "]"
+!endfunction
+!include_sysml timing.sysml timing-board.sysml timing-machine.sysml unit=us states=all compact=true style=false
+@enduml

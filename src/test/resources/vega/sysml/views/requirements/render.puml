@@ -1,0 +1,6 @@
+---
+output: svg
+---
+@startuml
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SYS-001 depth=2
+@enduml

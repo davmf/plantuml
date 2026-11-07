@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' depth=0 draws the focus alone
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SYS-001.1 depth=0
+@enduml

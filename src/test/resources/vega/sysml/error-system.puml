@@ -1,7 +1,7 @@
 ---
 output: svg
 expected-status: 400
-expected-error-message: !include_sysml: no InterconnectSystem named 'nope' (found: main, other)
+expected-error-message: !include_sysml: no diagram root named 'nope' (found: main (interconnect), other (interconnect))
 ---
 @startuml
 !include_sysml tiny.sysml system=nope

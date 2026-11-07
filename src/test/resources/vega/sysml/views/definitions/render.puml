@@ -1,0 +1,7 @@
+---
+output: svg
+expected-description: (18 entities)
+---
+@startuml
+!include_sysml vehicle.sysml view=definitions
+@enduml

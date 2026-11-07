@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 component "A1\nBoard\n<size:10>PCBA-1</size>" as A1 <<PCBAUnit>> {
   group "J1" {
     portout "1 5V" as A1_J1_c1 <<power>>

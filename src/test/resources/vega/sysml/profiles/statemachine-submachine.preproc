@@ -1,0 +1,45 @@
+@startuml
+!pragma layout elk
+hide empty description
+<style>
+state {
+  .terminate { LineColor transparent; BackgroundColor transparent; FontSize 34; FontColor #B00020; shadowing 0 }
+  .submachine { BackgroundColor #EEF3FF }
+  .StateMachine { BackgroundColor transparent }
+}
+arrow {
+  .primary { LineColor #2E7D32; LineThickness 4 }
+  .secondary { LineColor #1565C0; LineThickness 2 }
+  .exception { LineColor #C62828; LineThickness 1 }
+}
+</style>
+state "AuthoriseDriver" as authoriseDriverSm <<StateMachine>> {
+  state "full" as epFull <<entryPoint>>
+  state "cachedToken" as epCached <<entryPoint>>
+  state "authorised" as xpOk <<exitPoint>>
+  state "refused" as xpNo <<exitPoint>>
+  state driverStart <<start>>
+  state "InitialisingReader" as initialisingReader
+  initialisingReader : entry / powerReader()
+  initialisingReader : do / handshakeReader()
+  initialisingReader : exit / clearReaderBuffer()
+  state "AwaitingCredential" as awaitingCredential
+  awaitingCredential : do / awaitTapOrApp()
+  state "ValidatingToken" as validatingToken
+  validatingToken : entry / queryBackOffice()
+  validatingToken : do / spinner()
+  state offlineWhitelist <<junction>>
+  driverStart --> initialisingReader <<primary>>
+  epFull --> initialisingReader <<primary>>
+  initialisingReader --> awaitingCredential <<primary>> : readerReady
+  initialisingReader --> xpNo <<exception>> : readerFault(3 tries) / postFault(F12)
+  epCached --> validatingToken <<secondary>>
+  awaitingCredential : credentialSeen [!wellFormed] / beep(2)
+  awaitingCredential --> validatingToken <<primary>> : credentialCaptured / hash(credential)
+  awaitingCredential --> xpNo <<exception>> : idleTimeout(60 s) / showTimeout()
+  validatingToken --> xpOk <<primary>> : tokenAccepted / issueSessionId()
+  validatingToken --> offlineWhitelist <<secondary>> : backOfficeUnreachable(5 s)
+  offlineWhitelist --> xpOk <<secondary>> : [tokenOnWhitelist] / flagDeferredBilling()
+  offlineWhitelist --> xpNo <<exception>> : [else] / showTryLater()
+}
+@enduml

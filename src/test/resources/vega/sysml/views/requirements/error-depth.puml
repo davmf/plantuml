@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: option depth=two: expected a whole number, 0 or more
+---
+@startuml
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SYS-001 depth=two
+@enduml

@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: unknown profile 'uml' (expected one of [timing, interconnect, interpcba, statemachine, sequence, activity, swarch, pcba, cots])
+---
+@startuml
+!include_sysml sequence.sysml profile=uml
+@enduml

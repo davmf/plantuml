@@ -19,6 +19,11 @@ title $sysml_system — $sysml_partNumber rev $sysml_revision
 Run `java -jar plantuml.jar -preproc diagram.puml` to see the generated
 PlantUML.
 
+The directive also reads the other profiles (state machines, sequences,
+activities, software architecture, PCBAs, inter-PCBA systems, COTS devices):
+see [SYSML_PROFILES.md](SYSML_PROFILES.md) for how the root and the profile
+are chosen.
+
 ## Syntax
 
 ```
@@ -34,12 +39,13 @@ PlantUML.
 
 | Option    | Values                              | Default     | Meaning |
 |-----------|-------------------------------------|-------------|---------|
-| `system`  | part name                           | first found | Which `part x : InterconnectSystem` to draw |
+| `system`  | part name                           | first found | Which `part x : InterconnectSystem` to draw (same as `root=`) |
 | `view`    | `physical`, `logical`, `both`       | `physical`  | Cables and Mates; InterfaceLinks and UnitLinks (no Cables); or both overlaid |
 | `detail`  | `connector`, `contact`              | `connector` | One port per connector; or one port group per connector, one port per contact, each Mate drawn as a `harness` pairing contacts by `contactId` (physical view only) |
 | `cables`  | `node`, `edge`                      | `node`      | A two-ended Cable mated to two Units can be drawn as one labelled edge; multi-ended harnesses stay components |
 | `frame`   | `true`, `false`                     | `false`     | Draw the system itself as an outer rectangle |
 | `style`   | `true`, `false`                     | `true`      | Emit the default skinparams and `<style>` |
+| `profile` | `interconnect`...                   | detected    | See [SYSML_PROFILES.md](SYSML_PROFILES.md) |
 
 ## What is generated
 
@@ -124,3 +130,51 @@ for that.
 
 `net.sourceforge.plantuml.sysml.interconnect` maps the result onto the
 profile (`InterconnectModel`) and writes the diagram (`InterconnectPlantUml`).
+
+## Trying it in the browser
+
+The browser build ships `sysml.html`, a playground with three panes: SysML
+files on the left (tabs; **Open…** or drop `.sysml` files on the pane), the
+PlantUML they import into in the middle, and the diagram on the right. It
+works for every profile of [SYSML_PROFILES.md](SYSML_PROFILES.md). The
+toolbar follows the files: **root** lists every diagram root they hold, with
+the profile that draws it (*first found* is the directive's own choice),
+picking a tab (or opening a file) draws the first root declared in that
+file, unless the diagram already shows one of its roots or the file declares
+none. **profile** restricts the search to one profile or picks a view (its
+*views* group: `view=definitions`, `view=requirements`), and only the options
+of the profile or view that draws the root are shown. **ELK** writes
+`layout=default` when it is off (it is hidden for sequence and timing
+diagrams, which have no graph layout). Each profile keeps its own option
+values, and an option left at its default is not written. The middle pane can
+show:
+
+* **generated source**: what `!include_sysml` expands to (as `-preproc`
+  shows it), from the files of the left pane. Turn **auto** off to edit it
+  without the next import overwriting it.
+* **`!include_sysml` directive**: a diagram of your own around an
+  `!include_sysml` line, which the toolbar keeps up to date: the files
+  (a new tab joins the line at once) and the toolbar's options are rewritten,
+  other `key=value` words typed on the line are kept. The page serves
+  the left pane's files to the engine by name through `PLANTUML_FILE_LOADER`,
+  so this runs the real directive, label functions and styling included.
+
+The session (files, options, middle pane) is kept in `localStorage`; a
+session saved before the toolbar followed the profile keeps its
+InterconnectProfile options. The reset button brings back the sample model.
+
+```
+./teavm.sh      # then open http://localhost:8080/sysml.html
+```
+
+The generated source comes from `sysmlToPlantUml(names, texts, options,
+onSuccess, onError)`, exported by `plantuml.js` next to `render`. It runs the
+same import as the directive (`SysmlImport.importSysml`) and calls
+one of the callbacks before it returns; `options` are the directive's
+`key=value` words. The toolbar comes from `sysmlDescribe(names, texts,
+options, onSuccess, onError)`, which delivers JSON: every root found
+(`name`, `qualifiedName`, `profile`, and the `file` it is declared in), the index of the one the import would
+draw with these `root=`/`profile=`/`view=` options (`selected`, -1 for
+none), and every profile (`profiles`) and view (`views`) with whether
+`layout=` applies (`graphLayout`) and its options and their allowed values,
+the default first.

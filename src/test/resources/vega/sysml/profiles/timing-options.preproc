@@ -1,0 +1,48 @@
+@startuml
+mode compact
+time-axis unit "µs"
+analog "+3V3 [+3V3]" between 0.0 and 3.6 as r3v3 <<analog>> <<net>>
+binary "PG_3V3 [PG_3V3]" as pg3v3 <<binary>> <<net>>
+analog "+1V8 [+1V8]" between 0.0 and 2.0 as r1v8 <<analog>> <<net>>
+binary "nRESET [NRESET]" as nreset <<binary>> <<net>>
+robust "MCU [MCU boot]" as mcu <<robust>> <<machine>>
+clock "SysTick" as sysTick with period 1000 pulse 500 offset 7000 <<clock>>
+mcu has "Off" as Off
+mcu has "Reset" as Reset
+mcu has "ROM boot" as ROM_boot
+mcu has "App init" as App_init
+mcu has "Running" as Running
+mcu has "Fault" as Fault
+@0
+r3v3 is 0
+pg3v3 is low
+r1v8 is 0
+nreset is low
+mcu is Off
+@200
+r3v3 is 0
+@1200
+r3v3 is 3.3
+@1400
+pg3v3 is high
+@1500
+r1v8 is 0
+@2000
+r1v8 is 1.8
+mcu is Reset
+@5200
+nreset is high
+mcu is ROM_boot
+@5600
+mcu is App_init
+@7000
+mcu is Running
+@10000
+r3v3@1200 <-> @1500 : ≥ 100 µs
+r1v8@1500 <-> @2000 : 300 µs – 1 ms
+nreset@1200 <-> @5200 : 2 ms – 5 ms
+mcu@5200 <-> @7000 : ≤ 2 ms
+pg3v3@1400 -> r1v8@1500 : EN
+nreset@5200 -> mcu@5200 : resetRelease
+highlight 2000 to 5200 : reset held
+@enduml

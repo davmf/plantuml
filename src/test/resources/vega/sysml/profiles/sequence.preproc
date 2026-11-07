@@ -1,0 +1,19 @@
+@startuml
+actor "u : User" as user
+participant "sys : System" as system
+participant "auth : AuthService" as auth
+participant "audit : AuditLog" as audit
+[->> system : ssoToken(externalUser)
+loop attempts < 3
+user -> system : login(u, p)
+system -> auth : verify(u, p)
+note right : ≤ 500 ms
+auth --> system : valid
+system --> user : sessionToken
+end
+create participant "session : Session" as session
+system -> session : Session(u)
+system ->> audit : logEvent(loginSuccess, u)
+user -> system : logout(sessionToken)
+system -> session !! : destroySession
+@enduml

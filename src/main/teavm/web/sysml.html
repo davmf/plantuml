@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>PlantUML SysML Import Playground</title>
+	<link rel="icon" href="favicon.svg" type="image/svg+xml"/>
+	<link rel="stylesheet" href="main.css">
+	<link rel="stylesheet" href="sysml.css">
+</head>
+<body class="sysml">
+
+	<header>
+		<span class="title">SysML Import Playground</span>
+		<a href="index.html" class="header-link" title="Plain PlantUML playground">Playground</a>
+	</header>
+
+	<form id="options" class="options" autocomplete="off" onsubmit="return false">
+		<label title="Which diagram root to draw (root=). The list holds every root of the files, with the profile that draws it; first found is what the directive picks without root=.">
+			root <select id="opt-root"></select>
+		</label>
+		<label title="Only look for roots of this profile (profile=), or draw a view of plain SysML (view=). Auto: the profile follows the root.">
+			profile <select id="opt-profile"><option value="">auto</option></select>
+		</label>
+		<span id="profile-options" class="profile-options" title="Options of the profile that draws the root"></span>
+		<label><input id="opt-frame" type="checkbox"> frame</label>
+		<label><input id="opt-style" type="checkbox" checked> style</label>
+		<label id="opt-elk-label" title="Lay the diagram out with ELK (layout=elk, the default); off: Graphviz (layout=default)"><input id="opt-elk" type="checkbox" checked> ELK</label>
+		<span class="sep"></span>
+		<label title="Generated: the middle pane holds what !include_sysml expands to (like -preproc). Directive: the middle pane is a diagram with an !include_sysml line; the files of the left pane are served to it by name.">
+			middle pane
+			<select id="mode">
+				<option value="generated">generated source</option>
+				<option value="directive">!include_sysml directive</option>
+			</select>
+		</label>
+		<label title="Re-import whenever the SysML or an option changes. Off: edit the middle pane freely and press Import."><input id="auto" type="checkbox" checked> auto</label>
+		<button id="import" type="button" title="Import the SysML into the middle pane now">Import</button>
+	</form>
+
+	<main>
+		<section id="sysml-pane" class="pane">
+			<div class="tabs" role="tablist" id="tabs">
+				<span class="tab-actions">
+					<button id="tab-new" type="button" title="New SysML file">+</button>
+					<button id="tab-open" type="button" title="Open .sysml files (or drop them on this pane)">Open…</button>
+					<input id="file-input" type="file" accept=".sysml,.kerml,.txt,text/plain" multiple hidden>
+				</span>
+			</div>
+			<textarea id="sysml" class="code" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="SysML v2 using InterconnectProfile..."></textarea>
+		</section>
+
+		<div class="resize" data-pane="sysml-pane"></div>
+
+		<section id="puml-pane" class="pane">
+			<div class="pane-title"><span id="puml-title">PlantUML</span></div>
+			<textarea id="editor" class="code" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>
+			<div id="import-status" class="import-status"></div>
+		</section>
+
+		<div class="resize" data-pane="puml-pane"></div>
+
+		<div class="preview">
+			<div class="zoom-controls" role="group" aria-label="Diagram zoom">
+				<button id="zoom-out" type="button" title="Zoom out" aria-label="Zoom out">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+				</button>
+				<button id="zoom-reset" class="zoom-level" type="button" title="Reset zoom">100%</button>
+				<button id="zoom-in" type="button" title="Zoom in" aria-label="Zoom in">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+				</button>
+				<button id="pan-tool" type="button" title="Pan tool" aria-label="Pan tool" aria-pressed="false">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v7M10 10V6a2 2 0 0 0-4 0v8M6 13l-1.2-1.2a2 2 0 0 0-2.8 2.8l5.2 5.2A4 4 0 0 0 10 21h4a6 6 0 0 0 6-6V8a2 2 0 0 0-4 0v3"/></svg>
+				</button>
+			</div>
+
+			<div id="out"></div>
+			<div id="status"></div>
+			<div class="controls">
+				<button id="theme" type="button" title="Toggle dark mode">
+					<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="12" cy="12" r="4"/>
+						<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+					</svg>
+					<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+					</svg>
+				</button>
+				<button id="copy-puml" type="button" title="Copy the PlantUML of the middle pane">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<rect x="9" y="9" width="13" height="13" rx="2"/>
+						<path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+					</svg>
+				</button>
+				<button id="save-puml" type="button" title="Save the PlantUML of the middle pane (.puml)">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+						<polyline points="14,2 14,8 20,8"/>
+						<path d="M12 18v-6M9 15l3 3 3-3"/>
+					</svg>
+				</button>
+				<button id="save" type="button" title="Save diagram (.svg)">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+						<polyline points="7,10 12,15 17,10"/>
+						<line x1="12" y1="15" x2="12" y2="3"/>
+					</svg>
+				</button>
+				<button id="reset" type="button" title="Forget the saved session and load the sample model again">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+						<polyline points="3,3 3,8 8,8"/>
+					</svg>
+				</button>
+			</div>
+		</div>
+	</main>
+	<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+	<!-- Sample model: the worked example of docs/SYSML_INTERCONNECT.md
+	     (src/test/resources/vega/sysml/pump.sysml) -->
+	<script type="text/plain" id="sample-sysml" data-name="pump.sysml">
+package TestInterconnect1 {
+  doc /* Worked example for InterconnectProfile: a battery-powered pump.
+     *
+     *   G1  battery pack ----+
+     *                        | W1 (Y-harness, splices SP1/SP2)
+     *   A1  controller J1 <--+
+     *   H1  power lamp   <---+
+     *
+     *   A1 J2 --- W2 --- M1 pump motor     (inside assembly A2)
+     *   A1 J3 --- W3 --- B1 temp sensor
+     *
+     * Pattern used throughout: a "pinout" port def fixes a connector's
+     * series and contact assignment once; each side of a Mate reuses
+     * it and only sets designator and gender.
+     *
+     * Requires PCBAProfile, InterconnectProfile and
+     * ControllerBoard_PCBA.sysml to be loaded first. Expected to pass
+     * every InterconnectProfile rule. */
+
+  private import ISQ::*;
+  private import SI::*;
+  private import InterconnectProfile::*;
+  private import ControllerBoard_PCBA::controllerPcba;
+
+  // =================================================================
+  // Pinouts
+  // =================================================================
+
+  port def BatteryPinout :> ConnectorPort {
+    attribute redefines series = "XT30";
+    port c1 : ContactPort {
+      attribute redefines contactId  = "+";
+      attribute redefines kind       = ContactKind::power;
+      attribute redefines signalName = "VBAT";
+    }
+    port c2 : ContactPort {
+      attribute redefines contactId  = "-";
+      attribute redefines kind       = ContactKind::ground;
+      attribute redefines signalName = "GND";
+    }
+  }
+
+  port def PowerInPinout :> ConnectorPort {
+    attribute redefines series = "JST-VH";
+    port c1 : ContactPort {
+      attribute redefines contactId  = "1";
+      attribute redefines kind       = ContactKind::power;
+      attribute redefines signalName = "VBAT";
+    }
+    port c2 : ContactPort {
+      attribute redefines contactId  = "2";
+      attribute redefines kind       = ContactKind::ground;
+      attribute redefines signalName = "GND";
+    }
+  }
+
+  port def LampPinout :> ConnectorPort {
+    attribute redefines series = "JST-PH";
+    port c1 : ContactPort {
+      attribute redefines contactId  = "1";
+      attribute redefines kind       = ContactKind::power;
+      attribute redefines signalName = "VBAT";
+    }
+    port c2 : ContactPort {
+      attribute redefines contactId  = "2";
+      attribute redefines kind       = ContactKind::ground;
+      attribute redefines signalName = "GND";
+    }
+  }
+
+  port def MotorPinout :> ConnectorPort {
+    attribute redefines series = "Molex Micro-Fit 3.0";
+    port c1 : ContactPort {
+      attribute redefines contactId  = "1";
+      attribute redefines kind       = ContactKind::power;
+      attribute redefines signalName = "MOT+";
+    }
+    port c2 : ContactPort {
+      attribute redefines contactId  = "2";
+      attribute redefines kind       = ContactKind::power;
+      attribute redefines signalName = "MOT-";
+    }
+  }
+
+  port def SensorPinout :> ConnectorPort {
+    attribute redefines series = "JST-XH";
+    port c1 : ContactPort {
+      attribute redefines contactId  = "1";
+      attribute redefines kind       = ContactKind::power;
+      attribute redefines signalName = "3V3";
+    }
+    port c2 : ContactPort {
+      attribute redefines contactId  = "2";
+      attribute redefines kind       = ContactKind::signal;
+      attribute redefines signalName = "TEMP";
+    }
+    port c3 : ContactPort {
+      attribute redefines contactId  = "3";
+      attribute redefines kind       = ContactKind::ground;
+      attribute redefines signalName = "GND";
+    }
+  }
+
+  // =================================================================
+  // Units
+  // =================================================================
+
+  part def BatteryPack :> PowerSource {
+    attribute redefines nominalVoltage = 12 [V];
+    port X1 : BatteryPinout {
+      attribute redefines designator = "X1";
+      attribute redefines gender     = ConnectorGender::female;
+      attribute redefines kind       = ConnectorKind::wire_to_wire;
+    }
+  }
+
+  part def ControllerBoard :> PCBAUnit {
+    port J1 : PowerInPinout {
+      attribute redefines designator = "J1";
+      attribute redefines gender     = ConnectorGender::male;
+      attribute redefines kind       = ConnectorKind::wire_to_board;
+    }
+    port J2 : MotorPinout {
+      attribute redefines designator = "J2";
+      attribute redefines gender     = ConnectorGender::male;
+      attribute redefines kind       = ConnectorKind::wire_to_board;
+    }
+    port J3 : SensorPinout {
+      attribute redefines designator = "J3";
+      attribute redefines gender     = ConnectorGender::male;
+      attribute redefines kind       = ConnectorKind::wire_to_board;
+    }
+  }
+
+  part def PowerLamp :> UserInterfaceDevice {
+    port X1 : LampPinout {
+      attribute redefines designator = "X1";
+      attribute redefines gender     = ConnectorGender::male;
+    }
+  }
+
+  part def PumpMotor :> Motor {
+    attribute redefines motorKind    = MotorKind::brushed_dc;
+    attribute redefines ratedVoltage = 12 [V];
+    // Pigtail leads terminated in a Micro-Fit plug.
+    port X1 : MotorPinout {
+      attribute redefines designator = "X1";
+      attribute redefines gender     = ConnectorGender::male;
+      attribute redefines kind       = ConnectorKind::wire_to_wire;
+    }
+  }
+
+  part def TempSensor :> Sensor {
+    attribute redefines measurand = Measurand::temperature;
+    port J1 : SensorPinout {
+      attribute redefines designator = "J1";
+      attribute redefines gender     = ConnectorGender::male;
+    }
+  }
+
+  // =================================================================
+  // Cables
+  // =================================================================
+
+  part def PowerHarness :> Cable {
+    doc /* Y-harness: battery -> controller, tapped to the power lamp. */
+    attribute redefines length = 600 [mm];
+
+    port P1 : BatteryPinout {
+      attribute redefines designator = "P1";
+      attribute redefines gender     = ConnectorGender::male;
+    }
+    port P2 : PowerInPinout {
+      attribute redefines designator = "P2";
+      attribute redefines gender     = ConnectorGender::female;
+    }
+    port P3 : LampPinout {
+      attribute redefines designator = "P3";
+      attribute redefines gender     = ConnectorGender::female;
+    }
+
+    part SP1 : Splice {
+      attribute redefines designator = "SP1";
+      port redefines node { attribute redefines kind = ContactKind::power;  attribute redefines signalName = "VBAT"; }
+    }
+    part SP2 : Splice {
+      attribute redefines designator = "SP2";
+      port redefines node { attribute redefines kind = ContactKind::ground; attribute redefines signalName = "GND"; }
+    }
+
+    connection w1 : Wire connect P1.c1 to SP1.node { attribute redefines gauge = "18AWG"; attribute redefines color = "red"; }
+    connection w2 : Wire connect SP1.node to P2.c1 { attribute redefines gauge = "18AWG"; attribute redefines color = "red"; }
+    connection w3 : Wire connect SP1.node to P3.c1 { attribute redefines gauge = "24AWG"; attribute redefines color = "red"; }
+    connection w4 : Wire connect P1.c2 to SP2.node { attribute redefines gauge = "18AWG"; attribute redefines color = "black"; }
+    connection w5 : Wire connect SP2.node to P2.c2 { attribute redefines gauge = "18AWG"; attribute redefines color = "black"; }
+    connection w6 : Wire connect SP2.node to P3.c2 { attribute redefines gauge = "24AWG"; attribute redefines color = "black"; }
+  }
+
+  part def MotorCable :> Cable {
+    attribute redefines length = 400 [mm];
+    port P1 : MotorPinout {
+      attribute redefines designator = "P1";
+      attribute redefines gender     = ConnectorGender::female;
+    }
+    port P2 : MotorPinout {
+      attribute redefines designator = "P2";
+      attribute redefines gender     = ConnectorGender::female;
+    }
+    connection w1 : Wire connect P1.c1 to P2.c1 { attribute redefines gauge = "18AWG"; attribute redefines twistGroup = "TP1"; }
+    connection w2 : Wire connect P1.c2 to P2.c2 { attribute redefines gauge = "18AWG"; attribute redefines twistGroup = "TP1"; }
+  }
+
+  part def SensorCable :> Cable {
+    attribute redefines length   = 1200 [mm];
+    attribute redefines shielded = false;
+    port P1 : SensorPinout {
+      attribute redefines designator = "P1";
+      attribute redefines gender     = ConnectorGender::female;
+    }
+    port P2 : SensorPinout {
+      attribute redefines designator = "P2";
+      attribute redefines gender     = ConnectorGender::female;
+    }
+    connection w1 : Wire connect P1.c1 to P2.c1 { attribute redefines gauge = "26AWG"; }
+    connection w2 : Wire connect P1.c2 to P2.c2 { attribute redefines gauge = "26AWG"; }
+    connection w3 : Wire connect P1.c3 to P2.c3 { attribute redefines gauge = "26AWG"; }
+  }
+
+  // =================================================================
+  // The system
+  // =================================================================
+
+  part pumpSystem : InterconnectSystem {
+    attribute redefines partNumber = "SYS-PUMP-01";
+    attribute redefines revision   = "A";
+
+    part G1 : BatteryPack     { attribute redefines designator = "G1"; }
+    part A1 : ControllerBoard {
+      attribute redefines designator = "A1";
+      ref part redefines pcba = controllerPcba;
+    }
+    part H1 : PowerLamp       { attribute redefines designator = "H1"; }
+    part B1 : TempSensor      { attribute redefines designator = "B1"; }
+
+    part A2 : Assembly {
+      doc /* Pump assembly: motor shipped with its cable attached. */
+      attribute redefines designator = "A2";
+      part M1 : PumpMotor  { attribute redefines designator = "M1"; }
+      part W2 : MotorCable { attribute redefines designator = "W2"; }
+      connection : Mate connect W2.P2 to M1.X1;
+    }
+
+    part W1 : PowerHarness { attribute redefines designator = "W1"; }
+    part W3 : SensorCable  { attribute redefines designator = "W3"; }
+
+    // ---- physical mates ----
+    connection : Mate connect G1.X1 to W1.P1;
+    connection : Mate connect W1.P2 to A1.J1;
+    connection : Mate connect W1.P3 to H1.X1;
+    connection : Mate connect A1.J2 to A2.W2.P1;
+    connection : Mate connect A1.J3 to W3.P1;
+    connection : Mate connect W3.P2 to B1.J1;
+
+    // ---- logical overlay ----
+    connection pwr  : InterfaceLink connect G1.X1 to A1.J1 {
+      attribute redefines protocol = InterfaceProtocol::power;
+    }
+    connection drv  : InterfaceLink connect A1.J2 to A2.M1.X1 {
+      attribute redefines protocol = InterfaceProtocol::motor_phase;
+    }
+    connection temp : InterfaceLink connect A1.J3 to B1.J1 {
+      attribute redefines protocol = InterfaceProtocol::analog;
+    }
+  }
+}
+</script>
+
+	<script>window.PLANTUML_DEBUG = true; // show timings in #status and in the console</script>
+	<script src="viz-global.js"></script>
+	<script type="module" src="sysml.js"></script>
+</body>
+</html>

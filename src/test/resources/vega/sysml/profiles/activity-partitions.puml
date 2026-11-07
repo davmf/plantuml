@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml activity-partitions.sysml direction=left frame=true
+@enduml

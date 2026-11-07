@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 rectangle "main\n<size:10>SYS-TINY</size>" as main <<InterconnectSystem>> {
   component "A1\nBoard\n<size:10>PCBA-1</size>" as A1 <<PCBAUnit>> {
     portout "J1" as A1_J1 <<male>>

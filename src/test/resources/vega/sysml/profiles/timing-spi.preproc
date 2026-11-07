@@ -1,0 +1,46 @@
+@startuml
+<style>
+timingDiagram {
+  .net { LineColor #1565C0 }
+  .machine { LineColor #2E7D32 }
+  constraintArrow { LineColor #B00020; FontColor #B00020 }
+  highlight { BackgroundColor #FFF4D6 }
+}
+</style>
+time-axis unit "µs"
+robust "Host" as host <<robust>>
+binary "nCS" as ncs <<binary>>
+clock "SCK" as sck with period 1 offset 2 <<clock>>
+concise "MOSI" as mosi <<concise>>
+concise "MISO" as miso <<concise>>
+host has "Idle" as Idle
+host has "Select" as Select
+host has "Command" as Command
+host has "Read" as Read
+@0
+host is Idle
+ncs is high
+mosi is {-}
+miso is {-}
+@1
+host is Select
+ncs is low
+miso is {?}
+@2
+host is Command
+mosi is "0x8F"
+@10
+host is Read
+mosi is {?}
+miso is "0x33"
+@18
+mosi is {-}
+@18.5
+host is Idle
+ncs is high
+miso is {-}
+mosi@1 <-> @2 : t_CSS {≥ 500 ns}
+mosi@2 <-> @10 : 8 clocks {= 8 µs}
+host@1 -> ncs@1 : select
+highlight 2 to 18 : transfer
+@enduml

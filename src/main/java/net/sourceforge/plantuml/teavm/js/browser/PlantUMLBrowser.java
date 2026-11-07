@@ -1,5 +1,10 @@
 package net.sourceforge.plantuml.teavm.js.browser;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.JSFunctor;
@@ -25,6 +30,9 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.math.FormulaDiagram;
+import net.sourceforge.plantuml.sysml.SysmlException;
+import net.sourceforge.plantuml.sysml.SysmlImport;
+import net.sourceforge.plantuml.sysml.SysmlProfile;
 import net.sourceforge.plantuml.teavm.js.PSystemBuilderJs;
 import net.sourceforge.plantuml.teavm.js.StringBounderTeaVM;
 import net.sourceforge.plantuml.teavm.js.SvgGraphicsJs;
@@ -316,6 +324,159 @@ public class PlantUMLBrowser {
 	public static void renderToString(String[] lines, StringCallback onSuccess, StringCallback onError,
 			JSObject options) {
 		RenderQueue.submit(new CallbackJob(lines, onSuccess, onError, isDark(options), resolveMaxSvgSize(options)));
+	}
+
+	/**
+	 * Imports SysML v2 models written with one of the supported profiles
+	 * (InterconnectProfile, StateMachineProfile...) and delivers the
+	 * PlantUML source that <code>!include_sysml</code> would run, without
+	 * <code>@startuml</code>/<code>@enduml</code>. It is what
+	 * <code>-preproc</code> shows for the directive, before the preprocessor
+	 * runs it, so a page can show, edit and render the result.
+	 *
+	 * <p>
+	 * Unlike the rendering functions, this one is synchronous: exactly one of the
+	 * callbacks is called, once, before it returns. No resource is ever needed.
+	 *
+	 * @param names     the file names, for messages and the leading comment
+	 * @param texts     the content of each file, in the same order
+	 * @param options   the directive's options as <code>key=value</code> words
+	 *                  (<code>view=logical</code>, <code>detail=contact</code>...);
+	 *                  may be <code>null</code>
+	 * @param onSuccess callback invoked with the generated source, lines joined
+	 *                  with <code>\n</code>
+	 * @param onError   callback invoked with the error message
+	 */
+	@JSExport
+	public static void sysmlToPlantUml(String[] names, String[] texts, String[] options, StringCallback onSuccess,
+			StringCallback onError) {
+		final String result;
+		try {
+			final List<String> lines = SysmlImport.importSysml(Arrays.asList(names), Arrays.asList(texts),
+					optionValues(options), name -> false);
+			result = String.join("\n", lines);
+		} catch (SysmlException e) {
+			deliver(onError, e.getMessage());
+			return;
+		} catch (Throwable t) {
+			deliver(onError, describe(t));
+			return;
+		}
+		deliver(onSuccess, result);
+	}
+
+	/**
+	 * Tells a page what the SysML files hold, so that it can offer the right
+	 * options: a JSON object
+	 *
+	 * <pre>
+	 * {
+	 *   "roots": [{"name": "sm", "qualifiedName": "Pkg::sm", "profile": "statemachine"}, ...],
+	 *   "selected": 0,
+	 *   "profiles": [{"name": "statemachine", "root": "part x : StateMachine",
+	 *                 "options": {"actions": ["true", "false"], ...}}, ...]
+	 * }
+	 * </pre>
+	 *
+	 * <code>roots</code> lists every root in the order the import tries them,
+	 * <code>selected</code> is the index of the one it would draw with these
+	 * options (-1 for none), and each profile's options list their allowed
+	 * values, the default first (<code>null</code>: any value);
+	 * <code>views</code> lists the views in the same form. Only
+	 * <code>root=</code>, <code>profile=</code> and <code>view=</code> are read
+	 * from <code>options</code>. Synchronous, like {@link #sysmlToPlantUml}.
+	 */
+	@JSExport
+	public static void sysmlDescribe(String[] names, String[] texts, String[] options, StringCallback onSuccess,
+			StringCallback onError) {
+		final StringBuilder sb = new StringBuilder();
+		try {
+			final SysmlImport.Description description = SysmlImport.describe(Arrays.asList(names),
+					Arrays.asList(texts), optionValues(options));
+			sb.append("{\"roots\":[");
+			int selected = -1;
+			final List<SysmlImport.Root> roots = description.getRoots();
+			for (int i = 0; i < roots.size(); i++) {
+				final SysmlImport.Root root = roots.get(i);
+				if (root == description.getSelected())
+					selected = i;
+				sb.append(i == 0 ? "" : ",").append("{\"name\":").append(json(root.getName()))
+						.append(",\"qualifiedName\":").append(json(root.getQualifiedName()))
+						.append(",\"profile\":").append(json(root.getProfile().getName()))
+						.append(",\"file\":").append(json(root.getSource())).append('}');
+			}
+			sb.append("],\"selected\":").append(selected).append(",\"profiles\":");
+			describeGenerators(sb, SysmlImport.PROFILES);
+			sb.append(",\"views\":");
+			describeGenerators(sb, SysmlImport.VIEWS);
+			sb.append('}');
+		} catch (SysmlException e) {
+			deliver(onError, e.getMessage());
+			return;
+		} catch (Throwable t) {
+			deliver(onError, describe(t));
+			return;
+		}
+		deliver(onSuccess, sb.toString());
+	}
+
+	/**
+	 * Profiles or views as a JSON array: name, root description, whether
+	 * <code>layout=</code> applies, and each option with its allowed values
+	 * (the default first, <code>null</code>: any value).
+	 */
+	private static void describeGenerators(StringBuilder sb, List<SysmlProfile> generators) {
+		sb.append('[');
+		boolean first = true;
+		for (SysmlProfile profile : generators) {
+			sb.append(first ? "" : ",").append("{\"name\":").append(json(profile.getName()))
+					.append(",\"root\":").append(json(profile.getRootDescription()))
+					.append(",\"graphLayout\":").append(profile.isGraphLayout()).append(",\"options\":{");
+			first = false;
+			boolean firstKey = true;
+			for (Map.Entry<String, List<String>> ent : profile.getOptionKeys().entrySet()) {
+				sb.append(firstKey ? "" : ",").append(json(ent.getKey())).append(':');
+				firstKey = false;
+				if (ent.getValue() == null) {
+					sb.append("null");
+					continue;
+				}
+				sb.append('[');
+				for (int i = 0; i < ent.getValue().size(); i++)
+					sb.append(i == 0 ? "" : ",").append(json(ent.getValue().get(i)));
+				sb.append(']');
+			}
+			sb.append("}}");
+		}
+		sb.append(']');
+	}
+
+	/** The directive's <code>key=value</code> words as a map. */
+	private static Map<String, String> optionValues(String[] options) throws SysmlException {
+		final Map<String, String> values = new LinkedHashMap<>();
+		if (options != null)
+			for (String word : options) {
+				final int eq = word.indexOf('=');
+				if (eq <= 0)
+					throw new SysmlException("option '" + word + "': expected key=value");
+				values.put(word.substring(0, eq).trim(), word.substring(eq + 1).trim());
+			}
+		return values;
+	}
+
+	private static String json(String s) {
+		if (s == null)
+			return "null";
+		final StringBuilder sb = new StringBuilder("\"");
+		for (char c : s.toCharArray()) {
+			if (c == '"' || c == '\\')
+				sb.append('\\').append(c);
+			else if (c < 0x20)
+				sb.append(c < 0x10 ? "\\u000" : "\\u001").append(Integer.toHexString(c & 0xF));
+			else
+				sb.append(c);
+		}
+		return sb.append('"').toString();
 	}
 
 	// =========================================================================

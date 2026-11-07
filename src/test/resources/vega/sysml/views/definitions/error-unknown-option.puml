@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: unknown option 'actions' for definitions (expected one of [root, system, profile, style, frame, layout, attributes, usages, packages, libraries, doc, direction, view])
+---
+@startuml
+!include_sysml vehicle.sysml view=definitions actions=false
+@enduml

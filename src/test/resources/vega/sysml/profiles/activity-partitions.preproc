@@ -1,0 +1,37 @@
+@startuml
+!pragma layout elk
+left to right direction
+skinparam component {
+  style rectangle
+}
+hide stereotype
+<style>
+component { .Action { RoundCorner 20; BackGroundColor #FFFFFF; LineColor #404040 } }
+rectangle {
+  .ObjectNode { BackGroundColor #F7F7F7; LineColor #404040 }
+  .Partition { BackGroundColor transparent; LineColor #7F7F7F; FontStyle bold }
+  .ExpansionRegion { BackGroundColor transparent; LineColor #404040; LineStyle 6-3; RoundCorner 20 }
+  .InterruptibleRegion { BackGroundColor transparent; LineColor #C62828; LineStyle 6-3; RoundCorner 20 }
+  .Activity { BackGroundColor transparent; RoundCorner 30 }
+}
+arrow {
+  .objectFlow { LineStyle 6-3 }
+  .interruptFlow { LineColor #C62828; FontColor #C62828 }
+}
+</style>
+rectangle "Order Fulfillment - Partitioned" as activity <<Activity>> {
+  rectangle "Sales" as sales <<Partition>> {
+    component "takeOrder()" as takeOrder <<Action>>
+    component "validateCard()" as validateCard <<Action>>
+    rectangle "OrderQueue : Order" as orderQueue <<ObjectNode>>
+  }
+  rectangle "Warehouse" as warehouse <<Partition>> {
+    component "pickItems()" as pickItems <<Action>>
+    component "shipOrder()" as shipOrder <<Action>>
+  }
+}
+takeOrder --> validateCard <<controlFlow>>
+validateCard --> orderQueue <<objectFlow>>
+orderQueue --> pickItems <<objectFlow>>
+pickItems --> shipOrder <<controlFlow>>
+@enduml

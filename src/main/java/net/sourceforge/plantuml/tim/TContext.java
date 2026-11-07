@@ -82,11 +82,7 @@ import net.sourceforge.plantuml.security.SFile;
 import net.sourceforge.plantuml.security.SURL;
 import net.sourceforge.plantuml.skin.Pragma;
 import net.sourceforge.plantuml.sysml.SysmlException;
-import net.sourceforge.plantuml.sysml.SysmlModel;
-import net.sourceforge.plantuml.sysml.SysmlParser;
-import net.sourceforge.plantuml.sysml.interconnect.IcOptions;
-import net.sourceforge.plantuml.sysml.interconnect.InterconnectModel;
-import net.sourceforge.plantuml.sysml.interconnect.InterconnectPlantUml;
+import net.sourceforge.plantuml.sysml.SysmlImport;
 import net.sourceforge.plantuml.teavm.TeaVM;
 import net.sourceforge.plantuml.teavm.js.browser.BrowserLog;
 import net.sourceforge.plantuml.text.StringLocated;
@@ -713,8 +709,8 @@ public class TContext {
 //	}
 
 	/**
-	 * Reads SysML v2 files written with InterconnectProfile and runs the
-	 * component diagram generated from them, as if it had been included here.
+	 * Reads SysML v2 files written with one of the supported profiles and runs
+	 * the diagram generated from them, as if it had been included here.
 	 */
 	private void executeIncludeSysml(TMemory memory, StringLocated s) throws EaterException {
 		final EaterIncludeSysml include = new EaterIncludeSysml(s.getTrimmed());
@@ -723,15 +719,12 @@ public class TContext {
 		if (files.isEmpty())
 			throw new EaterException("!include_sysml needs at least one .sysml file", s);
 
+		final List<String> texts = new ArrayList<>();
+		for (String file : files)
+			texts.add(readWholeFile(file, s));
 		final List<String> generated;
 		try {
-			final SysmlModel model = InterconnectModel.newSysmlModel();
-			for (String file : files)
-				model.add(SysmlParser.parse(file, readWholeFile(file, s)));
-			final IcOptions options = IcOptions.parse(include.getOptions());
-			final InterconnectModel interconnect = InterconnectModel.build(model, options.getSystem());
-			generated = InterconnectPlantUml.generate(interconnect, options, String.join(" ", files),
-					this::doesFunctionExist);
+			generated = SysmlImport.importSysml(files, texts, include.getOptions(), this::doesFunctionExist);
 		} catch (SysmlException e) {
 			throw new EaterException("!include_sysml: " + e.getMessage(), s);
 		}

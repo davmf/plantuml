@@ -1,0 +1,72 @@
+@startuml
+!pragma layout elk
+hide empty description
+<style>
+state {
+  .terminate { LineColor transparent; BackgroundColor transparent; FontSize 34; FontColor #B00020; shadowing 0 }
+  .submachine { BackgroundColor #EEF3FF }
+  .StateMachine { BackgroundColor transparent }
+}
+arrow {
+  .primary { LineColor #2E7D32; LineThickness 4 }
+  .secondary { LineColor #1565C0; LineThickness 2 }
+  .exception { LineColor #C62828; LineThickness 1 }
+}
+</style>
+state outerInit <<start>>
+state "NewCompositeState1" as newCompositeState1 {
+  state init <<start>>
+  state fin <<end>>
+  state "NewState1" as newState1
+  newState1 : entry / entry_actions()
+  newState1 : do / do_actions()
+  newState1 : exit / exit_actions()
+  state "NewState2" as newState2
+  newState2 : entry / entry_actions()
+  newState2 : do / do_actions()
+  newState2 : exit / exit_actions()
+  init --> newState1 <<unclassified>> : init -> NewState1
+  newState1 --> newState2 <<unclassified>> : NewState1 -> NewState2
+  newState2 --> fin <<unclassified>> : NewState2 -> final
+}
+newCompositeState1 : entry / entry_actions()
+newCompositeState1 : do / do_actions()
+newCompositeState1 : exit / exit_actions()
+state "NewCompositeState2" as newCompositeState2 {
+  state init_2 <<start>>
+  state fin_2 <<end>>
+  state "NewState3" as newState3
+  newState3 : entry / entry_actions()
+  newState3 : do / do_actions()
+  newState3 : exit / exit_actions()
+  state "NewState4" as newState4
+  newState4 : entry / entry_actions()
+  newState4 : do / do_actions()
+  newState4 : exit / exit_actions()
+  init_2 --> newState3 <<unclassified>> : initA -> NewState3
+  newState3 --> newState4 <<unclassified>> : NewState3 -> NewState4
+  newState4 --> fin_2 <<unclassified>> : NewState4 -> finalA
+  --
+  state init_3 <<start>>
+  state fin_3 <<end>>
+  state "NewState5" as newState5
+  newState5 : entry / entry_actions()
+  newState5 : do / do_actions()
+  newState5 : exit / exit_actions()
+  state "NewState6" as newState6
+  newState6 : entry / entry_actions()
+  newState6 : do / do_actions()
+  newState6 : exit / exit_actions()
+  init_3 --> newState5 <<unclassified>> : initB -> NewState5
+  newState5 --> newState6 <<unclassified>> : NewState5 -> NewState6
+  newState6 --> fin_3 <<unclassified>> : NewState6 -> finalB
+}
+newCompositeState2 : entry / entry_actions()
+newCompositeState2 : do / do_actions()
+newCompositeState2 : exit / exit_actions()
+outerInit --> newCompositeState1 <<unclassified>> : outerInit -> NewCompositeState1
+newCompositeState1 --> newCompositeState2 <<unclassified>> : NewCompositeState1 -> NewCompositeState2 (default)
+newCompositeState1 --> newCompositeState2 <<unclassified>> : NewCompositeState1 -> NewCompositeState2 (event_2)
+newCompositeState2 --> newCompositeState1 <<unclassified>> : NewCompositeState2 -> NewCompositeState1 (default)
+newCompositeState2 --> newCompositeState1 <<unclassified>> : NewCompositeState2 -> NewCompositeState1 (event_2)
+@enduml
