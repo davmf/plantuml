@@ -1,0 +1,267 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="CLASS" height="598px" preserveAspectRatio="none" style="width:1342px;height:598px;background:#FFFFFF;" version="1.1" viewBox="0 0 1342 598" width="1342px" zoomAndPan="magnify">
+  <defs/>
+  <g font-family="sans-serif" lengthAdjust="spacing">
+    <!--cluster VehicleModel-->
+    <g class="cluster" data-qualified-name="VehicleModel" data-source-line="1" id="ent0001">
+      <path d="M16.5,4 L101.675,4 A3.75,3.75 0 0 1 104.175,6.5 L111.175,24 L1331.5,24 A2.5,2.5 0 0 1 1334,26.5 L1334,571.5 A2.5,2.5 0 0 1 1331.5,574 L16.5,574 A2.5,2.5 0 0 1 14,571.5 L14,6.5 A2.5,2.5 0 0 1 16.5,4" fill="none" style="stroke:#000;stroke-width:1.5;"/>
+      <line style="stroke:#000;stroke-width:1.5;" x1="14" x2="111.175" y1="24" y2="24"/>
+      <text fill="#000" font-size="14" font-weight="700" textLength="84.175" x="18" y="16.889">VehicleModel</text>
+    </g>
+    <!--cluster Interfaces-->
+    <g class="cluster" data-qualified-name="VehicleModel.Interfaces" data-source-line="1" id="ent0002">
+      <path d="M737.5,188 L799.838,188 A3.75,3.75 0 0 1 802.338,190.5 L809.338,208 L1041.5,208 A2.5,2.5 0 0 1 1044,210.5 L1044,553.5 A2.5,2.5 0 0 1 1041.5,556 L737.5,556 A2.5,2.5 0 0 1 735,553.5 L735,190.5 A2.5,2.5 0 0 1 737.5,188" fill="none" style="stroke:#000;stroke-width:1.5;"/>
+      <line style="stroke:#000;stroke-width:1.5;" x1="735" x2="809.338" y1="208" y2="208"/>
+      <text fill="#000" font-size="14" font-weight="700" textLength="61.337" x="739" y="200.889">Interfaces</text>
+    </g>
+    <!--class Colour-->
+    <g class="entity" data-qualified-name="VehicleModel.Colour" data-source-line="1" id="ent0007">
+      <rect fill="#F2F2F2" height="100" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="123.212" x="784.5" y="45"/>
+      <ellipse cx="815.346" cy="63" fill="#EB937F" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="810.346" y="68">E</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="60" x="830.867" y="59.333">«enum def»</text>
+      <text fill="#000" font-size="14" textLength="41.3" x="840.217" y="72.889">Colour</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="785.5" x2="906.713" y1="81" y2="81"/>
+      <text fill="#000" font-size="14" textLength="20.213" x="790.5" y="95.889">red</text>
+      <text fill="#000" font-size="14" textLength="35.788" x="790.5" y="109.889">green</text>
+      <text fill="#000" font-size="14" textLength="26.512" x="790.5" y="123.889">blue</text>
+      <text fill="#000" font-size="14" textLength="111.212" x="790.5" y="137.889">metallic (premium)</text>
+    </g>
+    <!--class Range-->
+    <g class="entity" data-qualified-name="VehicleModel.Range" data-source-line="1" id="ent0008">
+      <rect fill="#F3EAFB" height="86" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="392.012" x="926" y="52"/>
+      <ellipse cx="1094.069" cy="70" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="1089.069" y="75">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="51.375" x="1112.569" y="66.333">«calc def»</text>
+      <text fill="#000" font-size="14" textLength="41.3" x="1117.606" y="79.889">Range</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="927" x2="1317.012" y1="88" y2="88"/>
+      <text fill="#000" font-size="14" textLength="168.263" x="932" y="102.889">in fuelVolume : VolumeValue</text>
+      <text fill="#000" font-size="14" textLength="123.025" x="932" y="116.889">in consumption : Real</text>
+      <text fill="#000" font-size="14" textLength="380.012" x="932" y="130.889">return distance : LengthValue = fuelVolume/max(consumption, 1)</text>
+    </g>
+    <!--class Dimensions-->
+    <g class="entity" data-qualified-name="VehicleModel.Dimensions" data-source-line="1" id="ent0009">
+      <rect fill="#F2F2F2" height="72" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="158.213" x="1060" y="222"/>
+      <ellipse cx="1098.839" cy="240" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="1093.839" y="245">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="73.275" x="1118.118" y="236.333">«attribute def»</text>
+      <text fill="#000" font-size="14" textLength="73.238" x="1118.136" y="249.889">Dimensions</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1061" x2="1217.213" y1="258" y2="258"/>
+      <text fill="#000" font-size="14" textLength="120.663" x="1066" y="272.889">length : LengthValue</text>
+      <text fill="#000" font-size="14" textLength="146.213" x="1066" y="286.889">width : LengthValue [0..1]</text>
+    </g>
+    <!--class Vehicle-->
+    <g class="entity" data-qualified-name="VehicleModel.Vehicle" data-source-line="1" id="ent0010">
+      <rect fill="#EAF1FB" height="100" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="164.95" x="314.5" y="208"/>
+      <ellipse cx="369.413" cy="226" fill="#A9DCDF" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="364.413" y="231">A</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="387.913" y="222.333">«part def»</text>
+      <text fill="#000" font-size="14" font-style="italic" textLength="46.025" x="390.213" y="235.889">Vehicle</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="315.5" x2="478.45" y1="244" y2="244"/>
+      <text fill="#000" font-size="14" textLength="106.575" x="320.5" y="258.889">mass : MassValue</text>
+      <text fill="#000" font-size="14" textLength="152.95" x="320.5" y="272.889">paint : Colour = Colour::red</text>
+      <text fill="#000" font-size="14" textLength="102.025" x="320.5" y="286.889">size : Dimensions</text>
+      <text fill="#000" font-size="14" textLength="126.7" x="320.5" y="300.889">part radio : Radio [0..1]</text>
+    </g>
+    <!--class Car-->
+    <g class="entity" data-qualified-name="VehicleModel.Car" data-source-line="1" id="ent0011">
+      <rect fill="#EAF1FB" height="58" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="125.838" x="455" y="368"/>
+      <ellipse cx="491.246" cy="386" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="486.246" y="391">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="507.967" y="382.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="22.575" x="521.992" y="395.889">Car</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="456" x2="579.838" y1="404" y2="404"/>
+      <text fill="#000" font-size="14" textLength="113.838" x="461" y="418.889">doors : Integer [1] = 4</text>
+    </g>
+    <!--class Trailer-->
+    <g class="entity" data-qualified-name="VehicleModel.Trailer" data-source-line="1" id="ent0012">
+      <rect fill="#EAF1FB" height="58" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="92.063" x="472" y="493"/>
+      <ellipse cx="493.047" cy="511" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="488.047" y="516">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="506.391" y="507.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="39.725" x="511.841" y="520.889">Trailer</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="473" x2="563.063" y1="529" y2="529"/>
+      <text fill="#000" font-size="14" textLength="80.063" x="478" y="543.889">axles : Integer</text>
+    </g>
+    <!--class Truck-->
+    <g class="entity" data-qualified-name="VehicleModel.Truck" data-source-line="1" id="ent0013">
+      <rect fill="#EAF1FB" height="58" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="120.375" x="599" y="368"/>
+      <ellipse cx="614" cy="386" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="609" y="391">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="646.875" y="382.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="88.375" x="628" y="395.889">Truck :&gt; Hauler</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="600" x2="718.375" y1="404" y2="404"/>
+      <text fill="#000" font-size="14" textLength="93.1" x="605" y="418.889">:&gt;&gt; mass = 7500</text>
+    </g>
+    <!--class Engine-->
+    <g class="entity" data-qualified-name="VehicleModel.Engine" data-source-line="1" id="ent0014">
+      <rect fill="#EAF1FB" height="58" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="114.638" x="30.5" y="368"/>
+      <ellipse cx="61.706" cy="386" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="56.706" y="391">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="77.307" y="382.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="43.663" x="80.788" y="395.889">Engine</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="31.5" x2="144.138" y1="404" y2="404"/>
+      <text fill="#000" font-size="14" textLength="102.638" x="36.5" y="418.889">cylinders : Integer</text>
+    </g>
+    <!--class Start-->
+    <g class="entity" data-qualified-name="VehicleModel.Start" data-source-line="1" id="ent0015">
+      <rect fill="#F3EAFB" height="72" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="101.513" x="37" y="486"/>
+      <ellipse cx="57.169" cy="504" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="52.169" y="509">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="62.025" x="70.318" y="500.333">«action def»</text>
+      <text fill="#000" font-size="14" textLength="29.488" x="86.587" y="513.889">Start</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="38" x2="137.513" y1="522" y2="522"/>
+      <text fill="#000" font-size="14" textLength="87.15" x="43" y="536.889">in item key : Key</text>
+      <text fill="#000" font-size="14" textLength="89.513" x="43" y="550.889">out ok : Boolean</text>
+    </g>
+    <!--class Wheel-->
+    <g class="entity" data-qualified-name="VehicleModel.Wheel" data-source-line="1" id="ent0016">
+      <rect fill="#EAF1FB" height="36" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="78.625" x="163.5" y="379"/>
+      <ellipse cx="178.5" cy="397" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="173.5" y="402">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="190.5" y="393.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="39.725" x="195.95" y="406.889">Wheel</text>
+    </g>
+    <!--class Person-->
+    <g class="entity" data-qualified-name="VehicleModel.Person" data-source-line="1" id="ent0017">
+      <rect fill="#EAF1FB" height="36" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="78.625" x="260.5" y="379"/>
+      <ellipse cx="275.5" cy="397" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="270.5" y="402">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="287.5" y="393.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="44.363" x="290.631" y="406.889">Person</text>
+    </g>
+    <!--class Cap_2-->
+    <g class="entity" data-qualified-name="VehicleModel.Cap_2" data-source-line="1" id="ent0018">
+      <rect fill="#EAF1FB" height="36" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="78.625" x="357.5" y="379"/>
+      <ellipse cx="372.5" cy="397" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="367.5" y="402">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="384.5" y="393.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="25.725" x="396.95" y="406.889">Cap</text>
+    </g>
+    <!--class Key-->
+    <g class="entity" data-qualified-name="VehicleModel.Key" data-source-line="1" id="ent0019">
+      <rect fill="#EAF5EA" height="36" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="80.65" x="1236.5" y="240"/>
+      <ellipse cx="1251.5" cy="258" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="1246.5" y="263">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="52.65" x="1263.5" y="254.333">«item def»</text>
+      <text fill="#000" font-size="14" textLength="24.15" x="1277.75" y="267.889">Key</text>
+    </g>
+    <!--class MassLimit-->
+    <g class="entity" data-qualified-name="VehicleModel.MassLimit" data-source-line="1" id="ent0020">
+      <rect fill="#FBEAE9" height="58" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="121.975" x="336" y="66"/>
+      <ellipse cx="351" cy="84" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="346" y="89">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="93.975" x="363" y="80.333">«requirement def»</text>
+      <text fill="#000" font-size="14" textLength="63" x="378.488" y="93.889">MassLimit</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="337" x2="456.975" y1="102" y2="102"/>
+      <text fill="#000" font-size="14" textLength="98.088" x="342" y="116.889">limit : MassValue</text>
+    </g>
+    <!--class FuelPort-->
+    <g class="entity" data-qualified-name="VehicleModel.Interfaces.FuelPort" data-source-line="1" id="ent0003">
+      <rect fill="#FFF5D6" height="72" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="103.088" x="755.5" y="361"/>
+      <ellipse cx="778.668" cy="379" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="773.668" y="384">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="795.639" y="375.333">«port def»</text>
+      <text fill="#000" font-size="14" textLength="52.938" x="794.483" y="388.889">FuelPort</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="756.5" x2="857.588" y1="397" y2="397"/>
+      <text fill="#000" font-size="14" textLength="91.088" x="761.5" y="411.889">in item fuel : Fuel</text>
+      <text fill="#000" font-size="14" textLength="87.238" x="761.5" y="425.889">flowRate : Real</text>
+    </g>
+    <!--class Cap-->
+    <g class="entity" data-qualified-name="VehicleModel.Interfaces.Cap" data-source-line="1" id="ent0004">
+      <rect fill="#EAF1FB" height="36" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="78.625" x="767.5" y="504"/>
+      <ellipse cx="782.5" cy="522" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="777.5" y="527">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="50.625" x="794.5" y="518.333">«part def»</text>
+      <text fill="#000" font-size="14" textLength="25.725" x="806.95" y="531.889">Cap</text>
+    </g>
+    <!--class Fuel-->
+    <g class="entity" data-qualified-name="VehicleModel.Interfaces.Fuel" data-source-line="1" id="ent0005">
+      <rect fill="#EAF5EA" height="58" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="125.138" x="902.5" y="229"/>
+      <ellipse cx="937.519" cy="247" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="932.519" y="252">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="52.65" x="953.968" y="243.333">«item def»</text>
+      <text fill="#000" font-size="14" textLength="27.3" x="966.643" y="256.889">Fuel</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="903.5" x2="1026.638" y1="265" y2="265"/>
+      <text fill="#000" font-size="14" textLength="113.138" x="908.5" y="279.889">octane : Integer = 95</text>
+    </g>
+    <!--class FuelLine-->
+    <g class="entity" data-qualified-name="VehicleModel.Interfaces.FuelLine" data-source-line="1" id="ent0006">
+      <rect fill="#FBEFE2" height="58" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="132.663" x="751.5" y="229"/>
+      <ellipse cx="779.409" cy="247" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-family="monospace" font-size="14" x="774.409" y="252">C</text>
+      <text fill="#000" font-size="12" font-style="italic" textLength="75.975" x="794.278" y="243.333">«interface def»</text>
+      <text fill="#000" font-size="14" textLength="53.813" x="805.359" y="256.889">FuelLine</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="752.5" x2="883.163" y1="265" y2="265"/>
+      <text fill="#000" font-size="14" textLength="120.663" x="757.5" y="279.889">length : LengthValue</text>
+    </g>
+    <g class="link" data-entity-1="ent0003" data-entity-2="ent0004" data-link-type="composition" id="lnk21">
+      <polygon fill="#181818" points="807,433.247,803,439.247,807,445.247,811,439.247,807,433.247" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M807,445.247 C807,468.389 807,485.637 807,503.834" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="20.963" x="809" y="463.111">cap</text>
+    </g>
+    <g class="link" data-entity-1="ent0006" data-entity-2="ent0003" data-link-type="dependency" id="lnk22">
+      <polygon fill="#181818" points="809.817,360.916,814.524,352.265,810.217,355.932,806.55,351.624,809.817,360.916" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M815.747,287.055 C814.031,308.426 812.059,332.997 810.217,355.932" fill="none" style="stroke:#181818;stroke-width:1;stroke-dasharray:7,7;"/>
+      <text fill="#000" font-size="13" textLength="75.725" x="814" y="338.111">source, target</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0014" data-link-type="composition" id="lnk23">
+      <polygon fill="#181818" points="314.418,288.829,307.39,287.214,303.197,293.081,310.225,294.695,314.418,288.829" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M303.197,293.081 C274.046,304.127 252.429,312.911 223,326 C191.581,339.974 184.524,345.167 154,361 C149.74,363.21 145.333,365.512 140.91,367.833" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="39.081" x="225" y="338.111">engine</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0016" data-link-type="composition" id="lnk24">
+      <polygon fill="#181818" points="318.172,308.106,310.961,308.085,308.168,314.733,315.379,314.754,318.172,308.106" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M308.168,314.733 C299.255,320.637 300.376,320.055 292,326 C267.954,343.066 241.531,364.165 223.772,378.712" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="40.544" x="294" y="338.111">wheels</text>
+      <text fill="#000" font-size="13" textLength="19.419" x="203.772" y="374.823">4..*</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0003" data-link-type="composition" id="lnk25">
+      <polygon fill="#181818" points="479.762,275.971,484.728,281.199,491.465,278.625,486.498,273.397,479.762,275.971" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M491.465,278.625 C564.698,295.237 661.777,321.202 751,361 C752.466,361.654 753.939,362.341 755.414,363.055" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="68.575" x="707" y="338.111">fuelIn «port»</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0017" data-link-type="dependency" id="lnk26">
+      <polygon fill="#181818" points="312.125,378.875,320.59,373.841,315.014,374.794,314.061,369.218,312.125,378.875" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M362.255,308.073 C344.75,332.796 327.529,357.118 315.014,374.794" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="32.5" x="351" y="338.111">driver</text>
+      <text fill="#000" font-size="13" textLength="21.613" x="290.125" y="374.986">0..1</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0018" data-link-type="composition" id="lnk27">
+      <polygon fill="#181818" points="397,308.073,393,314.073,397,320.073,401,314.073,397,308.073" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M397,320.073 C397,344.796 397,361.199 397,378.875" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="56.388" x="399" y="338.111">spareCap</text>
+      <text fill="#000" font-size="13" textLength="21.613" x="375" y="374.986">0..1</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0011" data-link-type="extension" id="lnk28">
+      <polygon fill="none" points="444.977,308.35,452.839,325.618,461.627,317.448,444.977,308.35" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M457.233,321.533 C462.705,327.419 455.892,320.21 461,326 C472.924,339.515 485.637,355.013 496.025,367.986" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    </g>
+    <g class="link" data-entity-1="ent0011" data-entity-2="ent0012" data-link-type="composition" id="lnk29">
+      <polygon fill="#181818" points="518,426.219,514,432.219,518,438.219,522,432.219,518,426.219" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M518,438.219 C518,458.22 518,472.941 518,492.913" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="32.5" x="520" y="463.111">trailer</text>
+      <text fill="#000" font-size="13" textLength="21.613" x="496" y="489.024">0..1</text>
+    </g>
+    <g class="link" data-entity-1="ent0011" data-entity-2="ent0012" data-link-type="nested" id="lnk30">
+      <ellipse cx="514.562" cy="434.235" fill="#FFF" rx="8" ry="8" style="stroke:#181818;stroke-width:1;"/>
+      <line style="stroke:#181818;stroke-width:1;" x1="513.958" x2="515.165" y1="442.212" y2="426.257"/>
+      <line style="stroke:#181818;stroke-width:1;" x1="506.584" x2="522.539" y1="433.631" y2="434.838"/>
+      <path d="M513.958,442.212 C512.994,454.96 513.482,454.255 514,468 C514.306,476.114 514.874,484.913 515.488,492.966" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0013" data-link-type="extension" id="lnk31">
+      <polygon fill="none" points="479.539,302.16,492.709,315.817,498.27,305.183,479.539,302.16" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M495.49,310.5 C536.588,331.991 569.144,349.014 605.359,367.951" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    </g>
+    <g class="link" data-entity-1="ent0014" data-entity-2="ent0015" data-link-type="nested" id="lnk32">
+      <ellipse cx="88" cy="434.219" fill="#FFF" rx="8" ry="8" style="stroke:#181818;stroke-width:1;"/>
+      <line style="stroke:#181818;stroke-width:1;" x1="88" x2="88" y1="442.219" y2="426.219"/>
+      <line style="stroke:#181818;stroke-width:1;" x1="80" x2="96" y1="434.219" y2="434.219"/>
+      <path d="M88,442.219 C88,459.95 88,466.963 88,485.873" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    </g>
+    <g class="link" data-entity-1="ent0020" data-entity-2="ent0010" data-link-type="dependency" id="lnk33">
+      <polygon fill="#181818" points="397,207.82,401,198.82,397,202.82,393,198.82,397,207.82" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M397,124.044 C397,147.108 397,175.347 397,202.82" fill="none" style="stroke:#181818;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="40.544" x="399" y="175.111">vehicle</text>
+    </g>
+  </g>
+</svg>

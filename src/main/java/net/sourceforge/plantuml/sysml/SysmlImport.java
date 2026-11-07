@@ -38,11 +38,13 @@ package net.sourceforge.plantuml.sysml;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
 import net.sourceforge.plantuml.sysml.activity.ActProfile;
+import net.sourceforge.plantuml.sysml.definitions.DefProfile;
 import net.sourceforge.plantuml.sysml.interconnect.IcProfile;
 import net.sourceforge.plantuml.sysml.interpcba.CotsProfile;
 import net.sourceforge.plantuml.sysml.interpcba.IpProfile;
@@ -79,6 +81,7 @@ public final class SysmlImport {
 	 */
 	public static final List<SysmlProfile> VIEWS = Collections.unmodifiableList(Arrays.<SysmlProfile>asList(
 	// views are registered here, one per line
+			new DefProfile(),
 			new ReqView()));
 
 	private SysmlImport() {
@@ -107,7 +110,15 @@ public final class SysmlImport {
 				expected.add("'" + profile.getRootDescription() + "'");
 			throw new SysmlException("no diagram root found (expected " + String.join(", ", expected) + ")");
 		}
-		parsedOptions.check(selected.profile.getName(), selected.profile.getOptionKeys());
+		Map<String, List<String>> optionKeys = selected.profile.getOptionKeys();
+		if (VIEWS.contains(selected.profile)) {
+			optionKeys = new LinkedHashMap<>(optionKeys);
+			optionKeys.put(SysmlOptions.VIEW, null);
+		} else if (parsedOptions.getView() != null && optionKeys.containsKey(SysmlOptions.VIEW) == false) {
+			throw new SysmlException("unknown view '" + parsedOptions.getView() + "' (expected one of "
+					+ viewNames() + ")");
+		}
+		parsedOptions.check(selected.profile.getName(), optionKeys);
 		return selected.profile.generate(selected.model, selected.node, parsedOptions, String.join(" ", names),
 				isFunctionDefined);
 	}
@@ -167,7 +178,8 @@ public final class SysmlImport {
 		private String foundList() {
 			final List<String> found = new ArrayList<>();
 			for (Root r : roots)
-				found.add(r.getName() + " (" + r.getProfile().getName() + ")");
+				if (r.getName() != null)
+					found.add(r.getName() + " (" + r.getProfile().getName() + ")");
 			return String.join(", ", found);
 		}
 	}
@@ -197,18 +209,32 @@ public final class SysmlImport {
 		}
 	}
 
+	/**
+	 * The view named by <code>view=</code>, or <code>null</code>: another value
+	 * is an option of the profile (InterconnectProfile's
+	 * <code>view=physical</code>).
+	 */
+	private static SysmlProfile findView(String name) {
+		if (name != null)
+			for (SysmlProfile candidate : VIEWS)
+				if (candidate.getName().equals(name))
+					return candidate;
+		return null;
+	}
+
+	private static List<String> viewNames() {
+		final List<String> names = new ArrayList<>();
+		for (SysmlProfile candidate : VIEWS)
+			names.add(candidate.getName());
+		return names;
+	}
+
 	private static List<SysmlProfile> selectProfiles(SysmlOptions options) throws SysmlException {
-		final String view = options.getView();
+		final SysmlProfile view = findView(options.getView());
 		if (view != null) {
 			if (options.getProfile() != null)
-				throw new SysmlException("options profile= and view= cannot be used together");
-			final List<String> names = new ArrayList<>();
-			for (SysmlProfile candidate : VIEWS) {
-				if (candidate.getName().equals(view))
-					return Collections.singletonList(candidate);
-				names.add(candidate.getName());
-			}
-			throw new SysmlException("unknown view '" + view + "' (expected one of " + names + ")");
+				throw new SysmlException("options profile= and view=" + view.getName() + " cannot be used together");
+			return Collections.singletonList(view);
 		}
 		final String name = options.getProfile();
 		if (name == null)

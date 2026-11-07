@@ -63,13 +63,14 @@ final class ReqModel {
 
 	/** Keywords whose named members are drawable elements. */
 	static final Set<String> ELEMENT_KINDS = new HashSet<>(Arrays.asList("requirement", "concern", "verification",
-			"analysis", "case", "use", "part", "action", "calc", "item", "port", "state", "occurrence", "constraint",
+			"analysis", "case", "use case", "analysis case", "verification case", "part", "action", "calc", "item", "port", "state", "occurrence", "constraint",
 			"interface", "connection", "allocation", "flow", "view", "viewpoint"));
 
 	/** Keywords of the elements drawn without <code>focus=</code>. */
 	static final Set<String> REQUIREMENT_KINDS = new HashSet<>(Arrays.asList("requirement", "concern"));
 
-	private static final Set<String> VERIFICATION_KINDS = new HashSet<>(Arrays.asList("verification", "analysis"));
+	private static final Set<String> VERIFICATION_KINDS = new HashSet<>(Arrays.asList("verification", "analysis",
+			"verification case", "analysis case"));
 
 	/** Members that never hold or type anything drawn. */
 	private static final Set<String> SKIPPED = new HashSet<>(Arrays.asList("import", "alias", "doc", "comment"));
@@ -220,8 +221,7 @@ final class ReqModel {
 	}
 
 	private static String kindOf(SysmlNode node) {
-		final String keyword = "use".equals(node.getKeyword()) ? "use case" : node.getKeyword();
-		return node.isDefinition() ? keyword + " def" : keyword;
+		return node.isDefinition() ? node.getKeyword() + " def" : node.getKeyword();
 	}
 
 	private void walk(SysmlNode node, List<String> path, List<SysmlNode> packages, Element owner) {

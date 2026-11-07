@@ -1,0 +1,6 @@
+---
+output: svg
+---
+@startuml
+!include_sysml statemachine-submachine.sysml
+@enduml

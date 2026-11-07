@@ -58,15 +58,17 @@ public final class SysmlOptions {
 	/** Forces the profile instead of detecting it. */
 	public static final String PROFILE = "profile";
 	/**
-	 * Selects a view: a generator that draws any SysML (not one profile) and is
-	 * never tried without being asked for.
+	 * Selects a view when its value names one of {@link SysmlImport#VIEWS}: a
+	 * generator that draws any SysML (not one profile) and is never tried
+	 * without being asked for. Any other value is left to the profile, since
+	 * InterconnectProfile has its own <code>view=physical|logical|both</code>.
 	 */
 	public static final String VIEW = "view";
 	public static final String STYLE = "style";
 	public static final String FRAME = "frame";
 
 	public static final List<String> COMMON = Collections
-			.unmodifiableList(Arrays.asList(ROOT, SYSTEM, PROFILE, VIEW, STYLE, FRAME));
+			.unmodifiableList(Arrays.asList(ROOT, SYSTEM, PROFILE, STYLE, FRAME));
 
 	private static final List<String> BOOLEAN = Arrays.asList("true", "false");
 

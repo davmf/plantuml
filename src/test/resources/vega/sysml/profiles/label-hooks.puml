@@ -1,0 +1,10 @@
+---
+output: preproc
+---
+@startuml
+' A label function defined before the directive replaces the default
+!function $sysml_transition_label($trigger, $guard, $actions, $name)
+!return $name
+!endfunction
+!include_sysml statemachine-composite.sysml
+@enduml

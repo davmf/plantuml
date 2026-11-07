@@ -48,8 +48,9 @@ import java.util.Set;
  * It does not check the language: it builds the tree of packages,
  * definitions and usages and records, for each member, its name, type,
  * specializations, redefinition, bound value and <code>connect</code> ends.
- * Anything else in a declaration (multiplicities, expressions, metadata...)
- * is skipped by balancing brackets, so constructs it does not know degrade
+ * The multiplicity and the modifiers (<code>abstract</code>,
+ * <code>ref</code>, <code>in</code>...) are kept too. Anything else in a
+ * declaration (expressions, metadata...) is skipped by balancing brackets, so constructs it does not know degrade
  * gracefully instead of failing.
  */
 public final class SysmlParser {
@@ -57,7 +58,7 @@ public final class SysmlParser {
 	private static final Set<String> MODIFIERS = new HashSet<>(Arrays.asList("private", "public", "protected",
 			"abstract", "ref", "readonly", "derived", "variation", "individual", "in", "out", "inout", "constant",
 			"end", "standard", "library", "nonunique", "ordered", "var", "composite", "portion", "snapshot",
-			"timeslice"));
+			"timeslice", "return"));
 
 	private static final Set<String> KEYWORDS = new HashSet<>(Arrays.asList("package", "part", "port", "attribute",
 			"connection", "interface", "enum", "item", "action", "state", "constraint", "requirement", "occurrence",
@@ -66,6 +67,9 @@ public final class SysmlParser {
 			"exhibit", "perform", "message", "succession", "transition", "accept", "send", "assume", "require",
 			"subject", "objective", "actor", "stakeholder", "frame", "expose", "render", "filter", "dependency",
 			"namespace", "language", "rep", "event", "individual", "snapshot", "timeslice", "connector", "verify"));
+
+	/** The keywords that <code>case</code> may follow. */
+	private static final Set<String> CASES = new HashSet<>(Arrays.asList("use", "analysis", "verification"));
 
 	private final String source;
 	private final List<SysmlToken> tokens;
@@ -182,11 +186,14 @@ public final class SysmlParser {
 		int i = 0;
 		boolean library = false;
 		String lastModifier = null;
+		final List<String> modifiers = new ArrayList<>();
 		final List<String> annotations = new ArrayList<>();
 		while (i < h.size()) {
 			final SysmlToken t = h.get(i);
 			if (t.isSymbol("#") || t.isSymbol("@")) {
-				// Metadata prefix: #Name or @Name
+				// Metadata prefix: #Name or @Name (a metadata usage: kept as the modifier "@")
+				if (t.isSymbol("@") && i == 0)
+					modifiers.add("@");
 				if (t.isSymbol("#") && i + 1 < h.size() && h.get(i + 1).getKind() == SysmlToken.Kind.NAME)
 					annotations.add(h.get(i + 1).getText());
 				i += 2;
@@ -197,6 +204,7 @@ public final class SysmlParser {
 				if (t.isName("library"))
 					library = true;
 				lastModifier = t.getText();
+				modifiers.add(lastModifier);
 				i++;
 				continue;
 			}
@@ -208,9 +216,11 @@ public final class SysmlParser {
 		if (i < h.size() && h.get(i).getKind() == SysmlToken.Kind.NAME && KEYWORDS.contains(h.get(i).getText())) {
 			keyword = h.get(i).getText();
 			i++;
-			if (keyword.equals("use") && i < h.size() && h.get(i).isName("case"))
-				// use case def X: keyword "use"
+			if (CASES.contains(keyword) && i < h.size() && h.get(i).isName("case")) {
+				// use case, analysis case, verification case
+				keyword = keyword + " case";
 				i++;
+			}
 			if (i < h.size() && h.get(i).isName("def")) {
 				definition = true;
 				i++;
@@ -257,6 +267,7 @@ public final class SysmlParser {
 		final List<String> specializes = new ArrayList<>();
 		SysmlValue value = null;
 		final List<String> ends = new ArrayList<>();
+		String multiplicity = null;
 
 		while (i < h.size()) {
 			final SysmlToken t = h.get(i);
@@ -306,7 +317,10 @@ public final class SysmlParser {
 				if (n != null)
 					types.add(n);
 			} else if (t.isSymbol("[")) {
-				i = skipBracket(h, i, "[", "]");
+				final int close = skipBracket(h, i, "[", "]");
+				if (multiplicity == null && close - 1 > i + 1 && h.get(close - 1).isSymbol("]"))
+					multiplicity = raw(h, i + 1, close - 1);
+				i = close;
 			} else if (t.isSymbol("=") || t.isSymbol(":=") || t.isName("default")) {
 				i++;
 				if (t.isName("default") && i < h.size() && (h.get(i).isSymbol("=") || h.get(i).isSymbol(":=")))
@@ -358,6 +372,9 @@ public final class SysmlParser {
 		}
 		final SysmlNode node = new SysmlNode(keyword, definition, library, name, redefines, type, specializes, value,
 				ends, source, line);
+		node.setMultiplicity(multiplicity);
+		for (String modifier : modifiers)
+			node.addModifier(modifier);
 		node.setShortName(shortName);
 		node.setAnnotations(annotations);
 		if (types.size() > 1)

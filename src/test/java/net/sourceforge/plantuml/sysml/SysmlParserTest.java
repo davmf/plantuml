@@ -91,7 +91,7 @@ class SysmlParserTest {
 	@Test
 	void use_case() throws SysmlException {
 		final SysmlNode u = first("use case def <'UC-1'> Survey;");
-		assertEquals("use", u.getKeyword());
+		assertEquals("use case", u.getKeyword());
 		assertTrue(u.isDefinition());
 		assertEquals("UC-1", u.getShortName());
 		assertEquals("Survey", u.getName());
@@ -143,6 +143,36 @@ class SysmlParserTest {
 		final SysmlException s = assertThrows(SysmlException.class,
 				() -> SysmlParser.parse("b.sysml", "part x { attribute a = \"open; }"));
 		assertEquals("b.sysml:1: unterminated string", s.getMessage());
+	}
+
+	@Test
+	void multiplicities_and_modifiers() throws SysmlException {
+		final SysmlNode def = first("abstract part def V { part wheels : Wheel[4..*]; ref part driver[0..1] : Person;"
+				+ " in item fuel : Fuel; return distance : Real; attribute mass : Real = 5 [kg];"
+				+ " @Reviewed::Tag { by = 1; } }");
+		assertTrue(def.hasModifier("abstract"));
+		final SysmlNode wheels = def.getChildren().get(0);
+		assertEquals("4..*", wheels.getMultiplicity());
+		final SysmlNode driver = def.getChildren().get(1);
+		assertEquals("part", driver.getKeyword());
+		assertTrue(driver.hasModifier("ref"));
+		assertEquals("0..1", driver.getMultiplicity());
+		assertEquals("Person", driver.getType());
+		assertTrue(def.getChildren().get(2).hasModifier("in"));
+		final SysmlNode ret = def.getChildren().get(3);
+		assertTrue(ret.hasModifier("return"));
+		assertEquals("distance", ret.getName());
+		// A unit after the value is not a multiplicity
+		assertNull(def.getChildren().get(4).getMultiplicity());
+		assertTrue(def.getChildren().get(5).hasModifier("@"));
+	}
+
+	@Test
+	void use_case_definition() throws SysmlException {
+		final SysmlNode def = first("use case def Drive { subject v : Vehicle; }");
+		assertEquals("use case", def.getKeyword());
+		assertTrue(def.isDefinition());
+		assertEquals("Drive", def.getName());
 	}
 
 }

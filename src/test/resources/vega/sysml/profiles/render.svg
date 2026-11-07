@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="STATE" height="583px" preserveAspectRatio="none" style="width:575px;height:583px;background:#FFFFFF;" version="1.1" viewBox="0 0 575 583" width="575px" zoomAndPan="magnify">
+  <defs/>
+  <g font-family="sans-serif" lengthAdjust="spacing">
+    <!--cluster authoriseDriverSm-->
+    <g class="cluster" data-qualified-name="authoriseDriverSm" data-source-line="1" id="ent0001">
+      <rect fill="none" height="533" rx="12.5" ry="12.5" style="stroke:#181818;stroke-width:0.5;" width="442" x="31" y="4"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="31" x2="473" y1="23" y2="23"/>
+      <text fill="#000" font-size="14" textLength="96.512" x="203.744" y="19.889">AuthoriseDriver</text>
+    </g>
+    <text fill="#000" font-size="14" textLength="17.938" x="175.031" y="33.889">full</text>
+    <ellipse cx="184" cy="55" fill="#F1F1F1" rx="6" ry="6" style="stroke:#181818;stroke-width:1.5;"/>
+    <text fill="#000" font-size="14" textLength="84.088" x="408.956" y="240.889">cachedToken</text>
+    <ellipse cx="451" cy="262" fill="#F1F1F1" rx="6" ry="6" style="stroke:#181818;stroke-width:1.5;"/>
+    <text fill="#000" font-size="14" textLength="65.363" x="303.319" y="553.889">authorised</text>
+    <ellipse cx="336" cy="537" fill="#F1F1F1" rx="6" ry="6" style="stroke:#181818;stroke-width:1.5;"/>
+    <line style="stroke:#181818;stroke-width:1.5;" x1="340.389" x2="332.611" y1="541.389" y2="533.611"/>
+    <line style="stroke:#181818;stroke-width:1.5;" x1="340.389" x2="332.611" y1="533.611" y2="541.389"/>
+    <text fill="#000" font-size="14" textLength="46.637" x="25.681" y="553.889">refused</text>
+    <ellipse cx="49" cy="537" fill="#F1F1F1" rx="6" ry="6" style="stroke:#181818;stroke-width:1.5;"/>
+    <line style="stroke:#181818;stroke-width:1.5;" x1="53.389" x2="45.611" y1="541.389" y2="533.611"/>
+    <line style="stroke:#181818;stroke-width:1.5;" x1="53.389" x2="45.611" y1="533.611" y2="541.389"/>
+    <g class="start_entity" data-qualified-name="authoriseDriverSm.driverStart" data-source-line="1" id="ent0006">
+      <ellipse cx="150" cy="55" fill="#222" rx="10" ry="10" style="stroke:#222;stroke-width:1;"/>
+    </g>
+    <g class="entity" data-qualified-name="authoriseDriverSm.initialisingReader" data-source-line="1" id="ent0007">
+      <rect fill="#F1F1F1" height="76" rx="12.5" ry="12.5" style="stroke:#181818;stroke-width:0.5;" width="168.488" x="83" y="102"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="83" x2="251.488" y1="126" y2="126"/>
+      <text fill="#000" font-size="14" textLength="107.538" x="113.475" y="117.889">InitialisingReader</text>
+      <text fill="#000" font-size="14" textLength="128.275" x="88" y="141.889">entry / powerReader()</text>
+      <text fill="#000" font-size="14" textLength="143.15" x="88" y="155.889">do / handshakeReader()</text>
+      <text fill="#000" font-size="14" textLength="148.488" x="88" y="169.889">exit / clearReaderBuffer()</text>
+    </g>
+    <g class="entity" data-qualified-name="authoriseDriverSm.awaitingCredential" data-source-line="1" id="ent0008">
+      <rect fill="#F1F1F1" height="62" rx="12.5" ry="12.5" style="stroke:#181818;stroke-width:0.5;" width="249.513" x="91" y="231"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="91" x2="340.513" y1="255" y2="255"/>
+      <text fill="#000" font-size="14" textLength="116.9" x="157.306" y="246.889">AwaitingCredential</text>
+      <text fill="#000" font-size="14" textLength="126" x="96" y="270.889">do / awaitTapOrApp()</text>
+      <text fill="#000" font-size="14" textLength="229.513" x="96" y="284.889">credentialSeen [!wellFormed] / beep(2)</text>
+    </g>
+    <g class="entity" data-qualified-name="authoriseDriverSm.validatingToken" data-source-line="1" id="ent0009">
+      <rect fill="#F1F1F1" height="62" rx="12.5" ry="12.5" style="stroke:#181818;stroke-width:0.5;" width="166.825" x="289.5" y="346"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="289.5" x2="456.325" y1="370" y2="370"/>
+      <text fill="#000" font-size="14" textLength="100.538" x="322.644" y="361.889">ValidatingToken</text>
+      <text fill="#000" font-size="14" textLength="146.825" x="294.5" y="385.889">entry / queryBackOffice()</text>
+      <text fill="#000" font-size="14" textLength="74.638" x="294.5" y="399.889">do / spinner()</text>
+    </g>
+    <g class="start_entity" data-qualified-name="authoriseDriverSm.offlineWhitelist" data-source-line="1" id="ent0010">
+      <ellipse cx="221" cy="469.5" fill="#222" rx="6" ry="6" style="stroke:#222;stroke-width:1;"/>
+    </g>
+    <g class="link" data-entity-1="ent0006" data-entity-2="ent0007" data-link-type="dependency" id="lnk11">
+      <polygon fill="#2E7D32" points="159.4,101.896,161.513,92.277,158.397,96.998,153.676,93.882,159.4,101.896" style="stroke:#2E7D32;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M151.884,65.2 C153.717,74.147 155.62,83.44 158.397,96.998" fill="none" style="stroke:#2E7D32;stroke-width:4;"/>
+    </g>
+    <g class="link" data-entity-1="ent0002" data-entity-2="ent0007" data-link-type="dependency" id="lnk12">
+      <polygon fill="#2E7D32" points="174.602,101.885,180.326,93.871,175.605,96.987,172.489,92.265,174.602,101.885" style="stroke:#2E7D32;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M182.885,61.446 C181.186,69.741 178.811,81.335 175.605,96.987" fill="none" style="stroke:#2E7D32;stroke-width:4;"/>
+    </g>
+    <g class="link" data-entity-1="ent0007" data-entity-2="ent0008" data-link-type="dependency" id="lnk13">
+      <polygon fill="#2E7D32" points="203.725,230.939,204.026,221.095,201.835,226.31,196.62,224.119,203.725,230.939" style="stroke:#2E7D32;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M182.235,178.311 C189.146,195.236 195.321,210.357 201.835,226.31" fill="none" style="stroke:#2E7D32;stroke-width:4;"/>
+      <text fill="#000" font-size="13" textLength="75.156" x="198" y="208.111">readerReady</text>
+    </g>
+    <g class="link" data-entity-1="ent0007" data-entity-2="ent0005" data-link-type="dependency" id="lnk14">
+      <polygon fill="#C62828" points="47.818,530.735,49.877,521.104,46.787,525.843,42.049,522.753,47.818,530.735" style="stroke:#C62828;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M123.62,178.221 C108.49,193.234 92.65,211.594 82,231 C32.22,321.705 50.621,357.636 46,461 C44.968,484.092 43.012,489.97 45,513 C45.53,519.138 45.81,521.203 46.787,525.843" fill="none" style="stroke:#C62828;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="194.919" x="49" y="380.611">readerFault(3 tries) / postFault(F12)</text>
+    </g>
+    <g class="link" data-entity-1="ent0003" data-entity-2="ent0009" data-link-type="dependency" id="lnk15">
+      <polygon fill="#1565C0" points="436.066,345.943,445.474,343.03,439.83,342.652,440.208,337.007,436.066,345.943" style="stroke:#1565C0;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M452.58,268.142 C455.817,279.707 462.009,308.298 451,328 C447.199,334.801 445.76,337.466 439.83,342.652" fill="none" style="stroke:#1565C0;stroke-width:2;"/>
+    </g>
+    <g class="link" data-entity-1="ent0008" data-entity-2="ent0009" data-link-type="dependency" id="lnk16">
+      <polygon fill="#2E7D32" points="289.401,349.755,282.163,343.076,284.666,348.149,279.594,350.653,289.401,349.755" style="stroke:#2E7D32;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M219.821,293.19 C222.743,305.338 227.9,318.653 237,328 C241.454,332.575 259.214,339.519 284.666,348.149" fill="none" style="stroke:#2E7D32;stroke-width:4;"/>
+      <text fill="#000" font-size="13" textLength="206.619" x="239" y="323.111">credentialCaptured / hash(credential)</text>
+    </g>
+    <g class="link" data-entity-1="ent0008" data-entity-2="ent0005" data-link-type="dependency" id="lnk17">
+      <polygon fill="#C62828" points="48.801,530.962,52.495,521.833,48.632,525.965,44.5,522.102,48.801,530.962" style="stroke:#C62828;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M212.96,293.13 C213.196,304.851 215.337,317.869 222,328 C231.18,341.958 246.472,331.634 255,346 C269.066,369.695 273.558,387.631 255,408 C225.99,439.841 92.832,395.919 62,426 C46.859,440.772 47.972,506.395 48.632,525.965" fill="none" style="stroke:#C62828;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="186.388" x="64" y="438.111">idleTimeout(60 s) / showTimeout()</text>
+    </g>
+    <g class="link" data-entity-1="ent0009" data-entity-2="ent0004" data-link-type="dependency" id="lnk18">
+      <polygon fill="#2E7D32" points="342.112,535.732,351.301,539.276,347.105,535.481,350.9,531.286,342.112,535.732" style="stroke:#2E7D32;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M425.257,408.057 C430.767,413.33 435.593,419.308 439,426 C442.429,432.733 443.496,436.928 439,443 C422.686,465.033 396.314,438.967 380,461 C375.504,467.072 375.381,472.021 380,478 C399.377,503.08 429.623,470.92 449,496 C453.619,501.979 453.78,507.149 449,513 C435.257,529.822 368.614,534.4 347.105,535.481" fill="none" style="stroke:#2E7D32;stroke-width:4;"/>
+      <text fill="#000" font-size="13" textLength="185.656" x="382" y="473.111">tokenAccepted / issueSessionId()</text>
+    </g>
+    <g class="link" data-entity-1="ent0009" data-entity-2="ent0010" data-link-type="dependency" id="lnk19">
+      <polygon fill="#1565C0" points="227.362,463.734,236.963,461.541,231.364,460.737,232.168,455.137,227.362,463.734" style="stroke:#1565C0;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M309.56,408.129 C298.85,413.759 287.977,419.824 278,426 C276.675,426.82 245.954,449.81 231.364,460.737" fill="none" style="stroke:#1565C0;stroke-width:2;"/>
+      <text fill="#000" font-size="13" textLength="157.463" x="280" y="438.111">backOfficeUnreachable(5 s)</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0004" data-link-type="dependency" id="lnk20">
+      <polygon fill="#1565C0" points="329.849,535.73,321.061,531.283,324.855,535.479,320.659,539.273,329.849,535.73" style="stroke:#1565C0;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M219.287,475.652 C216.725,484.43 213.087,502.366 222,513 C236.073,529.789 303.206,534.39 324.855,535.479" fill="none" style="stroke:#1565C0;stroke-width:2;"/>
+      <text fill="#000" font-size="13" textLength="223.925" x="224" y="508.111">[tokenOnWhitelist] / flagDeferredBilling()</text>
+    </g>
+    <g class="link" data-entity-1="ent0010" data-entity-2="ent0005" data-link-type="dependency" id="lnk21">
+      <polygon fill="#C62828" points="52.395,530.862,60.814,525.752,55.247,526.755,54.244,521.188,52.395,530.862" style="stroke:#C62828;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+      <path d="M214.736,470.408 C194.887,470.374 132.097,472.267 88,496 C71.944,504.642 61.29,518.057 55.247,526.755" fill="none" style="stroke:#C62828;stroke-width:1;"/>
+      <text fill="#000" font-size="13" textLength="121.956" x="90" y="508.111">[else] / showTryLater()</text>
+    </g>
+  </g>
+</svg>
