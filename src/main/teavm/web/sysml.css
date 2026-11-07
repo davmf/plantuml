@@ -168,7 +168,8 @@
 }
 
 .tab-close,
-.tab-actions button {
+.tab-actions button,
+.fold-bar button {
 	border: none;
 	background: none;
 	color: inherit;
@@ -179,7 +180,8 @@
 }
 
 .tab-close:hover,
-.tab-actions button:hover {
+.tab-actions button:hover,
+.fold-bar button:hover {
 	background: color-mix(in srgb, var(--accent) 50%, var(--surface));
 }
 
@@ -188,6 +190,18 @@
 	display: inline-flex;
 	gap: 0.25rem;
 	color: var(--fg);
+}
+
+/* Fold all, the levels, Unfold all: in the pane headers, after the title */
+.fold-bar {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.15rem;
+	color: var(--fg);
+}
+
+.pane-title .fold-bar {
+	margin-left: auto;
 }
 
 .import-status {

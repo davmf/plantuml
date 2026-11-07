@@ -23,6 +23,7 @@
 //   Ctrl+Alt+[ / ]                fold, unfold all blocks
 //   Ctrl+Alt+1 ... 9             unfold all, then fold the blocks at that level (1 = outermost)
 //   Gutter arrows                fold, unfold one block with the mouse
+//   Fold/unfold buttons          addFoldButtons(): the same actions, on each pane's header
 // Blocks: { } in both languages; PlantUML also alt/opt/loop/par/group/critical/
 // break/partition/box/ref/legend/note up to their end.
 import {
@@ -316,31 +317,49 @@ function blockRanges(doc, change) {
 	return ranges;
 }
 
-// Ctrl/Cmd+Alt+1 ... 9: unfold everything, then fold the blocks at depth level - 1
+// Effects that unfold every folded range of the view's state
+function unfoldEffects(state) {
+	const effects = [];
+	foldedRanges(state).between(0, state.doc.length, (from, to) => {
+		effects.push(unfoldEffect.of({from, to}));
+	});
+	return effects;
+}
+
+// Unfolds everything, then folds the blocks at depth level - 1 (1 = outermost)
+function foldToLevel(view, change, level) {
+	const effects = unfoldEffects(view.state);
+	const seen = new Set();
+	for (const block of blockRanges(view.state.doc, change)) {
+		const key = block.from + ":" + block.to;
+		if (block.depth === level - 1 && seen.has(key) === false) {
+			seen.add(key);
+			effects.push(foldEffect.of({from: block.from, to: block.to}));
+		}
+	}
+	if (effects.length === 0) {
+		return false;
+	}
+	view.dispatch({effects});
+	return true;
+}
+
+function unfoldAll(view) {
+	const effects = unfoldEffects(view.state);
+	if (effects.length === 0) {
+		return false;
+	}
+	view.dispatch({effects});
+	return true;
+}
+
+// Ctrl/Cmd+Alt+1 ... 9: unfold everything, then fold the blocks at that level
 function foldLevelKeys(change) {
 	const keys = [];
 	for (let level = 1; level <= 9; level++) {
 		keys.push({
 			key: "Mod-Alt-" + level,
-			run: view => {
-				const effects = [];
-				foldedRanges(view.state).between(0, view.state.doc.length, (from, to) => {
-					effects.push(unfoldEffect.of({from, to}));
-				});
-				const seen = new Set();
-				for (const block of blockRanges(view.state.doc, change)) {
-					const key = block.from + ":" + block.to;
-					if (block.depth === level - 1 && seen.has(key) === false) {
-						seen.add(key);
-						effects.push(foldEffect.of({from: block.from, to: block.to}));
-					}
-				}
-				if (effects.length === 0) {
-					return false;
-				}
-				view.dispatch({effects});
-				return true;
-			}
+			run: view => foldToLevel(view, change, level)
 		});
 	}
 	return keymap.of(keys);
@@ -350,9 +369,38 @@ function foldingFor(change) {
 	return [foldService.of(blockFolds(change)), foldLevelKeys(change)];
 }
 
-const sysmlFolds = foldingFor(text => braceChange(sysmlCode(text)));
-const plantUmlFolds = foldingFor(text => braceChange(plantUmlCode(text))
-	+ pumlBlockChange(plantUmlCode(text)));
+const SYSML_BLOCKS = text => braceChange(sysmlCode(text));
+const PUML_BLOCKS = text => braceChange(plantUmlCode(text)) + pumlBlockChange(plantUmlCode(text));
+
+const sysmlFolds = foldingFor(SYSML_BLOCKS);
+const plantUmlFolds = foldingFor(PUML_BLOCKS);
+
+/**
+ * Appends fold buttons to container for the editor view of the given language
+ * ("sysml" or "plantuml"): Fold all, the levels 1 to 3, and Unfold all. They do
+ * what the keys do, and give the focus back to the editor.
+ */
+export function addFoldButtons(container, view, language) {
+	const change = language === "plantuml" ? PUML_BLOCKS : SYSML_BLOCKS;
+	const add = (label, title, run) => {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.textContent = label;
+		button.title = title;
+		button.setAttribute("aria-label", title);
+		button.addEventListener("click", () => {
+			run();
+			view.focus();
+		});
+		container.append(button);
+	};
+	add("Fold all", "Fold the outermost blocks (Ctrl/Cmd+Alt+1)", () => foldToLevel(view, change, 1));
+	for (let level = 2; level <= 3; level++) {
+		add("" + level, "Fold to level " + level + " (Ctrl/Cmd+Alt+" + level + ")",
+			() => foldToLevel(view, change, level));
+	}
+	add("Unfold all", "Unfold all blocks (Ctrl/Cmd+Alt+])", () => unfoldAll(view));
+}
 
 // ---------------------------------------------------------------------------
 // Editors

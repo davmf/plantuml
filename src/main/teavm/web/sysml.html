@@ -42,6 +42,7 @@
 		<section id="sysml-pane" class="pane">
 			<div class="tabs" role="tablist" id="tabs">
 				<span class="tab-actions">
+					<span id="sysml-folds" class="fold-bar" role="group" aria-label="Fold blocks"></span>
 					<button id="tab-new" type="button" title="New SysML file">+</button>
 					<button id="tab-open" type="button" title="Open .sysml files (or drop them on this pane)">Open…</button>
 					<input id="file-input" type="file" accept=".sysml,.kerml,.txt,text/plain" multiple hidden>
@@ -53,7 +54,7 @@
 		<div class="resize" data-pane="sysml-pane"></div>
 
 		<section id="puml-pane" class="pane">
-			<div class="pane-title"><span id="puml-title">PlantUML</span></div>
+			<div class="pane-title"><span id="puml-title">PlantUML</span><span id="puml-folds" class="fold-bar" role="group" aria-label="Fold blocks"></span></div>
 			<textarea id="editor" class="code" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>
 			<div id="import-status" class="import-status"></div>
 		</section>
