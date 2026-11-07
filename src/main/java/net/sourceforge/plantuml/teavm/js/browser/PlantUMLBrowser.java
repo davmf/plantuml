@@ -402,7 +402,8 @@ public class PlantUMLBrowser {
 					selected = i;
 				sb.append(i == 0 ? "" : ",").append("{\"name\":").append(json(root.getName()))
 						.append(",\"qualifiedName\":").append(json(root.getQualifiedName()))
-						.append(",\"profile\":").append(json(root.getProfile().getName())).append('}');
+						.append(",\"profile\":").append(json(root.getProfile().getName()))
+						.append(",\"file\":").append(json(root.getSource())).append('}');
 			}
 			sb.append("],\"selected\":").append(selected).append(",\"profiles\":");
 			describeGenerators(sb, SysmlImport.PROFILES);

@@ -139,7 +139,9 @@ PlantUML they import into in the middle, and the diagram on the right. It
 works for every profile of [SYSML_PROFILES.md](SYSML_PROFILES.md). The
 toolbar follows the files: **root** lists every diagram root they hold, with
 the profile that draws it (*first found* is the directive's own choice),
-**profile** restricts the search to one profile or picks a view (its
+picking a tab (or opening a file) draws the first root declared in that
+file, unless the diagram already shows one of its roots or the file declares
+none. **profile** restricts the search to one profile or picks a view (its
 *views* group: `view=definitions`, `view=requirements`), and only the options
 of the profile or view that draws the root are shown. **ELK** writes
 `layout=default` when it is off (it is hidden for sequence and timing
@@ -171,7 +173,7 @@ same import as the directive (`SysmlImport.importSysml`) and calls
 one of the callbacks before it returns; `options` are the directive's
 `key=value` words. The toolbar comes from `sysmlDescribe(names, texts,
 options, onSuccess, onError)`, which delivers JSON: every root found
-(`name`, `qualifiedName`, `profile`), the index of the one the import would
+(`name`, `qualifiedName`, `profile`, and the `file` it is declared in), the index of the one the import would
 draw with these `root=`/`profile=`/`view=` options (`selected`, -1 for
 none), and every profile (`profiles`) and view (`views`) with whether
 `layout=` applies (`graphLayout`) and its options and their allowed values,

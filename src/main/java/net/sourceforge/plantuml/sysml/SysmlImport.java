@@ -218,6 +218,11 @@ public final class SysmlImport {
 		public String getQualifiedName() {
 			return node.getQualifiedName();
 		}
+
+		/** The name of the file the root is declared in. */
+		public String getSource() {
+			return node.getSource();
+		}
 	}
 
 	/**

@@ -496,7 +496,36 @@ function renderTabs() {
 function selectTab(index) {
 	active = index;
 	renderTabs();
-	scheduleSave();
+	if (followTab()) {
+		importNow();
+	} else {
+		scheduleSave();
+	}
+}
+
+// Points root= at a root declared in the active tab's file, so that picking a
+// tab draws its diagram. Nothing changes when the diagram already shows a root
+// of that file, or when the file declares none (a library, or a board that
+// another file uses): the last diagram stays. True when root= changed.
+function followTab() {
+	describeFiles();
+	if (described == null) {
+		return false;
+	}
+	const name = files[active].name;
+	const roots = described.roots.filter(r => r.file === name && r.name != null);
+	if (roots.length === 0) {
+		return false;
+	}
+	const shown = options.root === ""
+		? (described.selected >= 0 ? described.roots[described.selected] : null)
+		: described.roots.find(r => r.name === options.root || r.qualifiedName === options.root);
+	// A root without a name is a view's whole file set, not this file's diagram
+	if (shown != null && shown.file === name && shown.name != null) {
+		return false;
+	}
+	options.root = rootValue(roots[0]);
+	return true;
 }
 
 function uniqueName(name) {
@@ -581,6 +610,8 @@ async function addFiles(fileList) {
 	}
 	renderTabs();
 	showToast("Loaded " + list.map(f => f.name).join(", "));
+	// The last file loaded is the active tab: draw its diagram
+	followTab();
 	scheduleImport();
 }
 
