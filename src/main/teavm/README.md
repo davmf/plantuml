@@ -71,6 +71,28 @@ and relies on its in-page worker (see that class before upgrading). Like
 `viz-global.js`, it is deployed at the root. Keep its version in step with the
 ELK version of `gradle/libs.versions.toml`. It is not part of the MIT npm package.
 
+`codemirror-6.min.js` is [CodeMirror 6](https://codemirror.net/) (MIT,
+`codemirror-LICENSE.txt` alongside; package versions in its header comment),
+bundled into one ES module for the SysML pane of `sysml.html`
+(`web/sysml-editor.js`). It is not part of the MIT npm package, which does not
+ship `sysml.html`. To rebuild it, in an empty directory outside the repository:
+
+```bash
+npm install codemirror @codemirror/language @codemirror/state @codemirror/view \
+    @codemirror/commands @codemirror/search @lezer/highlight esbuild
+cat > entry.js <<'EOF'
+export { basicSetup } from "codemirror";
+export { EditorView, keymap, placeholder } from "@codemirror/view";
+export { EditorState } from "@codemirror/state";
+export { indentWithTab } from "@codemirror/commands";
+export { StreamLanguage, syntaxHighlighting, indentUnit } from "@codemirror/language";
+export { classHighlighter } from "@lezer/highlight";
+EOF
+npx esbuild entry.js --bundle --format=esm --minify --legal-comments=none --outfile=codemirror.min.js
+```
+
+then prepend the version header and copy it here as `codemirror-6.min.js`.
+
 ## Experimental: Wasm GC build
 
 The same entry point (`PlantUMLBrowser`) can also be compiled by TeaVM to

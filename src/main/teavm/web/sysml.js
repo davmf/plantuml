@@ -14,11 +14,16 @@
 // draws the selected root are shown.
 import { render, sysmlDescribe, sysmlToPlantUml } from "./plantuml.js";
 import { createZoomController } from "./zoom.js";
+import { createSysmlEditor } from "./sysml-editor.js";
 
 const STORAGE_KEY = "plantuml-sysml-playground";
 const DEBOUNCE_MS = 300;
 
-const sysmlArea = document.getElementById("sysml");
+// The left pane edits the active tab's file
+const sysmlEditor = createSysmlEditor(document.getElementById("sysml"), text => {
+	files[active].text = text;
+	scheduleImport();
+});
 const editor = document.getElementById("editor");
 const tabsEl = document.getElementById("tabs");
 const importStatus = document.getElementById("import-status");
@@ -490,7 +495,7 @@ function renderTabs() {
 		}
 		tabsEl.insertBefore(tab, actions);
 	});
-	sysmlArea.value = files[active].text;
+	sysmlEditor.setFile(files[active]);
 }
 
 function selectTab(index) {
@@ -575,7 +580,7 @@ function newTab() {
 	files.push({name: uniqueName("model.sysml"), text: ""});
 	active = files.length - 1;
 	renderTabs();
-	sysmlArea.focus();
+	sysmlEditor.focus();
 	// The directive line lists the files: it gains the new one at once
 	scheduleImport();
 }
@@ -616,17 +621,6 @@ async function addFiles(fileList) {
 }
 
 function fileTabs() {
-	sysmlArea.addEventListener("input", () => {
-		files[active].text = sysmlArea.value;
-		scheduleImport();
-	});
-	sysmlArea.addEventListener("keydown", e => {
-		if (e.key === "Tab" && e.ctrlKey === false && e.altKey === false && e.metaKey === false) {
-			e.preventDefault();
-			document.execCommand("insertText", false, "  ");
-		}
-	});
-
 	document.getElementById("tab-new").addEventListener("click", newTab);
 	const input = document.getElementById("file-input");
 	document.getElementById("tab-open").addEventListener("click", () => input.click());

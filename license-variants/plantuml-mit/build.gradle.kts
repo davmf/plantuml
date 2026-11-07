@@ -185,6 +185,8 @@ tasks.register("npmPackage") {
 				// "!pragma layout elk" falls back to the default engine unless the
 				// host provides elkjs itself (PLANTUML_ELK)
 				exclude("viz-global.js", "elk.bundled.js", "elkjs-LICENSE.md")
+				// CodeMirror only serves sysml.html, which the package does not ship
+				exclude("codemirror-*")
 				into("vendor")
 			}
 			into(pkgDir)

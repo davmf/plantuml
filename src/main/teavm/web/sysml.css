@@ -101,6 +101,26 @@
 	color: var(--fg);
 }
 
+/* The SysML pane's CodeMirror editor (sysml-editor.js) scrolls by itself */
+.pane .cm-host {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	overflow: hidden;
+}
+
+.cm-host .tok-keyword { color: light-dark(#8839ef, #cba6f7); }
+.cm-host .tok-comment { color: light-dark(#7c7f93, #9399b2); font-style: italic; }
+.cm-host .tok-string { color: light-dark(#40a02b, #a6e3a1); }
+.cm-host .tok-number,
+.cm-host .tok-atom,
+.cm-host .tok-bool { color: light-dark(#fe640b, #fab387); }
+.cm-host .tok-meta { color: light-dark(#df8e1d, #f9e2af); }
+.cm-host .tok-typeName { color: light-dark(#1e66f5, #89b4fa); }
+.cm-host .tok-definition { color: light-dark(#d20f39, #f38ba8); font-weight: 600; }
+.cm-host .tok-operator,
+.cm-host .tok-punctuation { color: light-dark(#5c5f77, #9399b2); }
+
 .pane:focus-within {
 	outline: 1px solid var(--accent);
 }
