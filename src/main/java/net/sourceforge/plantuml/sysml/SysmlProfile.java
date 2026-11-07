@@ -64,6 +64,14 @@ public interface SysmlProfile {
 	 */
 	Map<String, List<String>> getOptionKeys();
 
+	/**
+	 * Whether the diagram is laid out as a graph (by Graphviz or ELK), so that
+	 * <code>layout=</code> applies. Sequence and timing diagrams are not.
+	 */
+	default boolean isGraphLayout() {
+		return true;
+	}
+
 	/** The roots found in the model, in file order (best guess first). */
 	List<SysmlNode> findRoots(SysmlModel model);
 

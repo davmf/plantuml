@@ -49,6 +49,12 @@ import net.sourceforge.plantuml.sysml.SysmlRootProfile;
  */
 public final class SeqProfile extends SysmlRootProfile {
 
+	@Override
+	public boolean isGraphLayout() {
+		return false;
+	}
+
+
 	static final String INTERACTION = "Interaction";
 	static final String LIFELINE = "Lifeline";
 	static final String MESSAGE = "Message";

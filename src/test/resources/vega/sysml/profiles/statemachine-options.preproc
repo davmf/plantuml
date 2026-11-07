@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 hide empty description
 state outerInit <<start>>
 state "NewCompositeState1" as newCompositeState1 {

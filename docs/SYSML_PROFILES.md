@@ -60,6 +60,7 @@ to one profile.
 | `profile` | see the table above    | detected    | Only look for roots of this profile |
 | `style`   | `true`, `false`        | `true`      | Emit the default skinparams and `<style>` |
 | `frame`   | `true`, `false`        | `false`     | Draw the root itself as an outer frame |
+| `layout`  | `elk`, `default`       | `elk`       | Write `!pragma layout elk` before the generated source; `default` leaves the layout to the diagram (Graphviz unless it sets a pragma itself). Sequence and timing diagrams have no graph layout and ignore it |
 
 An option the selected profile does not know is an error. As for
 InterconnectProfile, every element carries stereotypes (style them in a

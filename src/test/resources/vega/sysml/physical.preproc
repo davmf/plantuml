@@ -1,6 +1,7 @@
 @startuml
 left to right direction
 !pragma layout elk
+!pragma layout elk
 skinparam component {
   style rectangle
   portLabels inside

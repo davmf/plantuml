@@ -65,7 +65,6 @@ public final class ReqView implements SysmlProfile {
 	static final String DIRECTION = "direction";
 	static final String TEXT = "text";
 	static final String PACKAGES = "packages";
-	static final String LAYOUT = "layout";
 
 	private final Map<String, List<String>> optionKeys = new LinkedHashMap<>();
 
@@ -75,7 +74,6 @@ public final class ReqView implements SysmlProfile {
 		optionKeys.put(DIRECTION, list("both", "up", "down"));
 		optionKeys.put(TEXT, list("true", "false"));
 		optionKeys.put(PACKAGES, list("false", "true"));
-		optionKeys.put(LAYOUT, list("elk", "default"));
 	}
 
 	private static List<String> list(String... values) {

@@ -29,7 +29,7 @@ diagram is centred on one element (highlighted) and holds what lies within
 | `direction` | `both`, `up`, `down`    | `both`                  | Follow relations both ways, only towards what they trace to (`up`: the requirement a test verifies, the requirement a requirement derives from, the owner of a nested requirement), or only towards what traces to the element (`down`) |
 | `text`      | `true`, `false`         | `true`                  | Show the doc text, cut after 160 characters |
 | `packages`  | `true`, `false`         | `false`                 | Draw the packages as frames around their elements |
-| `layout`    | `elk`, `default`        | `elk`                   | Emit `!pragma layout elk`; `default` leaves the layout to the diagram |
+| `layout`    | `elk`, `default`        | `elk`                   | Common to every profile and view (see SYSML_PROFILES.md): emit `!pragma layout elk`; `default` leaves the layout to the diagram |
 | `root`      | package name            | the whole file set      | Without focus: only the requirements of this package (any depth). With focus: only look the focus up in this package |
 | `style`     | `true`, `false`         | `true`                  | Emit the default colours |
 

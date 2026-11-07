@@ -233,8 +233,6 @@ final class ReqWriter extends SysmlWriter {
 			attributes.put("focusKind", focus.kind);
 		}
 		header(source, "requirements", root == null ? "" : root.getName(), attributes);
-		if ("elk".equals(options.get(ReqView.LAYOUT, "elk")))
-			out.add("!pragma layout elk");
 		defaultFunction("$sysml_element_label", "$id, $name, $kind", //
 				"!$sysml_l = \"\"", //
 				"!if $kind != \"\"", //

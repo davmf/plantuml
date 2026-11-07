@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 hide empty members
 left to right direction
 package "VehicleModel" as VehicleModel <<package>> {

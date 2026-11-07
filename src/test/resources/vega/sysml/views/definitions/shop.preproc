@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 hide empty members
 package "Shop" as Shop <<package>> {
   enum "Size" as Size <<enum def>> {

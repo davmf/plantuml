@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 hide empty members
 skinparam classAttributeIconSize 0
 skinparam class {

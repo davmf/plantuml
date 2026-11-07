@@ -65,12 +65,19 @@ public final class SysmlOptions {
 	 */
 	public static final String VIEW = "view";
 	public static final String STYLE = "style";
+	/**
+	 * <code>elk</code> (default) writes <code>!pragma layout elk</code> before
+	 * the generated source; <code>default</code> leaves the layout to the
+	 * diagram.
+	 */
+	public static final String LAYOUT = "layout";
 	public static final String FRAME = "frame";
 
 	public static final List<String> COMMON = Collections
-			.unmodifiableList(Arrays.asList(ROOT, SYSTEM, PROFILE, STYLE, FRAME));
+			.unmodifiableList(Arrays.asList(ROOT, SYSTEM, PROFILE, STYLE, FRAME, LAYOUT));
 
 	private static final List<String> BOOLEAN = Arrays.asList("true", "false");
+	private static final List<String> LAYOUTS = Arrays.asList("elk", "default");
 
 	private final Map<String, String> values;
 
@@ -111,6 +118,8 @@ public final class SysmlOptions {
 			List<String> allowed = profileKeys.get(key);
 			if (key.equals(STYLE) || key.equals(FRAME))
 				allowed = BOOLEAN;
+			if (key.equals(LAYOUT))
+				allowed = LAYOUTS;
 			if (allowed != null && allowed.contains(ent.getValue()) == false)
 				throw new SysmlException("option " + key + "=" + ent.getValue() + ": expected one of " + allowed);
 		}
@@ -134,6 +143,11 @@ public final class SysmlOptions {
 	/** Draw the root itself as an outer frame (default false). */
 	public boolean isFrame() {
 		return getBoolean(FRAME, false);
+	}
+
+	/** Lay graph diagrams out with ELK (default true). */
+	public boolean isElk() {
+		return get(LAYOUT, "elk").equals("elk");
 	}
 
 	public Map<String, String> asMap() {

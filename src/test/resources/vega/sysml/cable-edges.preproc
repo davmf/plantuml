@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 component "G2\nSolarPanel" as G2 <<PowerSource>> {
   portout "X1" as G2_X1 <<male>> <<wire_to_wire>>
   portout "X2" as G2_X2 <<female>> <<wire_to_wire>>

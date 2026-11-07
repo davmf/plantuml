@@ -123,8 +123,15 @@ public final class SysmlImport {
 					+ viewNames() + ")");
 		}
 		parsedOptions.check(selected.profile.getName(), optionKeys);
-		return selected.profile.generate(selected.model, selected.node, parsedOptions, String.join(" ", names),
-				isFunctionDefined);
+		final List<String> lines = selected.profile.generate(selected.model, selected.node, parsedOptions,
+				String.join(" ", names), isFunctionDefined);
+		if (selected.profile.isGraphLayout() && parsedOptions.isElk()) {
+			final List<String> result = new ArrayList<>(lines.size() + 1);
+			result.add("!pragma layout elk");
+			result.addAll(lines);
+			return result;
+		}
+		return lines;
 	}
 
 	/**

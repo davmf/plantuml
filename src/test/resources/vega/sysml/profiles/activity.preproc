@@ -1,4 +1,5 @@
 @startuml
+!pragma layout elk
 skinparam component {
   style rectangle
 }
