@@ -14,7 +14,7 @@
 // draws the selected root are shown.
 import { render, sysmlDescribe, sysmlToPlantUml } from "./plantuml.js";
 import { createZoomController } from "./zoom.js";
-import { createSysmlEditor } from "./sysml-editor.js";
+import { createSysmlEditor, createPlantUmlEditor } from "./sysml-editor.js";
 
 const STORAGE_KEY = "plantuml-sysml-playground";
 const DEBOUNCE_MS = 300;
@@ -24,7 +24,9 @@ const sysmlEditor = createSysmlEditor(document.getElementById("sysml"), text => 
 	files[active].text = text;
 	scheduleImport();
 });
-const editor = document.getElementById("editor");
+// The middle pane: what the import writes, or a diagram of your own; read and
+// written through .value like the textarea it replaces
+const editor = createPlantUmlEditor(document.getElementById("editor"), () => scheduleRender());
 const tabsEl = document.getElementById("tabs");
 const importStatus = document.getElementById("import-status");
 const modeSelect = document.getElementById("mode");
@@ -698,7 +700,6 @@ function controls() {
 		importNow();
 	});
 	document.getElementById("import").addEventListener("click", importNow);
-	editor.addEventListener("input", scheduleRender);
 
 	document.getElementById("theme").addEventListener("click", () => {
 		dark = !dark;

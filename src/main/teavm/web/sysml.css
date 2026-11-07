@@ -109,6 +109,13 @@
 	overflow: hidden;
 }
 
+/* main.css sizes #editor for the main playground (half height, padded) */
+.pane #editor.cm-host {
+	flex: 1 1 0;
+	padding: 0;
+	font-size: inherit;
+}
+
 .cm-host .tok-keyword { color: light-dark(#8839ef, #cba6f7); }
 .cm-host .tok-comment { color: light-dark(#7c7f93, #9399b2); font-style: italic; }
 .cm-host .tok-string { color: light-dark(#40a02b, #a6e3a1); }
@@ -116,6 +123,9 @@
 .cm-host .tok-atom,
 .cm-host .tok-bool { color: light-dark(#fe640b, #fab387); }
 .cm-host .tok-meta { color: light-dark(#df8e1d, #f9e2af); }
+.cm-host .tok-macroName,
+.cm-host .tok-variableName2 { color: light-dark(#179299, #94e2d5); }
+.cm-host .tok-labelName { color: light-dark(#ea76cb, #f5c2e7); }
 .cm-host .tok-typeName { color: light-dark(#1e66f5, #89b4fa); }
 .cm-host .tok-definition { color: light-dark(#d20f39, #f38ba8); font-weight: 600; }
 .cm-host .tok-operator,

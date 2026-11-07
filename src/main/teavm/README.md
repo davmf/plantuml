@@ -83,7 +83,7 @@ npm install codemirror @codemirror/language @codemirror/state @codemirror/view \
 cat > entry.js <<'EOF'
 export { basicSetup } from "codemirror";
 export { EditorView, keymap, placeholder } from "@codemirror/view";
-export { EditorState } from "@codemirror/state";
+export { EditorState, Transaction } from "@codemirror/state";
 export { indentWithTab } from "@codemirror/commands";
 export { StreamLanguage, syntaxHighlighting, indentUnit } from "@codemirror/language";
 export { classHighlighter } from "@lezer/highlight";

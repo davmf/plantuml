@@ -1,8 +1,12 @@
-// The SysML pane's editor: CodeMirror 6 (vendor/codemirror-6.min.js) with a
-// small SysML v2 / KerML highlighter, behind the few calls sysml.js needs.
+// The playground's editors: CodeMirror 6 (vendor/codemirror-6.min.js) with
+// small SysML v2 / KerML and PlantUML highlighters, behind the few calls
+// sysml.js needs.
 //
-// Each file keeps its own EditorState, so undo history, selections and scroll
-// survive switching tabs, and an undo never reaches into another file.
+// SysML pane: each file keeps its own EditorState, so undo history, selections
+// and scroll survive switching tabs, and an undo never reaches into another file.
+// PlantUML pane: one document, rewritten by the import; those rewrites only
+// replace what changed, so the cursor and scroll stay put, and they are not
+// undo steps.
 //
 // Multi-cursor and friends come from CodeMirror's basicSetup:
 //   Alt+click                     add a cursor
@@ -13,10 +17,10 @@
 //   Escape                        back to a single cursor
 //   Ctrl/Cmd+F, Ctrl/Cmd+H        search, replace
 //   Alt+Up/Down, Shift+Alt+Up/Down  move, copy the line
-//   Ctrl/Cmd+/                    toggle // comment
+//   Ctrl/Cmd+/                    toggle a // (SysML) or ' (PlantUML) comment
 //   Tab, Shift+Tab                indent, dedent (Escape then Tab leaves the editor)
 import {
-	basicSetup, EditorView, EditorState, keymap, placeholder, indentWithTab,
+	basicSetup, EditorView, EditorState, Transaction, keymap, placeholder, indentWithTab,
 	StreamLanguage, syntaxHighlighting, indentUnit, classHighlighter
 } from "./vendor/codemirror-6.min.js";
 
@@ -37,6 +41,10 @@ const KEYWORDS = new Set((
 ).split(" "));
 
 const ATOMS = new Set(["true", "false", "null"]);
+
+// Typing one of these inserts its closing pair. Not ': it opens a PlantUML
+// comment, and in SysML it is mostly an apostrophe in a doc comment.
+const CLOSE_BRACKETS = {brackets: ["(", "[", "{", "\""]};
 
 // Brace depth drives the indentation of a new line; a name following "def"
 // is a definition, a name following ":" or ":>" a type.
@@ -116,7 +124,8 @@ const sysmlLanguage = StreamLanguage.define({
 	},
 	languageData: {
 		commentTokens: {line: "//", block: {open: "/*", close: "*/"}},
-		indentOnInput: /^\s*\}$/
+		indentOnInput: /^\s*\}$/,
+		closeBrackets: CLOSE_BRACKETS
 	}
 });
 
@@ -142,6 +151,94 @@ function takeName(state) {
 	}
 	return "variable";
 }
+
+// ---------------------------------------------------------------------------
+// PlantUML
+// ---------------------------------------------------------------------------
+
+const PUML_KEYWORDS = new Set((
+	"abstract activate actor again agent alt annotation archimate artifact as autonumber boundary box break "
+	+ "card caption circle class cloud collections component control critical database deactivate destroy "
+	+ "detach diamond direction else elseif end endbox endfork endif endlegend endnote endsplit endwhile entity "
+	+ "enum exception file folder footer fork frame group harness header hexagon hide if interface json kill "
+	+ "label left legend loop map metaclass namespace newpage node note object of on opt over package par "
+	+ "participant partition port portin portout process protocol queue rectangle ref remove repeat return "
+	+ "right show skinparam split stack start state stereotype stop storage struct style then title to together "
+	+ "top bottom up down usecase while"
+).split(" "));
+
+// ' starts a comment only at the start of a line (elsewhere it is text, like
+// an apostrophe in a message); /' '/ is a block comment.
+const plantUmlLanguage = StreamLanguage.define({
+	name: "plantuml",
+	startState: () => ({inComment: false}),
+	copyState: s => ({inComment: s.inComment}),
+	token(stream, state) {
+		if (state.inComment) {
+			if (stream.skipTo("'/")) {
+				stream.match("'/");
+				state.inComment = false;
+			} else {
+				stream.skipToEnd();
+			}
+			return "comment";
+		}
+		if (stream.eatSpace()) {
+			return null;
+		}
+		if (stream.match("/'")) {
+			state.inComment = true;
+			return "comment";
+		}
+		if (stream.peek() === "'" && stream.string.slice(0, stream.pos).trim() === "") {
+			stream.skipToEnd();
+			return "comment";
+		}
+		if (stream.match(/^@(?:start|end)\w+/)) {
+			return "keyword";
+		}
+		if (stream.match(/^![A-Za-z_]\w*/)) {
+			return "meta";
+		}
+		if (stream.match(/^%[A-Za-z_]\w*/)) {
+			return "macroName";
+		}
+		if (stream.match(/^\$[A-Za-z_]\w*/)) {
+			return "variableName.special";
+		}
+		if (stream.match(/^"(?:[^"\\]|\\.)*"?/)) {
+			return "string";
+		}
+		if (stream.match(/^<<[^>]*>>/)) {
+			return "labelName";
+		}
+		if (stream.match(/^#(?:[0-9A-Fa-f]{3,8}\b|[A-Za-z]\w*)/)) {
+			return "atom";
+		}
+		// Arrows, with an optional [style] or direction inside: -->, -[#red]->, .up.>, <|--
+		if (stream.match(/^(?:<\|?|[*o+#x}]|\\\\|\/\/)?(?:[-.=~]+(?:\[[^\]]*\]|left|right|up|down|le?|ri?|do?)?)+[-.=~]*(?:\|?>|[*o+#x{]|\\\\|\/\/)?/)
+				&& /[-.=~]{2}|[<>]/.test(stream.current())) {
+			return "operator";
+		}
+		stream.backUp(stream.current().length);
+		if (stream.match(/^\d+(?:\.\d+)?/)) {
+			return "number";
+		}
+		if (stream.match(/^[A-Za-z_][\w.]*/)) {
+			return PUML_KEYWORDS.has(stream.current().toLowerCase()) ? "keyword" : null;
+		}
+		stream.next();
+		return null;
+	},
+	languageData: {
+		commentTokens: {line: "'", block: {open: "/'", close: "'/"}},
+		closeBrackets: CLOSE_BRACKETS
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Editors
+// ---------------------------------------------------------------------------
 
 // The pane's look: main.css variables, so the dark toggle needs no theme swap.
 const paneTheme = EditorView.theme({
@@ -175,9 +272,39 @@ const paneTheme = EditorView.theme({
 	".cm-tooltip": {backgroundColor: "var(--surface)", color: "var(--fg)"}
 });
 
+// What both panes share. onChange(text) follows the edits made in the editor;
+// a dispatch made while quiet() returns true is not reported.
+function extensionsFor(language, textarea, onChange, quiet) {
+	return [
+		basicSetup,
+		keymap.of([indentWithTab]),
+		indentUnit.of("  "),
+		EditorState.tabSize.of(4),
+		language,
+		syntaxHighlighting(classHighlighter),
+		paneTheme,
+		placeholder(textarea.placeholder || ""),
+		EditorView.contentAttributes.of({autocapitalize: "none", autocorrect: "off", spellcheck: "false"}),
+		EditorView.updateListener.of(update => {
+			if (update.docChanged && quiet() === false) {
+				onChange(update.state.doc.toString());
+			}
+		})
+	];
+}
+
+// The textarea's place, id and classes go to the editor's host.
+function replaceTextarea(textarea) {
+	const host = document.createElement("div");
+	host.id = textarea.id;
+	host.className = textarea.className + " cm-host";
+	textarea.replaceWith(host);
+	return host;
+}
+
 /**
- * Replaces the textarea with an editor; onChange(text) follows every edit made
- * in the editor (never the ones made through setFile).
+ * Replaces the textarea with the SysML editor; onChange(text) follows every
+ * edit made in the editor (never the ones made through setFile).
  *
  * Returns {setFile(file), focus()}: setFile shows a {name, text} file, with the
  * state it had when last shown unless its text has changed since.
@@ -186,32 +313,13 @@ export function createSysmlEditor(textarea, onChange) {
 	const states = new WeakMap();
 	let shown = null;
 
-	const extensions = [
-		basicSetup,
-		keymap.of([indentWithTab]),
-		indentUnit.of("  "),
-		EditorState.tabSize.of(4),
-		sysmlLanguage,
-		syntaxHighlighting(classHighlighter),
-		paneTheme,
-		placeholder(textarea.placeholder || ""),
-		EditorView.contentAttributes.of({autocapitalize: "none", autocorrect: "off", spellcheck: "false"}),
+	const extensions = extensionsFor(sysmlLanguage, textarea, onChange, () => false).concat([
 		// Dropped files open as tabs (the pane's drop handler), not as inserted text
 		EditorView.domEventHandlers({
 			drop: e => e.dataTransfer != null && e.dataTransfer.files.length > 0
-		}),
-		EditorView.updateListener.of(update => {
-			if (update.docChanged) {
-				onChange(update.state.doc.toString());
-			}
 		})
-	];
-
-	const host = document.createElement("div");
-	host.id = textarea.id;
-	host.className = textarea.className + " cm-host";
-	textarea.replaceWith(host);
-	const view = new EditorView({parent: host, state: EditorState.create({doc: "", extensions})});
+	]);
+	const view = new EditorView({parent: replaceTextarea(textarea), state: EditorState.create({doc: "", extensions})});
 
 	return {
 		setFile(file) {
@@ -226,6 +334,55 @@ export function createSysmlEditor(textarea, onChange) {
 				? saved
 				: EditorState.create({doc: file.text, extensions}));
 			shown = file;
+		},
+		focus() {
+			view.focus();
+		},
+		view
+	};
+}
+
+/**
+ * Replaces the textarea with the PlantUML editor; onChange(text) follows every
+ * edit made in the editor (never the ones made by setting value).
+ *
+ * Returns {value, focus()}, value read and written like a textarea's.
+ */
+export function createPlantUmlEditor(textarea, onChange) {
+	let setting = false;
+	const extensions = extensionsFor(plantUmlLanguage, textarea, onChange, () => setting);
+	const view = new EditorView({parent: replaceTextarea(textarea), state: EditorState.create({doc: "", extensions})});
+
+	return {
+		get value() {
+			return view.state.doc.toString();
+		},
+		// Only the changed middle is replaced: a re-import that changes one line
+		// leaves the cursor, the selection and the scroll where they were.
+		set value(text) {
+			const old = view.state.doc.toString();
+			if (old === text) {
+				return;
+			}
+			let from = 0;
+			const max = Math.min(old.length, text.length);
+			while (from < max && old.charCodeAt(from) === text.charCodeAt(from)) {
+				from++;
+			}
+			let end = 0;
+			while (end < max - from
+				&& old.charCodeAt(old.length - 1 - end) === text.charCodeAt(text.length - 1 - end)) {
+				end++;
+			}
+			setting = true;
+			try {
+				view.dispatch({
+					changes: {from, to: old.length - end, insert: text.slice(from, text.length - end)},
+					annotations: Transaction.addToHistory.of(false)
+				});
+			} finally {
+				setting = false;
+			}
 		},
 		focus() {
 			view.focus();
