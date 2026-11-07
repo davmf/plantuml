@@ -109,6 +109,7 @@ public class SvekHarness implements UDrawable {
 	private final List<double[]> cachedSpine1Stubs = new ArrayList<double[]>();
 	private final List<double[]> cachedSpine2Stubs = new ArrayList<double[]>();
 	private List<double[]> nonHarnessVerts;
+	private List<RectangleArea> blockingObstacles;
 	private double cachedSrcX = Double.NaN;
 	private double cachedDestX = Double.NaN;
 	// The board entity shared by every harness endpoint (the common diagram-
@@ -329,6 +330,23 @@ public class SvekHarness implements UDrawable {
 		return count;
 	}
 
+	private static final int BLOCKED_STUB_COST = 10;
+
+	// Number of this harness's source (or destination) stubs that would run
+	// through a component other than their own if that spine stood at x.
+	private int blockedStubs(boolean source, double x) {
+		if (blockingObstacles == null)
+			blockingObstacles = collectObstacles();
+		int count = 0;
+		for (EdgeData e : buildEdgeData()) {
+			final XPoint2D port = source ? e.start : e.end;
+			final RectangleArea own = source ? e.startCluster : e.endCluster;
+			if (firstExternalObstacle(port.getX(), x, port.getY(), own, blockingObstacles) != null)
+				count++;
+		}
+		return count;
+	}
+
 	private static boolean strictlyBetween(double v, double a, double b) {
 		return v > Math.min(a, b) && v < Math.max(a, b);
 	}
@@ -428,7 +446,10 @@ public class SvekHarness implements UDrawable {
 						break;
 					}
 				final double oldX = currentX[i];
-				if (clear && stubCrossings(i, naturalX[i], currentX, naturalX, topY, botY, stubs) == 0) {
+				final SvekHarness self = duals.get(i / 2);
+				final boolean source = i % 2 == 0;
+				if (clear && stubCrossings(i, naturalX[i], currentX, naturalX, topY, botY, stubs) == 0
+						&& self.blockedStubs(source, naturalX[i]) == 0) {
 					currentX[i] = naturalX[i];
 				} else {
 					java.util.Collections.sort(conflictXs);
@@ -459,7 +480,10 @@ public class SvekHarness implements UDrawable {
 					int bestCrossings = Integer.MAX_VALUE;
 					double bestDist = Double.MAX_VALUE;
 					for (double c : inBand.isEmpty() ? candidates : inBand) {
-						final int crossings = stubCrossings(i, c, currentX, naturalX, topY, botY, stubs);
+						// A stub tunnelling through another component has to
+						// loop round it: far worse than crossing a stub.
+						final int crossings = stubCrossings(i, c, currentX, naturalX, topY, botY, stubs)
+								+ BLOCKED_STUB_COST * owner.blockedStubs(source, c);
 						final double dist = Math.abs(c - naturalX[i]);
 						if (crossings < bestCrossings || (crossings == bestCrossings && dist < bestDist)) {
 							bestX = c;
@@ -708,11 +732,14 @@ public class SvekHarness implements UDrawable {
 	}
 
 	// The ancestor of `port` that is a direct child of the board (the enclosing
-	// component box), or the topmost ancestor when the harness has no single
-	// board. Returns null if the port is unparented. Walking to the board-child
-	// (rather than taking the immediate parent) keeps the routing logic
-	// nesting-depth independent: a port nested port -> group -> component ->
-	// board still resolves to its component.
+	// component box), or the port's own component when the harness has no
+	// single board. Returns null if the port is unparented. Walking to the
+	// board-child (rather than taking the immediate parent) keeps the routing
+	// logic nesting-depth independent: a port nested port -> group -> component
+	// -> board still resolves to its component. Without a board the topmost
+	// ancestor would be wrong: for a harness from a top-level cable into a
+	// component nested in a container (an assembly), it would be the whole
+	// container, so the stubs would cross the component's own body.
 	private Entity owningComponentEntity(Entity port) {
 		if (port == null)
 			return null;
@@ -720,6 +747,8 @@ public class SvekHarness implements UDrawable {
 		Entity e = port.getParentContainer();
 		if (e == null || e.isRoot())
 			return null;
+		if (board == null)
+			return e;
 		while (true) {
 			final Entity parent = e.getParentContainer();
 			if (parent == null || parent.isRoot())
@@ -1384,12 +1413,6 @@ public class SvekHarness implements UDrawable {
 		}
 
 		final List<RectangleArea> obstacles = collectObstacles();
-		// Spine X must be clear for the FULL vertical extent of the
-		// rendered spine line, including the trunk extension above the
-		// topmost source or below the bottommost source. Use the union
-		// of source and destination Y ranges plus a generous margin so
-		// the eventual trunkY (computed below) falls inside the cleared
-		// range.
 		final double allTopRough = Math.min(spine1Top, spine2Top);
 		final double allBottomRough = Math.max(spine1Bottom, spine2Bottom);
 		final double r = cornerRadius();
@@ -1397,25 +1420,20 @@ public class SvekHarness implements UDrawable {
 		// rounded L-corner. Anything larger makes the spine appear to
 		// extend past the actual port range without purpose.
 		final double trunkMargin = Math.max(r, 1);
-		final double clearTop = allTopRough - trunkMargin;
-		final double clearBottom = allBottomRough + trunkMargin;
-		spine1X = SvekPortConnector.findClearVerticalBidirectional(
-				spine1X, clearTop, clearBottom, obstacles);
-		spine2X = SvekPortConnector.findClearVerticalBidirectional(
-				spine2X, clearTop, clearBottom, obstacles);
-		spine1X = findClearXAgainstVerts(spine1X, clearTop, clearBottom);
-		spine2X = findClearXAgainstVerts(spine2X, clearTop, clearBottom);
 
 		// Wrap the trunk over the top (or under the bottom) of every stub
 		// so the harness reads as a single continuous bundle with two
 		// ends, not an H with T-junctions. The trunk Y lies just outside
 		// the highest/lowest stub Y; spines extend in one direction only.
-		final double allTop = allTopRough;
-		final double allBottom = allBottomRough;
-		final double xMin = Math.min(spine1X, spine2X);
-		final double xMax = Math.max(spine1X, spine2X);
-		final double trunkAbove = allTop - trunkMargin;
-		final double trunkBelow = allBottom + trunkMargin;
+		// It is chosen with the spines at their natural X, then each spine
+		// is moved clear of the obstacles over the span it actually draws
+		// (its own rows and the trunk), not over the union of both: a spine
+		// that only drops from its rows to a trunk below them must not be
+		// pushed away by an obstacle level with the other spine's rows.
+		final double trunkAbove = allTopRough - trunkMargin;
+		final double trunkBelow = allBottomRough + trunkMargin;
+		double xMin = Math.min(spine1X, spine2X);
+		double xMax = Math.max(spine1X, spine2X);
 		final double clearAbove = findClearCrossbarY(trunkAbove, xMin, xMax,
 				obstacles);
 		final double clearBelow = findClearCrossbarY(trunkBelow, xMin, xMax,
@@ -1441,7 +1459,24 @@ public class SvekHarness implements UDrawable {
 				: Double.NaN;
 		final boolean inGap = Double.isNaN(gapY) == false
 				&& findClearCrossbarY(gapY, xMin, xMax, obstacles) == gapY;
-		final double trunkY = inGap ? gapY : trunkAtTop ? clearAbove : clearBelow;
+		double trunkY = inGap ? gapY : trunkAtTop ? clearAbove : clearBelow;
+
+		final double clear1Top = Math.min(spine1Top, trunkY) - trunkMargin;
+		final double clear1Bottom = Math.max(spine1Bottom, trunkY) + trunkMargin;
+		final double clear2Top = Math.min(spine2Top, trunkY) - trunkMargin;
+		final double clear2Bottom = Math.max(spine2Bottom, trunkY) + trunkMargin;
+		spine1X = SvekPortConnector.findClearVerticalBidirectional(
+				spine1X, clear1Top, clear1Bottom, obstacles);
+		spine2X = SvekPortConnector.findClearVerticalBidirectional(
+				spine2X, clear2Top, clear2Bottom, obstacles);
+		spine1X = findClearXAgainstVerts(spine1X, clear1Top, clear1Bottom);
+		spine2X = findClearXAgainstVerts(spine2X, clear2Top, clear2Bottom);
+		xMin = Math.min(spine1X, spine2X);
+		xMax = Math.max(spine1X, spine2X);
+		// A spine moved outward lengthens the trunk: keep it clear.
+		if (inGap == false)
+			trunkY = findClearCrossbarY(trunkY, xMin, xMax, obstacles);
+
 		// End points of the polyline: the spine's far side from the trunk.
 		final double spine1Far = inGap ? (gapY < spine1Top ? spine1Bottom : spine1Top)
 				: trunkAtTop ? spine1Bottom : spine1Top;
@@ -2192,14 +2227,20 @@ public class SvekHarness implements UDrawable {
 		// so including the source components is what stops a SIBLING member's
 		// spine, stub or trunk from crossing a component that merely happens to
 		// host one of this harness's source ports.
+		//
+		// Without a board, the obstacles are the boxes at every depth except
+		// the containers this harness's components sit in: a stub has to
+		// enter those, while the components nested next to its own must still
+		// be avoided.
 		final Entity board = boardEntity();
+		final java.util.Set<Entity> enclosing = board == null ? enclosingContainers() : null;
 		for (Cluster cl : bibliotekon.allCluster()) {
 			final Entity g = cl.getGroup();
 			if (g == null)
 				continue;
 			final Entity parent = g.getParentContainer();
 			final boolean childOfBoard = (board == null)
-					? (parent == null || parent.isRoot())
+					? enclosing.contains(g) == false
 					: (parent == board);
 			if (childOfBoard == false)
 				continue;
@@ -2208,6 +2249,24 @@ public class SvekHarness implements UDrawable {
 				obstacles.add(rect);
 		}
 		return obstacles;
+	}
+
+	// The strict ancestors of every endpoint's own component.
+	private java.util.Set<Entity> enclosingContainers() {
+		final java.util.Set<Entity> result = new java.util.HashSet<Entity>();
+		for (Link link : memberLinks) {
+			final Entity[] ports = { link.getEntity1(), link.getEntity2() };
+			for (Entity port : ports) {
+				if (port == null || port.getParentContainer() == null)
+					continue;
+				Entity e = port.getParentContainer().getParentContainer();
+				while (e != null && e.isRoot() == false) {
+					result.add(e);
+					e = e.getParentContainer();
+				}
+			}
+		}
+		return result;
 	}
 
 	// Full visual bounds of a cluster: its node rectangle expanded upward to
