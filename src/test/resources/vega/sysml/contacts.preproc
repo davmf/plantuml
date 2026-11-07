@@ -20,7 +20,7 @@ component "H1\nLamp" as H1 <<UserInterfaceDevice>> {
     portin "2 GND" as H1_X1_c2 <<nc>>
   }
 }
-harness "A1.J1–H1.X1" {
+harness "A1.J1–H1.X1" [bundle=auto] {
   A1_J1_c1 -- H1_X1_c1
   A1_J1_c2 -- H1_X1_c2
 }

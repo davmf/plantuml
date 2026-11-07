@@ -136,6 +136,9 @@ public class SvekHarness implements UDrawable {
 	}
 
 	private final List<LabelDraw> deferredLabelDraws = new ArrayList<LabelDraw>();
+	// [bundle=auto]: whether the members are drawn as plain wires, resolved
+	// once the layout is known (null until then).
+	private Boolean wiresCache;
 
 	public SvekHarness(Harness harness, List<Link> memberLinks, ISkinParam skinParam,
 			Bibliotekon bibliotekon) {
@@ -568,7 +571,8 @@ public class SvekHarness implements UDrawable {
 
 	private double[] computeNaturalSpineX() {
 		final List<EdgeData> edges = buildEdgeData();
-		if (edges.isEmpty())
+		// Plain wires have no spine to keep clear of the others
+		if (edges.isEmpty() || drawsAsWires())
 			return new double[]{Double.NaN, 0, 0};
 		final double srcX = medianX(startPointsOf(edges));
 		final double dstX = medianX(endPointsOf(edges));
@@ -880,6 +884,11 @@ public class SvekHarness implements UDrawable {
 		final UGraphic ugLine = ug.apply(color)
 				.apply(HColors.none().bg());
 
+		if (drawsAsWires()) {
+			drawWires(ugLine, edges, style);
+			return;
+		}
+
 		// Determine primary flow direction.
 		final List<XPoint2D> startPoints = new ArrayList<XPoint2D>();
 		final List<XPoint2D> endPoints = new ArrayList<XPoint2D>();
@@ -1108,6 +1117,144 @@ public class SvekHarness implements UDrawable {
 		}
 
 		drawLabelOnTrunk(ugLine, spineX, spineTopY, spineX, spineBottomY, false, style);
+	}
+
+	// ------------------------------------------------------------------
+	// [bundle=auto]: plain wires when a bundle adds nothing
+	// ------------------------------------------------------------------
+
+	// True for a [bundle=auto] harness whose every member already runs as a
+	// straight horizontal or vertical line from port to port, leaving each
+	// port on the face that looks at the other one, with no component in the
+	// way and no two members on the same line. A spine would only add bends
+	// there. Members with their own labels keep the bundle, which is the only
+	// place those labels are drawn.
+	private boolean drawsAsWires() {
+		if (wiresCache == null)
+			wiresCache = Boolean.valueOf(computeDrawsAsWires());
+		return wiresCache.booleanValue();
+	}
+
+	private boolean computeDrawsAsWires() {
+		if (harness.getBundle() != Harness.Bundle.AUTO)
+			return false;
+		final List<EdgeData> edges = buildEdgeData();
+		if (edges.isEmpty() || edges.size() != memberLinks.size())
+			return false;
+		final List<RectangleArea> obstacles = collectObstacles();
+		for (EdgeData e : edges) {
+			if (e.hasLabel() || e.hasSourceLabel())
+				return false;
+			if (isHorizontalWire(e) == false && isVerticalWire(e) == false)
+				return false;
+			final double[] seg = wireSegment(e);
+			for (RectangleArea ob : obstacles)
+				if (crossesInterior(seg, ob))
+					return false;
+			if (crossesInterior(seg, e.startCluster) || crossesInterior(seg, e.endCluster))
+				return false;
+		}
+		for (int i = 0; i < edges.size(); i++)
+			for (int j = i + 1; j < edges.size(); j++)
+				if (overlapsOnOneLine(wireSegment(edges.get(i)), wireSegment(edges.get(j))))
+					return false;
+		return true;
+	}
+
+	private static final double WIRE_EPSILON = 1.0;
+
+	private static boolean isHorizontalWire(EdgeData e) {
+		return Math.abs(e.start.getY() - e.end.getY()) < WIRE_EPSILON
+				&& Math.abs(e.start.getX() - e.end.getX()) > PORT_WIDTH;
+	}
+
+	private static boolean isVerticalWire(EdgeData e) {
+		return Math.abs(e.start.getX() - e.end.getX()) < WIRE_EPSILON
+				&& Math.abs(e.start.getY() - e.end.getY()) > PORT_WIDTH;
+	}
+
+	// The drawn part of a wire, from glyph edge to glyph edge, as
+	// {x1, y1, x2, y2}.
+	private static double[] wireSegment(EdgeData e) {
+		final double dx = Math.signum(e.end.getX() - e.start.getX());
+		final double dy = Math.signum(e.end.getY() - e.start.getY());
+		final boolean horizontal = isHorizontalWire(e);
+		final double ux = horizontal ? dx : 0;
+		final double uy = horizontal ? 0 : dy;
+		final double y = horizontal ? e.start.getY() : 0;
+		final double x = horizontal ? 0 : e.start.getX();
+		return new double[] { horizontal ? e.start.getX() + ux * PORT_RADIUS : x,
+				horizontal ? y : e.start.getY() + uy * PORT_RADIUS,
+				horizontal ? e.end.getX() - ux * PORT_RADIUS : x,
+				horizontal ? y : e.end.getY() - uy * PORT_RADIUS };
+	}
+
+	// True when an axis-aligned segment runs through the inside of a box.
+	// Touching its border (a port glyph sitting on the face) does not count.
+	private static boolean crossesInterior(double[] seg, RectangleArea r) {
+		if (r == null)
+			return false;
+		final double minX = Math.min(seg[0], seg[2]);
+		final double maxX = Math.max(seg[0], seg[2]);
+		final double minY = Math.min(seg[1], seg[3]);
+		final double maxY = Math.max(seg[1], seg[3]);
+		return spansInside(minX, maxX, r.getMinX(), r.getMaxX())
+				&& spansInside(minY, maxY, r.getMinY(), r.getMaxY());
+	}
+
+	// True when [lo, hi] (possibly a single point) reaches inside the open
+	// interval (min, max) by more than WIRE_EPSILON.
+	private static boolean spansInside(double lo, double hi, double min, double max) {
+		return Math.min(hi, max - WIRE_EPSILON) > Math.max(lo, min + WIRE_EPSILON)
+				|| (hi - lo < WIRE_EPSILON && lo > min + WIRE_EPSILON && lo < max - WIRE_EPSILON);
+	}
+
+	private static boolean overlapsOnOneLine(double[] a, double[] b) {
+		final boolean aHorizontal = Math.abs(a[1] - a[3]) < WIRE_EPSILON;
+		final boolean bHorizontal = Math.abs(b[1] - b[3]) < WIRE_EPSILON;
+		if (aHorizontal != bHorizontal)
+			return false;
+		if (aHorizontal) {
+			if (Math.abs(a[1] - b[1]) >= WIRE_EPSILON)
+				return false;
+			return Math.min(Math.max(a[0], a[2]), Math.max(b[0], b[2]))
+					- Math.max(Math.min(a[0], a[2]), Math.min(b[0], b[2])) > -WIRE_EPSILON;
+		}
+		if (Math.abs(a[0] - b[0]) >= WIRE_EPSILON)
+			return false;
+		return Math.min(Math.max(a[1], a[3]), Math.max(b[1], b[3]))
+				- Math.max(Math.min(a[1], a[3]), Math.min(b[1], b[3])) > -WIRE_EPSILON;
+	}
+
+	private void drawWires(UGraphic ugLine, List<EdgeData> edges, Style style) {
+		final UGraphic ugFan = ugLine.apply(fanStroke(style));
+		for (EdgeData e : edges) {
+			final UGraphic ugE = edgeUg(ugFan, e);
+			final double[] seg = wireSegment(e);
+			drawLine(ugE, seg[0], seg[1], seg[2], seg[3]);
+			final double ux = Math.signum(seg[2] - seg[0]);
+			final double uy = Math.signum(seg[3] - seg[1]);
+			if (e.arrowAtEnd)
+				drawArrow(ugE, seg[2], seg[3], ux, uy);
+			if (e.arrowAtStart)
+				drawArrow(ugE, seg[0], seg[1], -ux, -uy);
+		}
+	}
+
+	// An arrowhead with its tip at (tipX, tipY), pointing along (ux, uy).
+	private static void drawArrow(UGraphic ug, double tipX, double tipY, double ux, double uy) {
+		final HColor color = ug.getParam().getColor();
+		if (color != null)
+			ug = ug.apply(color.bg());
+		final double px = -uy;
+		final double py = ux;
+		final UPolygon polygon = new UPolygon();
+		polygon.addPoint(0, 0);
+		polygon.addPoint(-ux * ARROW_WING + px * ARROW_APERTURE, -uy * ARROW_WING + py * ARROW_APERTURE);
+		polygon.addPoint(-ux * ARROW_CONTACT, -uy * ARROW_CONTACT);
+		polygon.addPoint(-ux * ARROW_WING - px * ARROW_APERTURE, -uy * ARROW_WING - py * ARROW_APERTURE);
+		polygon.addPoint(0, 0);
+		ug.apply(new UTranslate(tipX, tipY)).draw(polygon);
 	}
 
 	// True when a horizontal stub at stubY from a port at portX to the

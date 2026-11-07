@@ -1024,7 +1024,9 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		if (link.isSingle() && containsSimilarLink(link))
 			return;
 
-		if (currentHarness != null) {
+		// A [bundle=never] harness only groups its links in the source: they
+		// are routed and drawn as ordinary edges.
+		if (currentHarness != null && currentHarness.getRoot().getBundle() != Harness.Bundle.NEVER) {
 			final Harness root = currentHarness.getRoot();
 			link.setHarness(root);
 			root.addLink(link);

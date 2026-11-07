@@ -59,12 +59,22 @@ public class Harness implements Bag {
 		AUTO, SRC, MID, DST
 	}
 
+	// Whether the member links are drawn as a bundle at all. ALWAYS (the
+	// default) draws the spine and stubs; NEVER leaves the links out of the
+	// harness so the layout engine routes them as ordinary edges; AUTO lets
+	// SvekHarness draw plain straight wires when every member already runs
+	// straight between facing ports with nothing in the way.
+	public enum Bundle {
+		ALWAYS, AUTO, NEVER
+	}
+
 	private final String label;
 	private final Harness parent;
 	private final List<Link> links = new ArrayList<Link>();
 	private Colors colors = Colors.empty();
 	private Shape shape = Shape.AUTO;
 	private Align align = Align.AUTO;
+	private Bundle bundle = Bundle.ALWAYS;
 	// Explicit channel slot. null means "unset — auto placement"; otherwise the
 	// spine is pinned to this slot (slot * pitch from the channel base) and
 	// exempt from overlap nudging.
@@ -128,6 +138,14 @@ public class Harness implements Bag {
 
 	public void setAlign(Align align) {
 		this.align = align;
+	}
+
+	public Bundle getBundle() {
+		return bundle;
+	}
+
+	public void setBundle(Bundle bundle) {
+		this.bundle = bundle;
 	}
 
 	public boolean hasLane() {

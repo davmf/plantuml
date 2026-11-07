@@ -13,7 +13,7 @@ component "B1\nSensor1" as B1 <<Sensor>> {
     portin "3 0V" as B1_X1_c3 <<ground>>
   }
 }
-harness "A1.J1–B1.X1" {
+harness "A1.J1–B1.X1" [bundle=auto] {
   A1_J1_c1 -- B1_X1_c1
   A1_J1_c3 -- B1_X1_c3
 }

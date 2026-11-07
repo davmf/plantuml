@@ -100,6 +100,7 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 					harness.setColors(colors);
 				harness.setShape(directives.shape);
 				harness.setAlign(directives.align);
+				harness.setBundle(directives.bundle);
 				if (directives.lane != null)
 					harness.setLane(directives.lane.intValue());
 			}
@@ -112,11 +113,13 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 		private final Harness.Shape shape;
 		private final Harness.Align align;
 		private final Integer lane;
+		private final Harness.Bundle bundle;
 
-		Directives(Harness.Shape shape, Harness.Align align, Integer lane) {
+		Directives(Harness.Shape shape, Harness.Align align, Integer lane, Harness.Bundle bundle) {
 			this.shape = shape;
 			this.align = align;
 			this.lane = lane;
+			this.bundle = bundle;
 		}
 	}
 
@@ -127,8 +130,9 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 		Harness.Shape shape = Harness.Shape.AUTO;
 		Harness.Align align = Harness.Align.AUTO;
 		Integer lane = null;
+		Harness.Bundle bundle = Harness.Bundle.ALWAYS;
 		if (props == null || props.trim().isEmpty())
-			return new Directives(shape, align, lane);
+			return new Directives(shape, align, lane, bundle);
 
 		for (final String token : props.split(",")) {
 			final String trimmed = token.trim();
@@ -154,11 +158,26 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 				if (parsed == null)
 					return null;
 				lane = parsed;
+			} else if (key.equalsIgnoreCase("bundle")) {
+				final Harness.Bundle parsed = bundleValue(value);
+				if (parsed == null)
+					return null;
+				bundle = parsed;
 			} else {
 				return null;
 			}
 		}
-		return new Directives(shape, align, lane);
+		return new Directives(shape, align, lane, bundle);
+	}
+
+	private static Harness.Bundle bundleValue(String value) {
+		if (value.equalsIgnoreCase("always"))
+			return Harness.Bundle.ALWAYS;
+		if (value.equalsIgnoreCase("auto"))
+			return Harness.Bundle.AUTO;
+		if (value.equalsIgnoreCase("never"))
+			return Harness.Bundle.NEVER;
+		return null;
 	}
 
 	private static Harness.Shape shapeValue(String value) {

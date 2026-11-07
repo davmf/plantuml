@@ -72,6 +72,7 @@ public final class IcProfile implements SysmlProfile {
 		result.put("view", Arrays.asList("physical", "logical", "both"));
 		result.put("detail", Arrays.asList("connector", "contact"));
 		result.put("cables", Arrays.asList("node", "edge"));
+		result.put("mates", Arrays.asList("auto", "harness", "wires"));
 		return result;
 	}
 

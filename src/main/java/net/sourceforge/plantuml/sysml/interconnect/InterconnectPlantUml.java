@@ -517,17 +517,25 @@ public final class InterconnectPlantUml {
 		final String stereotype = " <<" + IcCategory.MATE.getProfileName() + ">>" + (direct ? " <<direct>>" : "");
 
 		if (contacts() && a.getContacts().isEmpty() == false && b.getContacts().isEmpty() == false) {
+			final IcOptions.Mates mates = options.getMates();
+			final String wireStereotype = mates == IcOptions.Mates.WIRES ? stereotype : "";
 			final List<String> lines = new ArrayList<>();
 			for (IcContact ca : a.getContacts()) {
 				final IcContact cb = b.getContactById(ca.getContactId());
 				// Two nc contacts mate a pin position, not a conductor
 				if (cb != null && (isNc(ca) && isNc(cb)) == false)
-					lines.add("  " + contactAlias(ca) + " -- " + contactAlias(cb));
+					lines.add(contactAlias(ca) + " -- " + contactAlias(cb) + wireStereotype);
 			}
 			if (lines.isEmpty() == false) {
+				if (mates == IcOptions.Mates.WIRES) {
+					out.addAll(lines);
+					return;
+				}
 				out.add("harness \"" + quote(a.getOwner().getDesignator() + "." + a.getDesignator() + "\u2013"
-						+ b.getOwner().getDesignator() + "." + b.getDesignator()) + "\" {");
-				out.addAll(lines);
+						+ b.getOwner().getDesignator() + "." + b.getDesignator()) + "\""
+						+ (mates == IcOptions.Mates.AUTO ? " [bundle=auto]" : "") + " {");
+				for (String line : lines)
+					out.add("  " + line);
 				out.add("}");
 				return;
 			}

@@ -70,12 +70,22 @@ public final class IcOptions {
 		EDGE
 	}
 
+	public enum Mates {
+		/** A harness that falls back to plain wires when they would run straight */
+		AUTO,
+		/** Always a harness */
+		HARNESS,
+		/** Always one edge per contact pair */
+		WIRES
+	}
+
 	private static final Map<String, List<String>> KEYS = new LinkedHashMap<>();
 	static {
 		KEYS.put("system", null);
 		KEYS.put("view", Arrays.asList("physical", "logical", "both"));
 		KEYS.put("detail", Arrays.asList("connector", "contact"));
 		KEYS.put("cables", Arrays.asList("node", "edge"));
+		KEYS.put("mates", Arrays.asList("auto", "harness", "wires"));
 		KEYS.put("frame", Arrays.asList("true", "false"));
 		KEYS.put("style", Arrays.asList("true", "false"));
 	}
@@ -84,6 +94,7 @@ public final class IcOptions {
 	private View view = View.PHYSICAL;
 	private Detail detail = Detail.CONNECTOR;
 	private Cables cables = Cables.NODE;
+	private Mates mates = Mates.AUTO;
 	private boolean frame;
 	private boolean style = true;
 
@@ -105,6 +116,8 @@ public final class IcOptions {
 				result.detail = Detail.valueOf(value.toUpperCase());
 			else if (key.equals("cables"))
 				result.cables = Cables.valueOf(value.toUpperCase());
+			else if (key.equals("mates"))
+				result.mates = Mates.valueOf(value.toUpperCase());
 			else if (key.equals("frame"))
 				result.frame = value.equals("true");
 			else if (key.equals("style"))
@@ -128,6 +141,11 @@ public final class IcOptions {
 
 	public Cables getCables() {
 		return cables;
+	}
+
+	/** How a Mate is drawn with <code>detail=contact</code>. */
+	public Mates getMates() {
+		return mates;
 	}
 
 	/** Draw the system itself as an outer rectangle. */

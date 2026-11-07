@@ -43,6 +43,7 @@ are chosen.
 | `view`    | `physical`, `logical`, `both`       | `physical`  | Cables and Mates; InterfaceLinks and UnitLinks (no Cables); or both overlaid |
 | `detail`  | `connector`, `contact`              | `connector` | One port per connector; or one port group per connector, one port per contact, each Mate drawn as a `harness` pairing contacts by `contactId`, except two `nc` contacts (physical view only) |
 | `cables`  | `node`, `edge`                      | `node`      | A two-ended Cable mated to two Units can be drawn as one labelled edge; multi-ended harnesses stay components |
+| `mates`   | `auto`, `harness`, `wires`          | `auto`      | With `detail=contact`, how a Mate's contact pairs are drawn: a `harness [bundle=auto]` that the renderer draws as plain wires when every pair already runs straight between facing ports with nothing in the way; always a harness; or one `--` edge per pair |
 | `frame`   | `true`, `false`                     | `false`     | Draw the system itself as an outer rectangle |
 | `style`   | `true`, `false`                     | `true`      | Emit the default skinparams and `<style>` |
 | `profile` | `interconnect`...                   | detected    | See [SYSML_PROFILES.md](SYSML_PROFILES.md) |
@@ -56,7 +57,7 @@ are chosen.
 | Assembly             | `rectangle` around its children             | `A5`        | `<<Assembly>>` |
 | ConnectorPort        | `portin` / `portout` / `port`               | `A1_J2`     | gender, kind, and `<<NoMate>>` or `<<unmated>>` |
 | ContactPort (`detail=contact`) | port inside a `group` named after the connector | `A1_J2_c1` | contact kind: `<<power>>`, `<<ground>>`, `<<signal>>`, `<<shield>>`, `<<nc>>` |
-| Mate                 | `--` edge (`harness` with `detail=contact`) |             | `<<Mate>>`, plus `<<direct>>` when no Cable is involved |
+| Mate                 | `--` edge (`harness` with `detail=contact`, see `mates`) |             | `<<Mate>>`, plus `<<direct>>` when no Cable is involved |
 | InterfaceLink        | `..>` edge labelled with the protocol       |             | `<<InterfaceLink>>` and the protocol, e.g. `<<can>>` |
 | UnitLink             | `..>` edge between the two Units            |             | `<<UnitLink>>` and the protocol |
 

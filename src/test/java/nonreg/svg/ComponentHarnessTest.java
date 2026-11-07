@@ -70,6 +70,29 @@ class ComponentHarnessTest extends SvekSvgTest {
 			"}", //
 			"@enduml");
 
+	// Two ports facing two ports: Graphviz lines every pair up straight
+	private static final String PAIRS = String.join("\n", //
+			"@startuml", //
+			"left to right direction", //
+			"component A {", //
+			"  portout \"1\" as a1", //
+			"  portout \"2\" as a2", //
+			"}", //
+			"component B {", //
+			"  portin \"1\" as b1", //
+			"  portin \"2\" as b2", //
+			"}", //
+			"harness \"A-B\" #blue [BUNDLE] {", //
+			"  LINKS", //
+			"}", //
+			"@enduml");
+
+	private static String pairs(String bundle, String links) {
+		return PAIRS.replace("[BUNDLE]", bundle).replace("LINKS", links);
+	}
+
+	private static final Pattern WIRE = Pattern.compile("<line [^>]*style=\"stroke:#00F;stroke-width:1;\"");
+
 	private static final Pattern LINK_GROUP = Pattern.compile("<g class=\"link\"");
 	private static final Pattern TRUNK = Pattern.compile("<line [^>]*style=\"stroke:#00F;stroke-width:4.5;\"");
 
@@ -134,6 +157,45 @@ class ComponentHarnessTest extends SvekSvgTest {
 		assertTrue(diagram instanceof PSystemError, "expected an error");
 		final String error = ((PSystemError) diagram).getFirstError().getError();
 		assertTrue(error.startsWith("Unknown or invalid harness directive: [shape=zigzag]"), error);
+	}
+
+	@Test
+	void bundle_auto_draws_straight_pairs_as_plain_wires() throws IOException {
+		final String svg = render(pairs("[bundle=auto]", "a1 -- b1\n  a2 -- b2"));
+		assertEquals(0, count(LINK_GROUP, svg), "harness links must not also be drawn by Graphviz");
+		assertEquals(0, count(TRUNK, svg), "no trunk");
+		assertEquals(2, count(WIRE, svg), "one straight wire per link");
+		assertEquals(0, count(text("A-B"), svg), "no harness label without a harness");
+	}
+
+	@Test
+	void bundle_auto_keeps_the_bundle_when_a_port_fans_out() throws IOException {
+		final String svg = render(pairs("[bundle=auto]", "a1 -- b1\n  a1 -- b2"));
+		assertEquals(1, count(TRUNK, svg), "trunk");
+		assertEquals(1, count(text("A-B"), svg), "harness label");
+	}
+
+	@Test
+	void bundle_always_is_the_default() throws IOException {
+		final String links = "a1 -- b1\n  a2 -- b2";
+		final String svg = render(pairs("", links));
+		assertEquals(1, count(TRUNK, svg), "trunk");
+		assertEquals(strip(svg), strip(render(pairs("[bundle=always]", links))));
+	}
+
+	@Test
+	void bundle_never_leaves_the_links_to_the_layout() throws IOException {
+		final String svg = render(pairs("[bundle=never]", "a1 -- b1\n  a2 -- b2"));
+		// Port-to-port links are drawn by SvekPortConnector, as bare paths
+		assertEquals(2, count(Pattern.compile("<path d=\"M[^\"]*\" style=\"stroke:#181818;stroke-width:1;\""), svg),
+				"ordinary edges");
+		assertEquals(0, count(TRUNK, svg), "no trunk");
+		assertEquals(0, count(text("A-B"), svg), "no harness label");
+	}
+
+	@Test
+	void unknown_bundle_value_is_an_error() {
+		assertTrue(diagram(pairs("[bundle=sometimes]", "a1 -- b1")) instanceof PSystemError, "expected an error");
 	}
 
 	private static Pattern text(String text) {
