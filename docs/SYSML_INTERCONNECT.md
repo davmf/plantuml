@@ -94,6 +94,23 @@ arrow     { .Cable    { LineColor #2E7D32 } .can { LineColor #E08214 } }
 
 Use `style=false` to start from PlantUML's own look.
 
+With `detail=contact`, each Mate becomes a harness named
+`<unit>.<connector>–<unit>.<connector>` (the label drawn beside it). A
+`harness` line with no opening brace, written **after** the directive,
+restyles one of them without touching the SysML or the generated source:
+
+```plantuml
+!include_sysml system.sysml root=conveyorSorter detail=contact
+harness "A3.J4-M1.X1" [bundle=never]    ' draw these wires as ordinary edges
+harness "W5.P2-A3.J5" #red [shape=u]    ' colour and reshape this bundle
+```
+
+Only the colour and the keys named change; the others keep their values.
+The keys are those of a harness block (`bundle`, `shape`, `align`,
+`lane`). The label matches ignoring case, spaces and the dash style, so a
+plain `-` finds the generated `–`. A label that matches no earlier harness
+is an error.
+
 ## Labels
 
 Labels come from preprocessor functions. A function the diagram defines

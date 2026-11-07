@@ -74,7 +74,7 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 				new RegexLeaf("\\{"), RegexLeaf.end());
 	}
 
-	private static ColorParser color() {
+	static ColorParser color() {
 		return ColorParser.simpleColor(ColorType.LINE);
 	}
 
@@ -98,18 +98,16 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 						diagram.getSkinParam().getIHtmlColorSet());
 				if (colors != null)
 					harness.setColors(colors);
-				harness.setShape(directives.shape);
-				harness.setAlign(directives.align);
-				harness.setBundle(directives.bundle);
-				if (directives.lane != null)
-					harness.setLane(directives.lane.intValue());
+				directives.applyTo(harness);
 			}
 		}
 		return result;
 	}
 
-	// Resolved directive values from the bracketed clause.
-	private static final class Directives {
+	// Directive values from the bracketed clause. A key the clause does not
+	// name is null: a harness block then gets the default, and a restyle line
+	// (CommandHarnessRestyle) leaves the current value alone.
+	static final class Directives {
 		private final Harness.Shape shape;
 		private final Harness.Align align;
 		private final Integer lane;
@@ -121,16 +119,41 @@ public class CommandHarness extends SingleLineCommand2<DescriptionDiagram> {
 			this.lane = lane;
 			this.bundle = bundle;
 		}
+
+		boolean isEmpty() {
+			return shape == null && align == null && lane == null && bundle == null;
+		}
+
+		// A new harness block: unnamed keys take their defaults.
+		void applyTo(Harness harness) {
+			harness.setShape(shape == null ? Harness.Shape.AUTO : shape);
+			harness.setAlign(align == null ? Harness.Align.AUTO : align);
+			harness.setBundle(bundle == null ? Harness.Bundle.ALWAYS : bundle);
+			if (lane != null)
+				harness.setLane(lane.intValue());
+		}
+
+		// A restyle: only the named keys change.
+		void overrideOn(Harness harness) {
+			if (shape != null)
+				harness.setShape(shape);
+			if (align != null)
+				harness.setAlign(align);
+			if (bundle != null)
+				harness.setBundle(bundle);
+			if (lane != null)
+				harness.setLane(lane.intValue());
+		}
 	}
 
-	// Parse the bracketed directive list. Returns the resolved directives
-	// (defaults when no clause is present), or null when the clause is
-	// malformed or names an unknown key/value.
-	private static Directives parseDirectives(String props) {
-		Harness.Shape shape = Harness.Shape.AUTO;
-		Harness.Align align = Harness.Align.AUTO;
+	// Parse the bracketed directive list. Returns the directives (all null
+	// when no clause is present), or null when the clause is malformed or
+	// names an unknown key/value.
+	static Directives parseDirectives(String props) {
+		Harness.Shape shape = null;
+		Harness.Align align = null;
 		Integer lane = null;
-		Harness.Bundle bundle = Harness.Bundle.ALWAYS;
+		Harness.Bundle bundle = null;
 		if (props == null || props.trim().isEmpty())
 			return new Directives(shape, align, lane, bundle);
 

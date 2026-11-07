@@ -136,6 +136,9 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 	private List<Bag> stacks = new ArrayList<>();
 
 	private Harness currentHarness;
+	// Every top-level harness block, in source order, so a later brace-less
+	// `harness "label" [...]` line can restyle one by its label.
+	private final List<Harness> rootHarnesses = new ArrayList<>();
 	// Running count of port groups declared per parent entity so each new
 	// `group "Name" { ... }` block in the same component gets a unique
 	// declaration-order ordinal.
@@ -380,8 +383,26 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		return CommandExecutionResult.ok();
 	}
 
+	// The top-level harnesses already declared whose label matches, ignoring
+	// case, spaces and the dash style: `A3.J4-M1.X1` finds the
+	// `A3.J4\u2013M1.X1` harness that !include_sysml writes.
+	public List<Harness> findHarnesses(String label) {
+		final String wanted = harnessKey(label);
+		final List<Harness> result = new ArrayList<>();
+		for (Harness harness : rootHarnesses)
+			if (harnessKey(harness.getLabel()).equals(wanted))
+				result.add(harness);
+		return result;
+	}
+
+	private static String harnessKey(String label) {
+		return label.replaceAll("[\\s]", "").replaceAll("[\\u2010-\\u2015\\u2212]", "-").toLowerCase();
+	}
+
 	final public CommandExecutionResult gotoHarness(String label) {
 		final Harness harness = new Harness(label, currentHarness);
+		if (currentHarness == null)
+			rootHarnesses.add(harness);
 		this.currentHarness = harness;
 		this.stacks.add(harness);
 		return CommandExecutionResult.ok();
@@ -1024,13 +1045,15 @@ public abstract class CucaDiagram extends TitledDiagram implements GroupHierarch
 		if (link.isSingle() && containsSimilarLink(link))
 			return;
 
-		// A [bundle=never] harness only groups its links in the source: they
-		// are routed and drawn as ordinary edges.
-		if (currentHarness != null && currentHarness.getRoot().getBundle() != Harness.Bundle.NEVER) {
+		// The link is recorded in its harness whatever the bundle value, so a
+		// later restyle can change it; Link.getHarness() hides a
+		// [bundle=never] harness, whose links are routed and drawn as
+		// ordinary edges.
+		if (currentHarness != null) {
 			final Harness root = currentHarness.getRoot();
 			link.setHarness(root);
 			root.addLink(link);
-			if (currentHarness.isNested())
+			if (currentHarness.isNested() && root.getBundle() != Harness.Bundle.NEVER)
 				link.setSourceLabel(currentHarness.getLabel());
 		}
 		this.links.add(link);

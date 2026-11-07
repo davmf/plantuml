@@ -457,7 +457,7 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 	}
 
 	public boolean isIntraBoardPortConnection() {
-		if (harness != null)
+		if (isPartOfHarness())
 			return false;
 		if (getEntity1().isGroup() || getEntity2().isGroup())
 			return false;
@@ -497,12 +497,17 @@ public class Link extends WithLinkType implements Hideable, Removeable {
 		this.harness = harness;
 	}
 
+	// A link stays recorded in its harness even when the harness is
+	// [bundle=never], so that a later restyle can still switch the bundle on
+	// or off; a [bundle=never] harness is invisible to the renderers.
 	public Harness getHarness() {
+		if (harness == null || harness.getBundle() == Harness.Bundle.NEVER)
+			return null;
 		return harness;
 	}
 
 	public boolean isPartOfHarness() {
-		return harness != null;
+		return getHarness() != null;
 	}
 
 	// True when this link bridges two paired pins of a <<header>> component.

@@ -198,6 +198,57 @@ class ComponentHarnessTest extends SvekSvgTest {
 		assertTrue(diagram(pairs("[bundle=sometimes]", "a1 -- b1")) instanceof PSystemError, "expected an error");
 	}
 
+	// A brace-less `harness "label" [...]` line after the block, as a wrapper
+	// around !include_sysml would add it.
+	private static String restyled(String source, String line) {
+		return source.replace("@enduml", line + "\n@enduml");
+	}
+
+	@Test
+	void restyle_to_never_matches_the_inline_directive() throws IOException {
+		final String links = "a1 -- b1\n  a2 -- b2";
+		final String svg = render(restyled(pairs("", links), "harness \"A-B\" [bundle=never]"));
+		assertEquals(0, count(TRUNK, svg), "no trunk");
+		assertEquals(strip(render(pairs("[bundle=never]", links))), strip(svg));
+	}
+
+	@Test
+	void restyle_can_turn_the_bundle_back_on() throws IOException {
+		final String svg = render(restyled(pairs("[bundle=never]", "a1 -- b1\n  a2 -- b2"),
+				"harness \"A-B\" [bundle=always]"));
+		assertEquals(1, count(TRUNK, svg), "trunk");
+		assertEquals(1, count(text("A-B"), svg), "harness label");
+	}
+
+	@Test
+	void restyle_changes_only_what_it_names() throws IOException {
+		final String svg = render(restyled(pairs("", "a1 -- b1\n  a2 -- b2"), "harness \"A-B\" #red"));
+		assertEquals(0, count(TRUNK, svg), "no trunk left in the old colour");
+		assertEquals(1, count(Pattern.compile("<line [^>]*style=\"stroke:#F00;stroke-width:4.5;\""), svg),
+				"trunk in the new colour, still bundled");
+	}
+
+	@Test
+	void restyle_label_ignores_case_spaces_and_dash_style() throws IOException {
+		final String links = "a1 -- b1\n  a2 -- b2";
+		final String svg = render(restyled(pairs("", links), "harness \"a – b\" [bundle=never]"));
+		assertEquals(strip(render(pairs("[bundle=never]", links))), strip(svg));
+	}
+
+	@Test
+	void restyle_of_an_unknown_harness_is_an_error() {
+		final Diagram diagram = diagram(restyled(pairs("", "a1 -- b1"), "harness \"A-C\" [bundle=never]"));
+		assertTrue(diagram instanceof PSystemError, "expected an error");
+		final String error = ((PSystemError) diagram).getFirstError().getError();
+		assertTrue(error.startsWith("No harness \"A-C\""), error);
+	}
+
+	@Test
+	void restyle_with_nothing_to_change_is_an_error() {
+		assertTrue(diagram(restyled(pairs("", "a1 -- b1"), "harness \"A-B\"")) instanceof PSystemError,
+				"expected an error");
+	}
+
 	private static Pattern text(String text) {
 		return Pattern.compile("<text [^>]*>" + Pattern.quote(text) + "</text>");
 	}
