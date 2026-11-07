@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml tiny.sysml detail=contact style=false mates=wires
+@enduml
