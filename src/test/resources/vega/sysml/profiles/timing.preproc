@@ -1,0 +1,54 @@
+@startuml
+<style>
+timingDiagram {
+  .net { LineColor #1565C0 }
+  .machine { LineColor #2E7D32 }
+  constraintArrow { LineColor #B00020; FontColor #B00020 }
+  highlight { BackgroundColor #FFF4D6 }
+}
+</style>
+time-axis unit "ms"
+analog "+3V3 (V)" between 0.0 and 3.6 as r3v3 <<analog>> <<net>>
+binary "PG_3V3" as pg3v3 <<binary>> <<net>>
+analog "+1V8 (V)" between 0.0 and 2.0 as r1v8 <<analog>> <<net>>
+binary "nRESET" as nreset <<binary>> <<net>>
+robust "MCU" as mcu <<robust>> <<machine>>
+clock "SysTick" as sysTick with period 1 pulse 0.5 offset 7 <<clock>>
+mcu has "Off" as Off
+mcu has "Reset" as Reset
+mcu has "ROM boot" as ROM_boot
+mcu has "App init" as App_init
+mcu has "Running" as Running
+@0
+r3v3 is 0
+pg3v3 is low
+r1v8 is 0
+nreset is low
+mcu is Off
+@0.2
+r3v3 is 0
+@1.2
+r3v3 is 3.3
+@1.4
+pg3v3 is high
+@1.5
+r1v8 is 0
+@2
+r1v8 is 1.8
+mcu is Reset
+@5.2
+nreset is high
+mcu is ROM_boot
+@5.6
+mcu is App_init
+@7
+mcu is Running
+@10
+r3v3@1.2 <-> @1.5 : t_seq {≥ 100 µs}
+r1v8@1.5 <-> @2 : t_ss {300 µs – 1 ms}
+nreset@1.2 <-> @5.2 : t_rst {2 ms – 5 ms}
+mcu@5.2 <-> @7 : t_boot {≤ 2 ms}
+pg3v3@1.4 -> r1v8@1.5 : EN
+nreset@5.2 -> mcu@5.2 : resetRelease
+highlight 2 to 5.2 : reset held
+@enduml

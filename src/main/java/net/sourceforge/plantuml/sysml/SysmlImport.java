@@ -50,6 +50,7 @@ import net.sourceforge.plantuml.sysml.pcba.PcbaProfile;
 import net.sourceforge.plantuml.sysml.sequence.SeqProfile;
 import net.sourceforge.plantuml.sysml.statemachine.SmProfile;
 import net.sourceforge.plantuml.sysml.swarch.SwProfile;
+import net.sourceforge.plantuml.sysml.timing.TimingProfile;
 
 /**
  * The whole import of <code>!include_sysml</code>, from the text of the files
@@ -60,6 +61,9 @@ import net.sourceforge.plantuml.sysml.swarch.SwProfile;
  * Without <code>profile=</code>, the profiles are tried in the order of
  * {@link #PROFILES}: system-level profiles come before the ones whose roots
  * they use as parts (an InterconnectSystem file set often holds PCBAs too).
+ * TimingProfile comes first: a TimingDiagram is never part of another
+ * profile's root, but its file set holds the boards and state machines its
+ * lifelines reference.
  * <p>
  * <code>view=</code> selects one of {@link #VIEWS} instead: generators that
  * draw plain SysML v2 (requirements, definitions...) rather than one profile.
@@ -68,8 +72,8 @@ import net.sourceforge.plantuml.sysml.swarch.SwProfile;
 public final class SysmlImport {
 
 	public static final List<SysmlProfile> PROFILES = Collections.unmodifiableList(Arrays.<SysmlProfile>asList(
-			new IcProfile(), new IpProfile(), new SmProfile(), new SeqProfile(), new ActProfile(), new SwProfile(),
-			new PcbaProfile(), new CotsProfile()));
+			new TimingProfile(), new IcProfile(), new IpProfile(), new SmProfile(), new SeqProfile(), new ActProfile(),
+			new SwProfile(), new PcbaProfile(), new CotsProfile()));
 
 	/**
 	 * The views, selected by name with <code>view=</code>. A view implements

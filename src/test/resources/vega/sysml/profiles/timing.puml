@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml timing.sysml timing-board.sysml timing-machine.sysml
+@enduml
