@@ -381,9 +381,10 @@ public class PlantUMLBrowser {
 	 * <code>roots</code> lists every root in the order the import tries them,
 	 * <code>selected</code> is the index of the one it would draw with these
 	 * options (-1 for none), and each profile's options list their allowed
-	 * values, the default first (<code>null</code>: any value). Only
-	 * <code>root=</code> and <code>profile=</code> are read from
-	 * <code>options</code>. Synchronous, like {@link #sysmlToPlantUml}.
+	 * values, the default first (<code>null</code>: any value);
+	 * <code>views</code> lists the views in the same form. Only
+	 * <code>root=</code>, <code>profile=</code> and <code>view=</code> are read
+	 * from <code>options</code>. Synchronous, like {@link #sysmlToPlantUml}.
 	 */
 	@JSExport
 	public static void sysmlDescribe(String[] names, String[] texts, String[] options, StringCallback onSuccess,
@@ -403,28 +404,11 @@ public class PlantUMLBrowser {
 						.append(",\"qualifiedName\":").append(json(root.getQualifiedName()))
 						.append(",\"profile\":").append(json(root.getProfile().getName())).append('}');
 			}
-			sb.append("],\"selected\":").append(selected).append(",\"profiles\":[");
-			boolean first = true;
-			for (SysmlProfile profile : SysmlImport.PROFILES) {
-				sb.append(first ? "" : ",").append("{\"name\":").append(json(profile.getName()))
-						.append(",\"root\":").append(json(profile.getRootDescription())).append(",\"options\":{");
-				first = false;
-				boolean firstKey = true;
-				for (Map.Entry<String, List<String>> ent : profile.getOptionKeys().entrySet()) {
-					sb.append(firstKey ? "" : ",").append(json(ent.getKey())).append(':');
-					firstKey = false;
-					if (ent.getValue() == null) {
-						sb.append("null");
-						continue;
-					}
-					sb.append('[');
-					for (int i = 0; i < ent.getValue().size(); i++)
-						sb.append(i == 0 ? "" : ",").append(json(ent.getValue().get(i)));
-					sb.append(']');
-				}
-				sb.append("}}");
-			}
-			sb.append("]}");
+			sb.append("],\"selected\":").append(selected).append(",\"profiles\":");
+			describeGenerators(sb, SysmlImport.PROFILES);
+			sb.append(",\"views\":");
+			describeGenerators(sb, SysmlImport.VIEWS);
+			sb.append('}');
 		} catch (SysmlException e) {
 			deliver(onError, e.getMessage());
 			return;
@@ -433,6 +417,37 @@ public class PlantUMLBrowser {
 			return;
 		}
 		deliver(onSuccess, sb.toString());
+	}
+
+	/**
+	 * Profiles or views as a JSON array: name, root description, whether
+	 * <code>layout=</code> applies, and each option with its allowed values
+	 * (the default first, <code>null</code>: any value).
+	 */
+	private static void describeGenerators(StringBuilder sb, List<SysmlProfile> generators) {
+		sb.append('[');
+		boolean first = true;
+		for (SysmlProfile profile : generators) {
+			sb.append(first ? "" : ",").append("{\"name\":").append(json(profile.getName()))
+					.append(",\"root\":").append(json(profile.getRootDescription()))
+					.append(",\"graphLayout\":").append(profile.isGraphLayout()).append(",\"options\":{");
+			first = false;
+			boolean firstKey = true;
+			for (Map.Entry<String, List<String>> ent : profile.getOptionKeys().entrySet()) {
+				sb.append(firstKey ? "" : ",").append(json(ent.getKey())).append(':');
+				firstKey = false;
+				if (ent.getValue() == null) {
+					sb.append("null");
+					continue;
+				}
+				sb.append('[');
+				for (int i = 0; i < ent.getValue().size(); i++)
+					sb.append(i == 0 ? "" : ",").append(json(ent.getValue().get(i)));
+				sb.append(']');
+			}
+			sb.append("}}");
+		}
+		sb.append(']');
 	}
 
 	/** The directive's <code>key=value</code> words as a map. */

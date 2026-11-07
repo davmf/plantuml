@@ -139,8 +139,11 @@ PlantUML they import into in the middle, and the diagram on the right. It
 works for every profile of [SYSML_PROFILES.md](SYSML_PROFILES.md). The
 toolbar follows the files: **root** lists every diagram root they hold, with
 the profile that draws it (*first found* is the directive's own choice),
-**profile** restricts the search to one profile, and only the options of the
-profile that draws the root are shown. Each profile keeps its own option
+**profile** restricts the search to one profile or picks a view (its
+*views* group: `view=definitions`, `view=requirements`), and only the options
+of the profile or view that draws the root are shown. **ELK** writes
+`layout=default` when it is off (it is hidden for sequence and timing
+diagrams, which have no graph layout). Each profile keeps its own option
 values, and an option left at its default is not written. The middle pane can
 show:
 
@@ -148,7 +151,9 @@ show:
   shows it), from the files of the left pane. Turn **auto** off to edit it
   without the next import overwriting it.
 * **`!include_sysml` directive**: a diagram of your own around an
-  `!include_sysml` line, which the toolbar keeps up to date. The page serves
+  `!include_sysml` line, which the toolbar keeps up to date: the files
+  (a new tab joins the line at once) and the toolbar's options are rewritten,
+  other `key=value` words typed on the line are kept. The page serves
   the left pane's files to the engine by name through `PLANTUML_FILE_LOADER`,
   so this runs the real directive, label functions and styling included.
 
@@ -167,5 +172,7 @@ one of the callbacks before it returns; `options` are the directive's
 `key=value` words. The toolbar comes from `sysmlDescribe(names, texts,
 options, onSuccess, onError)`, which delivers JSON: every root found
 (`name`, `qualifiedName`, `profile`), the index of the one the import would
-draw with these `root=`/`profile=` options (`selected`, -1 for none), and
-every profile with its options and their allowed values, the default first.
+draw with these `root=`/`profile=`/`view=` options (`selected`, -1 for
+none), and every profile (`profiles`) and view (`views`) with whether
+`layout=` applies (`graphLayout`) and its options and their allowed values,
+the default first.

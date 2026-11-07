@@ -30,12 +30,18 @@ const profileSelect = document.getElementById("opt-profile");
 const profileOptionsEl = document.getElementById("profile-options");
 const frameBox = document.getElementById("opt-frame");
 const styleBox = document.getElementById("opt-style");
+const elkBox = document.getElementById("opt-elk");
+const elkLabel = document.getElementById("opt-elk-label");
 
-// root and profile are "" for the directive's own choice; values holds the
-// options of each profile as chosen, {profile: {key: value}}, kept when the
-// profile changes so that coming back restores them.
+// The profile select holds the profiles, then the views as "view:<name>".
+const VIEW_PREFIX = "view:";
+
+// root and profile are "" for the directive's own choice; view is "" or the
+// view drawn instead of a profile (the two exclude each other); values holds
+// the options of each profile or view as chosen, {name: {key: value}}, kept
+// when the selection changes so that coming back restores them.
 function defaultOptions() {
-	return {root: "", profile: "", frame: false, style: true, values: {}};
+	return {root: "", profile: "", view: "", frame: false, style: true, elk: true, values: {}};
 }
 
 let options = defaultOptions();
@@ -124,8 +130,10 @@ function restoreOptions(saved) {
 	}
 	result.root = String(saved.root || saved.system || "");
 	result.profile = String(saved.profile || "");
+	result.view = result.profile === "" ? String(saved.view || "") : "";
 	result.frame = saved.frame === true;
 	result.style = saved.style !== false;
+	result.elk = saved.elk !== false;
 	if (saved.values != null && typeof saved.values === "object") {
 		result.values = saved.values;
 	} else {
@@ -136,16 +144,27 @@ function restoreOptions(saved) {
 			}
 		}
 		result.values = {interconnect};
+		result.view = "";
 	}
 	return result;
 }
 
+// A profile or a view, by name; views come after the profiles, so a profile
+// wins a name both have.
 function profileInfo(name) {
-	return described == null ? null : described.profiles.find(p => p.name === name) || null;
+	if (described == null || name == null) {
+		return null;
+	}
+	return described.profiles.find(p => p.name === name)
+		|| (described.views || []).find(v => v.name === name) || null;
 }
 
-// The profile that draws the root: the one asked for, else the selected root's.
+// The view or profile that draws the root: the view or profile asked for, else
+// the selected root's profile.
 function activeProfile() {
+	if (options.view !== "") {
+		return options.view;
+	}
 	if (options.profile !== "") {
 		return options.profile;
 	}
@@ -159,16 +178,31 @@ function quoteWord(key, value) {
 	return key + "=" + (/\s/.test(String(value)) ? '"' + value + '"' : value);
 }
 
-// root= and profile=, the only options sysmlDescribe() reads.
+// root=, profile= and view=, the only options sysmlDescribe() reads.
 function selectionWords() {
 	const words = [];
 	if (options.root !== "") {
 		words.push(quoteWord("root", options.root));
 	}
-	if (options.profile !== "") {
+	if (options.view !== "") {
+		words.push(quoteWord("view", options.view));
+	} else if (options.profile !== "") {
 		words.push(quoteWord("profile", options.profile));
 	}
 	return words;
+}
+
+// The option keys the toolbar writes; in directive mode, other key=value words
+// typed on the !include_sysml line are kept.
+function managedKeys() {
+	const keys = new Set(["root", "system", "profile", "view", "frame", "style", "layout"]);
+	const profile = profileInfo(activeProfile());
+	if (profile != null) {
+		for (const key of Object.keys(profile.options)) {
+			keys.add(key);
+		}
+	}
+	return keys;
 }
 
 // The options as the directive's key=value words, defaults left out: a
@@ -180,6 +214,9 @@ function optionWords() {
 	}
 	if (options.style === false) {
 		words.push("style=false");
+	}
+	if (options.elk === false) {
+		words.push("layout=default");
 	}
 	const profile = profileInfo(activeProfile());
 	if (profile != null) {
@@ -247,10 +284,32 @@ function renderToolbar() {
 	for (const profile of described == null ? [] : described.profiles) {
 		addOption(profileSelect, profile.name, profile.name).title = profile.root;
 	}
-	if (options.profile !== "" && profileInfo(options.profile) == null) {
-		addOption(profileSelect, options.profile, options.profile + " (unknown)");
+	const views = described == null ? [] : described.views || [];
+	if (views.length > 0) {
+		const group = document.createElement("optgroup");
+		group.label = "views";
+		for (const view of views) {
+			const el = addOption(group, VIEW_PREFIX + view.name, "view: " + view.name);
+			el.title = view.root;
+		}
+		profileSelect.appendChild(group);
 	}
-	profileSelect.value = options.profile;
+	if (options.view !== "") {
+		if (views.find(v => v.name === options.view) == null) {
+			addOption(profileSelect, VIEW_PREFIX + options.view, "view: " + options.view + " (unknown)");
+		}
+		profileSelect.value = VIEW_PREFIX + options.view;
+	} else {
+		if (options.profile !== "" && profileInfo(options.profile) == null) {
+			addOption(profileSelect, options.profile, options.profile + " (unknown)");
+		}
+		profileSelect.value = options.profile;
+	}
+
+	// Sequence and timing diagrams have no graph layout
+	elkBox.checked = options.elk;
+	const drawing = profileInfo(activeProfile());
+	elkLabel.hidden = drawing != null && drawing.graphLayout === false;
 
 	renderProfileOptions();
 }
@@ -343,15 +402,28 @@ function importGenerated() {
 		false);
 }
 
+// The key=value words of an !include_sysml line that the toolbar does not
+// write, so that options typed by hand survive a re-import.
+function extraWords(line) {
+	const managed = managedKeys();
+	const words = line.match(/"[^"]*"|\S+/g) || [];
+	return words.slice(1).filter(word => {
+		const eq = word.indexOf("=");
+		return word.startsWith('"') === false && eq > 0 && managed.has(word.slice(0, eq)) === false;
+	});
+}
+
 // Directive mode: keep the user's diagram, only rewrite its !include_sysml line
-// (or start a diagram when there is none).
+// (or start a diagram when there is none): the files and the toolbar's options
+// follow the toolbar, other options on the line are kept.
 function importDirective() {
-	const line = directiveLine();
 	const source = editor.value;
-	if (/^[ \t]*!include_sysml\b.*$/m.test(source)) {
+	const current = source.match(/^[ \t]*!include_sysml\b.*$/m);
+	if (current != null) {
+		const line = [directiveLine()].concat(extraWords(current[0].trim())).join(" ");
 		editor.value = source.replace(/^[ \t]*!include_sysml\b.*$/m, line);
 	} else {
-		editor.value = "@startuml\n" + line + "\n@enduml\n";
+		editor.value = "@startuml\n" + directiveLine() + "\n@enduml\n";
 	}
 	setImportStatus("The left pane's files are served to !include_sysml by name; edit the diagram around the directive freely.", false);
 }
@@ -475,7 +547,8 @@ function newTab() {
 	active = files.length - 1;
 	renderTabs();
 	sysmlArea.focus();
-	scheduleSave();
+	// The directive line lists the files: it gains the new one at once
+	scheduleImport();
 }
 
 // A lone tab that is empty, or still the untouched sample, is only a
@@ -555,7 +628,17 @@ function controls() {
 		importNow();
 	});
 	profileSelect.addEventListener("change", () => {
-		options.profile = profileSelect.value;
+		const value = profileSelect.value;
+		if (value.startsWith(VIEW_PREFIX)) {
+			options.view = value.slice(VIEW_PREFIX.length);
+			options.profile = "";
+			// A view has its own roots (packages): the profile's root would not be found
+			options.root = "";
+			importNow();
+			return;
+		}
+		options.view = "";
+		options.profile = value;
 		// A root of another profile would not be found any more
 		const root = described == null ? null
 			: described.roots.find(r => r.name === options.root || r.qualifiedName === options.root);
@@ -570,6 +653,10 @@ function controls() {
 	});
 	styleBox.addEventListener("change", () => {
 		options.style = styleBox.checked;
+		scheduleImport();
+	});
+	elkBox.addEventListener("change", () => {
+		options.elk = elkBox.checked;
 		scheduleImport();
 	});
 	autoBox.addEventListener("change", () => {
