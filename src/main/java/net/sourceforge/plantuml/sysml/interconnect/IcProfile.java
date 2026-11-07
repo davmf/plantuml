@@ -89,6 +89,8 @@ public final class IcProfile implements SysmlProfile {
 		final Map<String, String> values = new LinkedHashMap<>(options.asMap());
 		values.remove(SysmlOptions.ROOT);
 		values.remove(SysmlOptions.PROFILE);
+		// SysmlImport has already written (or not) the ELK pragma
+		values.remove(SysmlOptions.LAYOUT);
 		values.put(SysmlOptions.SYSTEM, root.getQualifiedName());
 		final IcOptions parsed = IcOptions.parse(values);
 		final InterconnectModel interconnect = InterconnectModel.build(model, parsed.getSystem());

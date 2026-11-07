@@ -1,0 +1,20 @@
+@startuml
+component "A1\nBoard" as A1 <<PCBAUnit>> {
+  group "J1" {
+    portout "1 24V" as A1_J1_c1 <<power>>
+    portout "2" as A1_J1_c2 <<nc>>
+    portout "3 0V" as A1_J1_c3 <<ground>>
+  }
+}
+component "B1\nSensor1" as B1 <<Sensor>> {
+  group "X1" {
+    portin "1 24V" as B1_X1_c1 <<power>>
+    portin "2" as B1_X1_c2 <<nc>>
+    portin "3 0V" as B1_X1_c3 <<ground>>
+  }
+}
+harness "A1.J1–B1.X1" {
+  A1_J1_c1 -- B1_X1_c1
+  A1_J1_c3 -- B1_X1_c3
+}
+@enduml

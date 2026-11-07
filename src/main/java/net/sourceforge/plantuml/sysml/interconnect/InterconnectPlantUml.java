@@ -520,7 +520,8 @@ public final class InterconnectPlantUml {
 			final List<String> lines = new ArrayList<>();
 			for (IcContact ca : a.getContacts()) {
 				final IcContact cb = b.getContactById(ca.getContactId());
-				if (cb != null)
+				// Two nc contacts mate a pin position, not a conductor
+				if (cb != null && (isNc(ca) && isNc(cb)) == false)
 					lines.add("  " + contactAlias(ca) + " -- " + contactAlias(cb));
 			}
 			if (lines.isEmpty() == false) {
@@ -532,6 +533,10 @@ public final class InterconnectPlantUml {
 			}
 		}
 		out.add(anchor(a) + " -- " + anchor(b) + stereotype);
+	}
+
+	private static boolean isNc(IcContact contact) {
+		return "nc".equals(contact.getKind());
 	}
 
 	private void writeCableEdge(IcInstance cable, IcConnection[] mates) {

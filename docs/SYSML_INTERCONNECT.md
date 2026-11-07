@@ -41,7 +41,7 @@ are chosen.
 |-----------|-------------------------------------|-------------|---------|
 | `system`  | part name                           | first found | Which `part x : InterconnectSystem` to draw (same as `root=`) |
 | `view`    | `physical`, `logical`, `both`       | `physical`  | Cables and Mates; InterfaceLinks and UnitLinks (no Cables); or both overlaid |
-| `detail`  | `connector`, `contact`              | `connector` | One port per connector; or one port group per connector, one port per contact, each Mate drawn as a `harness` pairing contacts by `contactId` (physical view only) |
+| `detail`  | `connector`, `contact`              | `connector` | One port per connector; or one port group per connector, one port per contact, each Mate drawn as a `harness` pairing contacts by `contactId`, except two `nc` contacts (physical view only) |
 | `cables`  | `node`, `edge`                      | `node`      | A two-ended Cable mated to two Units can be drawn as one labelled edge; multi-ended harnesses stay components |
 | `frame`   | `true`, `false`                     | `false`     | Draw the system itself as an outer rectangle |
 | `style`   | `true`, `false`                     | `true`      | Emit the default skinparams and `<style>` |

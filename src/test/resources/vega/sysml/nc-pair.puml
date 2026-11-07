@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml nc-pair.sysml detail=contact style=false layout=default
+@enduml
