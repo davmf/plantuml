@@ -1,0 +1,8 @@
+---
+output: preproc
+---
+@startuml
+' focus= by short id, default depth 1 in both directions
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SYS-001
+title $sysml_focus $sysml_focusName
+@enduml

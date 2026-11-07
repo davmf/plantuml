@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: focus 'controller' is ambiguous (DroneDesign::prototype::controller, DroneTests::controller): use the short id or the qualified name
+---
+@startuml
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=controller
+@enduml

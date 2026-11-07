@@ -1,0 +1,16 @@
+@startuml
+hide circle
+hide empty members
+hide stereotype
+package "DroneRequirements" as pkg_DroneRequirements <<package>> {
+  class "«requirement def»\n<b>RD-1</b>\nSafetyRequirement" as RD_1 <<requirementDef>>
+  package "System" as pkg_DroneRequirements__System <<package>> {
+    class "«requirement»\n<b>SAF-001</b>\nGeofence" as SAF_001 <<requirement>> <<focus>>
+  }
+  package "Software" as pkg_DroneRequirements__Software <<package>> {
+    class "«requirement»\n<b>SW-003</b>\nGeofenceCheck" as SW_003 <<requirement>>
+  }
+}
+RD_1 <|.. SAF_001 <<definedBy>> : «defined by»
+SAF_001 <.. SW_003 <<refine>> : «refine»
+@enduml

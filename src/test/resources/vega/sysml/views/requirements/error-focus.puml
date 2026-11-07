@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: focus 'SYS-999' names no element (expected a short id, a name or a qualified name)
+---
+@startuml
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SYS-999
+@enduml

@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' No doc text, package frames, no style, no layout pragma
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SAF-001 text=false packages=true style=false layout=default
+@enduml

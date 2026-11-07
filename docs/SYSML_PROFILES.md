@@ -29,6 +29,8 @@ PlantUML.
 
 Views draw plain SysML, with or without a profile: `view=definitions` draws the definitions as a class diagram ([details](SYSML_VIEW_DEFINITIONS.md)).
 
+`view=requirements` draws plain SysML v2 requirements and their traces instead of a profile: see [SYSML_VIEW_REQUIREMENTS.md](SYSML_VIEW_REQUIREMENTS.md).
+
 ## Choosing the root
 
 Without options, the profiles are tried in the order of the table and the

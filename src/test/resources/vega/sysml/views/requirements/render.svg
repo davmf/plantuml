@@ -1,0 +1,303 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="CLASS" height="616px" preserveAspectRatio="none" style="width:1103px;height:616px;background:#FFFFFF;" version="1.1" viewBox="0 0 1103 616" width="1103px" zoomAndPan="magnify">
+  <defs/>
+  <g font-family="sans-serif" lengthAdjust="spacing">
+    <!--class SYS_001-->
+    <g class="entity" data-qualified-name="SYS_001" data-source-line="1" id="ent0001">
+      <rect fill="#FFF3B0" height="116" rx="2.5" ry="2.5" style="stroke:#D9822B;stroke-width:3;" width="282.813" x="74.077" y="106"/>
+      <text fill="#000" font-size="14" textLength="90.213" x="170.377" y="121.889">«requirement»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="56.087" x="187.44" y="135.889">SYS-001</text>
+      <text fill="#000" font-size="14" textLength="34.3" x="185.121" y="149.889">Flight</text>
+      <text fill="#000" font-size="14" x="219.421" y="149.889"> </text>
+      <text fill="#000" font-size="14" textLength="26.425" x="219.421" y="149.889">time</text>
+      <line style="stroke:#D9822B;stroke-width:3;" x1="75.077" x2="355.89" y1="158" y2="158"/>
+      <text fill="#000" font-size="14" textLength="24.15" x="80.077" y="172.889">The</text>
+      <text fill="#000" font-size="14" x="104.227" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="35.788" x="104.227" y="172.889">drone</text>
+      <text fill="#000" font-size="14" x="140.015" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="28.875" x="140.015" y="172.889">shall</text>
+      <text fill="#000" font-size="14" x="168.89" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="35" x="168.89" y="172.889">hover</text>
+      <text fill="#000" font-size="14" x="203.89" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="16.275" x="203.89" y="172.889">for</text>
+      <text fill="#000" font-size="14" x="220.165" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="11.638" x="220.165" y="172.889">at</text>
+      <text fill="#000" font-size="14" x="231.802" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="29.575" x="231.802" y="172.889">least</text>
+      <text fill="#000" font-size="14" x="261.377" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="15.575" x="261.377" y="172.889">25</text>
+      <text fill="#000" font-size="14" x="276.952" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="49" x="276.952" y="172.889">minutes</text>
+      <text fill="#000" font-size="14" x="325.952" y="172.889"> </text>
+      <text fill="#000" font-size="14" textLength="24.938" x="325.952" y="172.889">with</text>
+      <text fill="#000" font-size="14" textLength="19.425" x="80.077" y="186.889">the</text>
+      <text fill="#000" font-size="14" x="99.502" y="186.889"> </text>
+      <text fill="#000" font-size="14" textLength="41.213" x="99.502" y="186.889">survey</text>
+      <text fill="#000" font-size="14" x="140.715" y="186.889"> </text>
+      <text fill="#000" font-size="14" textLength="46.637" x="140.715" y="186.889">camera</text>
+      <text fill="#000" font-size="14" x="187.352" y="186.889"> </text>
+      <text fill="#000" font-size="14" textLength="34.125" x="187.352" y="186.889">fitted,</text>
+      <text fill="#000" font-size="14" x="221.477" y="186.889"> </text>
+      <text fill="#000" font-size="14" textLength="11.638" x="221.477" y="186.889">at</text>
+      <text fill="#000" font-size="14" x="233.115" y="186.889"> </text>
+      <text fill="#000" font-size="14" textLength="15.575" x="233.115" y="186.889">20</text>
+      <text fill="#000" font-size="14" x="248.69" y="186.889"> </text>
+      <text fill="#000" font-size="14" textLength="50.575" x="248.69" y="186.889">degrees</text>
+      <text fill="#000" font-size="14" x="299.265" y="186.889"> </text>
+      <text fill="#000" font-size="14" textLength="46.025" x="299.265" y="186.889">Celsius</text>
+      <text fill="#000" font-size="14" textLength="23.363" x="80.077" y="200.889">and</text>
+      <text fill="#000" font-size="14" x="103.44" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="22.575" x="103.44" y="200.889">sea</text>
+      <text fill="#000" font-size="14" x="126.015" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="32.725" x="126.015" y="200.889">level,</text>
+      <text fill="#000" font-size="14" x="158.74" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="24.938" x="158.74" y="200.889">with</text>
+      <text fill="#000" font-size="14" x="183.677" y="200.889"> </text>
+      <text fill="#000" font-size="14" x="183.677" y="200.889">a</text>
+      <text fill="#000" font-size="14" x="191.465" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="24.938" x="191.465" y="200.889">fully</text>
+      <text fill="#000" font-size="14" x="216.402" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="50.575" x="216.402" y="200.889">charged</text>
+      <text fill="#000" font-size="14" x="266.977" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="42.7" x="266.977" y="200.889">battery</text>
+      <text fill="#000" font-size="14" x="309.677" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="23.363" x="309.677" y="200.889">and</text>
+      <text fill="#000" font-size="14" x="333.04" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="15.575" x="333.04" y="200.889">no</text>
+      <text fill="#000" font-size="14" textLength="46.725" x="80.077" y="214.889">wind,…</text>
+    </g>
+    <!--class SYS_001_1-->
+    <g class="entity" data-qualified-name="SYS_001_1" data-source-line="1" id="ent0002">
+      <rect fill="#EAF1FB" height="74" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="220.425" x="11" y="316"/>
+      <text fill="#000" font-size="14" textLength="90.213" x="76.106" y="331.889">«requirement»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="67.725" x="87.35" y="345.889">SYS-001.1</text>
+      <text fill="#000" font-size="14" textLength="44.275" x="73.394" y="359.889">Battery</text>
+      <text fill="#000" font-size="14" x="117.669" y="359.889"> </text>
+      <text fill="#000" font-size="14" textLength="51.363" x="117.669" y="359.889">capacity</text>
+      <line style="stroke:#404040;stroke-width:0.5;" x1="12" x2="230.425" y1="368" y2="368"/>
+      <text fill="#000" font-size="14" textLength="24.15" x="17" y="382.889">The</text>
+      <text fill="#000" font-size="14" x="41.15" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="42.7" x="41.15" y="382.889">battery</text>
+      <text fill="#000" font-size="14" x="83.85" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="28.875" x="83.85" y="382.889">shall</text>
+      <text fill="#000" font-size="14" x="112.725" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="31.063" x="112.725" y="382.889">store</text>
+      <text fill="#000" font-size="14" x="143.788" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="11.638" x="143.788" y="382.889">at</text>
+      <text fill="#000" font-size="14" x="155.425" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="29.575" x="155.425" y="382.889">least</text>
+      <text fill="#000" font-size="14" x="185" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="15.575" x="185" y="382.889">90</text>
+      <text fill="#000" font-size="14" x="200.575" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="24.85" x="200.575" y="382.889">Wh.</text>
+    </g>
+    <!--class SYS_001_2-->
+    <g class="entity" data-qualified-name="SYS_001_2" data-source-line="1" id="ent0003">
+      <rect fill="#EAF1FB" height="74" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="247.638" x="251.425" y="316"/>
+      <text fill="#000" font-size="14" textLength="90.213" x="330.137" y="331.889">«requirement»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="67.725" x="341.381" y="345.889">SYS-001.2</text>
+      <text fill="#000" font-size="14" textLength="51.275" x="332.894" y="359.889">Take-off</text>
+      <text fill="#000" font-size="14" x="384.169" y="359.889"> </text>
+      <text fill="#000" font-size="14" textLength="33.425" x="384.169" y="359.889">mass</text>
+      <line style="stroke:#404040;stroke-width:0.5;" x1="252.425" x2="498.062" y1="368" y2="368"/>
+      <text fill="#000" font-size="14" textLength="24.15" x="257.425" y="382.889">The</text>
+      <text fill="#000" font-size="14" x="281.575" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="46.55" x="281.575" y="382.889">take-off</text>
+      <text fill="#000" font-size="14" x="328.125" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="33.425" x="328.125" y="382.889">mass</text>
+      <text fill="#000" font-size="14" x="361.55" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="28.875" x="361.55" y="382.889">shall</text>
+      <text fill="#000" font-size="14" x="390.425" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="19.425" x="390.425" y="382.889">not</text>
+      <text fill="#000" font-size="14" x="409.85" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="45.15" x="409.85" y="382.889">exceed</text>
+      <text fill="#000" font-size="14" x="455" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="19.425" x="455" y="382.889">2.5</text>
+      <text fill="#000" font-size="14" x="474.425" y="382.889"> </text>
+      <text fill="#000" font-size="14" textLength="18.637" x="474.425" y="382.889">kg.</text>
+    </g>
+    <!--class SYS_002-->
+    <g class="entity" data-qualified-name="SYS_002" data-source-line="1" id="ent0004">
+      <rect fill="#EAF1FB" height="88" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="290.688" x="796.619" y="134"/>
+      <text fill="#000" font-size="14" textLength="90.213" x="896.856" y="149.889">«requirement»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="56.087" x="913.919" y="163.889">SYS-002</text>
+      <text fill="#000" font-size="14" textLength="25.725" x="885.131" y="177.889">Low</text>
+      <text fill="#000" font-size="14" x="910.856" y="177.889"> </text>
+      <text fill="#000" font-size="14" textLength="42.7" x="910.856" y="177.889">battery</text>
+      <text fill="#000" font-size="14" x="953.556" y="177.889"> </text>
+      <text fill="#000" font-size="14" textLength="45.238" x="953.556" y="177.889">landing</text>
+      <line style="stroke:#404040;stroke-width:0.5;" x1="797.619" x2="1086.306" y1="186" y2="186"/>
+      <text fill="#000" font-size="14" textLength="24.15" x="802.619" y="200.889">The</text>
+      <text fill="#000" font-size="14" x="826.769" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="35.788" x="826.769" y="200.889">drone</text>
+      <text fill="#000" font-size="14" x="862.556" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="28.875" x="862.556" y="200.889">shall</text>
+      <text fill="#000" font-size="14" x="891.431" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="26.512" x="891.431" y="200.889">land</text>
+      <text fill="#000" font-size="14" x="917.944" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="33.512" x="917.944" y="200.889">when</text>
+      <text fill="#000" font-size="14" x="951.456" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="19.425" x="951.456" y="200.889">the</text>
+      <text fill="#000" font-size="14" x="970.881" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="42.7" x="970.881" y="200.889">battery</text>
+      <text fill="#000" font-size="14" x="1013.581" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="42.788" x="1013.581" y="200.889">charge</text>
+      <text fill="#000" font-size="14" x="1056.369" y="200.889"> </text>
+      <text fill="#000" font-size="14" textLength="24.938" x="1056.369" y="200.889">falls</text>
+      <text fill="#000" font-size="14" textLength="36.663" x="802.619" y="214.889">below</text>
+      <text fill="#000" font-size="14" x="839.281" y="214.889"> </text>
+      <text fill="#000" font-size="14" textLength="15.575" x="839.281" y="214.889">15</text>
+      <text fill="#000" font-size="14" x="854.856" y="214.889"> </text>
+      <text fill="#000" font-size="14" textLength="16.275" x="854.856" y="214.889">%.</text>
+    </g>
+    <!--class SW_001-->
+    <g class="entity" data-qualified-name="SW_001" data-source-line="1" id="ent0005">
+      <rect fill="#EAF1FB" height="88" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="262.425" x="677.144" y="309"/>
+      <text fill="#000" font-size="14" textLength="90.213" x="763.25" y="324.889">«requirement»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="50.575" x="783.069" y="338.889">SW-001</text>
+      <text fill="#000" font-size="14" textLength="90.913" x="762.9" y="352.889">BatteryMonitor</text>
+      <line style="stroke:#404040;stroke-width:0.5;" x1="678.144" x2="938.569" y1="361" y2="361"/>
+      <text fill="#000" font-size="14" textLength="24.15" x="683.144" y="375.889">The</text>
+      <text fill="#000" font-size="14" x="707.294" y="375.889"> </text>
+      <text fill="#000" font-size="14" textLength="29.575" x="707.294" y="375.889">flight</text>
+      <text fill="#000" font-size="14" x="736.869" y="375.889"> </text>
+      <text fill="#000" font-size="14" textLength="52.85" x="736.869" y="375.889">software</text>
+      <text fill="#000" font-size="14" x="789.719" y="375.889"> </text>
+      <text fill="#000" font-size="14" textLength="28.875" x="789.719" y="375.889">shall</text>
+      <text fill="#000" font-size="14" x="818.594" y="375.889"> </text>
+      <text fill="#000" font-size="14" textLength="52.85" x="818.594" y="375.889">estimate</text>
+      <text fill="#000" font-size="14" x="871.444" y="375.889"> </text>
+      <text fill="#000" font-size="14" textLength="19.425" x="871.444" y="375.889">the</text>
+      <text fill="#000" font-size="14" x="890.869" y="375.889"> </text>
+      <text fill="#000" font-size="14" textLength="42.7" x="890.869" y="375.889">battery</text>
+      <text fill="#000" font-size="14" textLength="42.788" x="683.144" y="389.889">charge</text>
+      <text fill="#000" font-size="14" x="725.931" y="389.889"> </text>
+      <text fill="#000" font-size="14" textLength="34.212" x="725.931" y="389.889">every</text>
+      <text fill="#000" font-size="14" x="760.144" y="389.889"> </text>
+      <text fill="#000" font-size="14" textLength="49" x="760.144" y="389.889">second.</text>
+    </g>
+    <!--class Logging-->
+    <g class="entity" data-qualified-name="Logging" data-source-line="1" id="ent0006">
+      <rect fill="#EAF1FB" height="38" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="96.213" x="804.362" y="454"/>
+      <text fill="#000" font-size="14" textLength="90.213" x="807.362" y="469.889">«requirement»</text>
+      <text fill="#000" font-size="14" textLength="49.875" x="827.531" y="483.889">Logging</text>
+    </g>
+    <!--class SurveyDrone-->
+    <g class="entity" data-qualified-name="SurveyDrone" data-source-line="1" id="ent0007">
+      <rect fill="#FFF" height="38" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="87.725" x="186.242" y="11"/>
+      <text fill="#000" font-size="14" textLength="31.85" x="200.573" y="26.889">«part</text>
+      <text fill="#000" font-size="14" x="232.423" y="26.889"> </text>
+      <text fill="#000" font-size="14" textLength="27.213" x="232.423" y="26.889">def»</text>
+      <text fill="#000" font-size="14" textLength="81.725" x="189.242" y="40.889">SurveyDrone</text>
+    </g>
+    <!--class CONF_1-->
+    <g class="entity" data-qualified-name="CONF_1" data-source-line="1" id="ent0008">
+      <rect fill="#FFF" height="52" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="64.275" x="592.869" y="327"/>
+      <text fill="#000" font-size="14" textLength="39.637" x="605.187" y="342.889">«part»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="52.15" x="598.931" y="356.889">CONF-1</text>
+      <text fill="#000" font-size="14" textLength="58.275" x="595.869" y="370.889">prototype</text>
+    </g>
+    <!--class battery-->
+    <g class="entity" data-qualified-name="battery" data-source-line="1" id="ent0009">
+      <rect fill="#FFF" height="38" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="48.7" x="96.862" y="454"/>
+      <text fill="#000" font-size="14" textLength="39.637" x="101.394" y="469.889">«part»</text>
+      <text fill="#000" font-size="14" textLength="42.7" x="99.862" y="483.889">battery</text>
+    </g>
+    <!--class TC_001-->
+    <g class="entity" data-qualified-name="TC_001" data-source-line="1" id="ent0010">
+      <rect fill="#DDEFDD" height="52" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="132" x="512.1" y="454"/>
+      <text fill="#000" font-size="14" textLength="74.725" x="527.131" y="469.889">«verification</text>
+      <text fill="#000" font-size="14" x="601.856" y="469.889"> </text>
+      <text fill="#000" font-size="14" textLength="27.213" x="601.856" y="469.889">def»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="46.725" x="554.738" y="483.889">TC-001</text>
+      <text fill="#000" font-size="14" textLength="37.363" x="515.1" y="497.889">Hover</text>
+      <text fill="#000" font-size="14" x="552.462" y="497.889"> </text>
+      <text fill="#000" font-size="14" textLength="66.15" x="552.462" y="497.889">endurance</text>
+      <text fill="#000" font-size="14" x="618.613" y="497.889"> </text>
+      <text fill="#000" font-size="14" textLength="22.488" x="618.613" y="497.889">test</text>
+    </g>
+    <!--class TC_002-->
+    <g class="entity" data-qualified-name="TC_002" data-source-line="1" id="ent0011">
+      <rect fill="#EAF5EA" height="52" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="107.762" x="664.1" y="454"/>
+      <text fill="#000" font-size="14" textLength="82.513" x="676.725" y="469.889">«verification»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="46.725" x="694.619" y="483.889">TC-002</text>
+      <text fill="#000" font-size="14" textLength="44.275" x="667.1" y="497.889">Battery</text>
+      <text fill="#000" font-size="14" x="711.375" y="497.889"> </text>
+      <text fill="#000" font-size="14" textLength="35" x="711.375" y="497.889">alarm</text>
+      <text fill="#000" font-size="14" x="746.375" y="497.889"> </text>
+      <text fill="#000" font-size="14" textLength="22.488" x="746.375" y="497.889">test</text>
+    </g>
+    <!--class Run_2026_01_12-->
+    <g class="entity" data-qualified-name="Run_2026_01_12" data-source-line="1" id="ent0012">
+      <rect fill="#EAF5EA" height="38" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="103.3" x="504.45" y="563"/>
+      <text fill="#000" font-size="14" textLength="82.513" x="514.844" y="578.889">«verification»</text>
+      <text fill="#000" font-size="14" textLength="25.725" x="507.45" y="592.889">Run</text>
+      <text fill="#000" font-size="14" x="533.175" y="592.889"> </text>
+      <text fill="#000" font-size="14" textLength="71.575" x="533.175" y="592.889">2026-01-12</text>
+    </g>
+    <!--class Run_2026_02_03-->
+    <g class="entity" data-qualified-name="Run_2026_02_03" data-source-line="1" id="ent0013">
+      <rect fill="#EAF5EA" height="38" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="103.3" x="627.75" y="563"/>
+      <text fill="#000" font-size="14" textLength="82.513" x="638.144" y="578.889">«verification»</text>
+      <text fill="#000" font-size="14" textLength="25.725" x="630.75" y="592.889">Run</text>
+      <text fill="#000" font-size="14" x="656.475" y="592.889"> </text>
+      <text fill="#000" font-size="14" textLength="71.575" x="656.475" y="592.889">2026-02-03</text>
+    </g>
+    <!--class AN_001-->
+    <g class="entity" data-qualified-name="AN_001" data-source-line="1" id="ent0014">
+      <rect fill="#FFF" height="52" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="83.788" x="333.35" y="454"/>
+      <text fill="#000" font-size="14" textLength="66.238" x="342.125" y="469.889">«analysis»</text>
+      <text fill="#000" font-size="14" font-weight="700" textLength="47.512" x="351.487" y="483.889">AN-001</text>
+      <text fill="#000" font-size="14" textLength="77.788" x="336.35" y="497.889">MassBudget</text>
+    </g>
+    <path d="M121.212,222 L121.212,316" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    <ellipse cx="121.212" cy="230" fill="#FFF" rx="8" ry="8" style="stroke:#181818;stroke-width:1;"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="121.212" x2="121.212" y1="238" y2="222"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="113.212" x2="129.212" y1="230" y2="230"/>
+    <path d="M168.348,222 L168.348,262 L375.244,262 L375.244,316" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    <ellipse cx="168.348" cy="230" fill="#FFF" rx="8" ry="8" style="stroke:#181818;stroke-width:1;"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="168.348" x2="168.348" y1="238" y2="222"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="160.348" x2="176.348" y1="230" y2="230"/>
+    <path d="M215.483,49 L215.483,106" fill="none" style="stroke:#757575;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#757575" points="215.483,49,211.483,58,215.483,54,219.483,58,215.483,49" style="stroke:#757575;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#757575" font-size="13" textLength="41.194" x="170.29" y="81.111">subject</text>
+    <path d="M941.962,222 L941.962,299 L852.094,299 L852.094,309" fill="none" style="stroke:#6A1B9A;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#6A1B9A" points="941.962,222,937.962,231,941.962,227,945.962,231,941.962,222" style="stroke:#6A1B9A;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#6A1B9A" font-size="13" textLength="35.425" x="902.537" y="284.111">derive</text>
+    <path d="M852.094,397 L852.094,407 L852.469,407 L852.469,454" fill="none" style="stroke:#181818;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#181818" points="852.094,397,848.094,406,852.094,402,856.094,406,852.094,397" style="stroke:#181818;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#000" font-size="13" textLength="70.85" x="777.619" y="429.111">dependency</text>
+    <path d="M309.754,222 L309.754,232 L764.619,232 L764.619,309" fill="none" style="stroke:#6A1B9A;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#6A1B9A" points="309.754,222,305.754,231,309.754,227,313.754,231,309.754,222" style="stroke:#6A1B9A;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#6A1B9A" font-size="13" textLength="35.425" x="725.194" y="284.111">derive</text>
+    <path d="M244.725,49 L244.725,59 L775.619,59 L775.619,299 L635.719,299 L635.719,327" fill="none" style="stroke:#757575;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#FFF" points="244.725,49,237.725,68,251.725,68,244.725,49" style="stroke:#757575;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#757575" font-size="13" textLength="56.388" x="715.231" y="167.611">defined by</text>
+    <path d="M121.212,390 L121.212,454" fill="none" style="stroke:#2E7D32;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#2E7D32" points="121.212,390,117.212,399,121.212,395,125.212,399,121.212,390" style="stroke:#2E7D32;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#2E7D32" font-size="13" textLength="36.806" x="80.406" y="429.111">satisfy</text>
+    <path d="M262.619,222 L262.619,242 L614.294,242 L614.294,327" fill="none" style="stroke:#2E7D32;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#2E7D32" points="262.619,222,258.619,231,262.619,227,266.619,231,262.619,222" style="stroke:#2E7D32;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#2E7D32" font-size="13" textLength="36.806" x="573.488" y="284.111">satisfy</text>
+    <path d="M614.294,379 L614.294,444 L600.1,444 L600.1,454" fill="none" style="stroke:#757575;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#757575" points="614.294,379,610.294,388,614.294,384,618.294,388,614.294,379" style="stroke:#757575;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#757575" font-size="13" textLength="41.194" x="569.1" y="429.111">subject</text>
+    <path d="M215.483,222 L215.483,252 L556.1,252 L556.1,454" fill="none" style="stroke:#1565C0;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#1565C0" points="215.483,222,211.483,231,215.483,227,219.483,231,215.483,222" style="stroke:#1565C0;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#1565C0" font-size="13" textLength="31.038" x="521.062" y="356.611">verify</text>
+    <path d="M635.719,379 L635.719,407 L700.021,407 L700.021,454" fill="none" style="stroke:#757575;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#757575" points="635.719,379,631.719,388,635.719,384,639.719,388,635.719,379" style="stroke:#757575;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#757575" font-size="13" textLength="41.194" x="654.827" y="429.111">subject</text>
+    <path d="M764.619,397 L764.619,444 L735.942,444 L735.942,454" fill="none" style="stroke:#1565C0;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#1565C0" points="764.619,397,760.619,406,764.619,402,768.619,406,764.619,397" style="stroke:#1565C0;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#1565C0" font-size="13" textLength="31.038" x="729.581" y="429.111">verify</text>
+    <path d="M556.1,506 L556.1,563" fill="none" style="stroke:#757575;stroke-width:1;"/>
+    <polygon fill="#FFF" points="556.1,506,549.1,525,563.1,525,556.1,506" style="stroke:#757575;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#757575" font-size="13" textLength="44.769" x="507.331" y="538.111">subsets</text>
+    <path d="M600.1,506 L600.1,516 L679.4,516 L679.4,563" fill="none" style="stroke:#757575;stroke-width:1;"/>
+    <polygon fill="#FFF" points="600.1,506,593.1,525,607.1,525,600.1,506" style="stroke:#757575;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#757575" font-size="13" textLength="44.769" x="684.4" y="538.111">subsets</text>
+    <path d="M375.244,390 L375.244,454" fill="none" style="stroke:#1565C0;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#1565C0" points="375.244,390,371.244,399,375.244,395,379.244,399,375.244,390" style="stroke:#1565C0;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#1565C0" font-size="13" textLength="31.038" x="340.206" y="429.111">verify</text>
+  </g>
+</svg>

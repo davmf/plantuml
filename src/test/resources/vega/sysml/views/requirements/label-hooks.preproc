@@ -1,0 +1,41 @@
+@startuml
+!pragma layout elk
+hide circle
+hide empty members
+hide stereotype
+skinparam classAttributeIconSize 0
+<style>
+classDiagram {
+  class { BackGroundColor #FFFFFF; LineColor #404040; MaximumWidth 280 }
+  package { LineColor #9E9E9E; FontColor #616161 }
+  .requirement { BackGroundColor #EAF1FB }
+  .requirementDef { BackGroundColor #DCE7F7 }
+  .concern { BackGroundColor #F0EAF7 }
+  .verification { BackGroundColor #EAF5EA }
+  .verificationDef { BackGroundColor #DDEFDD }
+  .unresolved { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 5; FontColor #757575 }
+  .focus { BackGroundColor #FFF3B0; LineColor #D9822B; LineThickness 3 }
+  arrow {
+    .satisfy { LineColor #2E7D32; FontColor #2E7D32 }
+    .verify { LineColor #1565C0; FontColor #1565C0 }
+    .derive { LineColor #6A1B9A; FontColor #6A1B9A }
+    .refine { LineColor #6A1B9A; FontColor #6A1B9A }
+    .allocate { LineColor #EF6C00; FontColor #EF6C00 }
+    .definedBy { LineColor #757575; FontColor #757575 }
+    .specializes { LineColor #757575; FontColor #757575 }
+    .subsets { LineColor #757575; FontColor #757575 }
+    .subject { LineColor #757575; FontColor #757575 }
+    .references { LineColor #757575; FontColor #757575 }
+  }
+}
+</style>
+class "[SYS-001] Flight time" as SYS_001 <<requirement>>
+class "[SYS-002] Low battery landing" as SYS_002 <<requirement>>
+class "[SW-001] BatteryMonitor" as SW_001 <<requirement>> <<focus>>
+class "[] Logging" as Logging <<requirement>>
+class "[TC-002] Battery alarm test" as TC_002 <<verification>>
+SYS_002 <.. SW_001 <<derive>> : derive
+SW_001 <.. Logging <<dependency>> : dependency
+SYS_001 <.. SW_001 <<derive>> : derive
+SW_001 <.. TC_002 <<verify>> : verify
+@enduml

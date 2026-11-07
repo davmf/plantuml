@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: option direction=sideways: expected one of [both, up, down]
+---
+@startuml
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements direction=sideways
+@enduml

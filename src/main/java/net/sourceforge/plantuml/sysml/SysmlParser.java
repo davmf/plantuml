@@ -66,7 +66,7 @@ public final class SysmlParser {
 			"view", "viewpoint", "rendering", "concern", "use", "analysis", "verification", "satisfy", "assert",
 			"exhibit", "perform", "message", "succession", "transition", "accept", "send", "assume", "require",
 			"subject", "objective", "actor", "stakeholder", "frame", "expose", "render", "filter", "dependency",
-			"namespace", "language", "rep", "event", "individual", "snapshot", "timeslice", "connector"));
+			"namespace", "language", "rep", "event", "individual", "snapshot", "timeslice", "connector", "verify"));
 
 	/** The keywords that <code>case</code> may follow. */
 	private static final Set<String> CASES = new HashSet<>(Arrays.asList("use", "analysis", "verification"));
@@ -187,12 +187,15 @@ public final class SysmlParser {
 		boolean library = false;
 		String lastModifier = null;
 		final List<String> modifiers = new ArrayList<>();
+		final List<String> annotations = new ArrayList<>();
 		while (i < h.size()) {
 			final SysmlToken t = h.get(i);
 			if (t.isSymbol("#") || t.isSymbol("@")) {
 				// Metadata prefix: #Name or @Name (a metadata usage: kept as the modifier "@")
 				if (t.isSymbol("@") && i == 0)
 					modifiers.add("@");
+				if (t.isSymbol("#") && i + 1 < h.size() && h.get(i + 1).getKind() == SysmlToken.Kind.NAME)
+					annotations.add(h.get(i + 1).getText());
 				i += 2;
 				continue;
 			}
@@ -227,6 +230,23 @@ public final class SysmlParser {
 		} else if ("ref".equals(lastModifier) || "end".equals(lastModifier)) {
 			keyword = lastModifier;
 		}
+		if ("assert".equals(keyword) && i < h.size() && (h.get(i).isName("satisfy") || h.get(i).isName("not"))) {
+			// assert satisfy R by X, assert not satisfy R by X
+			while (i < h.size() && h.get(i).isName("satisfy") == false)
+				i++;
+			keyword = "satisfy";
+			i++;
+		}
+
+		String shortName = null;
+		if (i + 2 < h.size() && h.get(i).isSymbol("<") && h.get(i + 1).getKind() == SysmlToken.Kind.NAME
+				&& h.get(i + 2).isSymbol(">")) {
+			shortName = h.get(i + 1).getText();
+			i += 3;
+		}
+		if ("satisfy".equals(keyword) || "verify".equals(keyword) || "dependency".equals(keyword)
+				|| ("allocate".equals(keyword) && definition == false))
+			return relationship(keyword, h, i, shortName, annotations, line);
 
 		if ("doc".equals(keyword) || "comment".equals(keyword)) {
 			final SysmlToken last = h.get(h.size() - 1);
@@ -243,6 +263,7 @@ public final class SysmlParser {
 		String name = null;
 		boolean redefines = false;
 		String type = null;
+		final List<String> types = new ArrayList<>();
 		final List<String> specializes = new ArrayList<>();
 		SysmlValue value = null;
 		final List<String> ends = new ArrayList<>();
@@ -260,7 +281,7 @@ public final class SysmlParser {
 						name = lastSegment(n);
 					i = next[0];
 				}
-			} else if (t.isName("specializes") || t.isName("subsets") || t.isSymbol(":>")) {
+			} else if (t.isName("specializes") || t.isName("subsets") || t.isSymbol(":>") || t.isSymbol("::>")) {
 				i++;
 				while (i < h.size()) {
 					final int[] next = new int[1];
@@ -281,11 +302,20 @@ public final class SysmlParser {
 				if (i < h.size() && h.get(i).isSymbol("~"))
 					i++;
 				final int[] next = new int[1];
-				final String n = readQualified(h, i, next);
+				String n = readQualified(h, i, next);
 				if (n != null) {
 					type = n;
 					i = next[0];
 				}
+				while (n != null && i < h.size() && h.get(i).isSymbol(",")) {
+					// subject dut : A, B;
+					types.add(n);
+					n = readQualified(h, i + 1, next);
+					if (n != null)
+						i = next[0];
+				}
+				if (n != null)
+					types.add(n);
 			} else if (t.isSymbol("[")) {
 				final int close = skipBracket(h, i, "[", "]");
 				if (multiplicity == null && close - 1 > i + 1 && h.get(close - 1).isSymbol("]"))
@@ -345,7 +375,88 @@ public final class SysmlParser {
 		node.setMultiplicity(multiplicity);
 		for (String modifier : modifiers)
 			node.addModifier(modifier);
+		node.setShortName(shortName);
+		node.setAnnotations(annotations);
+		if (types.size() > 1)
+			node.setTypes(types);
 		return node;
+	}
+
+	/**
+	 * <code>satisfy [requirement] R [by X]</code>, <code>verify [requirement]
+	 * R</code>, <code>dependency [name from] A, B to C, D</code> and
+	 * <code>allocate A to B</code>: the ends become the sources and targets of
+	 * the node.
+	 */
+	private SysmlNode relationship(String keyword, List<SysmlToken> h, int start, String shortName,
+			List<String> annotations, int line) {
+		final List<String> sources = new ArrayList<>();
+		final List<String> targets = new ArrayList<>();
+		String name = null;
+		int i = start;
+		final int[] next = new int[1];
+		if ("satisfy".equals(keyword) || "verify".equals(keyword)) {
+			if (i < h.size() && h.get(i).isName("requirement"))
+				i++;
+			String requirement = readQualified(h, i, next);
+			if (requirement != null) {
+				i = next[0];
+				if (i < h.size() && h.get(i).isSymbol(":")) {
+					// satisfy requirement s : R by X
+					final String typed = readQualified(h, i + 1, next);
+					if (typed != null) {
+						name = requirement;
+						requirement = typed;
+						i = next[0];
+					}
+				}
+				targets.add(requirement);
+			}
+			while (i < h.size() && h.get(i).isName("by") == false)
+				i++;
+			if (i < h.size()) {
+				final String by = readQualified(h, i + 1, next);
+				if (by != null)
+					sources.add(by);
+			}
+		} else {
+			final List<String> first = readList(h, i, next);
+			i = next[0];
+			if (i < h.size() && h.get(i).isName("from")) {
+				if (first.isEmpty() == false)
+					name = first.get(0);
+				sources.addAll(readList(h, i + 1, next));
+				i = next[0];
+			} else {
+				sources.addAll(first);
+			}
+			if (i < h.size() && h.get(i).isName("to"))
+				targets.addAll(readList(h, i + 1, next));
+		}
+		final SysmlNode node = new SysmlNode(keyword, false, false, name, false, null,
+				Collections.<String>emptyList(), null, Collections.<String>emptyList(), source, line);
+		node.setShortName(shortName);
+		node.setAnnotations(annotations);
+		node.setRelationEnds(sources, targets);
+		return node;
+	}
+
+	/** Reads <code>A, B::C, d.e</code>; stops at the first token that is not part of it. */
+	private static List<String> readList(List<SysmlToken> h, int i, int[] next) {
+		final List<String> result = new ArrayList<>();
+		while (true) {
+			final String n = readQualified(h, i, next);
+			if (n == null || n.equals("from") || n.equals("to"))
+				break;
+			result.add(n);
+			i = next[0];
+			if (i < h.size() && h.get(i).isSymbol(","))
+				i++;
+			else
+				break;
+		}
+		next[0] = i;
+		return result;
 	}
 
 	private static boolean isModifierFollower(SysmlToken next) {
