@@ -85,7 +85,7 @@ export { basicSetup } from "codemirror";
 export { EditorView, keymap, placeholder } from "@codemirror/view";
 export { EditorState, Transaction } from "@codemirror/state";
 export { indentWithTab } from "@codemirror/commands";
-export { StreamLanguage, syntaxHighlighting, indentUnit } from "@codemirror/language";
+export { StreamLanguage, syntaxHighlighting, indentUnit, foldService, foldEffect, unfoldEffect, foldedRanges } from "@codemirror/language";
 export { classHighlighter } from "@lezer/highlight";
 EOF
 npx esbuild entry.js --bundle --format=esm --minify --legal-comments=none --outfile=codemirror.min.js

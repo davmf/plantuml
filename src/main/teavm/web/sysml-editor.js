@@ -19,9 +19,16 @@
 //   Alt+Up/Down, Shift+Alt+Up/Down  move, copy the line
 //   Ctrl/Cmd+/                    toggle a // (SysML) or ' (PlantUML) comment
 //   Tab, Shift+Tab                indent, dedent (Escape then Tab leaves the editor)
+//   Ctrl+Shift+[ / ]              fold, unfold the block at the cursor (Cmd+Alt+[ / ] on macOS)
+//   Ctrl+Alt+[ / ]                fold, unfold all blocks
+//   Ctrl+Alt+1 ... 9             unfold all, then fold the blocks at that level (1 = outermost)
+//   Gutter arrows                fold, unfold one block with the mouse
+// Blocks: { } in both languages; PlantUML also alt/opt/loop/par/group/critical/
+// break/partition/box/ref/legend/note up to their end.
 import {
 	basicSetup, EditorView, EditorState, Transaction, keymap, placeholder, indentWithTab,
-	StreamLanguage, syntaxHighlighting, indentUnit, classHighlighter
+	StreamLanguage, syntaxHighlighting, indentUnit, classHighlighter, foldService,
+	foldEffect, unfoldEffect, foldedRanges
 } from "./vendor/codemirror-6.min.js";
 
 const KEYWORDS = new Set((
@@ -237,6 +244,117 @@ const plantUmlLanguage = StreamLanguage.define({
 });
 
 // ---------------------------------------------------------------------------
+// Folding
+// ---------------------------------------------------------------------------
+
+// A line's text without what cannot open or close a block: strings and comments
+function sysmlCode(text) {
+	return text.replace(/"(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?|\/\*.*?\*\/|\/\/.*$/g, "");
+}
+
+function plantUmlCode(text) {
+	return /^\s*'/.test(text) ? "" : text.replace(/"(?:[^"\\]|\\.)*"?/g, "");
+}
+
+// Depth a code line adds: +1 for "{", -1 for "}"
+function braceChange(code) {
+	return (code.match(/\{/g) || []).length - (code.match(/\}/g) || []).length;
+}
+
+// PlantUML blocks without braces: "alt" ... "end", "note left of A" ... "end note".
+// A colon or "as" makes a one-line note or ref, which has no end.
+const PUML_BLOCK = "(?:alt|opt|loop|par|group|critical|break|partition|box|legend|note|ref)";
+const PUML_OPENS = new RegExp("^\\s*" + PUML_BLOCK + "\\b", "i");
+const PUML_ENDS = new RegExp("^\\s*end\\s*(?:" + PUML_BLOCK + ")?\\s*$", "i");
+
+function pumlBlockChange(code) {
+	if (PUML_ENDS.test(code)) {
+		return -1;
+	}
+	return PUML_OPENS.test(code) && code.indexOf(":") < 0 && !/\bas\b/i.test(code) ? 1 : 0;
+}
+
+// Folds from the end of a line that opens a block to the line before the one
+// that closes it. change(text) is the depth a line adds: +1 opens, -1 closes.
+function blockFolds(change) {
+	return (state, lineStart) => {
+		const line = state.doc.lineAt(lineStart);
+		let depth = change(line.text);
+		if (depth <= 0) {
+			return null;
+		}
+		for (let n = line.number + 1; n <= state.doc.lines; n++) {
+			const next = state.doc.line(n);
+			depth += change(next.text);
+			if (depth <= 0) {
+				return n > line.number + 1 ? {from: line.to, to: next.from - 1} : null;
+			}
+		}
+		return null;
+	};
+}
+
+// Every block in the document with its nesting depth (0 = outermost), found the
+// same way as blockFolds. A block whose closing line directly follows its opener
+// has no body to fold, so it is left out.
+function blockRanges(doc, change) {
+	const ranges = [];
+	const open = [];
+	for (let n = 1; n <= doc.lines; n++) {
+		const line = doc.line(n);
+		const delta = change(line.text);
+		for (let i = 0; i < delta; i++) {
+			open.push(n);
+		}
+		for (let i = 0; i > delta && open.length > 0; i--) {
+			const start = open.pop();
+			if (n > start + 1) {
+				ranges.push({from: doc.line(start).to, to: line.from - 1, depth: open.length});
+			}
+		}
+	}
+	return ranges;
+}
+
+// Ctrl/Cmd+Alt+1 ... 9: unfold everything, then fold the blocks at depth level - 1
+function foldLevelKeys(change) {
+	const keys = [];
+	for (let level = 1; level <= 9; level++) {
+		keys.push({
+			key: "Mod-Alt-" + level,
+			run: view => {
+				const effects = [];
+				foldedRanges(view.state).between(0, view.state.doc.length, (from, to) => {
+					effects.push(unfoldEffect.of({from, to}));
+				});
+				const seen = new Set();
+				for (const block of blockRanges(view.state.doc, change)) {
+					const key = block.from + ":" + block.to;
+					if (block.depth === level - 1 && seen.has(key) === false) {
+						seen.add(key);
+						effects.push(foldEffect.of({from: block.from, to: block.to}));
+					}
+				}
+				if (effects.length === 0) {
+					return false;
+				}
+				view.dispatch({effects});
+				return true;
+			}
+		});
+	}
+	return keymap.of(keys);
+}
+
+function foldingFor(change) {
+	return [foldService.of(blockFolds(change)), foldLevelKeys(change)];
+}
+
+const sysmlFolds = foldingFor(text => braceChange(sysmlCode(text)));
+const plantUmlFolds = foldingFor(text => braceChange(plantUmlCode(text))
+	+ pumlBlockChange(plantUmlCode(text)));
+
+// ---------------------------------------------------------------------------
 // Editors
 // ---------------------------------------------------------------------------
 
@@ -269,18 +387,27 @@ const paneTheme = EditorView.theme({
 	},
 	".cm-selectionMatch": {backgroundColor: "color-mix(in srgb, var(--accent) 25%, transparent)"},
 	".cm-panels": {backgroundColor: "var(--surface)", color: "var(--fg)"},
-	".cm-tooltip": {backgroundColor: "var(--surface)", color: "var(--fg)"}
+	".cm-tooltip": {backgroundColor: "var(--surface)", color: "var(--fg)"},
+	".cm-foldGutter .cm-gutterElement": {cursor: "pointer"},
+	".cm-foldPlaceholder": {
+		backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)",
+		border: "none",
+		borderRadius: "3px",
+		color: "var(--muted)",
+		padding: "0 0.35em"
+	}
 });
 
 // What both panes share. onChange(text) follows the edits made in the editor;
 // a dispatch made while quiet() returns true is not reported.
-function extensionsFor(language, textarea, onChange, quiet) {
+function extensionsFor(language, folding, textarea, onChange, quiet) {
 	return [
 		basicSetup,
 		keymap.of([indentWithTab]),
 		indentUnit.of("  "),
 		EditorState.tabSize.of(4),
 		language,
+		folding,
 		syntaxHighlighting(classHighlighter),
 		paneTheme,
 		placeholder(textarea.placeholder || ""),
@@ -313,7 +440,7 @@ export function createSysmlEditor(textarea, onChange) {
 	const states = new WeakMap();
 	let shown = null;
 
-	const extensions = extensionsFor(sysmlLanguage, textarea, onChange, () => false).concat([
+	const extensions = extensionsFor(sysmlLanguage, sysmlFolds, textarea, onChange, () => false).concat([
 		// Dropped files open as tabs (the pane's drop handler), not as inserted text
 		EditorView.domEventHandlers({
 			drop: e => e.dataTransfer != null && e.dataTransfer.files.length > 0
@@ -350,7 +477,7 @@ export function createSysmlEditor(textarea, onChange) {
  */
 export function createPlantUmlEditor(textarea, onChange) {
 	let setting = false;
-	const extensions = extensionsFor(plantUmlLanguage, textarea, onChange, () => setting);
+	const extensions = extensionsFor(plantUmlLanguage, plantUmlFolds, textarea, onChange, () => setting);
 	const view = new EditorView({parent: replaceTextarea(textarea), state: EditorState.create({doc: "", extensions})});
 
 	return {
