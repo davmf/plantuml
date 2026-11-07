@@ -1,0 +1,41 @@
+@startuml
+hide empty members
+left to right direction
+package "VehicleModel" as VehicleModel <<package>> {
+  package "Interfaces" as Interfaces <<package>> {
+    class "FuelPort" as FuelPort <<port def>>
+    class "Cap" as Cap <<part def>>
+    class "Fuel" as Fuel <<item def>>
+    class "FuelLine" as FuelLine <<interface def>>
+  }
+  package "Parts" as Parts <<library package>> {
+    class "Bolt" as Bolt <<part def>>
+  }
+  enum "Colour" as Colour <<enum def>> {
+    {field} red
+    {field} green
+    {field} blue
+    {field} metallic (premium)
+  }
+  class "Range" as Range <<calc def>>
+  class "Dimensions" as Dimensions <<attribute def>>
+  abstract class "Vehicle" as Vehicle <<part def>>
+  class "Car" as Car <<part def>>
+  class "Trailer" as Trailer <<part def>>
+  class "Truck :> Hauler" as Truck <<part def>>
+  class "Engine" as Engine <<part def>>
+  class "Start" as Start <<action def>>
+  class "Wheel" as Wheel <<part def>>
+  class "Person" as Person <<part def>>
+  class "Cap" as Cap_2 <<part def>>
+  class "Key" as Key <<item def>>
+  class "MassLimit" as MassLimit <<requirement def>>
+}
+Vehicle <|-- Car
+Car +-- Trailer
+Vehicle <|-- Truck
+Engine +-- Start
+note top of FuelPort : Where the fuel {liquid} comes in.
+note top of Vehicle : Anything with wheels.\nAbstract: see Car and Truck.
+note top of MassLimit : The vehicle mass shall not exceed the limit.
+@enduml

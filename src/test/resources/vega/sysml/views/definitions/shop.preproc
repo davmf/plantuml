@@ -1,0 +1,18 @@
+@startuml
+hide empty members
+package "Shop" as Shop <<package>> {
+  enum "Size" as Size <<enum def>> {
+    {field} small
+    {field} large
+  }
+  abstract class "Item" as Item <<part def>> {
+    {field} price : Real
+  }
+  class "Cup" as Cup <<part def>> {
+    {field} size : Size = Size::small
+  }
+  class "Grip" as Grip <<port def>>
+}
+Item <|-- Cup
+Cup *-- "0..1" Grip : handle <<port>>
+@enduml

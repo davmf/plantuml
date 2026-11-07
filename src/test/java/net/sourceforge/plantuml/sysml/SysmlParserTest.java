@@ -75,6 +75,67 @@ class SysmlParserTest {
 	}
 
 	@Test
+	void short_names_and_multiple_types() throws SysmlException {
+		final SysmlNode r = first("requirement <'REQ-001.1'> 'Flight time' :> Base { subject dut : 'CONF-1', C2; }");
+		assertEquals("requirement", r.getKeyword());
+		assertEquals("REQ-001.1", r.getShortName());
+		assertEquals("Flight time", r.getName());
+		assertEquals(Arrays.asList("Base"), r.getSpecializes());
+		final SysmlNode subject = r.getChildren().get(0);
+		assertEquals("subject", subject.getKeyword());
+		assertEquals("dut", subject.getName());
+		assertEquals("CONF-1", subject.getType());
+		assertEquals(Arrays.asList("CONF-1", "C2"), subject.getTypes());
+	}
+
+	@Test
+	void use_case() throws SysmlException {
+		final SysmlNode u = first("use case def <'UC-1'> Survey;");
+		assertEquals("use case", u.getKeyword());
+		assertTrue(u.isDefinition());
+		assertEquals("UC-1", u.getShortName());
+		assertEquals("Survey", u.getName());
+	}
+
+	@Test
+	void relationships() throws SysmlException {
+		final SysmlNode p = first("package P { satisfy 'R-1' by a.b; verify requirement 'R-2' { @M; } "
+				+ "#derivation dependency from 'R-3', 'R-4' to 'R-1'; dependency d from x to y, z; dependency u to v; "
+				+ "allocate act to part1.sub; assert not satisfy R5 by w; "
+				+ "#derivation connection { end #original ::> 'R-1'; end #derive ::> 'R-3'; } }");
+		final SysmlNode satisfy = p.getChildren().get(0);
+		assertEquals("satisfy", satisfy.getKeyword());
+		assertNull(satisfy.getName());
+		assertEquals(Arrays.asList("a.b"), satisfy.getSources());
+		assertEquals(Arrays.asList("R-1"), satisfy.getTargets());
+		final SysmlNode verify = p.getChildren().get(1);
+		assertEquals("verify", verify.getKeyword());
+		assertEquals(Arrays.asList("R-2"), verify.getTargets());
+		assertTrue(verify.getSources().isEmpty());
+		final SysmlNode derivation = p.getChildren().get(2);
+		assertEquals(Arrays.asList("derivation"), derivation.getAnnotations());
+		assertEquals(Arrays.asList("R-3", "R-4"), derivation.getSources());
+		assertEquals(Arrays.asList("R-1"), derivation.getTargets());
+		final SysmlNode named = p.getChildren().get(3);
+		assertEquals("d", named.getName());
+		assertEquals(Arrays.asList("x"), named.getSources());
+		assertEquals(Arrays.asList("y", "z"), named.getTargets());
+		assertEquals(Arrays.asList("u"), p.getChildren().get(4).getSources());
+		final SysmlNode allocate = p.getChildren().get(5);
+		assertEquals(Arrays.asList("act"), allocate.getSources());
+		assertEquals(Arrays.asList("part1.sub"), allocate.getTargets());
+		final SysmlNode asserted = p.getChildren().get(6);
+		assertEquals("satisfy", asserted.getKeyword());
+		assertEquals(Arrays.asList("R5"), asserted.getTargets());
+		final SysmlNode connection = p.getChildren().get(7);
+		assertEquals(Arrays.asList("derivation"), connection.getAnnotations());
+		final SysmlNode original = connection.getChildren().get(0);
+		assertEquals("end", original.getKeyword());
+		assertEquals(Arrays.asList("original"), original.getAnnotations());
+		assertEquals(Arrays.asList("R-1"), original.getSpecializes());
+	}
+
+	@Test
 	void errors_name_file_and_line() {
 		final SysmlException e = assertThrows(SysmlException.class,
 				() -> SysmlParser.parse("b.sysml", "package P {\n part def X {\n"));
@@ -82,6 +143,36 @@ class SysmlParserTest {
 		final SysmlException s = assertThrows(SysmlException.class,
 				() -> SysmlParser.parse("b.sysml", "part x { attribute a = \"open; }"));
 		assertEquals("b.sysml:1: unterminated string", s.getMessage());
+	}
+
+	@Test
+	void multiplicities_and_modifiers() throws SysmlException {
+		final SysmlNode def = first("abstract part def V { part wheels : Wheel[4..*]; ref part driver[0..1] : Person;"
+				+ " in item fuel : Fuel; return distance : Real; attribute mass : Real = 5 [kg];"
+				+ " @Reviewed::Tag { by = 1; } }");
+		assertTrue(def.hasModifier("abstract"));
+		final SysmlNode wheels = def.getChildren().get(0);
+		assertEquals("4..*", wheels.getMultiplicity());
+		final SysmlNode driver = def.getChildren().get(1);
+		assertEquals("part", driver.getKeyword());
+		assertTrue(driver.hasModifier("ref"));
+		assertEquals("0..1", driver.getMultiplicity());
+		assertEquals("Person", driver.getType());
+		assertTrue(def.getChildren().get(2).hasModifier("in"));
+		final SysmlNode ret = def.getChildren().get(3);
+		assertTrue(ret.hasModifier("return"));
+		assertEquals("distance", ret.getName());
+		// A unit after the value is not a multiplicity
+		assertNull(def.getChildren().get(4).getMultiplicity());
+		assertTrue(def.getChildren().get(5).hasModifier("@"));
+	}
+
+	@Test
+	void use_case_definition() throws SysmlException {
+		final SysmlNode def = first("use case def Drive { subject v : Vehicle; }");
+		assertEquals("use case", def.getKeyword());
+		assertTrue(def.isDefinition());
+		assertEquals("Drive", def.getName());
 	}
 
 }

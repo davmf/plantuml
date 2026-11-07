@@ -61,8 +61,15 @@ public final class SysmlNode {
 	private final String source;
 	private final int line;
 	private final List<SysmlNode> children = new ArrayList<>();
+	private final List<String> modifiers = new ArrayList<>();
+	private String multiplicity;
 	private String doc;
 	private SysmlNode parent;
+	private String shortName;
+	private List<String> types = Collections.emptyList();
+	private List<String> annotations = Collections.emptyList();
+	private List<String> sources = Collections.emptyList();
+	private List<String> targets = Collections.emptyList();
 
 	SysmlNode(String keyword, boolean definition, boolean library, String name, boolean redefines, String type,
 			List<String> specializes, SysmlValue value, List<String> connectEnds, String source, int line) {
@@ -125,6 +132,70 @@ public final class SysmlNode {
 		return type;
 	}
 
+	/**
+	 * Every type after <code>:</code>, as written: <code>subject dut : A, B;</code>
+	 * has two. {@link #getType()} is the first.
+	 */
+	public List<String> getTypes() {
+		if (types.isEmpty() && type != null)
+			return Collections.singletonList(type);
+		return Collections.unmodifiableList(types);
+	}
+
+	void setTypes(List<String> types) {
+		this.types = new ArrayList<>(types);
+	}
+
+	/**
+	 * The short name between <code>&lt; &gt;</code>, unquoted:
+	 * <code>requirement &lt;'REQ-001'&gt; 'Speed'</code> gives <code>REQ-001</code>,
+	 * or <code>null</code>.
+	 */
+	public String getShortName() {
+		return shortName;
+	}
+
+	void setShortName(String shortName) {
+		this.shortName = shortName;
+	}
+
+	/**
+	 * The metadata prefixes of the declaration, by simple name:
+	 * <code>#derivation dependency ...</code> gives <code>derivation</code>.
+	 */
+	public List<String> getAnnotations() {
+		return Collections.unmodifiableList(annotations);
+	}
+
+	void setAnnotations(List<String> annotations) {
+		this.annotations = new ArrayList<>(annotations);
+	}
+
+	/**
+	 * The client side of a relationship member, as written:
+	 * <code>dependency from A, B to C</code> gives A and B,
+	 * <code>satisfy R by X</code> gives X, <code>allocate A to B</code> gives A.
+	 * Empty for other members, and for a <code>satisfy</code> without
+	 * <code>by</code> or a <code>verify</code> (the owner is the client).
+	 */
+	public List<String> getSources() {
+		return Collections.unmodifiableList(sources);
+	}
+
+	/**
+	 * The supplier side of a relationship member, as written: the
+	 * <code>to</code> list of a dependency or an allocation, the requirement of
+	 * <code>satisfy</code> and <code>verify</code>.
+	 */
+	public List<String> getTargets() {
+		return Collections.unmodifiableList(targets);
+	}
+
+	void setRelationEnds(List<String> sources, List<String> targets) {
+		this.sources = new ArrayList<>(sources);
+		this.targets = new ArrayList<>(targets);
+	}
+
 	/** The general types after <code>:&gt;</code> / <code>specializes</code>. */
 	public List<String> getSpecializes() {
 		return Collections.unmodifiableList(specializes);
@@ -138,6 +209,34 @@ public final class SysmlNode {
 	/** The ends of <code>connect a to b</code>, as written (feature chains). */
 	public List<String> getConnectEnds() {
 		return Collections.unmodifiableList(connectEnds);
+	}
+
+	/**
+	 * The multiplicity as written between the brackets (<code>0..*</code>,
+	 * <code>4</code>), or <code>null</code>.
+	 */
+	public String getMultiplicity() {
+		return multiplicity;
+	}
+
+	/**
+	 * The modifiers written before the keyword: <code>abstract</code>,
+	 * <code>ref</code>, <code>in</code>, <code>out</code>, <code>end</code>...
+	 */
+	public List<String> getModifiers() {
+		return Collections.unmodifiableList(modifiers);
+	}
+
+	public boolean hasModifier(String modifier) {
+		return modifiers.contains(modifier);
+	}
+
+	void setMultiplicity(String multiplicity) {
+		this.multiplicity = multiplicity;
+	}
+
+	void addModifier(String modifier) {
+		modifiers.add(modifier);
 	}
 
 	public List<SysmlNode> getChildren() {

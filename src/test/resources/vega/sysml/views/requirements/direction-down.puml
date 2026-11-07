@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' direction=down follows relations towards what traces to the focus
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SYS-002 depth=2 direction=down
+@enduml

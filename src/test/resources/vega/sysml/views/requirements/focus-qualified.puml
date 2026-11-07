@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' focus= by qualified name (quotes are optional), two hops down
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus="DroneTests::'Hover endurance test'" depth=2 direction=down
+@enduml

@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' direction=up follows relations towards what they trace to; SYS-003 names nothing
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=SW-002 depth=2 direction=up
+@enduml

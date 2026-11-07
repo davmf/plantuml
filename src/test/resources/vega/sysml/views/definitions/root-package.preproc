@@ -1,0 +1,23 @@
+@startuml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<part def>> #EAF1FB
+  BackgroundColor<<item def>> #EAF5EA
+  BackgroundColor<<port def>> #FFF5D6
+  BackgroundColor<<interface def>> #FBEFE2
+}
+class "FuelPort" as FuelPort <<port def>> [[{Where the fuel (liquid) comes in.}]] {
+  {field} in item fuel : Fuel
+  {field} flowRate : Real
+}
+class "Cap" as Cap <<part def>>
+class "Fuel" as Fuel <<item def>> {
+  {field} octane : Integer = 95
+}
+class "FuelLine" as FuelLine <<interface def>> {
+  {field} length : LengthValue
+}
+FuelPort *-- Cap : cap
+FuelLine ..> FuelPort : source, target
+@enduml

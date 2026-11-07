@@ -1,0 +1,6 @@
+---
+output: preproc
+---
+@startuml
+!include_sysml sequence-alt.sysml autonumber=true
+@enduml

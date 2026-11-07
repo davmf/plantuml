@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' Verifies a requirement that is in no file: drawn dashed
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements focus=TC-002
+@enduml

@@ -1,0 +1,60 @@
+@startuml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<part def>> #EAF1FB
+  BackgroundColor<<port def>> #FFF5D6
+  BackgroundColor<<attribute def>> #F2F2F2
+  BackgroundColor<<enum def>> #F2F2F2
+  BackgroundColor<<requirement def>> #FBEAE9
+}
+package "VehicleModel" as VehicleModel <<package>> {
+  package "Interfaces" as Interfaces <<package>> {
+    class "FuelPort" as FuelPort <<port def>> {
+      {field} in item fuel : Fuel
+      {field} flowRate : Real
+      {field} part cap : Cap
+    }
+  }
+  enum "Colour" as Colour <<enum def>> {
+    {field} red
+    {field} green
+    {field} blue
+    {field} metallic (premium)
+  }
+  class "Dimensions" as Dimensions <<attribute def>> {
+    {field} length : LengthValue
+    {field} width : LengthValue [0..1]
+  }
+  abstract class "Vehicle" as Vehicle <<part def>> {
+    {field} mass : MassValue
+    {field} paint : Colour = Colour::red
+    {field} size : Dimensions
+    {field} part radio : Radio [0..1]
+  }
+  class "Car" as Car <<part def>> {
+    {field} doors : Integer [1] = 4
+    {field} part trailer : Trailer [0..1]
+  }
+  class "Truck :> Hauler" as Truck <<part def>> {
+    {field} :>> mass = 7500
+  }
+  class "Engine" as Engine <<part def>> {
+    {field} cylinders : Integer
+  }
+  class "Wheel" as Wheel <<part def>>
+  class "Person" as Person <<part def>>
+  class "Cap" as Cap <<part def>>
+  class "MassLimit" as MassLimit <<requirement def>> {
+    {field} limit : MassValue
+  }
+}
+Vehicle *-- Engine : engine
+Vehicle *-- "4..*" Wheel : wheels
+Vehicle *-- FuelPort : fuelIn <<port>>
+Vehicle --> "0..1" Person : driver
+Vehicle *-- "0..1" Cap : spareCap
+Vehicle <|-- Car
+Vehicle <|-- Truck
+MassLimit --> Vehicle : vehicle
+@enduml

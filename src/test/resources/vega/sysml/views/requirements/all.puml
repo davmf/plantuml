@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' Without focus: every requirement of the file set and the relations between them
+!include_sysml drone-requirements.sysml drone-design.sysml drone-tests.sysml view=requirements
+@enduml
