@@ -16,6 +16,7 @@ import { render, sysmlDescribe, sysmlToPlantUml } from "./plantuml.js";
 import { createZoomController } from "./zoom.js";
 import { createSysmlEditor, createPlantUmlEditor, addFoldButtons } from "./sysml-editor.js";
 import { createAcpChat } from "./acp-chat.js";
+import { connectWorkspace } from "./acp-workspace.js";
 
 const STORAGE_KEY = "plantuml-sysml-playground";
 const DEBOUNCE_MS = 300;
@@ -23,6 +24,7 @@ const DEBOUNCE_MS = 300;
 // The left pane edits the active tab's file
 const sysmlEditor = createSysmlEditor(document.getElementById("sysml"), text => {
 	files[active].text = text;
+	markTabs();
 	scheduleImport();
 });
 // The middle pane: what the import writes, or a diagram of your own; read and
@@ -57,7 +59,10 @@ function defaultOptions() {
 let options = defaultOptions();
 let described = null;    // the last good sysmlDescribe() result
 
-let files = [];          // [{name, text}]
+// disk: the text of the file of that name in the agent's workspace, as last
+// saved or seen there (tools/acp-bridge only); undefined when never saved
+let files = [];          // [{name, text, disk}]
+let workspace = null;    // connectWorkspace(), when served by the bridge
 let active = 0;
 let dark = false;
 let importTimer = null;
@@ -105,7 +110,8 @@ function restore() {
 		autoBox.checked = true;
 		return false;
 	}
-	files = saved.files.map(f => ({name: String(f.name), text: String(f.text)}));
+	files = saved.files.map(f => ({name: String(f.name), text: String(f.text),
+		disk: typeof f.disk === "string" ? f.disk : undefined}));
 	active = Math.min(Math.max(0, saved.active | 0), files.length - 1);
 	options = restoreOptions(saved.options);
 	modeSelect.value = saved.mode === "directive" ? "directive" : "generated";
@@ -486,6 +492,10 @@ function renderTabs() {
 		tab.addEventListener("click", () => selectTab(index));
 		tab.addEventListener("dblclick", () => renameTab(index));
 
+		const mark = document.createElement("span");
+		mark.className = "tab-mark";
+		tab.appendChild(mark);
+
 		if (files.length > 1) {
 			const close = document.createElement("button");
 			close.type = "button";
@@ -500,7 +510,75 @@ function renderTabs() {
 		}
 		tabsEl.insertBefore(tab, actions);
 	});
+	markTabs();
 	sysmlEditor.setFile(files[active]);
+}
+
+// A saved tab: "saved" when it matches its workspace file, "modified" when
+// edited since.
+function markTabs() {
+	tabsEl.querySelectorAll(".tab").forEach((tab, index) => {
+		const file = files[index];
+		if (file == null) {
+			return;
+		}
+		const saved = file.disk !== undefined;
+		const modified = saved && file.text !== file.disk;
+		tab.classList.toggle("saved", saved && modified === false);
+		tab.classList.toggle("modified", modified);
+		tab.title = (saved
+			? (modified ? "Modified since saved in the workspace" : "Saved in the workspace") + ". "
+			: "")
+			+ "Click to edit, double-click to rename";
+	});
+}
+
+async function saveActive() {
+	const file = files[active];
+	if (workspace == null) {
+		download(file.text, "text/plain", file.name);
+		return;
+	}
+	const text = file.text;
+	try {
+		const path = await workspace.save(file.name, text);
+		file.disk = text;
+		markTabs();
+		scheduleSave();
+		showToast("Saved " + path);
+	} catch (err) {
+		showToast("Save failed: " + err.message, true);
+	}
+}
+
+// A file of the workspace, as connectWorkspace() reports it. A change of a
+// tab's file (an agent's edit) replaces the tab's text at once, as an edit
+// Ctrl+Z undoes; a new .sysml or .kerml file opens as a tab. The first report
+// of a file (page load, reconnection) changes a tab only when the file
+// changed since last seen: otherwise the tab's own edits are kept.
+function onWorkspaceFile(name, text, initial) {
+	const file = findExact(name);
+	if (file == null) {
+		if (initial === false && /\.(sysml|kerml)$/i.test(name)) {
+			files.push({name, text, disk: text});
+			renderTabs();
+			scheduleImport();
+			showToast("New file from the workspace: " + name);
+		}
+		return;
+	}
+	const known = file.disk;
+	file.disk = text;
+	if (text === file.text || (initial && (known === undefined || known === text))) {
+		markTabs();
+		scheduleSave();
+		return;
+	}
+	const lost = known !== undefined && file.text !== known;
+	sysmlEditor.replaceText(file, text);
+	markTabs();
+	scheduleImport();
+	showToast(name + " changed in the workspace" + (lost ? " (your unsaved edits replaced: Ctrl+Z brings them back)" : ""), lost);
 }
 
 function selectTab(index) {
@@ -567,6 +645,8 @@ function renameTab(index) {
 		return;
 	}
 	files[index].name = name;
+	// Another name is another workspace file, not saved yet
+	files[index].disk = undefined;
 	renderTabs();
 	scheduleImport();
 }
@@ -627,6 +707,16 @@ async function addFiles(fileList) {
 
 function fileTabs() {
 	document.getElementById("tab-new").addEventListener("click", newTab);
+	document.getElementById("tab-save").addEventListener("click", saveActive);
+	document.getElementById("tab-download").addEventListener("click",
+		() => download(files[active].text, "text/plain", files[active].name));
+	// Ctrl+S saves the active tab (in the workspace, else as a download)
+	document.addEventListener("keydown", e => {
+		if ((e.ctrlKey || e.metaKey) && e.altKey === false && e.key.toLowerCase() === "s") {
+			e.preventDefault();
+			saveActive();
+		}
+	});
 	const input = document.getElementById("file-input");
 	document.getElementById("tab-open").addEventListener("click", () => input.click());
 	input.addEventListener("change", () => {
@@ -813,13 +903,18 @@ if (restored && autoBox.checked === false && editor.value !== "") {
 // Agent chat: only when served by tools/acp-bridge (hidden otherwise)
 // ---------------------------------------------------------------------------
 
+connectWorkspace(onWorkspaceFile).then(ws => {
+	workspace = ws;
+	document.getElementById("tab-save").hidden = ws == null;
+});
+
 createAcpChat({
 	context() {
 		return {files, active, puml: editor.value, mode: modeSelect.value, status: importStatus.textContent};
 	},
 	newSysmlTab(text) {
 		const declared = /^\s*package\s+([A-Za-z_]\w*)/m.exec(text);
-		files.push({name: uniqueName((declared != null ? declared[1] : "model") + ".sysml"), text});
+		files.push({name: uniqueName((declared != null ? declared[1] : "model") + ".sysml"), text, disk: undefined});
 		active = files.length - 1;
 		renderTabs();
 		followTab();
@@ -832,8 +927,8 @@ createAcpChat({
 			&& confirm("Replace the contents of " + file.name + "?") === false) {
 			return;
 		}
-		file.text = text;
-		renderTabs();
+		sysmlEditor.replaceText(file, text);
+		markTabs();
 		scheduleImport();
 		showToast("Replaced " + file.name);
 	},

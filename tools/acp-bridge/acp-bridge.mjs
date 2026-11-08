@@ -16,6 +16,15 @@
 //                             stream kills the agent.
 //   POST /acp/send?c=<token>  one JSON-RPC message to the agent's stdin
 //
+// and the workspace (--cwd), so that the page's files are files the agent
+// can read and edit:
+//
+//   POST /acp/files/save      {name, text}: writes a file of the workspace
+//                             (a plain name, no directories)
+//   GET  /acp/files/events    Server-Sent Events: "file" {name, text} for
+//                             every file of the workspace, then again each
+//                             time one changes on disk (an agent's edit)
+//
 // Security (the agent reads and writes files, and runs commands, as you):
 //   - listens on 127.0.0.1 only;
 //   - Host must be localhost/127.0.0.1 on our port (DNS rebinding);
@@ -39,9 +48,9 @@
 
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { createReadStream, mkdirSync, statSync } from "node:fs";
+import { createReadStream, mkdirSync, readFileSync, readdirSync, statSync, watch, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve, sep } from "node:path";
+import { delimiter, dirname, extname, join, normalize, resolve, sep } from "node:path";
 
 const DEFAULT_AGENT = "npx -y @agentclientprotocol/claude-agent-acp";
 const MAX_BODY = 8 * 1024 * 1024;
@@ -166,6 +175,19 @@ function sseEvent(res, event, data) {
 	res.write("event: " + event + "\ndata: " + data.replace(/\n/g, "\ndata: ") + "\n\n");
 }
 
+// The bridge's environment, with the directory of the node running it first
+// on PATH: started as /path/to/node acp-bridge.mjs from a shell whose PATH
+// has no node (Zed's private Node, say), the default agent still finds npx
+// next to it, and npx's "#!/usr/bin/env node" finds node.
+function agentEnv() {
+	const nodeDir = dirname(process.execPath);
+	const path = process.env.PATH || "";
+	if (path.split(delimiter).includes(nodeDir)) {
+		return process.env;
+	}
+	return Object.assign({}, process.env, { PATH: nodeDir + (path === "" ? "" : delimiter + path) });
+}
+
 function openStream(req, res) {
 	const token = randomBytes(18).toString("base64url");
 	const [command, ...commandArgs] = splitCommand(args.agent);
@@ -174,7 +196,7 @@ function openStream(req, res) {
 		child = spawn(command, commandArgs, {
 			cwd: args.cwd,
 			stdio: ["pipe", "pipe", "pipe"],
-			env: process.env,
+			env: agentEnv(),
 		});
 	} catch (err) {
 		sendJson(res, 500, { error: "cannot start the agent: " + err.message });
@@ -213,7 +235,9 @@ function openStream(req, res) {
 		}
 	});
 	child.on("error", err => {
-		sseEvent(res, "agent-exit", JSON.stringify({ error: err.message }));
+		const hint = err.code === "ENOENT" ? " (not found on PATH; give the full path with --agent)" : "";
+		log("cannot start the agent: " + err.message + hint);
+		sseEvent(res, "agent-exit", JSON.stringify({ error: err.message + hint }));
 		close(token);
 	});
 	child.on("exit", (code, signal) => {
@@ -301,6 +325,125 @@ function postMessage(req, res, url) {
 }
 
 // ---------------------------------------------------------------------------
+// Workspace files
+// ---------------------------------------------------------------------------
+
+const MAX_FILE = 2 * 1024 * 1024;
+
+// A file of the workspace itself: no directory part, nothing hidden.
+function workspaceName(name) {
+	if (typeof name !== "string" || name === "" || name.length > 255
+		|| /[\/\\\0]/.test(name) || name.startsWith(".")) {
+		return null;
+	}
+	return name;
+}
+
+function readWorkspaceFile(name) {
+	try {
+		const file = join(args.cwd, name);
+		const stat = statSync(file);
+		if (stat.isFile() === false || stat.size > MAX_FILE) {
+			return null;
+		}
+		return readFileSync(file, "utf8");
+	} catch {
+		return null; // removed meanwhile
+	}
+}
+
+function saveFile(req, res) {
+	if ((req.headers["content-type"] || "").split(";")[0].trim() !== "application/json") {
+		sendJson(res, 415, { error: "Content-Type must be application/json" });
+		return;
+	}
+	const chunks = [];
+	let size = 0;
+	req.on("data", chunk => {
+		size += chunk.length;
+		if (size > MAX_FILE + 1024) {
+			sendJson(res, 413, { error: "file too large" });
+			req.destroy();
+			return;
+		}
+		chunks.push(chunk);
+	});
+	req.on("end", () => {
+		let body;
+		try {
+			body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+		} catch (err) {
+			sendJson(res, 400, { error: "bad JSON: " + err.message });
+			return;
+		}
+		const name = workspaceName(body && body.name);
+		if (name == null || typeof body.text !== "string") {
+			sendJson(res, 400, { error: "expected {name, text} with a plain file name" });
+			return;
+		}
+		try {
+			writeFileSync(join(args.cwd, name), body.text, "utf8");
+		} catch (err) {
+			sendJson(res, 500, { error: err.message });
+			return;
+		}
+		log("saved " + name);
+		sendJson(res, 200, { ok: true, path: join(args.cwd, name) });
+	});
+}
+
+// Every file of the workspace, then each change, debounced per file: an
+// editor that writes a temporary file and renames it settles first.
+function watchFiles(req, res) {
+	res.writeHead(200, {
+		"Content-Type": "text/event-stream; charset=utf-8",
+		"Cache-Control": "no-store",
+		"Connection": "keep-alive",
+		"X-Accel-Buffering": "no",
+	});
+	const sendFile = name => {
+		if (workspaceName(name) == null) {
+			return;
+		}
+		const text = readWorkspaceFile(name);
+		if (text != null) {
+			sseEvent(res, "file", JSON.stringify({ name, text }));
+		}
+	};
+	for (const name of readdirSync(args.cwd)) {
+		sendFile(name);
+	}
+	sseEvent(res, "ready", "{}");
+
+	const timers = new Map();
+	let watcher;
+	try {
+		watcher = watch(args.cwd, (event, name) => {
+			if (name == null) {
+				return;
+			}
+			clearTimeout(timers.get(name));
+			timers.set(name, setTimeout(() => {
+				timers.delete(name);
+				sendFile(name);
+			}, 100));
+		});
+	} catch (err) {
+		sseEvent(res, "error", JSON.stringify({ error: "cannot watch the workspace: " + err.message }));
+	}
+	const keepAlive = setInterval(() => res.write(": ping\n\n"), 20000);
+	req.on("close", () => {
+		clearInterval(keepAlive);
+		for (const timer of timers.values()) {
+			clearTimeout(timer);
+		}
+		if (watcher != null) {
+			watcher.close();
+		}
+	});
+}
+
+// ---------------------------------------------------------------------------
 // Static files
 // ---------------------------------------------------------------------------
 
@@ -363,6 +506,10 @@ const server = createServer((req, res) => {
 			openStream(req, res);
 		} else if (url.pathname === "/acp/send" && req.method === "POST") {
 			postMessage(req, res, url);
+		} else if (url.pathname === "/acp/files/save" && req.method === "POST") {
+			saveFile(req, res);
+		} else if (url.pathname === "/acp/files/events" && req.method === "GET") {
+			watchFiles(req, res);
 		} else {
 			sendJson(res, 404, { error: "unknown ACP endpoint" });
 		}

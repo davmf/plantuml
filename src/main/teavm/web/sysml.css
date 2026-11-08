@@ -478,3 +478,23 @@ body.chat-open .chat-pane {
 	gap: 0.25rem;
 	margin-right: auto;
 }
+
+/* A tab saved in the agent's workspace (tools/acp-bridge): a dot, hollow
+   when the tab has edits not saved */
+.tab .tab-mark {
+	display: none;
+}
+
+.tab.saved .tab-mark,
+.tab.modified .tab-mark {
+	display: inline-block;
+	width: 0.45rem;
+	height: 0.45rem;
+	border-radius: 50%;
+	border: 1.5px solid currentColor;
+}
+
+.tab.saved .tab-mark {
+	background: currentColor;
+	opacity: 0.45;
+}

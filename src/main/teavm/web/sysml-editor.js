@@ -468,6 +468,25 @@ function extensionsFor(language, folding, textarea, onChange, quiet) {
 	];
 }
 
+// The change from old to text as one replacement of the middle that differs,
+// or null when they are equal: the cursor and the scroll outside it stay.
+function changedMiddle(old, text) {
+	if (old === text) {
+		return null;
+	}
+	let from = 0;
+	const max = Math.min(old.length, text.length);
+	while (from < max && old.charCodeAt(from) === text.charCodeAt(from)) {
+		from++;
+	}
+	let end = 0;
+	while (end < max - from
+		&& old.charCodeAt(old.length - 1 - end) === text.charCodeAt(text.length - 1 - end)) {
+		end++;
+	}
+	return {from, to: old.length - end, insert: text.slice(from, text.length - end)};
+}
+
 // The textarea's place, id and classes go to the editor's host.
 function replaceTextarea(textarea) {
 	const host = document.createElement("div");
@@ -481,14 +500,17 @@ function replaceTextarea(textarea) {
  * Replaces the textarea with the SysML editor; onChange(text) follows every
  * edit made in the editor (never the ones made through setFile).
  *
- * Returns {setFile(file), focus()}: setFile shows a {name, text} file, with the
- * state it had when last shown unless its text has changed since.
+ * Returns {setFile(file), replaceText(file, text), focus()}: setFile shows a
+ * {name, text} file, with the state it had when last shown unless its text
+ * has changed since. replaceText changes a file from outside (a file changed
+ * on disk) as one edit that Ctrl+Z undoes, shown or not; it sets file.text.
  */
 export function createSysmlEditor(textarea, onChange) {
 	const states = new WeakMap();
 	let shown = null;
+	let replacing = false;
 
-	const extensions = extensionsFor(sysmlLanguage, sysmlFolds, textarea, onChange, () => false).concat([
+	const extensions = extensionsFor(sysmlLanguage, sysmlFolds, textarea, onChange, () => replacing).concat([
 		// Dropped files open as tabs (the pane's drop handler), not as inserted text
 		EditorView.domEventHandlers({
 			drop: e => e.dataTransfer != null && e.dataTransfer.files.length > 0
@@ -509,6 +531,24 @@ export function createSysmlEditor(textarea, onChange) {
 				? saved
 				: EditorState.create({doc: file.text, extensions}));
 			shown = file;
+		},
+		replaceText(file, text) {
+			const current = shown === file ? view.state : states.get(file);
+			file.text = text;
+			if (current == null || current.doc.toString() === text) {
+				return; // never shown: setFile starts it from file.text
+			}
+			const changes = changedMiddle(current.doc.toString(), text);
+			if (shown === file) {
+				replacing = true;
+				try {
+					view.dispatch({changes, userEvent: "input.replace"});
+				} finally {
+					replacing = false;
+				}
+			} else {
+				states.set(file, current.update({changes, userEvent: "input.replace"}).state);
+			}
 		},
 		focus() {
 			view.focus();
@@ -535,24 +575,14 @@ export function createPlantUmlEditor(textarea, onChange) {
 		// Only the changed middle is replaced: a re-import that changes one line
 		// leaves the cursor, the selection and the scroll where they were.
 		set value(text) {
-			const old = view.state.doc.toString();
-			if (old === text) {
+			const changes = changedMiddle(view.state.doc.toString(), text);
+			if (changes == null) {
 				return;
-			}
-			let from = 0;
-			const max = Math.min(old.length, text.length);
-			while (from < max && old.charCodeAt(from) === text.charCodeAt(from)) {
-				from++;
-			}
-			let end = 0;
-			while (end < max - from
-				&& old.charCodeAt(old.length - 1 - end) === text.charCodeAt(text.length - 1 - end)) {
-				end++;
 			}
 			setting = true;
 			try {
 				view.dispatch({
-					changes: {from, to: old.length - end, insert: text.slice(from, text.length - end)},
+					changes,
 					annotations: Transaction.addToHistory.of(false)
 				});
 			} finally {

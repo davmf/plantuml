@@ -40,6 +40,27 @@ node tools/acp-bridge/acp-bridge.mjs --agent \
 | `GET /acp/status`        | the page shows the chat button when this answers                  |
 | `GET /acp/events`        | Server-Sent Events. Spawns one agent per stream and sends a `hello` event with a random token, then one `message` event per JSON-RPC line from the agent. Closing the stream kills the agent. |
 | `POST /acp/send?c=token` | one JSON-RPC message to the agent's stdin                         |
+| `POST /acp/files/save`   | `{name, text}`: writes a file in the workspace. The name must be a plain file name: no directories, no leading dot. |
+| `GET /acp/files/events`  | Server-Sent Events: a `file` event `{name, text}` for every file in the workspace, then `ready`, then a `file` event each time a file changes on disk |
+
+### Saved tabs
+
+**Save** (Ctrl+S) writes the active SysML tab into the workspace under the
+tab's name. The tab is then linked to that file:
+
+- The agent can read and edit it with its own tools.
+- The bridge watches the workspace, so each edit to the file replaces the
+  tab's text immediately. The replacement is a normal edit, which Ctrl+Z
+  undoes. If the tab had unsaved edits, a warning says they were replaced;
+  Ctrl+Z brings them back.
+- A new `.sysml` or `.kerml` file created in the workspace opens as a tab.
+
+A saved tab shows a filled dot. The dot is hollow when the tab has edits that
+aren't saved yet. Renaming a tab unlinks it. **Download** always saves the tab
+to your own machine. Without the bridge, Ctrl+S downloads.
+
+Each prompt tells the agent which tabs are saved. The agent is told to edit
+saved tabs on disk, and to propose changes to unsaved tabs as code blocks.
 
 The page (`src/main/teavm/web/acp-chat.js`) is the ACP client. It does not offer
 `fs` or `terminal` capabilities, so the agent uses its own tools inside `--cwd`.
