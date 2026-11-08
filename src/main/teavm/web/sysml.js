@@ -15,6 +15,7 @@
 import { render, sysmlDescribe, sysmlToPlantUml } from "./plantuml.js";
 import { createZoomController } from "./zoom.js";
 import { createSysmlEditor, createPlantUmlEditor, addFoldButtons } from "./sysml-editor.js";
+import { createAcpChat } from "./acp-chat.js";
 
 const STORAGE_KEY = "plantuml-sysml-playground";
 const DEBOUNCE_MS = 300;
@@ -807,3 +808,44 @@ if (restored && autoBox.checked === false && editor.value !== "") {
 } else {
 	importNow();
 }
+
+// ---------------------------------------------------------------------------
+// Agent chat: only when served by tools/acp-bridge (hidden otherwise)
+// ---------------------------------------------------------------------------
+
+createAcpChat({
+	context() {
+		return {files, active, puml: editor.value, mode: modeSelect.value, status: importStatus.textContent};
+	},
+	newSysmlTab(text) {
+		const declared = /^\s*package\s+([A-Za-z_]\w*)/m.exec(text);
+		files.push({name: uniqueName((declared != null ? declared[1] : "model") + ".sysml"), text});
+		active = files.length - 1;
+		renderTabs();
+		followTab();
+		scheduleImport();
+		showToast("Opened " + files[active].name);
+	},
+	replaceSysml(text) {
+		const file = files[active];
+		if (file.text.trim() !== "" && file.text !== text
+			&& confirm("Replace the contents of " + file.name + "?") === false) {
+			return;
+		}
+		file.text = text;
+		renderTabs();
+		scheduleImport();
+		showToast("Replaced " + file.name);
+	},
+	setPlantUml(text) {
+		// A generated pane would be overwritten by the next import
+		if (modeSelect.value === "generated" && autoBox.checked) {
+			autoBox.checked = false;
+			showToast("Auto import turned off, so the diagram stays");
+		}
+		editor.value = /^\s*@start/.test(text) ? text : "@startuml\n" + text + "\n@enduml\n";
+		renderNow();
+		scheduleSave();
+	},
+	toast: showToast
+});

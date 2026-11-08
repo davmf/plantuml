@@ -235,3 +235,246 @@ body.sysml .preview {
 	flex-grow: 1;
 	width: auto;
 }
+
+/* Agent chat (acp-chat.js): a fourth pane on the right, only with the ACP bridge */
+.chat-toggle {
+	font: inherit;
+	font-size: 0.875rem;
+	margin-right: 1rem;
+	color: var(--fg);
+	background: var(--surface);
+	border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--surface));
+	border-radius: 0.4rem;
+	padding: 0.1rem 0.8rem;
+	cursor: pointer;
+}
+
+.chat-toggle[aria-pressed="true"] {
+	background: color-mix(in srgb, var(--accent) 45%, var(--surface));
+}
+
+.chat-pane {
+	flex-basis: 24rem;
+	margin-left: 0.5rem;
+	font-size: 0.85rem;
+}
+
+.chat-pane[hidden] {
+	display: none;
+}
+
+/* Room for the diagram while the chat is open (a dragged width still wins) */
+body.chat-open .pane:not(.chat-pane) {
+	flex-basis: 22%;
+}
+
+body.chat-open .chat-pane {
+	flex-basis: clamp(18rem, 24%, 26rem);
+}
+
+.chat-pane .pane-title {
+	flex-wrap: nowrap;
+}
+
+.chat-pane button,
+.chat-pane select {
+	font: inherit;
+	font-size: 0.8rem;
+	color: var(--fg);
+	background: var(--bg);
+	border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--surface));
+	border-radius: 0.4rem;
+	padding: 0.1rem 0.5rem;
+	cursor: pointer;
+}
+
+.chat-pane button:hover {
+	border-color: var(--accent);
+}
+
+.chat-mode {
+	font-weight: normal;
+}
+
+.chat-config {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem 0.75rem;
+	padding: 0.4rem 1rem 0;
+	font-size: 0.75rem;
+	color: var(--muted);
+}
+
+.chat-config[hidden] {
+	display: none;
+}
+
+.chat-config label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.chat-title-actions {
+	margin-left: auto;
+	display: inline-flex;
+	gap: 0.25rem;
+}
+
+.chat-state {
+	padding: 0.25rem 1rem;
+	font-size: 0.75rem;
+	color: var(--muted);
+	overflow-wrap: anywhere;
+}
+
+.chat-state:empty {
+	display: none;
+}
+
+.chat-state.error,
+.chat-note.error {
+	color: #b42318;
+}
+
+.chat-log {
+	flex: 1 1 0;
+	min-height: 0;
+	overflow: auto;
+	padding: 0.5rem 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.chat-msg {
+	padding: 0.4rem 0.6rem;
+	border-radius: 0.6rem;
+	overflow-wrap: anywhere;
+}
+
+.chat-user {
+	align-self: flex-end;
+	max-width: 85%;
+	white-space: pre-wrap;
+	background: color-mix(in srgb, var(--accent) 45%, var(--surface));
+}
+
+.chat-agent {
+	background: var(--bg);
+}
+
+.chat-text {
+	white-space: pre-wrap;
+}
+
+.chat-text + .chat-code,
+.chat-code + .chat-text {
+	margin-top: 0.4rem;
+}
+
+.chat-code pre,
+.chat-permission pre {
+	margin: 0;
+	padding: 0.4rem 0.5rem;
+	max-height: 18rem;
+	overflow: auto;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.75rem;
+	background: var(--surface);
+	border-radius: 0.4rem;
+}
+
+.chat-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	margin-top: 0.3rem;
+}
+
+.chat-thought {
+	color: var(--muted);
+	font-size: 0.75rem;
+	white-space: pre-wrap;
+}
+
+.chat-thought summary {
+	cursor: pointer;
+}
+
+.chat-tool {
+	display: flex;
+	gap: 0.4rem;
+	font-size: 0.75rem;
+	color: var(--muted);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	overflow-wrap: anywhere;
+}
+
+.chat-tool[data-status="failed"] {
+	color: #b42318;
+}
+
+.chat-plan {
+	margin: 0;
+	padding-left: 1.5rem;
+	font-size: 0.8rem;
+}
+
+.chat-plan li[data-status="completed"] {
+	text-decoration: line-through;
+	color: var(--muted);
+}
+
+.chat-permission {
+	padding: 0.5rem 0.6rem;
+	border: 1px solid var(--accent);
+	border-radius: 0.6rem;
+	background: var(--bg);
+}
+
+.chat-permission button[data-kind^="allow"] {
+	border-color: #40a02b;
+}
+
+.chat-permission button[data-kind^="reject"] {
+	border-color: #b42318;
+}
+
+.chat-note {
+	font-size: 0.75rem;
+	color: var(--muted);
+}
+
+.chat-compose {
+	border-top: 1px solid color-mix(in srgb, var(--accent) 30%, var(--surface));
+	padding: 0.5rem 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+
+.chat-input {
+	font: inherit;
+	resize: vertical;
+	min-height: 3rem;
+	color: var(--fg);
+	background: var(--bg);
+	border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--surface));
+	border-radius: 0.4rem;
+	padding: 0.3rem 0.5rem;
+}
+
+.chat-compose-bar {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.75rem;
+}
+
+.chat-compose-bar label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	margin-right: auto;
+}
