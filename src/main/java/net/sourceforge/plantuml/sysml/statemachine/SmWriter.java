@@ -375,6 +375,11 @@ final class SmWriter extends SysmlWriter {
 	}
 
 	private void writeStyle() {
+		// Transition labels as nodes of their own (placed by the layout, not
+		// squeezed beside the arrow), read when each transition is parsed:
+		// before the regions
+		out.add("skinparam stateDiagramEdgeLabelStyle node");
+		out.add("!pragma edgeCornerRadius 10");
 		out.add("<style>");
 		out.add("state {");
 		out.add("  .terminate { LineColor transparent; BackgroundColor transparent; FontSize 34; FontColor #B00020; shadowing 0 }");

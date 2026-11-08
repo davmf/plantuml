@@ -97,6 +97,9 @@ generators do not check the model: run the profile's rule pack for that.
   An internal transition is listed inside its state. Transitions are
   written inside the Region that declares them (PlantUML only links into a
   concurrent region from inside it).
+* With `style=true` (the default), transition labels are drawn as nodes of
+  their own (`skinparam stateDiagramEdgeLabelStyle node`), and edge corners
+  are rounded (`!pragma edgeCornerRadius 10`).
 
 | Function | Parameters | Default |
 |----------|------------|---------|

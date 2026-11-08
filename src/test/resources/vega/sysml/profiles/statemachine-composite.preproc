@@ -1,6 +1,8 @@
 @startuml
 !pragma layout elk
 hide empty description
+skinparam stateDiagramEdgeLabelStyle node
+!pragma edgeCornerRadius 10
 <style>
 state {
   .terminate { LineColor transparent; BackgroundColor transparent; FontSize 34; FontColor #B00020; shadowing 0 }
