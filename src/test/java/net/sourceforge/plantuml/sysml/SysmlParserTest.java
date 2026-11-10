@@ -136,6 +136,24 @@ class SysmlParserTest {
 	}
 
 	@Test
+	void use_case_members_and_constraint_expressions() throws SysmlException {
+		final SysmlNode useCase = first("use case def U { subject s : S; actor a : A; include use case m : M;"
+				+ " include N; objective goal { requirement r : R; } }");
+		assertEquals("use case", useCase.getKeyword());
+		final SysmlNode include = useCase.getChildren().get(2);
+		assertEquals("include", include.getKeyword());
+		assertEquals("m", include.getName());
+		assertEquals("M", include.getType());
+		assertEquals("include", useCase.getChildren().get(3).getKeyword());
+		assertEquals("N", useCase.getChildren().get(3).getName());
+		final SysmlNode requirement = first(
+				"requirement def R { require constraint { home.temp <= 298.15[K] and f(a, b) > (c + 1) * 2 } }");
+		final SysmlNode require = requirement.getChildren().get(0);
+		assertEquals("require", require.getKeyword());
+		assertEquals("home.temp <= 298.15[K] and f(a, b) > (c + 1) * 2", require.getChildren().get(0).getExpression());
+	}
+
+	@Test
 	void errors_name_file_and_line() {
 		final SysmlException e = assertThrows(SysmlException.class,
 				() -> SysmlParser.parse("b.sysml", "package P {\n part def X {\n"));

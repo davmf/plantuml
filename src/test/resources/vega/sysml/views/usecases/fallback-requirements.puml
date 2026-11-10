@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' No use case: the fallback is the requirements view
+!include_sysml parts.sysml
+@enduml

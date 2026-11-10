@@ -50,6 +50,7 @@ import net.sourceforge.plantuml.sysml.interpcba.CotsProfile;
 import net.sourceforge.plantuml.sysml.interpcba.IpProfile;
 import net.sourceforge.plantuml.sysml.pcba.PcbaProfile;
 import net.sourceforge.plantuml.sysml.requirements.ReqView;
+import net.sourceforge.plantuml.sysml.requirements.UseCaseView;
 import net.sourceforge.plantuml.sysml.sequence.SeqProfile;
 import net.sourceforge.plantuml.sysml.statemachine.SmProfile;
 import net.sourceforge.plantuml.sysml.swarch.SwProfile;
@@ -70,7 +71,8 @@ import net.sourceforge.plantuml.sysml.timing.TimingProfile;
  * <p>
  * <code>view=</code> selects one of {@link #VIEWS} instead: generators that
  * draw plain SysML v2 (requirements, definitions...) rather than one profile.
- * Every file set has roots for them, so they are never tried unless asked for.
+ * Every file set has roots for them, so they are only tried without being
+ * asked for when no profile has a root at all: see {@link #FALLBACK_VIEWS}.
  */
 public final class SysmlImport {
 
@@ -86,7 +88,17 @@ public final class SysmlImport {
 	public static final List<SysmlProfile> VIEWS = Collections.unmodifiableList(Arrays.<SysmlProfile>asList(
 	// views are registered here, one per line
 			new DefProfile(),
-			new ReqView()));
+			new ReqView(),
+			new UseCaseView()));
+
+	/**
+	 * The views tried, in this order, when the files hold no root of any
+	 * profile and neither <code>profile=</code> nor <code>view=</code> is
+	 * given: plain SysML v2 is then drawn by the first view that has something
+	 * to draw (use cases, else requirements, else definitions).
+	 */
+	private static final List<String> FALLBACK_VIEWS = Collections
+			.unmodifiableList(Arrays.asList("usecases", "requirements", "definitions"));
 
 	private SysmlImport() {
 	}
@@ -155,21 +167,38 @@ public final class SysmlImport {
 	}
 
 	private static Description describe(List<SysmlNode> parsed, SysmlOptions options) throws SysmlException {
-		final String rootName = options.getRoot();
 		final Description result = new Description();
-		for (SysmlProfile profile : selectProfiles(options)) {
-			final SysmlModel model = new SysmlModel(profile.getStopNames());
-			for (SysmlNode root : parsed)
-				model.add(root);
-			for (SysmlNode node : profile.findRoots(model)) {
-				final Root root = new Root(profile, model, node);
-				result.roots.add(root);
-				if (result.selected == null && (rootName == null || rootName.equals(node.getName())
-						|| rootName.equals(node.getQualifiedName())))
-					result.selected = root;
-			}
-		}
+		for (SysmlProfile profile : selectProfiles(options))
+			addRoots(result, profile, parsed, options, false);
+		if (result.roots.isEmpty() && options.getProfile() == null && options.getView() == null)
+			for (String name : FALLBACK_VIEWS)
+				if (addRoots(result, findView(name), parsed, options, true))
+					break;
 		return result;
+	}
+
+	/**
+	 * @param ifDrawable only add the roots when the generator has something to
+	 *                   draw
+	 * @return whether roots were added
+	 */
+	private static boolean addRoots(Description result, SysmlProfile profile, List<SysmlNode> parsed,
+			SysmlOptions options, boolean ifDrawable) {
+		final String rootName = options.getRoot();
+		final SysmlModel model = new SysmlModel(profile.getStopNames());
+		for (SysmlNode root : parsed)
+			model.add(root);
+		if (ifDrawable && profile.isDrawable(model) == false)
+			return false;
+		final int before = result.roots.size();
+		for (SysmlNode node : profile.findRoots(model)) {
+			final Root root = new Root(profile, model, node);
+			result.roots.add(root);
+			if (result.selected == null && (rootName == null || rootName.equals(node.getName())
+					|| rootName.equals(node.getQualifiedName())))
+				result.selected = root;
+		}
+		return result.roots.size() > before;
 	}
 
 	/** See {@link SysmlImport#describe}. */

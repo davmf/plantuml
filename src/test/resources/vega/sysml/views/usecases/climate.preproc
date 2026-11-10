@@ -1,0 +1,49 @@
+@startuml
+!pragma layout elk
+allowmixing
+left to right direction
+hide circle
+hide empty members
+hide stereotype
+skinparam classAttributeIconSize 0
+<style>
+classDiagram {
+  class { BackGroundColor #FFFFFF; LineColor #404040; MaximumWidth 280 }
+  usecase { BackGroundColor #FFF8E1; LineColor #404040 }
+  actor { BackGroundColor #FFFFFF; LineColor #404040 }
+  rectangle { BackGroundColor #FFFFFF; LineColor #404040 }
+  .requirement { BackGroundColor #EAF1FB }
+  .requirementDef { BackGroundColor #DCE7F7 }
+  .concern { BackGroundColor #F0EAF7 }
+  .objective { BackGroundColor #EAF5EA }
+  .unresolved { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 5; FontColor #757575 }
+  arrow {
+    .include { LineColor #EF6C00; FontColor #EF6C00 }
+    .derive { LineColor #6A1B9A; FontColor #6A1B9A }
+    .refine { LineColor #6A1B9A; FontColor #6A1B9A }
+    .definedBy { LineColor #757575; FontColor #757575 }
+    .specializes { LineColor #757575; FontColor #757575 }
+    .subsets { LineColor #757575; FontColor #757575 }
+  }
+}
+</style>
+actor "HomeOwner" as HomeOwner <<actor>>
+rectangle "SmartHome" as subject_SmartHome <<subject>> {
+  usecase "«use case def»\nManageClimate" as ManageClimate <<useCaseDef>>
+}
+class "«objective»\nclimateGoal" as ManageClimate_climateGoal <<objective>> {
+  {field} Goal: Maintain safe and comfortable indoor conditions.
+}
+class "«requirement def»\nTemperatureRequirement" as TemperatureRequirement <<requirementDef>> {
+  {field} subject home : SmartHome
+  --
+  {field} The room temperature shall stay below 25 degrees Celsius (298.15 K).
+  --
+  {field} require { home.currentTemp <= 298.15[K] }
+}
+class "«requirement»\ntempLimit" as tempLimit <<requirement>>
+HomeOwner -- ManageClimate <<actor>>
+ManageClimate +-- ManageClimate_climateGoal <<objective>>
+ManageClimate_climateGoal +-- tempLimit <<containment>>
+tempLimit ..|> TemperatureRequirement <<definedBy>> : «defined by»
+@enduml

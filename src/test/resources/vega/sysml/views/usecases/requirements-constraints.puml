@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' The requirements view shows the constraints too
+!include_sysml home.sysml view=requirements focus=R-2
+@enduml

@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: no diagram root found (expected 'a package holding use cases, or the whole file set')
+---
+@startuml
+!include_sysml parts.sysml view=usecases
+@enduml

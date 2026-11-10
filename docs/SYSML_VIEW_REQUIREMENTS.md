@@ -20,6 +20,9 @@ Without `focus=`, every requirement of the file set (or of the package
 diagram is centred on one element (highlighted) and holds what lies within
 `depth` relations of it.
 
+Use cases with their actors and objectives are drawn by
+[`view=usecases`](SYSML_VIEW_USECASES.md).
+
 ## Options
 
 | Option      | Values                  | Default                 | Meaning |
@@ -111,6 +114,8 @@ package boundaries.
 * Aliases are the short id or else the name, made into identifiers
   (`SYS-001.1` is `SYS_001_1`), so notes and hints can be added after the
   directive: `note right of SYS_001 : reviewed`.
+* With `text=true`, a second compartment lists the expressions of the
+  requirement's `require constraint { ... }` and `assume constraint { ... }`.
 * Each relation is a link stereotyped with its kind: `<<containment>>`,
   `<<satisfy>>`, `<<verify>>`, `<<derive>>`, `<<refine>>`, `<<dependency>>`,
   `<<allocate>>`, `<<definedBy>>`, `<<specializes>>`, `<<subsets>>`,
@@ -123,6 +128,7 @@ package boundaries.
 |----------|------------|---------|
 | `$sysml_element_label`  | `$id, $name, $kind` | `«kind»`, the id in bold, the name |
 | `$sysml_text_label`     | `$text, $id`        | the doc text |
+| `$sysml_constraint_label` | `$text, $kind`    | `require { text }` / `assume { text }` |
 | `$sysml_relation_label` | `$kind`             | `«kind»` (`«defined by»` for `definedBy`) |
 
 Generated for the focus `TC-002` of the test fixtures (label functions and

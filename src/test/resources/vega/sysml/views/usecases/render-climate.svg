@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="CLASS" height="145px" preserveAspectRatio="none" style="width:1121px;height:145px;background:#FFFFFF;" version="1.1" viewBox="0 0 1121 145" width="1121px" zoomAndPan="magnify">
+  <defs/>
+  <g font-family="sans-serif" lengthAdjust="spacing">
+    <rect fill="#FFF" height="74.57" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:1;" width="171.115" x="133.575" y="32.715"/>
+    <text fill="#000" font-size="14" font-weight="700" textLength="74.638" x="181.814" y="25.604">SmartHome</text>
+    <!--entity ManageClimate-->
+    <g class="entity" data-qualified-name="subject_SmartHome.ManageClimate" data-source-line="1" id="ent0003">
+      <ellipse cx="219.132" cy="70" fill="#FFF8E1" rx="70.557" ry="22.285" style="stroke:#404040;stroke-width:0.5;"/>
+      <text fill="#000" font-size="14" textLength="87.15" x="175.557" y="65.763">«use case def»</text>
+      <text fill="#000" font-size="14" textLength="98.087" x="170.089" y="79.763">ManageClimate</text>
+    </g>
+    <!--entity HomeOwner-->
+    <g class="entity" data-qualified-name="HomeOwner" data-source-line="1" id="ent0001">
+      <ellipse cx="49.288" cy="41.5" fill="#FFF" rx="8" ry="8" style="stroke:#404040;stroke-width:0.5;"/>
+      <path d="M49.288,49.5 L49.288,76.5 M36.288,57.5 L62.288,57.5 M49.288,76.5 L36.288,91.5 M49.288,76.5 L62.288,91.5" fill="none" style="stroke:#404040;stroke-width:0.5;"/>
+      <text fill="#000" font-size="14" textLength="78.575" x="10" y="103.889">HomeOwner</text>
+    </g>
+    <!--class ManageClimate_climateGoal-->
+    <g class="entity" data-qualified-name="ManageClimate_climateGoal" data-source-line="1" id="ent0004">
+      <rect fill="#EAF5EA" height="74" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="260.15" x="349.69" y="33"/>
+      <text fill="#000" font-size="14" textLength="70.875" x="444.327" y="48.889">«objective»</text>
+      <text fill="#000" font-size="14" textLength="73.938" x="442.796" y="62.889">climateGoal</text>
+      <line style="stroke:#404040;stroke-width:0.5;" x1="350.69" x2="608.84" y1="71" y2="71"/>
+      <text fill="#000" font-size="14" textLength="33.425" x="355.69" y="85.889">Goal:</text>
+      <text fill="#000" font-size="14" x="389.115" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="52.938" x="389.115" y="85.889">Maintain</text>
+      <text fill="#000" font-size="14" x="442.052" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="26.425" x="442.052" y="85.889">safe</text>
+      <text fill="#000" font-size="14" x="468.477" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="23.363" x="468.477" y="85.889">and</text>
+      <text fill="#000" font-size="14" x="491.84" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="73.063" x="491.84" y="85.889">comfortable</text>
+      <text fill="#000" font-size="14" x="564.902" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="38.937" x="564.902" y="85.889">indoor</text>
+      <text fill="#000" font-size="14" textLength="66.938" x="355.69" y="99.889">conditions.</text>
+    </g>
+    <!--class TemperatureRequirement-->
+    <g class="entity" data-qualified-name="TemperatureRequirement" data-source-line="1" id="ent0005">
+      <rect fill="#DCE7F7" height="118" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="259.275" x="846.44" y="11"/>
+      <text fill="#000" font-size="14" textLength="82.425" x="921.258" y="26.889">«requirement</text>
+      <text fill="#000" font-size="14" x="1003.683" y="26.889"> </text>
+      <text fill="#000" font-size="14" textLength="27.213" x="1003.683" y="26.889">def»</text>
+      <text fill="#000" font-size="14" textLength="160.213" x="895.971" y="40.889">TemperatureRequirement</text>
+      <line style="stroke:#404040;stroke-width:0.5;" x1="847.44" x2="1104.715" y1="49" y2="49"/>
+      <text fill="#000" font-size="14" textLength="44.363" x="852.44" y="63.889">subject</text>
+      <text fill="#000" font-size="14" x="896.802" y="63.889"> </text>
+      <text fill="#000" font-size="14" textLength="35" x="896.802" y="63.889">home</text>
+      <text fill="#000" font-size="14" x="931.802" y="63.889"> </text>
+      <text fill="#000" font-size="14" x="931.802" y="63.889">:</text>
+      <text fill="#000" font-size="14" x="935.652" y="63.889"> </text>
+      <text fill="#000" font-size="14" textLength="74.638" x="935.652" y="63.889">SmartHome</text>
+      <line style="stroke:#404040;stroke-width:1;" x1="847.44" x2="1104.715" y1="71" y2="71"/>
+      <text fill="#000" font-size="14" textLength="24.15" x="852.44" y="85.889">The</text>
+      <text fill="#000" font-size="14" x="876.59" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="31.85" x="876.59" y="85.889">room</text>
+      <text fill="#000" font-size="14" x="908.44" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="75.337" x="908.44" y="85.889">temperature</text>
+      <text fill="#000" font-size="14" x="983.777" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="28.875" x="983.777" y="85.889">shall</text>
+      <text fill="#000" font-size="14" x="1012.652" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="25.638" x="1012.652" y="85.889">stay</text>
+      <text fill="#000" font-size="14" x="1038.29" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="36.663" x="1038.29" y="85.889">below</text>
+      <text fill="#000" font-size="14" x="1074.952" y="85.889"> </text>
+      <text fill="#000" font-size="14" textLength="15.575" x="1074.952" y="85.889">25</text>
+      <text fill="#000" font-size="14" textLength="50.575" x="852.44" y="99.889">degrees</text>
+      <text fill="#000" font-size="14" x="903.015" y="99.889"> </text>
+      <text fill="#000" font-size="14" textLength="46.025" x="903.015" y="99.889">Celsius</text>
+      <text fill="#000" font-size="14" x="949.04" y="99.889"> </text>
+      <text fill="#000" font-size="14" textLength="47.425" x="949.04" y="99.889">(298.15</text>
+      <text fill="#000" font-size="14" x="996.465" y="99.889"> </text>
+      <text fill="#000" font-size="14" textLength="17.85" x="996.465" y="99.889">K).</text>
+      <line style="stroke:#404040;stroke-width:1;" x1="847.44" x2="1104.715" y1="107" y2="107"/>
+      <text fill="#000" font-size="14" textLength="43.575" x="852.44" y="121.889">require</text>
+      <text fill="#000" font-size="14" x="896.015" y="121.889"> </text>
+      <text fill="#000" font-size="14" x="896.015" y="121.889">{</text>
+      <text fill="#000" font-size="14" x="900.652" y="121.889"> </text>
+      <text fill="#000" font-size="14" textLength="118.125" x="900.652" y="121.889">home.currentTemp</text>
+      <text fill="#000" font-size="14" x="1018.777" y="121.889"> </text>
+      <text fill="#000" font-size="14" textLength="16.45" x="1018.777" y="121.889">&lt;=</text>
+      <text fill="#000" font-size="14" x="1035.227" y="121.889"> </text>
+      <text fill="#000" font-size="14" textLength="59.85" x="1035.227" y="121.889">298.15[K]</text>
+      <text fill="#000" font-size="14" x="1095.077" y="121.889"> </text>
+      <text fill="#000" font-size="14" x="1095.077" y="121.889">}</text>
+    </g>
+    <!--class tempLimit-->
+    <g class="entity" data-qualified-name="tempLimit" data-source-line="1" id="ent0006">
+      <rect fill="#EAF1FB" height="38" rx="2.5" ry="2.5" style="stroke:#404040;stroke-width:0.5;" width="96.213" x="649.84" y="51"/>
+      <text fill="#000" font-size="14" textLength="90.213" x="652.84" y="66.889">«requirement»</text>
+      <text fill="#000" font-size="14" textLength="60.637" x="667.627" y="80.889">tempLimit</text>
+    </g>
+    <path d="M88.575,70 L148.575,70" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    <path d="M289.69,70 L349.69,70" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    <ellipse cx="297.69" cy="70" fill="#FFF" rx="8" ry="8" style="stroke:#181818;stroke-width:1;"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="305.69" x2="289.69" y1="70" y2="70"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="297.69" x2="297.69" y1="78" y2="62"/>
+    <path d="M609.84,70 L649.84,70" fill="none" style="stroke:#181818;stroke-width:1;"/>
+    <ellipse cx="617.84" cy="70" fill="#FFF" rx="8" ry="8" style="stroke:#181818;stroke-width:1;"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="625.84" x2="609.84" y1="70" y2="70"/>
+    <line style="stroke:#181818;stroke-width:1;" x1="617.84" x2="617.84" y1="78" y2="62"/>
+    <path d="M746.052,70 L846.44,70" fill="none" style="stroke:#757575;stroke-width:1;stroke-dasharray:7,7;"/>
+    <polygon fill="#FFF" points="846.44,70,827.44,63,827.44,77,846.44,70" style="stroke:#757575;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:10;"/>
+    <text fill="#757575" font-size="13" textLength="56.388" x="768.052" y="85.111">defined by</text>
+  </g>
+</svg>

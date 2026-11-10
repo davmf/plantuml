@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: option requirements=some: expected one of [all, linked, none]
+---
+@startuml
+!include_sysml home.sysml view=usecases requirements=some
+@enduml

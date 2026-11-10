@@ -70,6 +70,7 @@ public final class SysmlNode {
 	private List<String> annotations = Collections.emptyList();
 	private List<String> sources = Collections.emptyList();
 	private List<String> targets = Collections.emptyList();
+	private String expression;
 
 	SysmlNode(String keyword, boolean definition, boolean library, String name, boolean redefines, String type,
 			List<String> specializes, SysmlValue value, List<String> connectEnds, String source, int line) {
@@ -229,6 +230,18 @@ public final class SysmlNode {
 
 	public boolean hasModifier(String modifier) {
 		return modifiers.contains(modifier);
+	}
+
+	/**
+	 * The text of an expression written as a member of a constraint
+	 * (<code>require constraint { x &lt;= 3 }</code>), or <code>null</code>.
+	 */
+	public String getExpression() {
+		return expression;
+	}
+
+	void setExpression(String expression) {
+		this.expression = expression;
 	}
 
 	void setMultiplicity(String multiplicity) {

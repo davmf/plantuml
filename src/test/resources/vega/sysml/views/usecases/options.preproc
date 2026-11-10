@@ -1,0 +1,42 @@
+@startuml
+allowmixing
+hide circle
+hide empty members
+hide stereotype
+actor "HomeOwner" as HomeOwner <<actor>>
+actor "Technician" as Technician <<actor>>
+actor "weather" as weather <<actor>>
+rectangle "SmartHome" as subject_SmartHome <<subject>> {
+  usecase "«use case def»\nManageClimate" as ManageClimate <<useCaseDef>>
+  usecase "«use case def»\nMeasureTemperature" as MeasureTemperature <<useCaseDef>>
+  usecase "«use case def»\nNotifyOwner" as NotifyOwner <<useCaseDef>>
+  usecase "«use case def»\nService" as Service <<useCaseDef>>
+  usecase "«use case»\neveningCooling" as eveningCooling <<useCase>>
+}
+rectangle "Garden" as subject_Garden <<subject>> {
+  usecase "«use case def»\nWaterPlants" as WaterPlants <<useCaseDef>>
+}
+usecase "«use case»\nloose" as loose <<useCase>>
+usecase "«use case»\nMissing" as Missing <<useCase>> <<unresolved>>
+class "«objective»\nclimateGoal" as ManageClimate_climateGoal <<objective>>
+class "«objective»" as loose_objective <<objective>>
+class "«requirement def»\n<b>R-1</b>\nComfortRequirement" as R_1 <<requirementDef>>
+class "«requirement def»\n<b>R-2</b>\nTemperatureRequirement" as R_2 <<requirementDef>>
+class "«requirement»\ntempLimit" as tempLimit <<requirement>>
+HomeOwner -- ManageClimate <<actor>> : owner
+HomeOwner -- NotifyOwner <<actor>> : recipient
+HomeOwner -- WaterPlants <<actor>> : owner
+Technician -- ManageClimate <<actor>> : tech
+Technician -- Service <<actor>> : tech
+weather -- WaterPlants <<actor>>
+ManageClimate ..> MeasureTemperature <<include>> : «include»
+ManageClimate ..> NotifyOwner <<include>> : «include»
+ManageClimate ..> Missing <<include>> : «include»
+ManageClimate +-- ManageClimate_climateGoal <<objective>>
+loose +-- loose_objective <<objective>>
+ManageClimate_climateGoal +-- tempLimit <<containment>>
+R_2 --|> R_1 <<specializes>> : «specializes»
+tempLimit ..|> R_2 <<definedBy>> : «defined by»
+Service --|> ManageClimate <<specializes>> : «specializes»
+eveningCooling ..|> ManageClimate <<definedBy>> : «defined by»
+@enduml

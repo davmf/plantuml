@@ -32,6 +32,10 @@ Views draw plain SysML, with or without a profile: `view=definitions` draws the 
 
 `view=requirements` draws plain SysML v2 requirements and their traces instead of a profile: see [SYSML_VIEW_REQUIREMENTS.md](SYSML_VIEW_REQUIREMENTS.md).
 
+`view=usecases` draws plain SysML v2 use cases with their actors, subject, included use cases, objective and requirements: see [SYSML_VIEW_USECASES.md](SYSML_VIEW_USECASES.md).
+
+When the files hold no root of any profile and neither `profile=` nor `view=` is given, the first view with something to draw is used: `usecases`, else `requirements`, else `definitions`.
+
 ## Choosing the root
 
 Without options, the profiles are tried in the order of the table and the

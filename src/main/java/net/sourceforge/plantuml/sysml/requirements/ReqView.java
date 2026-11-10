@@ -103,6 +103,32 @@ public final class ReqView implements SysmlProfile {
 	 * when a file has no package.
 	 */
 	public List<SysmlNode> findRoots(SysmlModel model) {
+		return packages(model);
+	}
+
+	/** Whether the files hold a requirement at all: see {@link SysmlProfile#isDrawable}. */
+	@Override
+	public boolean isDrawable(SysmlModel model) {
+		for (SysmlNode root : model.getRoots())
+			if (holds(root, ReqModel.REQUIREMENT_KINDS))
+				return true;
+		return false;
+	}
+
+	/** Whether a member of one of these keywords lies under the node, outside the libraries. */
+	static boolean holds(SysmlNode node, Collection<String> keywords) {
+		for (SysmlNode child : node.getChildren()) {
+			if (child.isLibrary())
+				continue;
+			if (child.getKeyword() != null && keywords.contains(child.getKeyword()))
+				return true;
+			if (holds(child, keywords))
+				return true;
+		}
+		return false;
+	}
+
+	static List<SysmlNode> packages(SysmlModel model) {
 		final List<SysmlNode> result = new ArrayList<>();
 		for (SysmlNode root : model.getRoots()) {
 			final int before = result.size();

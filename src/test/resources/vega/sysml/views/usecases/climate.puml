@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' No profile root and no view=: the use case view is the fallback
+!include_sysml climate.sysml
+@enduml

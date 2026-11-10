@@ -1,0 +1,13 @@
+---
+output: preproc
+---
+@startuml
+' Label functions defined before the directive replace the defaults
+!function $sysml_actor_label($name, $type)
+!return $name + " : " + $type
+!endfunction
+!function $sysml_constraint_label($text, $kind)
+!return "{" + $text + "}"
+!endfunction
+!include_sysml climate.sysml view=usecases
+@enduml

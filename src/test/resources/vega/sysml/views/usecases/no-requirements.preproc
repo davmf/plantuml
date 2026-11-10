@@ -1,0 +1,56 @@
+@startuml
+!pragma layout elk
+allowmixing
+left to right direction
+hide circle
+hide empty members
+hide stereotype
+skinparam classAttributeIconSize 0
+<style>
+classDiagram {
+  class { BackGroundColor #FFFFFF; LineColor #404040; MaximumWidth 280 }
+  usecase { BackGroundColor #FFF8E1; LineColor #404040 }
+  actor { BackGroundColor #FFFFFF; LineColor #404040 }
+  rectangle { BackGroundColor #FFFFFF; LineColor #404040 }
+  .requirement { BackGroundColor #EAF1FB }
+  .requirementDef { BackGroundColor #DCE7F7 }
+  .concern { BackGroundColor #F0EAF7 }
+  .objective { BackGroundColor #EAF5EA }
+  .unresolved { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 5; FontColor #757575 }
+  arrow {
+    .include { LineColor #EF6C00; FontColor #EF6C00 }
+    .derive { LineColor #6A1B9A; FontColor #6A1B9A }
+    .refine { LineColor #6A1B9A; FontColor #6A1B9A }
+    .definedBy { LineColor #757575; FontColor #757575 }
+    .specializes { LineColor #757575; FontColor #757575 }
+    .subsets { LineColor #757575; FontColor #757575 }
+  }
+}
+</style>
+actor "HomeOwner" as HomeOwner <<actor>>
+actor "Technician" as Technician <<actor>>
+actor "weather" as weather <<actor>>
+rectangle "SmartHome" as subject_SmartHome <<subject>> {
+  usecase "«use case def»\nManageClimate" as ManageClimate <<useCaseDef>>
+  usecase "«use case def»\nMeasureTemperature" as MeasureTemperature <<useCaseDef>>
+  usecase "«use case def»\nNotifyOwner" as NotifyOwner <<useCaseDef>>
+  usecase "«use case def»\nService" as Service <<useCaseDef>>
+  usecase "«use case»\neveningCooling" as eveningCooling <<useCase>>
+}
+rectangle "Garden" as subject_Garden <<subject>> {
+  usecase "«use case def»\nWaterPlants" as WaterPlants <<useCaseDef>>
+}
+usecase "«use case»\nloose" as loose <<useCase>>
+usecase "«use case»\nMissing" as Missing <<useCase>> <<unresolved>>
+HomeOwner -- ManageClimate <<actor>>
+HomeOwner -- NotifyOwner <<actor>>
+HomeOwner -- WaterPlants <<actor>>
+Technician -- ManageClimate <<actor>>
+Technician -- Service <<actor>>
+weather -- WaterPlants <<actor>>
+ManageClimate ..> MeasureTemperature <<include>> : «include»
+ManageClimate ..> NotifyOwner <<include>> : «include»
+ManageClimate ..> Missing <<include>> : «include»
+Service --|> ManageClimate <<specializes>> : «specializes»
+eveningCooling ..|> ManageClimate <<definedBy>> : «defined by»
+@enduml

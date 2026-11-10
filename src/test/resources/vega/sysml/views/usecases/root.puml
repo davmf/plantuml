@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' Two files: only the use cases of one package
+!include_sysml home.sysml climate.sysml view=usecases root=ClimateDefinitions
+@enduml

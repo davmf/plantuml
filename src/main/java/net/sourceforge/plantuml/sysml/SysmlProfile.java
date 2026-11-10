@@ -76,6 +76,15 @@ public interface SysmlProfile {
 	List<SysmlNode> findRoots(SysmlModel model);
 
 	/**
+	 * Whether the model holds something for this generator to draw. A view
+	 * that has roots in every file set (its roots are the packages) tells here
+	 * whether it is worth falling back to when no profile has a root.
+	 */
+	default boolean isDrawable(SysmlModel model) {
+		return findRoots(model).isEmpty() == false;
+	}
+
+	/**
 	 * @param model             a model built with {@link #getStopNames()}
 	 * @param root              one of {@link #findRoots}
 	 * @param source            the files read, for the leading comment

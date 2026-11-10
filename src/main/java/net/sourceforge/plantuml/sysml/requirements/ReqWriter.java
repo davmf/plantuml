@@ -36,6 +36,8 @@
 package net.sourceforge.plantuml.sysml.requirements;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -250,6 +252,8 @@ final class ReqWriter extends SysmlWriter {
 				"!return $sysml_l");
 		defaultFunction("$sysml_text_label", "$text, $id", "!return $text");
 		defaultFunction("$sysml_relation_label", "$kind", "!return \"«\" + $kind + \"»\"");
+		if (hasConstraints(selected))
+			defaultFunction("$sysml_constraint_label", "$text, $kind", "!return $kind + \" { \" + $text + \" }\"");
 		out.add("hide circle");
 		out.add("hide empty members");
 		out.add("hide stereotype");
@@ -296,6 +300,14 @@ final class ReqWriter extends SysmlWriter {
 		footer(source);
 	}
 
+	/** Whether a box shows a constraint, so that its label function is needed. */
+	static boolean hasConstraints(Collection<Element> elements) {
+		for (Element e : elements)
+			if (constraints(e.node).isEmpty() == false)
+				return true;
+		return false;
+	}
+
 	private Frame frame(Frame top, Element e) {
 		Frame f = top;
 		for (SysmlNode p : e.packages) {
@@ -340,14 +352,52 @@ final class ReqWriter extends SysmlWriter {
 				.append("\" as ").append(e.alias)
 				.append(SysmlText.stereotypes(stereotype(kind), e == focus ? "focus" : null,
 						e.isUnresolved() ? "unresolved" : null));
-		final String doc = text ? clean(e.getDoc()) : null;
-		if (doc == null) {
-			out.add(sb.toString());
-			return;
+		final List<List<String>> compartments = new ArrayList<>();
+		if (text) {
+			final String doc = clean(e.getDoc());
+			if (doc != null)
+				compartments.add(Collections.singletonList(
+						"{field} " + SysmlText.call("$sysml_text_label", doc, e.id == null ? "" : e.id)));
+			compartments.add(constraints(e.node));
 		}
-		out.add(sb.append(" {").toString());
-		out.add(indent + "  {field} " + SysmlText.call("$sysml_text_label", doc, e.id == null ? "" : e.id));
-		out.add(indent + "}");
+		body(out, indent, sb.toString(), compartments);
+	}
+
+	/**
+	 * Writes a class and its body: one compartment per group of lines that is
+	 * not empty, and no body at all when they all are.
+	 */
+	static void body(List<String> out, String indent, String declaration, List<List<String>> compartments) {
+		boolean open = false;
+		for (List<String> lines : compartments) {
+			if (lines.isEmpty())
+				continue;
+			out.add(open ? indent + "  --" : declaration + " {");
+			open = true;
+			for (String line : lines)
+				out.add(indent + "  " + line);
+		}
+		out.add(open ? indent + "}" : declaration);
+	}
+
+	/**
+	 * One line per constraint expression of a requirement:
+	 * <code>require constraint { x &lt;= 3 }</code> and
+	 * <code>assume constraint { ... }</code>.
+	 */
+	static List<String> constraints(SysmlNode node) {
+		final List<String> result = new ArrayList<>();
+		if (node == null)
+			return result;
+		for (SysmlNode child : node.getChildren()) {
+			if (child.isKeyword("require") == false && child.isKeyword("assume") == false)
+				continue;
+			for (SysmlNode expression : child.getChildren())
+				if (expression.getExpression() != null)
+					result.add("{field} "
+							+ SysmlText.call("$sysml_constraint_label", expression.getExpression(), child.getKeyword()));
+		}
+		return result;
 	}
 
 	/** <code>requirement def</code> gives <code>requirementDef</code>. */

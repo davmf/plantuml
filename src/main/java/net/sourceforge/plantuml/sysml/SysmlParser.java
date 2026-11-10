@@ -66,7 +66,18 @@ public final class SysmlParser {
 			"view", "viewpoint", "rendering", "concern", "use", "analysis", "verification", "satisfy", "assert",
 			"exhibit", "perform", "message", "succession", "transition", "accept", "send", "assume", "require",
 			"subject", "objective", "actor", "stakeholder", "frame", "expose", "render", "filter", "dependency",
-			"namespace", "language", "rep", "event", "individual", "snapshot", "timeslice", "connector", "verify"));
+			"namespace", "language", "rep", "event", "individual", "snapshot", "timeslice", "connector", "verify",
+			"include"));
+
+	/** The owners whose keyword-less members are expressions, kept as text. */
+	private static final Set<String> EXPRESSION_OWNERS = new HashSet<>(
+			Arrays.asList("require", "assume", "constraint", "assert"));
+
+	/** Symbols written without a space before them in an expression. */
+	private static final Set<String> TIGHT_BEFORE = new HashSet<>(Arrays.asList(".", "::", ",", ")", "]", "(", "["));
+
+	/** Symbols written without a space after them in an expression. */
+	private static final Set<String> TIGHT_AFTER = new HashSet<>(Arrays.asList(".", "::", "(", "["));
 
 	/** The keywords that <code>case</code> may follow. */
 	private static final Set<String> CASES = new HashSet<>(Arrays.asList("use", "analysis", "verification"));
@@ -168,6 +179,8 @@ public final class SysmlParser {
 			pos++;
 		}
 		final SysmlNode node = interpret(header, line);
+		if (node.getKeyword() == null && owner.getKeyword() != null && EXPRESSION_OWNERS.contains(owner.getKeyword()))
+			node.setExpression(expression(header));
 		owner.addChild(node);
 		if (hasBody)
 			parseMembers(node, true);
@@ -221,6 +234,10 @@ public final class SysmlParser {
 				keyword = keyword + " case";
 				i++;
 			}
+			if ("include".equals(keyword) && i + 1 < h.size() && h.get(i).isName("use")
+					&& h.get(i + 1).isName("case"))
+				// include use case x : X
+				i += 2;
 			if (i < h.size() && h.get(i).isName("def")) {
 				definition = true;
 				i++;
@@ -511,6 +528,32 @@ public final class SysmlParser {
 			final SysmlToken t = h.get(i);
 			if (sb.length() > 0 && t.getKind() != SysmlToken.Kind.SYMBOL && needsSpace(h.get(i - 1)))
 				sb.append(' ');
+			if (t.getKind() == SysmlToken.Kind.STRING)
+				sb.append('"').append(t.getText()).append('"');
+			else
+				sb.append(t.getText());
+		}
+		return sb.toString();
+	}
+
+	/**
+	 * The tokens of an expression as text, with spaces around the operators:
+	 * <code>home.currentTemp &lt;= 298.15[K]</code>.
+	 */
+	private static String expression(List<SysmlToken> h) {
+		final StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < h.size(); i++) {
+			final SysmlToken t = h.get(i);
+			if (t.getKind() == SysmlToken.Kind.BLOCK_COMMENT)
+				continue;
+			if (sb.length() > 0) {
+				final SysmlToken previous = h.get(i - 1);
+				final boolean tight = (t.getKind() == SysmlToken.Kind.SYMBOL && TIGHT_BEFORE.contains(t.getText())
+						&& (t.isSymbol("(") == false || previous.getKind() == SysmlToken.Kind.NAME))
+						|| (previous.getKind() == SysmlToken.Kind.SYMBOL && TIGHT_AFTER.contains(previous.getText()));
+				if (tight == false)
+					sb.append(' ');
+			}
 			if (t.getKind() == SysmlToken.Kind.STRING)
 				sb.append('"').append(t.getText()).append('"');
 			else

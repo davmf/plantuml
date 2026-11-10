@@ -1,7 +1,8 @@
 # `view=definitions`: SysML v2 definitions as a class diagram
 
 `view=definitions` draws the definitions of any SysML v2 file set, written
-with a profile or not, as a class diagram. It is never tried unless asked for:
+with a profile or not, as a class diagram. It is only tried without being
+asked for when the files hold no profile root, no use case and no requirement:
 
 ```plantuml
 @startuml
