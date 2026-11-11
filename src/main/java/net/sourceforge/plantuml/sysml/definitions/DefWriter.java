@@ -51,6 +51,7 @@ import net.sourceforge.plantuml.sysml.SysmlNode;
 import net.sourceforge.plantuml.sysml.SysmlNodes;
 import net.sourceforge.plantuml.sysml.SysmlOptions;
 import net.sourceforge.plantuml.sysml.SysmlText;
+import net.sourceforge.plantuml.sysml.SysmlWorkspace;
 import net.sourceforge.plantuml.sysml.SysmlWriter;
 
 /**
@@ -122,6 +123,7 @@ final class DefWriter extends SysmlWriter {
 	private final Map<String, Pkg> packages = new LinkedHashMap<>();
 	private final boolean attributes;
 	private final boolean usages;
+	private final SysmlWorkspace workspace;
 
 	DefWriter(SysmlModel model, SysmlNode root, SysmlOptions options, Predicate<String> isFunctionDefined) {
 		super(isFunctionDefined);
@@ -130,6 +132,7 @@ final class DefWriter extends SysmlWriter {
 		this.options = options;
 		this.attributes = options.getBoolean("attributes", true);
 		this.usages = options.getBoolean("usages", true);
+		this.workspace = new SysmlWorkspace(model.getRoots());
 	}
 
 	private boolean isWholeSet() {
@@ -169,6 +172,11 @@ final class DefWriter extends SysmlWriter {
 			if (root.isDefinition())
 				core.add(root);
 			collectDefinitions(root, core);
+			// A tracker or folder of the tracker layout owns nothing: its
+			// items are the packages it includes
+			if (root.isKeyword("package"))
+				for (SysmlNode included : workspace.getIncludedTransitively(root))
+					collectDefinitions(included, core);
 		}
 		List<SysmlNode> scope = core;
 		if (root.isDefinition()) {
@@ -255,11 +263,19 @@ final class DefWriter extends SysmlWriter {
 		}
 		// The packages that own the definition (a nested definition goes with its owner), outermost first
 		final List<SysmlNode> chain = new ArrayList<>();
-		for (SysmlNode n = def.node.getParent(); n != null; n = n.getParent()) {
-			if (n.isKeyword("package") && n.getName() != null)
-				chain.add(0, n);
-			if (n == root && n.isKeyword("package"))
-				break;
+		final List<SysmlNode> includers = workspace.getIncluders(def.node);
+		if (includers.isEmpty() == false) {
+			// An item of the tracker layout: the trackers and folders that
+			// include it, below the root
+			final int at = includers.indexOf(root);
+			chain.addAll(at < 0 ? includers : includers.subList(at + 1, includers.size()));
+		} else {
+			for (SysmlNode n = def.node.getParent(); n != null; n = n.getParent()) {
+				if (n.isKeyword("package") && n.getName() != null)
+					chain.add(0, n);
+				if (n == root && n.isKeyword("package"))
+					break;
+			}
 		}
 		Pkg owner = top;
 		for (SysmlNode p : chain) {
@@ -431,7 +447,8 @@ final class DefWriter extends SysmlWriter {
 		for (Pkg child : pkg.packages) {
 			final SysmlNode n = child.node;
 			final String kind = n.isLibrary() ? "library package" : "package";
-			out.add(indent + "package \"" + SysmlText.call("$sysml_package_label", n.getName(), kind) + "\" as "
+			out.add(indent + "package \"" + SysmlText.call("$sysml_package_label", SysmlWorkspace.getTitle(n), kind)
+					+ "\" as "
 					+ child.alias + " <<" + kind + ">> {");
 			writeContents(child, indent + "  ");
 			out.add(indent + "}");

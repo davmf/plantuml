@@ -30,6 +30,7 @@ import net.sourceforge.plantuml.klimt.font.StringBounder;
 import net.sourceforge.plantuml.klimt.geom.XDimension2D;
 import net.sourceforge.plantuml.klimt.shape.TextBlock;
 import net.sourceforge.plantuml.math.FormulaDiagram;
+import net.sourceforge.plantuml.sysml.SysmlDiagramView;
 import net.sourceforge.plantuml.sysml.SysmlException;
 import net.sourceforge.plantuml.sysml.SysmlImport;
 import net.sourceforge.plantuml.sysml.SysmlProfile;
@@ -371,7 +372,7 @@ public class PlantUMLBrowser {
 	 *
 	 * <pre>
 	 * {
-	 *   "roots": [{"name": "sm", "qualifiedName": "Pkg::sm", "profile": "statemachine"}, ...],
+	 *   "roots": [{"name": "sm", "id": "SM-001", "qualifiedName": "Pkg::sm", "profile": "statemachine"}, ...],
 	 *   "selected": 0,
 	 *   "profiles": [{"name": "statemachine", "root": "part x : StateMachine",
 	 *                 "options": {"actions": ["true", "false"], ...}}, ...]
@@ -382,7 +383,10 @@ public class PlantUMLBrowser {
 	 * <code>selected</code> is the index of the one it would draw with these
 	 * options (-1 for none), and each profile's options list their allowed
 	 * values, the default first (<code>null</code>: any value);
-	 * <code>views</code> lists the views in the same form. Only
+	 * <code>views</code> lists the views in the same form; <code>diagrams</code>
+	 * lists the saved views of the files (<code>{"id", "name"}</code>, for
+	 * <code>diagram=</code>); a root's <code>id</code> is its short name or item
+	 * ID, or <code>null</code>. Only
 	 * <code>root=</code>, <code>profile=</code> and <code>view=</code> are read
 	 * from <code>options</code>. Synchronous, like {@link #sysmlToPlantUml}.
 	 */
@@ -401,6 +405,7 @@ public class PlantUMLBrowser {
 				if (root == description.getSelected())
 					selected = i;
 				sb.append(i == 0 ? "" : ",").append("{\"name\":").append(json(root.getName()))
+						.append(",\"id\":").append(json(root.getId()))
 						.append(",\"qualifiedName\":").append(json(root.getQualifiedName()))
 						.append(",\"profile\":").append(json(root.getProfile().getName()))
 						.append(",\"file\":").append(json(root.getSource())).append('}');
@@ -409,6 +414,12 @@ public class PlantUMLBrowser {
 			describeGenerators(sb, SysmlImport.PROFILES);
 			sb.append(",\"views\":");
 			describeGenerators(sb, SysmlImport.VIEWS);
+			sb.append(",\"diagrams\":[");
+			final List<SysmlDiagramView.ViewInfo> diagrams = description.getDiagrams();
+			for (int i = 0; i < diagrams.size(); i++)
+				sb.append(i == 0 ? "" : ",").append("{\"id\":").append(json(diagrams.get(i).getId()))
+						.append(",\"name\":").append(json(diagrams.get(i).getName())).append('}');
+			sb.append(']');
 			sb.append('}');
 		} catch (SysmlException e) {
 			deliver(onError, e.getMessage());

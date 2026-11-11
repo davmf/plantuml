@@ -1,0 +1,15 @@
+@startuml
+!pragma layout elk
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor<<part def>> #EAF1FB
+}
+package "Power" as HW_F_POWER <<package>> {
+  class "Heater" as Heater <<part def>> {
+    {field} power
+  }
+  class "Base" as Base <<part def>>
+}
+Base *-- Heater : heater
+@enduml

@@ -226,6 +226,7 @@ public final class SysmlImport {
 
 	private static Description describe(List<SysmlNode> parsed, SysmlOptions options) throws SysmlException {
 		final Description result = new Description();
+		result.diagrams.addAll(SysmlDiagramView.findViews(parsed));
 		for (SysmlProfile profile : selectProfiles(options))
 			addRoots(result, profile, parsed, options, false);
 		if (result.roots.isEmpty() && options.getProfile() == null && options.getView() == null)
@@ -249,9 +250,9 @@ public final class SysmlImport {
 		if (ifDrawable && profile.isDrawable(model) == false)
 			return false;
 		final int before = result.roots.size();
-		final SysmlWorkspace workspace = rootName == null ? null : new SysmlWorkspace(parsed);
+		final SysmlWorkspace workspace = new SysmlWorkspace(parsed);
 		for (SysmlNode node : profile.findRoots(model)) {
-			final Root root = new Root(profile, model, node);
+			final Root root = new Root(profile, model, node, workspace.getItemId(node));
 			result.roots.add(root);
 			if (result.selected == null && (rootName == null || rootName.equals(node.getName())
 					|| rootName.equals(node.getQualifiedName()) || rootName.equals(node.getShortName())
@@ -264,7 +265,13 @@ public final class SysmlImport {
 	/** See {@link SysmlImport#describe}. */
 	public static final class Description {
 		private final List<Root> roots = new ArrayList<>();
+		private final List<SysmlDiagramView.ViewInfo> diagrams = new ArrayList<>();
 		private Root selected;
+
+		/** The saved views (SysML <code>view</code> usages) of the files, for <code>diagram=</code>. */
+		public List<SysmlDiagramView.ViewInfo> getDiagrams() {
+			return Collections.unmodifiableList(diagrams);
+		}
 
 		public List<Root> getRoots() {
 			return Collections.unmodifiableList(roots);
@@ -289,11 +296,21 @@ public final class SysmlImport {
 		private final SysmlProfile profile;
 		private final SysmlModel model;
 		private final SysmlNode node;
+		private final String id;
 
-		private Root(SysmlProfile profile, SysmlModel model, SysmlNode node) {
+		private Root(SysmlProfile profile, SysmlModel model, SysmlNode node, String id) {
 			this.profile = profile;
 			this.model = model;
 			this.node = node;
+			this.id = id;
+		}
+
+		/**
+		 * The ID of the root: its short name or, in the tracker layout, its
+		 * item ID. <code>null</code> without either.
+		 */
+		public String getId() {
+			return id;
 		}
 
 		public SysmlProfile getProfile() {

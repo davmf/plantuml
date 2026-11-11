@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' definitions of a design tracker: the part defs of the items it includes, framed by its folder
+!include_sysml StrictDocWorkspace.sysml TRK-HW.sysml HW-F-POWER.sysml HW-001.sysml HW-002.sysml view=definitions root=TRK-HW
+@enduml

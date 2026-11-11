@@ -160,6 +160,42 @@ public final class SysmlDiagramView {
 		return diagram;
 	}
 
+	/** A saved view: its ID (as <code>diagram=</code> takes it) and its name. */
+	public static final class ViewInfo {
+		private final String id;
+		private final String name;
+
+		private ViewInfo(String id, String name) {
+			this.id = id;
+			this.name = name;
+		}
+
+		public String getId() {
+			return id;
+		}
+
+		public String getName() {
+			return name;
+		}
+	}
+
+	/** Every view usage of the files that has an ID, in file order. */
+	static List<ViewInfo> findViews(List<SysmlNode> parsed) {
+		final SysmlWorkspace workspace = new SysmlWorkspace(parsed);
+		final List<ViewInfo> result = new ArrayList<>();
+		final List<SysmlNode> todo = new ArrayList<>(parsed);
+		while (todo.isEmpty() == false) {
+			final SysmlNode n = todo.remove(0);
+			if (n.isKeyword("view") && n.isDefinition() == false) {
+				final String id = n.getShortName() != null ? n.getShortName() : workspace.getItemId(n);
+				if (id != null)
+					result.add(new ViewInfo(id, n.getName() == null ? id : n.getName()));
+			}
+			todo.addAll(0, n.getChildren());
+		}
+		return result;
+	}
+
 	private static SysmlNode findView(List<SysmlNode> parsed, SysmlWorkspace workspace, String id) {
 		final List<SysmlNode> todo = new ArrayList<>(parsed);
 		while (todo.isEmpty() == false) {

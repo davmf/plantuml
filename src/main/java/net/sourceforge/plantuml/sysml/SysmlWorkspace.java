@@ -150,6 +150,26 @@ public final class SysmlWorkspace {
 	}
 
 	/**
+	 * Every top-level package a package includes, directly or through other
+	 * packages, in include order.
+	 */
+	public List<SysmlNode> getIncludedTransitively(SysmlNode pkg) {
+		final List<SysmlNode> result = new ArrayList<>();
+		final Set<SysmlNode> seen = new HashSet<>();
+		seen.add(pkg);
+		collectIncluded(pkg, result, seen);
+		return result;
+	}
+
+	private void collectIncluded(SysmlNode pkg, List<SysmlNode> result, Set<SysmlNode> seen) {
+		for (SysmlNode child : getIncludes(pkg))
+			if (seen.add(child)) {
+				result.add(child);
+				collectIncluded(child, result, seen);
+			}
+	}
+
+	/**
 	 * Whether <code>ancestor</code> is the top-level package of the node, or
 	 * includes it, directly or through other packages.
 	 */
