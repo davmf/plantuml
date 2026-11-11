@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' scope= several trackers; packages=true frames trackers and folders with their titles
+!include_sysml MODEL.sysml StrictDocWorkspace.sysml TRK-STK.sysml STK-001.sysml TRK-SYS.sysml SYS-F-HEATING.sysml SYS-001.sysml SYS-002.sysml TRK-BEH.sysml BEH-001.sysml VIEW-001.sysml VIEW-002.sysml VIEW-003.sysml view=requirements scope=TRK-STK,TRK-SYS packages=true
+@enduml

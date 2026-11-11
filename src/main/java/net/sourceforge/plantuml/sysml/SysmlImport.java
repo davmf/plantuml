@@ -38,6 +38,7 @@ package net.sourceforge.plantuml.sysml;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,8 +115,24 @@ public final class SysmlImport {
 	 */
 	public static List<String> importSysml(List<String> names, List<String> texts, Map<String, String> options,
 			Predicate<String> isFunctionDefined) throws SysmlException {
+		final List<SysmlNode> parsed = parse(names, texts);
+		final SysmlDiagramView diagram = options.containsKey(SysmlOptions.DIAGRAM)
+				? SysmlDiagramView.expand(parsed, options)
+				: null;
+		final List<String> lines = importParsed(names, parsed,
+				diagram == null ? options : diagram.getOptions(), isFunctionDefined);
+		if (diagram == null)
+			return lines;
+		final List<String> result = new ArrayList<>(diagram.getBefore());
+		result.addAll(lines);
+		result.addAll(diagram.getAfter());
+		return result;
+	}
+
+	private static List<String> importParsed(List<String> names, List<SysmlNode> parsed, Map<String, String> options,
+			Predicate<String> isFunctionDefined) throws SysmlException {
 		final SysmlOptions parsedOptions = new SysmlOptions(options);
-		final Description description = describe(parse(names, texts), parsedOptions);
+		final Description description = describe(parsed, parsedOptions);
 		final Root selected = description.getSelected();
 		if (selected == null) {
 			if (parsedOptions.getRoot() != null)
@@ -154,7 +171,33 @@ public final class SysmlImport {
 	 */
 	public static Description describe(List<String> names, List<String> texts, Map<String, String> options)
 			throws SysmlException {
-		return describe(parse(names, texts), new SysmlOptions(options));
+		final List<SysmlNode> parsed = parse(names, texts);
+		if (options.containsKey(SysmlOptions.DIAGRAM))
+			options = SysmlDiagramView.expand(parsed, options).getOptions();
+		return describe(parsed, new SysmlOptions(options));
+	}
+
+	/** Most files kept by {@link #PARSED}; past it, the cache starts again. */
+	private static final int PARSED_LIMIT = 4096;
+
+	/**
+	 * The last parse of each file, by name, with the text it was parsed from.
+	 * A host that draws many diagrams of the same file set (StrictDoc draws one
+	 * per item, from every file of the project) parses each file once: a file
+	 * is parsed again only when its text changes. Parsed nodes are never
+	 * modified afterwards (models and generators only read them), so they can
+	 * be shared.
+	 */
+	private static final Map<String, Parsed> PARSED = new HashMap<>();
+
+	private static final class Parsed {
+		private final String text;
+		private final SysmlNode root;
+
+		private Parsed(String text, SysmlNode root) {
+			this.text = text;
+			this.root = root;
+		}
 	}
 
 	private static List<SysmlNode> parse(List<String> names, List<String> texts) throws SysmlException {
@@ -162,8 +205,23 @@ public final class SysmlImport {
 			throw new IllegalArgumentException("names and texts differ in size");
 		final List<SysmlNode> parsed = new ArrayList<>();
 		for (int i = 0; i < names.size(); i++)
-			parsed.add(SysmlParser.parse(names.get(i), texts.get(i)));
+			parsed.add(parse(names.get(i), texts.get(i)));
 		return parsed;
+	}
+
+	private static SysmlNode parse(String name, String text) throws SysmlException {
+		synchronized (PARSED) {
+			final Parsed cached = PARSED.get(name);
+			if (cached != null && cached.text.equals(text))
+				return cached.root;
+		}
+		final SysmlNode root = SysmlParser.parse(name, text);
+		synchronized (PARSED) {
+			if (PARSED.size() >= PARSED_LIMIT)
+				PARSED.clear();
+			PARSED.put(name, new Parsed(text, root));
+		}
+		return root;
 	}
 
 	private static Description describe(List<SysmlNode> parsed, SysmlOptions options) throws SysmlException {
@@ -191,11 +249,13 @@ public final class SysmlImport {
 		if (ifDrawable && profile.isDrawable(model) == false)
 			return false;
 		final int before = result.roots.size();
+		final SysmlWorkspace workspace = rootName == null ? null : new SysmlWorkspace(parsed);
 		for (SysmlNode node : profile.findRoots(model)) {
 			final Root root = new Root(profile, model, node);
 			result.roots.add(root);
 			if (result.selected == null && (rootName == null || rootName.equals(node.getName())
-					|| rootName.equals(node.getQualifiedName())))
+					|| rootName.equals(node.getQualifiedName()) || rootName.equals(node.getShortName())
+					|| rootName.equals(workspace.getItemId(node))))
 				result.selected = root;
 		}
 		return result.roots.size() > before;

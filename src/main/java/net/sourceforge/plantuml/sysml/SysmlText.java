@@ -103,6 +103,63 @@ public final class SysmlText {
 		return s != null && s.matches("[A-Za-z_][A-Za-z0-9_]*");
 	}
 
+	/**
+	 * Removes the reStructuredText directive blocks from a doc comment: a line
+	 * <code>.. name::</code> and the indented or blank lines after it (its
+	 * options and content). StrictDoc writes images into doc comments this way
+	 * (<code>.. image:: _assets/chart.svg</code> followed by
+	 * <code>:alt:</code>); a diagram box would show them as text.
+	 *
+	 * @return the text without them, trimmed; <code>null</code> stays
+	 *         <code>null</code>
+	 */
+	public static String withoutDirectives(String text) {
+		if (text == null || text.contains(".. ") == false)
+			return text;
+		final StringBuilder sb = new StringBuilder();
+		boolean inDirective = false;
+		for (String line : text.split("\n", -1)) {
+			if (line.trim().matches("\\.\\. [A-Za-z][A-Za-z0-9_-]*::.*")
+					&& (line.isEmpty() || Character.isWhitespace(line.charAt(0)) == false)) {
+				inDirective = true;
+				continue;
+			}
+			if (inDirective && (line.trim().isEmpty() || Character.isWhitespace(line.charAt(0))))
+				continue;
+			inDirective = false;
+			sb.append(line).append('\n');
+		}
+		return sb.toString().trim();
+	}
+
+	/**
+	 * The link of an element, <code> [[url]]</code>, from the pattern of
+	 * <code>links=</code>: <code>{id}</code> becomes the ID, percent-encoded.
+	 * Empty without <code>links=</code> or without an ID: only items (and
+	 * elements with a short name) are pages of their own.
+	 */
+	public static String link(SysmlOptions options, String id) {
+		final String pattern = options.get(SysmlOptions.LINKS, null);
+		if (pattern == null || pattern.isEmpty() || id == null)
+			return "";
+		return " [[" + pattern.replace("{id}", encode(id)) + "]]";
+	}
+
+	/** Percent-encodes what is not an unreserved URL character (UTF-8). */
+	static String encode(String s) {
+		final StringBuilder sb = new StringBuilder();
+		final byte[] bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+		for (byte b : bytes) {
+			final int c = b & 0xFF;
+			if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_'
+					|| c == '.' || c == '~')
+				sb.append((char) c);
+			else
+				sb.append('%').append("0123456789ABCDEF".charAt(c >> 4)).append("0123456789ABCDEF".charAt(c & 15));
+		}
+		return sb.toString();
+	}
+
 	public static boolean isEmpty(String s) {
 		return s == null || s.isEmpty();
 	}

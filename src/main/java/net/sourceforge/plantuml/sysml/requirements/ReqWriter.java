@@ -51,6 +51,7 @@ import net.sourceforge.plantuml.sysml.SysmlException;
 import net.sourceforge.plantuml.sysml.SysmlNode;
 import net.sourceforge.plantuml.sysml.SysmlOptions;
 import net.sourceforge.plantuml.sysml.SysmlText;
+import net.sourceforge.plantuml.sysml.SysmlWorkspace;
 import net.sourceforge.plantuml.sysml.SysmlWriter;
 import net.sourceforge.plantuml.sysml.requirements.ReqModel.Element;
 import net.sourceforge.plantuml.sysml.requirements.ReqModel.Relation;
@@ -75,6 +76,9 @@ final class ReqWriter extends SysmlWriter {
 
 	private final ReqModel model;
 	private final SysmlNode root;
+	/** The packages of <code>scope=</code>; empty: no restriction. */
+	private final List<SysmlNode> scope;
+	private final SysmlWorkspace workspace;
 	private final SysmlOptions options;
 	private final Set<String> aliases = new HashSet<>();
 
@@ -82,20 +86,47 @@ final class ReqWriter extends SysmlWriter {
 	 * @param root the package to draw, or <code>null</code> for the whole file
 	 *             set
 	 */
-	ReqWriter(ReqModel model, SysmlNode root, SysmlOptions options, Predicate<String> isFunctionDefined) {
+	ReqWriter(ReqModel model, SysmlNode root, SysmlWorkspace workspace, SysmlOptions options,
+			Predicate<String> isFunctionDefined) throws SysmlException {
 		super(isFunctionDefined);
 		this.model = model;
 		this.root = root;
+		this.workspace = workspace;
 		this.options = options;
+		this.scope = new ArrayList<>();
+		final String written = options.get(ReqView.SCOPE, null);
+		if (written != null)
+			for (String name : written.split(",")) {
+				final String n = name.replace("'", "").trim();
+				if (n.isEmpty())
+					continue;
+				final SysmlNode pkg = workspace.getTopLevel(n);
+				if (pkg == null)
+					throw new SysmlException("scope '" + n + "' names no top-level package");
+				scope.add(pkg);
+			}
 	}
 
 	private boolean inRoot(Element e) {
-		if (root == null)
-			return true;
+		if (scope.isEmpty() == false) {
+			boolean found = false;
+			for (SysmlNode pkg : scope)
+				found = found || inPackage(e, pkg);
+			if (found == false)
+				return false;
+		}
+		return root == null || inPackage(e, root);
+	}
+
+	/**
+	 * Whether the package owns the element or, in the tracker layout, includes
+	 * the item that holds it.
+	 */
+	private boolean inPackage(Element e, SysmlNode pkg) {
 		for (SysmlNode n = e.node; n != null; n = n.getParent())
-			if (n == root)
+			if (n == pkg)
 				return true;
-		return false;
+		return e.node != null && workspace.contains(pkg, e.node);
 	}
 
 	/** The element <code>focus=</code> names: its short id, qualified name or name. */
@@ -106,7 +137,8 @@ final class ReqWriter extends SysmlWriter {
 		for (Element e : model.getElements()) {
 			if (inRoot(e) == false)
 				continue;
-			if (focus.equals(e.id) || focus.equals(e.getQualifiedName()))
+			if (focus.equals(e.id) || focus.equals(e.getQualifiedName())
+					|| (e.node != null && focus.equals(workspace.getItemId(e.node))))
 				return e;
 			if (focus.equals(e.name))
 				byName.add(e);
@@ -308,9 +340,25 @@ final class ReqWriter extends SysmlWriter {
 		return false;
 	}
 
+	/**
+	 * The packages drawn around an element: its enclosing packages or, for an
+	 * item of the tracker layout, the trackers and folders that include it.
+	 */
+	private List<SysmlNode> framesOf(Element e) {
+		if (e.node != null) {
+			final List<SysmlNode> includers = workspace.getIncluders(e.node);
+			if (includers.isEmpty() == false) {
+				// root and what includes it are the diagram, not frames in it
+				final int at = includers.indexOf(root);
+				return at < 0 ? includers : includers.subList(at + 1, includers.size());
+			}
+		}
+		return e.packages;
+	}
+
 	private Frame frame(Frame top, Element e) {
 		Frame f = top;
-		for (SysmlNode p : e.packages) {
+		for (SysmlNode p : framesOf(e)) {
 			if (root != null && isAncestorOrSelf(p, root) && p != root)
 				continue;
 			final String q = p.getQualifiedName();
@@ -335,7 +383,7 @@ final class ReqWriter extends SysmlWriter {
 		for (Element e : f.elements)
 			writeElement(e, indent, focus, text);
 		for (Frame child : f.children.values()) {
-			out.add(indent + "package \"" + SysmlText.quote(child.node.getName()) + "\" as "
+			out.add(indent + "package \"" + SysmlText.quote(SysmlWorkspace.getTitle(child.node)) + "\" as "
 					+ SysmlText.unique(SysmlText.sanitize("pkg_" + child.qualifiedName), aliases)
 					+ " <<package>> {");
 			writeFrame(child, indent + "  ", focus, text);
@@ -352,6 +400,8 @@ final class ReqWriter extends SysmlWriter {
 				.append("\" as ").append(e.alias)
 				.append(SysmlText.stereotypes(stereotype(kind), e == focus ? "focus" : null,
 						e.isUnresolved() ? "unresolved" : null));
+		if (e.node != null)
+			sb.append(SysmlText.link(options, e.id != null ? e.id : workspace.getItemId(e.node)));
 		final List<List<String>> compartments = new ArrayList<>();
 		if (text) {
 			final String doc = clean(e.getDoc());

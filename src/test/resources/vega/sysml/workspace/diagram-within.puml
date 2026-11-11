@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' a saved view of part of a state machine: within=, transitions=, the view's PlantUML lines
+!include_sysml MODEL.sysml StrictDocWorkspace.sysml TRK-STK.sysml STK-001.sysml TRK-SYS.sysml SYS-F-HEATING.sysml SYS-001.sysml SYS-002.sysml TRK-BEH.sysml BEH-001.sysml VIEW-001.sysml VIEW-002.sysml VIEW-003.sysml diagram=VIEW-001
+@enduml

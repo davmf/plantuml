@@ -34,6 +34,9 @@ Views draw plain SysML, with or without a profile: `view=definitions` draws the 
 
 `view=usecases` draws plain SysML v2 use cases with their actors, subject, included use cases, objective and requirements: see [SYSML_VIEW_USECASES.md](SYSML_VIEW_USECASES.md).
 
+Files in the StrictDoc tracker layout (one file per item) and saved views
+(`diagram=`): see [SYSML_WORKSPACE.md](SYSML_WORKSPACE.md).
+
 When the files hold no root of any profile and neither `profile=` nor `view=` is given, the first view with something to draw is used: `usecases`, else `requirements`, else `definitions`.
 
 ## Choosing the root
@@ -52,7 +55,8 @@ lifelines reference. Two cases need no option either:
 * software architecture: a `part def` holding Layers is a root unless a
   top-level part is typed by it (then the part is the root).
 
-`root=name` (simple or qualified name) picks any root; `system=` is the same
+`root=name` (simple or qualified name, short name, or item ID in the
+[tracker layout](SYSML_WORKSPACE.md)) picks any root; `system=` is the same
 option, kept for InterconnectProfile diagrams. `profile=` restricts the search
 to one profile.
 
@@ -65,6 +69,8 @@ to one profile.
 | `style`   | `true`, `false`        | `true`      | Emit the default skinparams and `<style>` |
 | `frame`   | `true`, `false`        | `false`     | Draw the root itself as an outer frame |
 | `layout`  | `elk`, `default`       | `elk`       | Write `!pragma layout elk` before the generated source; `default` leaves the layout to the diagram (Graphviz unless it sets a pragma itself). Sequence and timing diagrams have no graph layout and ignore it |
+| `links`   | URL pattern            | none        | Link each element that is an item to `pattern` with `{id}` replaced by its ID, percent-encoded (`links=/item/{id}`). Only views whose boxes are items use it (requirements); the others ignore it |
+| `diagram` | view ID                | none        | Draw a saved view: a SysML `view` whose `expose` and `DiagramView` metadata give the root and the options. See [SYSML_WORKSPACE.md](SYSML_WORKSPACE.md) |
 
 An option the selected profile does not know is an error. As for
 InterconnectProfile, every element carries stereotypes (style them in a
@@ -104,6 +110,12 @@ generators do not check the model: run the profile's rule pack for that.
 * With `style=true` (the default), transition labels are drawn as nodes of
   their own (`skinparam stateDiagramEdgeLabelStyle node`), and edge corners
   are rounded (`!pragma edgeCornerRadius 10`).
+* `transitions=primary` draws only the primary transitions,
+  `transitions=noexceptions` all but the exception ones (default `all`).
+* `within=top::heating` draws one state with what it holds: a path of
+  member names inside the machine (Regions included). An unknown path is an
+  error that lists the paths. Saved views use it for an `expose` that names
+  part of a machine (`expose 'SM-001'::top::heating::**;`).
 
 | Function | Parameters | Default |
 |----------|------------|---------|

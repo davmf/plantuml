@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import net.sourceforge.plantuml.sysml.SysmlException;
 import net.sourceforge.plantuml.sysml.SysmlModel;
 import net.sourceforge.plantuml.sysml.SysmlNode;
 import net.sourceforge.plantuml.sysml.SysmlNodes;
@@ -131,6 +132,8 @@ final class SmWriter extends SysmlWriter {
 	private final List<Region> top = new ArrayList<>();
 	private final List<Transition> transitions = new ArrayList<>();
 	private final Set<String> aliases = new HashSet<>();
+	/** Every vertex by its path inside the machine, <code>top::running</code>. */
+	private final Map<String, Vertex> byPath = new LinkedHashMap<>();
 
 	SmWriter(SysmlModel model, SysmlNode root, SysmlOptions options, Predicate<String> isFunctionDefined) {
 		super(isFunctionDefined);
@@ -223,6 +226,7 @@ final class SmWriter extends SysmlWriter {
 		v.name = SysmlNodes.text(model, node, "name", node.getName());
 		v.alias = SysmlText.unique(SysmlText.sanitize(node.getName()), aliases);
 		vertices.register(path, v);
+		byPath.put(String.join("::", path.subList(1, path.size())), v);
 		if (v.is(SmProfile.PSEUDOSTATE)) {
 			v.kind = SysmlNodes.text(model, node, "kind");
 			if (v.kind == null) {
@@ -323,8 +327,25 @@ final class SmWriter extends SysmlWriter {
 	// Writing
 	// ------------------------------------------------------------------
 
-	void run(String source) {
+	/**
+	 * The state of <code>within=</code>, or <code>null</code> for the whole
+	 * machine.
+	 */
+	private Vertex within() throws SysmlException {
+		final String written = options.get("within", null);
+		if (written == null)
+			return null;
+		final String path = written.replace("'", "").replaceAll("\\s*(::|\\.)\\s*", "::").trim();
+		final Vertex v = byPath.get(path);
+		if (v == null)
+			throw new SysmlException("within=" + written + ": no state at this path in " + root.getName()
+					+ " (expected one of " + byPath.keySet() + ")");
+		return v;
+	}
+
+	void run(String source) throws SysmlException {
 		read();
+		final Vertex within = within();
 		final Map<String, String> attributes = new LinkedHashMap<>();
 		attributes.put("name", SysmlNodes.text(model, root, "name", root.getName()));
 		header(source, "StateMachineProfile", root.getName(), attributes);
@@ -339,6 +360,11 @@ final class SmWriter extends SysmlWriter {
 				if (v.isPseudo("entryPoint") || v.isPseudo("exitPoint"))
 					frame = true;
 		String indent = "";
+		if (within != null) {
+			writeVertex(within, indent);
+			footer(source);
+			return;
+		}
 		if (frame) {
 			out.add("state \"" + SysmlText.call("$sysml_state_label", attributes.get("name"), SmProfile.STATE_MACHINE,
 					"") + "\" as " + SysmlText.unique(SysmlText.sanitize(root.getName()), aliases) + " <<"
@@ -511,6 +537,10 @@ final class SmWriter extends SysmlWriter {
 		final String name = SysmlNodes.text(model, n, "name", n.getName() == null ? "" : n.getName());
 		final String kind = SysmlNodes.text(model, n, "kind", "external");
 		final String classification = SysmlNodes.text(model, n, "classification", "unclassified");
+		final String shown = options.get("transitions", "all");
+		if (("primary".equals(shown) && "primary".equals(classification) == false)
+				|| ("noexceptions".equals(shown) && "exception".equals(classification)))
+			return;
 
 		final boolean hasLabel = trigger.isEmpty() == false || guard.isEmpty() == false
 				|| actions.isEmpty() == false || isUserDefined("$sysml_transition_label");

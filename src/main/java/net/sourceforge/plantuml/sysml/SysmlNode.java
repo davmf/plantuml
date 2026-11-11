@@ -260,6 +260,10 @@ public final class SysmlNode {
 		return parent;
 	}
 
+	/**
+	 * The text of the first <code>doc</code> comment, without its reStructuredText
+	 * directives (see {@link SysmlText#withoutDirectives}).
+	 */
 	public String getDoc() {
 		return doc;
 	}
@@ -286,7 +290,7 @@ public final class SysmlNode {
 	void addChild(SysmlNode child) {
 		child.parent = this;
 		if (child.isKeyword("doc") && doc == null)
-			doc = child.value == null ? null : child.value.getText();
+			doc = child.value == null ? null : SysmlText.withoutDirectives(child.value.getText());
 		children.add(child);
 	}
 

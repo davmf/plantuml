@@ -72,9 +72,21 @@ public final class SysmlOptions {
 	 */
 	public static final String LAYOUT = "layout";
 	public static final String FRAME = "frame";
+	/**
+	 * A URL pattern: elements that stand for an item get a link, with
+	 * <code>{id}</code> replaced by the item's ID (<code>links=/item/{id}</code>).
+	 * Generators that draw no such element ignore it.
+	 */
+	public static final String LINKS = "links";
+	/**
+	 * A saved diagram: the ID of a SysML <code>view</code> whose
+	 * <code>expose</code> and <code>DiagramView</code> metadata give the root
+	 * and the options (see {@link SysmlDiagramView}).
+	 */
+	public static final String DIAGRAM = "diagram";
 
 	public static final List<String> COMMON = Collections
-			.unmodifiableList(Arrays.asList(ROOT, SYSTEM, PROFILE, STYLE, FRAME, LAYOUT));
+			.unmodifiableList(Arrays.asList(ROOT, SYSTEM, PROFILE, STYLE, FRAME, LAYOUT, LINKS, DIAGRAM));
 
 	private static final List<String> BOOLEAN = Arrays.asList("true", "false");
 	private static final List<String> LAYOUTS = Arrays.asList("elk", "default");

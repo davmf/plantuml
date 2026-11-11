@@ -1,0 +1,8 @@
+---
+output: svg
+expected-status: 400
+expected-error-message: !include_sysml: within=top::boiling: no state at this path in kettle (expected one of [top::init, top::idle, top::heating, top::heating::regions::start, top::heating::regions::ramp, top::heating::regions::hold])
+---
+@startuml
+!include_sysml MODEL.sysml StrictDocWorkspace.sysml TRK-STK.sysml STK-001.sysml TRK-SYS.sysml SYS-F-HEATING.sysml SYS-001.sysml SYS-002.sysml TRK-BEH.sysml BEH-001.sysml VIEW-001.sysml VIEW-002.sysml VIEW-003.sysml root=BEH-001 within=top::boiling
+@enduml

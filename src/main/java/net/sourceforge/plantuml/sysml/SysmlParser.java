@@ -271,10 +271,16 @@ public final class SysmlParser {
 			return new SysmlNode(keyword, false, false, null, false, null, Collections.<String>emptyList(),
 					new SysmlValue(body, body), Collections.<String>emptyList(), source, line);
 		}
-		if ("import".equals(keyword) || "alias".equals(keyword)) {
+		if ("import".equals(keyword) || "alias".equals(keyword) || "expose".equals(keyword)) {
+			// The value is the target as written: Pkg::*, 'SYS-001'::**, Pkg::Elem
 			final String raw = raw(h, i, h.size());
-			return new SysmlNode(keyword, false, false, null, false, null, Collections.<String>emptyList(),
-					new SysmlValue(raw, raw), Collections.<String>emptyList(), source, line);
+			final SysmlNode node = new SysmlNode(keyword, false, false, null, false, null,
+					Collections.<String>emptyList(), new SysmlValue(raw, raw), Collections.<String>emptyList(), source,
+					line);
+			// public import (a tracker including its items) differs from private import
+			for (String modifier : modifiers)
+				node.addModifier(modifier);
+			return node;
 		}
 
 		String name = null;

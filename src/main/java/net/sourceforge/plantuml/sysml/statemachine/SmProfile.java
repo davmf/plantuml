@@ -83,6 +83,10 @@ public final class SmProfile implements SysmlProfile {
 		final Map<String, List<String>> result = new LinkedHashMap<>();
 		result.put("actions", Arrays.asList("true", "false"));
 		result.put("regions", Arrays.asList("horizontal", "vertical"));
+		// Which transitions to draw, by classification
+		result.put("transitions", Arrays.asList("all", "primary", "noexceptions"));
+		// Only this state (a path inside the machine: top::running), with what it holds
+		result.put("within", null);
 		return result;
 	}
 

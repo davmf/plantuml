@@ -48,6 +48,7 @@ import net.sourceforge.plantuml.sysml.SysmlModel;
 import net.sourceforge.plantuml.sysml.SysmlNode;
 import net.sourceforge.plantuml.sysml.SysmlOptions;
 import net.sourceforge.plantuml.sysml.SysmlProfile;
+import net.sourceforge.plantuml.sysml.SysmlWorkspace;
 
 /**
  * <code>view=requirements</code>: plain SysML v2 requirements and the
@@ -65,6 +66,8 @@ public final class ReqView implements SysmlProfile {
 	static final String DIRECTION = "direction";
 	static final String TEXT = "text";
 	static final String PACKAGES = "packages";
+	/** Only the requirements of these top-level packages (comma-separated): trackers, folders. */
+	static final String SCOPE = "scope";
 
 	private final Map<String, List<String>> optionKeys = new LinkedHashMap<>();
 
@@ -74,6 +77,7 @@ public final class ReqView implements SysmlProfile {
 		optionKeys.put(DIRECTION, list("both", "up", "down"));
 		optionKeys.put(TEXT, list("true", "false"));
 		optionKeys.put(PACKAGES, list("false", "true"));
+		optionKeys.put(SCOPE, null);
 	}
 
 	private static List<String> list(String... values) {
@@ -149,8 +153,8 @@ public final class ReqView implements SysmlProfile {
 
 	public List<String> generate(SysmlModel model, SysmlNode root, SysmlOptions options, String source,
 			Predicate<String> isFunctionDefined) throws SysmlException {
-		final ReqWriter writer = new ReqWriter(new ReqModel(model), options.getRoot() == null ? null : root, options,
-				isFunctionDefined);
+		final ReqWriter writer = new ReqWriter(new ReqModel(model), options.getRoot() == null ? null : root,
+				new SysmlWorkspace(model.getRoots()), options, isFunctionDefined);
 		writer.run(source);
 		return writer.getLines();
 	}

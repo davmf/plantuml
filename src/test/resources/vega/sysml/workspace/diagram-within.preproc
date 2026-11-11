@@ -1,0 +1,27 @@
+@startuml
+!pragma layout elk
+hide empty description
+skinparam stateDiagramEdgeLabelStyle node
+!pragma edgeCornerRadius 10
+<style>
+state {
+  .terminate { LineColor transparent; BackgroundColor transparent; FontSize 34; FontColor #B00020; shadowing 0 }
+  .submachine { BackgroundColor #EEF3FF }
+  .StateMachine { BackgroundColor transparent }
+}
+arrow {
+  .primary { LineColor #2E7D32; LineThickness 4 }
+  .secondary { LineColor #1565C0; LineThickness 2 }
+  .exception { LineColor #C62828; LineThickness 1 }
+}
+</style>
+state "Heating" as heating {
+  state start <<start>>
+  state "Ramp" as ramp
+  state "Hold" as hold
+  start --> ramp <<primary>>
+  ramp --> hold <<primary>>
+}
+note right of ramp : reviewed
+note right of hold : ok
+@enduml

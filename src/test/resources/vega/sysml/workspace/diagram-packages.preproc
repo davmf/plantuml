@@ -1,0 +1,43 @@
+@startuml
+!pragma layout elk
+hide circle
+hide empty members
+hide stereotype
+skinparam classAttributeIconSize 0
+<style>
+classDiagram {
+  class { BackGroundColor #FFFFFF; LineColor #404040; MaximumWidth 280 }
+  package { LineColor #9E9E9E; FontColor #616161 }
+  .requirement { BackGroundColor #EAF1FB }
+  .requirementDef { BackGroundColor #DCE7F7 }
+  .concern { BackGroundColor #F0EAF7 }
+  .verification { BackGroundColor #EAF5EA }
+  .verificationDef { BackGroundColor #DDEFDD }
+  .unresolved { BackGroundColor #FFFFFF; LineColor #9E9E9E; LineStyle 5; FontColor #757575 }
+  .focus { BackGroundColor #FFF3B0; LineColor #D9822B; LineThickness 3 }
+  arrow {
+    .satisfy { LineColor #2E7D32; FontColor #2E7D32 }
+    .verify { LineColor #1565C0; FontColor #1565C0 }
+    .derive { LineColor #6A1B9A; FontColor #6A1B9A }
+    .refine { LineColor #6A1B9A; FontColor #6A1B9A }
+    .allocate { LineColor #EF6C00; FontColor #EF6C00 }
+    .definedBy { LineColor #757575; FontColor #757575 }
+    .specializes { LineColor #757575; FontColor #757575 }
+    .subsets { LineColor #757575; FontColor #757575 }
+    .subject { LineColor #757575; FontColor #757575 }
+    .references { LineColor #757575; FontColor #757575 }
+  }
+}
+</style>
+package "Stakeholder needs" as pkg_TRK_STK <<package>> {
+  class "«requirement»\n<b>STK-001</b>\nHot water" as STK_001 <<requirement>>
+}
+package "System requirements" as pkg_TRK_SYS <<package>> {
+  class "«requirement»\n<b>SYS-002</b>\nDry boil protection" as SYS_002 <<requirement>>
+  package "Heating" as pkg_SYS_F_HEATING <<package>> {
+    class "«requirement»\n<b>SYS-001</b>\nBoil time" as SYS_001 <<requirement>>
+  }
+}
+STK_001 <.. SYS_001 <<dependency>> : «dependency»
+STK_001 <.. SYS_002 <<dependency>> : «dependency»
+@enduml
