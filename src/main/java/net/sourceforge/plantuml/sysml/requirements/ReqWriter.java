@@ -289,6 +289,8 @@ final class ReqWriter extends SysmlWriter {
 		out.add("hide circle");
 		out.add("hide empty members");
 		out.add("hide stereotype");
+		if ("horizontal".equals(options.get(ReqView.ORIENTATION, "vertical")))
+			out.add("left to right direction");
 		if (options.isStyle())
 			writeStyle();
 

@@ -1,0 +1,7 @@
+---
+output: preproc
+---
+@startuml
+' a trace diagram laid out left to right: orientation=horizontal
+!include_sysml MODEL.sysml StrictDocWorkspace.sysml TRK-STK.sysml STK-001.sysml TRK-SYS.sysml SYS-F-HEATING.sysml SYS-001.sysml SYS-002.sysml view=requirements focus=SYS-001 orientation=horizontal
+@enduml

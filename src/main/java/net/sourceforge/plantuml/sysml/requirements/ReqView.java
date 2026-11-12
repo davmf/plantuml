@@ -66,6 +66,8 @@ public final class ReqView implements SysmlProfile {
 	static final String DIRECTION = "direction";
 	static final String TEXT = "text";
 	static final String PACKAGES = "packages";
+	/** <code>horizontal</code>: <code>left to right direction</code>. */
+	static final String ORIENTATION = "orientation";
 	/** Only the requirements of these top-level packages (comma-separated): trackers, folders. */
 	static final String SCOPE = "scope";
 
@@ -77,6 +79,7 @@ public final class ReqView implements SysmlProfile {
 		optionKeys.put(DIRECTION, list("both", "up", "down"));
 		optionKeys.put(TEXT, list("true", "false"));
 		optionKeys.put(PACKAGES, list("false", "true"));
+		optionKeys.put(ORIENTATION, list("vertical", "horizontal"));
 		optionKeys.put(SCOPE, null);
 	}
 

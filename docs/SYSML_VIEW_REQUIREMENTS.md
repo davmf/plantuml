@@ -31,6 +31,7 @@ Use cases with their actors and objectives are drawn by
 | `depth`     | 0, 1, 2...              | 1 with focus, 0 without | How many relations away from the focus (or from the requirements) to go |
 | `direction` | `both`, `up`, `down`    | `both`                  | Follow relations both ways, only towards what they trace to (`up`: the requirement a test verifies, the requirement a requirement derives from, the owner of a nested requirement), or only towards what traces to the element (`down`) |
 | `text`      | `true`, `false`         | `true`                  | Show the doc text, cut after 160 characters |
+| `orientation` | `vertical`, `horizontal` | `vertical`         | `horizontal` lays the diagram out left to right (`left to right direction`): traces read across the page |
 | `packages`  | `true`, `false`         | `false`                 | Draw the packages as frames around their elements; in the tracker layout, the trackers and folders that include them, titled from their metadata |
 | `layout`    | `elk`, `default`        | `elk`                   | Common to every profile and view (see SYSML_PROFILES.md): emit `!pragma layout elk`; `default` leaves the layout to the diagram |
 | `root`      | package name            | the whole file set      | Without focus: only the requirements of this package (any depth; in the [tracker layout](SYSML_WORKSPACE.md), what it includes through `public import`). With focus: only look the focus up in this package |
