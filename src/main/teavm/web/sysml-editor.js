@@ -448,11 +448,11 @@ const paneTheme = EditorView.theme({
 
 // What both panes share. onChange(text) follows the edits made in the editor;
 // a dispatch made while quiet() returns true is not reported.
-function extensionsFor(language, folding, textarea, onChange, quiet) {
+function extensionsFor(language, folding, textarea, onChange, quiet, indent = "  ") {
 	return [
 		basicSetup,
 		keymap.of([indentWithTab]),
-		indentUnit.of("  "),
+		indentUnit.of(indent),
 		EditorState.tabSize.of(4),
 		language,
 		folding,
@@ -504,13 +504,17 @@ function replaceTextarea(textarea) {
  * {name, text} file, with the state it had when last shown unless its text
  * has changed since. replaceText changes a file from outside (a file changed
  * on disk) as one edit that Ctrl+Z undoes, shown or not; it sets file.text.
+ *
+ * options.indent is the text of one indentation level (default two spaces;
+ * StrictDoc's SysML files use four).
  */
-export function createSysmlEditor(textarea, onChange) {
+export function createSysmlEditor(textarea, onChange, options = {}) {
 	const states = new WeakMap();
 	let shown = null;
 	let replacing = false;
 
-	const extensions = extensionsFor(sysmlLanguage, sysmlFolds, textarea, onChange, () => replacing).concat([
+	const extensions = extensionsFor(sysmlLanguage, sysmlFolds, textarea, onChange, () => replacing,
+		options.indent).concat([
 		// Dropped files open as tabs (the pane's drop handler), not as inserted text
 		EditorView.domEventHandlers({
 			drop: e => e.dataTransfer != null && e.dataTransfer.files.length > 0
